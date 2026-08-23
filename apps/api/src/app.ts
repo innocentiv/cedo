@@ -4,8 +4,10 @@ import { sql as raw } from 'drizzle-orm'
 import type { ApiError } from '@cedo/contract'
 import { db } from './db/client.ts'
 import { DomainError, toApiError } from './lib/error.ts'
-import { mcpHandler, resolveTokenCaller, withCaller } from './mcp/index.ts'
+import { mcpHandler, withCaller } from './mcp/index.ts'
+import { resolveTokenCaller } from './mcp/token.ts'
 import { createOpenapiPlugin } from './plugins/openapi.ts'
+import { adminRoutes } from './modules/admin/index.ts'
 import { authRoutes } from './modules/auth/index.ts'
 import { exerciseRoutes } from './modules/exercise/index.ts'
 import { groupRoutes } from './modules/group/index.ts'
@@ -42,6 +44,7 @@ export function createApp() {
       },
       { detail: { summary: 'Liveness and database reachability' } },
     )
+    .use(adminRoutes)
     .use(authRoutes)
     .use(exerciseRoutes)
     .use(exerciseHistoryRoutes)

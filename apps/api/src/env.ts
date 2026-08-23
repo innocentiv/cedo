@@ -43,11 +43,22 @@ function resolveDatabaseUrl(source: Record<string, string | undefined>): string 
     )
   }
 
-  const worker = source['BUN_TEST_WORKER_ID']
-  if (worker === undefined) return testUrl
+  /**
+   * The performance suite gets its OWN database, derived from the same URL.
+   *
+   * It seeds a quarter of a million rows and reuses them across runs; the integration harness
+   * truncates every table between tests. Sharing one database would mean either rebuilding the
+   * seed constantly or having `bun test` silently destroy it.
+   */
+  if (source['CEDO_PERF'] !== undefined) return suffixed(testUrl, '_perf')
 
-  const url = new URL(testUrl)
-  url.pathname = `${url.pathname}_w${worker}`
+  const worker = source['BUN_TEST_WORKER_ID']
+  return worker === undefined ? testUrl : suffixed(testUrl, `_w${worker}`)
+}
+
+function suffixed(databaseUrl: string, suffix: string): string {
+  const url = new URL(databaseUrl)
+  url.pathname = `${url.pathname}${suffix}`
   return url.toString()
 }
 

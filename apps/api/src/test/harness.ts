@@ -1,9 +1,8 @@
 import { sql as raw } from 'drizzle-orm'
 import { treaty } from '@elysiajs/eden'
-import postgres from 'postgres'
 import { createApp } from '../app.ts'
 import { db } from '../db/client.ts'
-import { env } from '../env.ts'
+import { ensureDatabaseExists } from '../db/ensure.ts'
 import { runMigrations } from '../db/migrate.ts'
 import { seedCore } from '../db/seed.ts'
 import { type Caller, resolveCaller } from '../plugins/auth.ts'
@@ -19,29 +18,6 @@ import { type Caller, resolveCaller } from '../plugins/auth.ts'
  */
 
 let ready: Promise<void> | undefined
-
-/**
- * Under `--parallel` each worker uses its own database (see env.ts), which will not exist the
- * first time that worker runs. Created here through the maintenance database.
- */
-async function ensureDatabaseExists(): Promise<void> {
-  const url = new URL(env.DATABASE_URL)
-  // Decoded, because postgres.js decodes it before connecting — creating `cedo%20test` and then
-  // connecting to `cedo test` fails with an error that points nowhere near the cause.
-  const name = decodeURIComponent(url.pathname.slice(1))
-  const admin = new URL(url)
-  admin.pathname = '/postgres'
-
-  const client = postgres(admin.toString(), { max: 1, onnotice: () => {} })
-  try {
-    const rows = await client`select 1 from pg_database where datname = ${name}`
-    // `create database` cannot be parameterised, so the identifier is quoted and any embedded
-    // quote doubled.
-    if (rows.length === 0) await client.unsafe(`create database "${name.replaceAll('"', '""')}"`)
-  } finally {
-    await client.end()
-  }
-}
 
 /** Migrations run once per worker process, not once per test. */
 async function ensureSchema(): Promise<void> {

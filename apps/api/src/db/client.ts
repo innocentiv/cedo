@@ -9,8 +9,14 @@ import * as schema from './schema.ts'
  * endpoint must issue the SAME number of queries at 10 rows and at 1000.
  * See docs/adr/0018-n1-detection.md.
  */
+/** A statement exactly as issued, so the performance suite can EXPLAIN the real thing. */
+export interface RecordedQuery {
+  readonly sql: string
+  readonly params: readonly unknown[]
+}
+
 interface QueryRecord {
-  readonly statements: string[]
+  readonly statements: RecordedQuery[]
 }
 const recorder = new AsyncLocalStorage<QueryRecord>()
 
@@ -34,8 +40,8 @@ export const sql = postgres(env.DATABASE_URL, {
 export const db = drizzle(sql, {
   schema,
   logger: {
-    logQuery(query) {
-      recorder.getStore()?.statements.push(query)
+    logQuery(query, params) {
+      recorder.getStore()?.statements.push({ sql: query, params })
     },
   },
 })
@@ -47,7 +53,7 @@ export type Transaction = Parameters<Parameters<Database['transaction']>[0]>[0]
 /** Run `fn`, returning its result alongside every SQL statement it issued. */
 export async function withQueryCount<T>(
   fn: () => Promise<T>,
-): Promise<{ result: T; count: number; statements: string[] }> {
+): Promise<{ result: T; count: number; statements: RecordedQuery[] }> {
   const record: QueryRecord = { statements: [] }
   const result = await recorder.run(record, fn)
   return { result, count: record.statements.length, statements: record.statements }

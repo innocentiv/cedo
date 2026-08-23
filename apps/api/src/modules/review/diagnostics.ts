@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import { z } from 'zod'
+import type { PlatformStatus, SlowQuery } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 
 /**
@@ -9,16 +10,6 @@ import { db } from '../../db/client.ts'
  * It is diagnosing a deployment I have no shell on: someone reports "it is slow on my NAS" and this
  * is the only way to see their actual query profile and data shape. See docs/07-mcp.md.
  */
-
-export interface PlatformStatus {
-  readonly version: string
-  readonly postgres: string
-  readonly extensions: string[]
-  readonly migrationsApplied: number
-  readonly rowCounts: Record<string, number>
-  readonly databaseSize: string
-  readonly settings: Record<string, string>
-}
 
 /** Counted per table rather than by a single query, so a missing table is visible as a gap. */
 const COUNTED = [
@@ -85,14 +76,6 @@ export async function platformStatus(version: string): Promise<PlatformStatus> {
         .map((r) => [r.table, r.rows]),
     ),
   }
-}
-
-export interface SlowQuery {
-  readonly calls: number
-  readonly meanMs: number
-  readonly totalMs: number
-  readonly rows: number
-  readonly query: string
 }
 
 const SlowQueryRow = z.object({

@@ -120,7 +120,8 @@ export async function list(
   if (query.since !== undefined)
     conditions.push(sql`${workoutSessions.startedAt} >= ${query.since}`)
   /**
-   * Keyset on (started_at, id) descending, matching workout_sessions_user_time_idx.
+   * Keyset on (started_at, id) descending, which is exactly workout_sessions_user_time_idx —
+   * including the id column, so the index serves the ordering and the walk stops at the page size.
    *
    * The id tiebreaker is load-bearing. A bare `started_at <` cursor built from an ISO string is
    * truncated to milliseconds while the column holds microseconds, so page 2 silently skipped every

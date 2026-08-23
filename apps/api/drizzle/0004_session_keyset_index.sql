@@ -1,0 +1,2 @@
+DROP INDEX "workout_sessions_user_time_idx";--> statement-breakpoint
+CREATE INDEX "workout_sessions_user_time_idx" ON "workout_sessions" USING btree ("user_id","started_at" DESC NULLS LAST,"id" DESC NULLS LAST);

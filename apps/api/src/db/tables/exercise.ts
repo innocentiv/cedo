@@ -40,6 +40,21 @@ export const exercises = pgTable(
      * `owner_group_id` alone needs no separate index — it is this one's left prefix.
      */
     index('exercises_owner_name_idx').on(t.ownerGroupId, t.name, t.id),
+    /**
+     * The SAME columns without the owner, and it is not redundant.
+     *
+     * The composite above serves `scope=mine` and `scope=group`, where owner_group_id is a single
+     * equality and the index walks in (name, id) order underneath it. It CANNOT serve the default
+     * `scope=all`: there the filter is `owner_group_id in (…52 groups…)`, and Postgres has no plan
+     * that walks 52 index ranges in merged name order — it read all 11,000 visible rows and
+     * top-N sorted them, on every page, measured at 2.4ms and growing with the library.
+     *
+     * Leading on (name, id) lets the keyset walk in order and stop at the page size: 0.15ms and
+     * 48 buffers instead of 332, constant as the library grows. It works precisely because every
+     * user is a reader of the shared group, so a caller can see most of the table and the walk
+     * finds a full page immediately. See docs/10-testing.md.
+     */
+    index('exercises_name_id_idx').on(t.name, t.id),
     /** Substring search. A GIN trigram index can serve neither ORDER BY nor a range on `name`. */
     index('exercises_name_trgm_idx').using('gin', sql`${t.name} gin_trgm_ops`),
   ],

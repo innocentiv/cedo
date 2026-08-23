@@ -100,6 +100,9 @@ through the ordinary group-members endpoint.
 **Why this matters:** without it, nobody can edit the shared library at all. The system account owns
 those rows but is not a member of the group, and registration only ever grants `reader`.
 
+The same rights gate `GET /admin/status` and `GET /admin/slow-queries`, which return exactly what
+`platform_status` and `db_slow_queries` return — the AI and a person read the same numbers.
+
 ## Designing a tool
 
 **A tool handler calls one service function and formats the result. It contains no domain logic.**

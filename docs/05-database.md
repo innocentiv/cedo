@@ -111,6 +111,23 @@ Seeded media are YouTube **search** URLs, not specific video ids. Inventing ids 
 user dead links and broken thumbnails; a search always resolves. Users and the AI replace them with
 real videos through the media endpoints.
 
+### The performance seed
+
+`seed-perf/` builds a **separate** database (`cedo_test_perf`, selected by `CEDO_PERF=1`) at
+production volume: 250,000 set logs, 10,000 shared exercises, 1,000 plans, 5,000 sessions, plus
+media, favourites and browser sessions. It shares nothing with `seed.ts` beyond `seedMuscles`,
+because it is answering a different question.
+
+Two rules govern it:
+
+- **Every value is derived arithmetically from a row number** — not even a seeded PRNG. Two runs
+  produce byte-identical data, so a query plan that changed did so because the code changed.
+- **It is written as bulk `insert … select … from generate_series`.** A quarter of a million rows
+  through ORM value lists takes minutes; this takes about thirty seconds, and it is then reused
+  across runs.
+
+It is also the one place raw SQL is correct. Everything the application runs goes through Drizzle.
+
 ## Query counting
 
 `client.ts` records every statement issued inside `withQueryCount()`, via Drizzle's `logger` hook

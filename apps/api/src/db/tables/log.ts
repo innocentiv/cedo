@@ -35,8 +35,15 @@ export const workoutSessions = pgTable(
     notes: text('notes'),
   },
   (t) => [
-    /** The session list, newest first — the landing screen's query. */
-    index('workout_sessions_user_time_idx').on(t.userId, t.startedAt.desc()),
+    /**
+     * The session list, newest first — the landing screen's query.
+     *
+     * `id` is in the index because the keyset cursor is a ROW comparison on
+     * (started_at, id) descending: without the third column Postgres can use the index to find the
+     * rows but not to order them, so it read every session the user owns and sorted them on every
+     * page. See docs/10-testing.md.
+     */
+    index('workout_sessions_user_time_idx').on(t.userId, t.startedAt.desc(), t.id.desc()),
     index('workout_sessions_workout_idx').on(t.workoutId),
   ],
 )

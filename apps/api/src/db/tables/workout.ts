@@ -30,6 +30,8 @@ export const workouts = pgTable(
      * See docs/03-domain-model.md.
      */
     index('workouts_owner_name_idx').on(t.ownerGroupId, t.name, t.id),
+    /** And the same pair without the owner, for the same reason. See `exercises_name_id_idx`. */
+    index('workouts_name_id_idx').on(t.name, t.id),
   ],
 )
 

@@ -28,7 +28,6 @@ const SOURCE_EXTENSIONS = ['.ts', '.tsx']
 const PLANNED: Readonly<Record<string, string>> = {
   'docs/08-frontend.md': 'M8 — frontend foundation',
   'docs/09-deployment.md': 'M10 — deployment',
-  'docs/10-testing.md': 'M7 — performance',
 }
 
 interface Reference {

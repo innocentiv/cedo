@@ -135,6 +135,20 @@ it was. A test asserts that.
 `/openapi` is generated from the same Zod schemas the routes validate with, so it cannot drift.
 Enumerating routes in this file would only give a second version to forget to update.
 
+## Diagnostics
+
+`GET /admin/status` and `GET /admin/slow-queries` are the HTTP twins of the `platform_status` and
+`db_slow_queries` MCP tools, and call the same functions in `modules/review/diagnostics.ts`. There
+is deliberately no version of this that an AI can see and a person cannot.
+
+Both require a **curator** — an editor of the seeded `cedo` group, see `docs/07-mcp.md` — and answer
+`404` rather than `403` to anyone else: whether an instance has a curator at all is not something an
+ordinary caller needs to learn.
+
+`pg_stat_statements` stores normalised statements (`$1` placeholders, never literal values), so the
+slow query log cannot disclose anyone's data. This exists for one situation: someone self-hosting
+reports that it is slow and there is no shell to log into. See `docs/10-testing.md`.
+
 ## Pagination and scope
 
 List endpoints take `PaginationQuery` (`cursor`, `limit` ≤ 100) plus a `scope`:

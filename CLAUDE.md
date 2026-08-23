@@ -34,7 +34,8 @@ is designed to prevent.
 | `bun run db:test` | The throwaway Postgres the test suite needs. |
 | `bun run shot <route>` | Render a UI route, screenshot it to `.artifacts/`, print console errors. |
 | `bun run e2e` | Full UI journeys; fails on any console error. |
-| `bun run perf` | N+1 and missing-index guards against a large seed. Slow; pre-release. |
+| `bun run perf` | N+1 and missing-index guards against its own 250k-row database. Pre-release. |
+| `bun run perf:report` | Writes `.artifacts/perf.md` — every hot path's query counts and full plans. |
 
 ## Working notes
 
@@ -53,7 +54,13 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
 - **Run `/code-review` at each milestone boundary, before building on top.** Two reviews in this
   session found 30 real defects between them, including an ACL invariant violation and a design flaw
   that would have broken every image in the UI.
-- **Verify plans, not timings.** An index existing is not an index being used.
+- **Verify plans, not timings.** An index existing is not an index being used. `bun run perf` found
+  two indexes that were never chosen by the planner, both of which looked correct in the schema.
+- **A perf guard is worthless until you have watched it fail.** Drop the index against
+  `cedo_test_perf`, or reintroduce the N+1, and confirm the message names the problem.
+- **An empty table makes every assertion about it vacuous.** The first perf seed left `media` and
+  the favourites tables empty; their plans read `Seq Scan on media (rows=0)`, which passes and
+  proves nothing.
 
 ## Documentation map
 
