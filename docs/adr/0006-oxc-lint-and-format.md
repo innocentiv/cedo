@@ -45,12 +45,12 @@ Verified during M0 by planting deliberate defects — `no-floating-promises` and
 
 Strictness is only useful if every warning means something. These are off on purpose:
 
-| Rule                                         | Why                                                                                                                                                          |
-| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Rule | Why |
+| --- | --- |
 | `typescript/prefer-readonly-parameter-types` | Demands a `readonly` annotation on essentially every destructured or object parameter. High ceremony, no bug-catching value, and it fires on idiomatic code. |
-| `no-inline-comments`                         | This codebase deliberately annotates lines with short trailing comments.                                                                                     |
-| `require-await` (base rule)                  | Duplicated by `typescript/require-await`, which is type-aware and more accurate.                                                                             |
-| `unicorn/no-null`                            | `null` is meaningful and load-bearing here: it distinguishes "explicitly absent" from "not provided" at the database and contract boundary.                  |
+| `no-inline-comments` | This codebase deliberately annotates lines with short trailing comments. |
+| `require-await` (base rule) | Duplicated by `typescript/require-await`, which is type-aware and more accurate. |
+| `unicorn/no-null` | `null` is meaningful and load-bearing here: it distinguishes "explicitly absent" from "not provided" at the database and contract boundary. |
 
 If you add a `// oxlint-disable` anywhere, add a line here explaining why, or fix the code instead.
 
@@ -76,8 +76,8 @@ test, `describe` blocks are legitimately long, and sequential awaits in a test a
 
 ### Justified inline disables
 
-| Location                  | Rule               | Why                                                                                                                                                                                    |
-| ------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Location | Rule | Why |
+| --- | --- | --- |
 | `apps/api/src/db/seed.ts` | `no-await-in-loop` | The library is seeded sequentially on purpose. Parallelising ~45 transactions would exhaust the small connection pool a self-hosted box runs with, for no benefit in a one-off script. |
 
 Note that `oxlint-disable-next-line` targets the **immediately** following line. Put the

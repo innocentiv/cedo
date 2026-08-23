@@ -26,30 +26,51 @@ is designed to prevent.
 
 ## Commands
 
-| Command                | Use                                                                      |
-| ---------------------- | ------------------------------------------------------------------------ |
-| `bun run check`        | The gate. Run after every feature.                                       |
-| `bun run test:changed` | Inner loop — only tests affected by your diff.                           |
+| Command | Use |
+| --- | --- |
+| `bun run check` | The gate. Run after every feature. |
+| `bun run test:changed` | Inner loop — only tests affected by your diff. |
+| `bun run db:reset` | Empty volume → migrate → seed, in one command. |
+| `bun run db:test` | The throwaway Postgres the test suite needs. |
 | `bun run shot <route>` | Render a UI route, screenshot it to `.artifacts/`, print console errors. |
-| `bun run e2e`          | Full UI journeys; fails on any console error.                            |
-| `bun run perf`         | N+1 and missing-index guards against a large seed. Slow; pre-release.    |
+| `bun run e2e` | Full UI journeys; fails on any console error. |
+| `bun run perf` | N+1 and missing-index guards against a large seed. Slow; pre-release. |
+
+## Working notes
+
+Hard-won, and expensive to rediscover. Add to this list when something costs you a cycle.
+
+- **Edit existing files with the `Edit` tool, not `sed`/`python` string replacement.** A string
+  replacement that does not match is a *silent no-op*; `Edit` errors. This cost roughly ten silent
+  failures in one session — several only surfaced later, as an unused import.
+- **Format once, before `bun run check` — not after every write.** `oxfmt` rewrites the text your
+  next edit is trying to match. `oxlint` and `tsc` do not care about formatting, so there is no
+  feedback lost. Markdown is excluded from `oxfmt` entirely for the same reason.
+- **`tsc -b` can report success while skipping files it considers up to date.** If a result looks
+  too clean after adding files, re-run with `--force`.
+- **Prove a regression test fails against the unfixed code.** One "passing" race test here was
+  measured to false-pass one run in seven; it needed five rounds to be trustworthy.
+- **Run `/code-review` at each milestone boundary, before building on top.** Two reviews in this
+  session found 30 real defects between them, including an ACL invariant violation and a design flaw
+  that would have broken every image in the UI.
+- **Verify plans, not timings.** An index existing is not an index being used.
 
 ## Documentation map
 
-| File                      | Answers                                                |
-| ------------------------- | ------------------------------------------------------ |
-| `docs/00-overview.md`     | What the product is, and what it deliberately is not   |
-| `docs/01-architecture.md` | Workspaces, the dependency rule, the request path      |
-| `docs/02-conventions.md`  | Naming, file layout, errors, the rules above in detail |
-| `docs/03-domain-model.md` | Tables, relations, invariants, indexes                 |
-| `docs/04-contract.md`     | How one schema reaches the DB, API, MCP and UI         |
-| `docs/05-database.md`     | Drizzle patterns, migrations, seeding                  |
-| `docs/06-api.md`          | Route conventions, auth, pagination                    |
-| `docs/07-mcp.md`          | Tool conventions and client registration               |
-| `docs/08-frontend.md`     | Expo router layout, UI primitives, the thinness rule   |
-| `docs/09-deployment.md`   | Compose, Caddy, env, backup                            |
-| `docs/10-testing.md`      | The four test tiers and what belongs in each           |
-| `docs/adr/`               | Why each decision was made, and what was rejected      |
-| `docs/playbooks/`         | Step-by-step recipes — start here to add anything      |
+| File | Answers |
+| --- | --- |
+| `docs/00-overview.md` | What the product is, and what it deliberately is not |
+| `docs/01-architecture.md` | Workspaces, the dependency rule, the request path |
+| `docs/02-conventions.md` | Naming, file layout, errors, the rules above in detail |
+| `docs/03-domain-model.md` | Tables, relations, invariants, indexes |
+| `docs/04-contract.md` | How one schema reaches the DB, API, MCP and UI |
+| `docs/05-database.md` | Drizzle patterns, migrations, seeding |
+| `docs/06-api.md` | Route conventions, auth, pagination |
+| `docs/07-mcp.md` | Tool conventions and client registration |
+| `docs/08-frontend.md` | Expo router layout, UI primitives, the thinness rule |
+| `docs/09-deployment.md` | Compose, Caddy, env, backup |
+| `docs/10-testing.md` | The four test tiers and what belongs in each |
+| `docs/adr/` | Why each decision was made, and what was rejected |
+| `docs/playbooks/` | Step-by-step recipes — start here to add anything |
 
 To add a new entity end to end, follow `docs/playbooks/add-entity.md` exactly.

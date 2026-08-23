@@ -24,12 +24,12 @@ disagree.
 
 An entry has **one weight**; its sets never diverge. Given `3 × 8–12 @ 60 kg, +2.5 kg`:
 
-| Logged       | Next              | Why                                                           |
-| ------------ | ----------------- | ------------------------------------------------------------- |
-| `12, 12, 12` | `8 × 62.5 kg`     | every set cleared the top — add weight, restart at the bottom |
-| `12, 12, 10` | hold `12 × 60 kg` | one set missed the top                                        |
-| `10, 10, 10` | `11 × 60 kg`      | every set met the current target — climb one rep              |
-| `10, 10, 8`  | hold `10 × 60 kg` | one set missed the current target                             |
+| Logged | Next | Why |
+| --- | --- | --- |
+| `12, 12, 12` | `8 × 62.5 kg` | every set cleared the top — add weight, restart at the bottom |
+| `12, 12, 10` | hold `12 × 60 kg` | one set missed the top |
+| `10, 10, 10` | `11 × 60 kg` | every set met the current target — climb one rep |
+| `10, 10, 8` | hold `10 × 60 kg` | one set missed the current target |
 
 Rejected: per-set independent progression, where set 1 could sit at 65 kg while set 3 is still at
 60 kg. It models within-session fatigue more faithfully, but it makes the prescription hard to read

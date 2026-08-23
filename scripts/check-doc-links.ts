@@ -77,23 +77,31 @@ const references: Reference[] = (
 
       const text = await Bun.file(file).text()
 
-      if (isMarkdown) {
-        return [...text.matchAll(MARKDOWN_LINK)]
-          .map(([, target]) => target)
-          .filter((t): t is string => t !== undefined && !EXTERNAL.test(t))
-          .map((target) => {
-            const path = normalize(join(dirname(file), target))
-            return { from: file, target, path, key: relative(ROOT, path) }
-          })
-      }
-
-      // Source comments name docs from the repository root, not relative to the file.
-      return [...new Set(text.match(DOCS_REFERENCE) ?? [])].map((target) => ({
+      /**
+       * Root-relative `docs/...md` mentions, wherever they appear — in a source comment OR in
+       * markdown prose. Prose references were the blind spot: three documents promised
+       * `docs/playbooks/add-entity.md` in backticks, which is not a markdown link, so nothing
+       * noticed that the file did not exist.
+       */
+      const prose = [...new Set(text.match(DOCS_REFERENCE) ?? [])].map((target) => ({
         from: file,
         target,
         path: join(ROOT, target),
         key: target,
       }))
+
+      if (!isMarkdown) return prose
+
+      const links = [...text.matchAll(MARKDOWN_LINK)]
+        .map(([, target]) => target)
+        .filter((t): t is string => t !== undefined && !EXTERNAL.test(t))
+        .map((target) => {
+          const path = normalize(join(dirname(file), target))
+          return { from: file, target, path, key: relative(ROOT, path) }
+        })
+
+      links.push(...prose)
+      return links
     }),
   )
 ).flat()
@@ -117,7 +125,26 @@ if (stale.length > 0) {
   process.exit(1)
 }
 
+/**
+ * Every ADR must appear in the ADR index. Keeping an index current by discipline does not work —
+ * this one silently drifted to missing three of eight entries.
+ */
+const adrDir = join(ROOT, 'docs', 'adr')
+const adrIndex = await Bun.file(join(adrDir, 'README.md')).text()
+const unlisted = (await readdir(adrDir))
+  .filter((name) => /^\d{4}-.*\.md$/u.test(name))
+  .filter((name) => !adrIndex.includes(name))
+
+if (unlisted.length > 0) {
+  console.error(`ADRs missing from docs/adr/README.md (${unlisted.length}):`)
+  for (const name of unlisted) console.error(`  ${name}`)
+  process.exit(1)
+}
+
 console.log(`All ${references.length - deferred.length} documentation references resolve.`)
+console.log(
+  `All ${(await readdir(adrDir)).filter((n) => /^\d{4}-/u.test(n)).length} ADRs are indexed.`,
+)
 if (deferred.length > 0) {
   const pending = [...new Set(deferred.map((r) => r.key))].toSorted()
   console.log(`${pending.length} referenced docs are planned for a later milestone:`)

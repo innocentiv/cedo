@@ -5,5 +5,14 @@
   "singleQuote": true,
   "trailingComma": "all",
   "arrowParens": "always",
-  "ignorePatterns": ["node_modules", "dist", "build", ".expo", ".artifacts", "apps/api/drizzle"]
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    "build",
+    ".expo",
+    ".artifacts",
+    "apps/api/drizzle",
+    "**/*.md"
+  ],
+  "// markdown": "Markdown is excluded deliberately. oxfmt pads every table cell to align pipes, which is cosmetic but rewrites the exact text of the docs \u2014 the files edited most often in this repo \u2014 so every later edit misses its match. Prose has no correctness dimension for a formatter to enforce."
 }

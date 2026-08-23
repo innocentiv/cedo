@@ -89,11 +89,11 @@ is a union extension with **no migration** — the same pattern as `progression`
 `tracking` declares the measurement mode, which tells the UI which inputs to render and tells a
 progression rule which dimension to advance:
 
-| Mode                | Example                | Notes                                                                   |
-| ------------------- | ---------------------- | ----------------------------------------------------------------------- |
-| `weight_reps`       | back squat             | the default                                                             |
-| `bodyweight_reps`   | pull-up, push-up       | a logged `weight_g` means weight **added** to bodyweight                |
-| `duration`          | plank, dead hang       | progresses via `linear_duration`                                        |
+| Mode | Example | Notes |
+| --- | --- | --- |
+| `weight_reps` | back squat | the default |
+| `bodyweight_reps` | pull-up, push-up | a logged `weight_g` means weight **added** to bodyweight |
+| `duration` | plank, dead hang | progresses via `linear_duration` |
 | `distance_duration` | rowing, farmer's carry | no automatic progression; see [adr/0012](adr/0012-progression-rules.md) |
 
 ### Workouts — three levels, supersets as a tag
@@ -133,18 +133,42 @@ read, and what a progress chart will consume later without a schema change.
 Each of these exists because a specific query needs it. `bun run perf` proves each is actually used
 against a realistic data volume — see [adr/0018](adr/0018-n1-detection.md).
 
-| Index                                                                           | Serves                                                           |
-| ------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `sessions_token_hash_idx` (unique)                                              | auth — the hottest lookup in the system                          |
-| `pats_token_hash_idx` (unique)                                                  | MCP auth                                                         |
-| `group_members_user_idx`                                                        | building the caller's group list, on every request               |
-| `users_username_idx` (unique)                                                   | sign-in                                                          |
-| `exercises_owner_idx`, `workouts_owner_idx`                                     | the `visible()` predicate                                        |
-| `exercises_name_trgm_idx` (GIN, `pg_trgm`)                                      | substring search over a five-figure library                      |
-| `exercise_muscles_muscle_idx`                                                   | filtering the library by muscle                                  |
-| `workout_days_workout_idx`, `workout_entries_day_idx`, `workout_sets_entry_idx` | loading a plan without N+1                                       |
-| `set_logs_exercise_time_idx`                                                    | per-exercise history; the largest table by an order of magnitude |
-| `workout_sessions_user_time_idx`                                                | the session list, newest first                                   |
+| Index | Serves |
+| --- | --- |
+| `sessions_token_hash_idx` (unique) | auth — the hottest lookup in the system |
+| `pats_token_hash_idx` (unique) | MCP auth |
+| `group_members_user_idx` | building the caller's group list, on every request |
+| `users_username_idx` (unique) | sign-in |
+| `users_external_idx` (unique, partial) | the IAM seam; only rows that have an `external_id` |
+| **`exercises_owner_name_idx`** on `(owner_group_id, name, id)` | the **entire** list query in one index walk — the `visible()` filter, the keyset range, and the ordering |
+| `exercises_name_trgm_idx` (GIN, `pg_trgm`) | substring search over a five-figure library |
+| `exercise_muscles_muscle_idx` | filtering the library by muscle |
+| `workouts_owner_idx` | the `visible()` predicate. **Needs the same composite treatment as exercises when M5 adds workout listing.** |
+| `muscles_region_idx` | rendering the muscle picker in display order |
+| `media_created_by_idx` | a user's own uploads |
+| `workout_days_workout_idx`, `workout_entries_day_idx`, `workout_sets_entry_idx` | loading a plan without N+1 |
+| `set_logs_exercise_time_idx` | per-exercise history; the largest table by an order of magnitude |
+| `set_logs_session_idx`, `set_logs_entry_idx` | a session's own sets; a prescribed set's history |
+| `workout_sessions_user_time_idx` | the session list, newest first |
+| `workout_sessions_workout_idx` | sessions belonging to a workout |
+| `sessions_user_idx`, `pats_user_idx` | listing or revoking a user's credentials |
+
+### Why the list index is composite
+
+There is deliberately **no** standalone `exercises_owner_idx` — it is the left prefix of
+`exercises_owner_name_idx`, which Postgres can use for both.
+
+Keyset pagination orders and ranges on `(name, id)`. A GIN trigram index serves **neither** an
+`ORDER BY name` nor a `name > $1` range; it answers substring matches and nothing else. With only
+the owner index and the trigram index, Postgres sequentially scanned every visible exercise and
+sorted it on every page, so page 200 cost the same as page 1. The composite turns that into an
+`Index Only Scan`: 9 buffers, 0.046 ms, no sort node.
+
+Two lessons this encodes, both learned the hard way:
+
+- **An index existing is not an index being used.** Assert the *plan*, never just the timing.
+- The planner will not prefer these at all without `random_page_cost=1.1` — see
+  [05-database.md](05-database.md).
 
 Required extension: **`pg_trgm`**. Created by `migrate.ts`, since Drizzle Kit does not generate
 extension statements. `pg_stat_statements` and `auto_explain` are enabled by the container.

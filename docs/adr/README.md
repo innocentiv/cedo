@@ -7,12 +7,19 @@ would have to change for the decision to be revisited.
 Do not silently reverse a decision recorded here. If you believe one is wrong, add a superseding ADR
 that says so and links back.
 
-| ADR                                         | Decision                                                    | Status   |
-| ------------------------------------------- | ----------------------------------------------------------- | -------- |
-| [0006](0006-oxc-lint-and-format.md)         | oxlint + oxlint-tsgolint + oxfmt for linting and formatting | Accepted |
-| [0007](0007-typescript-version-split.md)    | TypeScript 7 on the server, TypeScript 6 in the Expo app    | Accepted |
-| [0015](0015-no-eden-treaty.md)              | No Eden Treaty; a contract-typed fetch client instead       | Accepted |
-| [0017](0017-webview-for-ui-verification.md) | `Bun.WebView` for UI verification; no component tests       | Accepted |
-| [0018](0018-n1-detection.md)                | N+1 detected by query-count invariant, not a threshold      | Accepted |
+| ADR | Decision | Status |
+| --- | --- | --- |
+| [0003](0003-ownable-columns.md) | Ownable columns per table, not a `resources` supertable | Accepted |
+| [0006](0006-oxc-lint-and-format.md) | oxlint + oxlint-tsgolint + oxfmt for linting and formatting | Accepted |
+| [0007](0007-typescript-version-split.md) | TypeScript 7 on the server, TypeScript 6 in the Expo app | Accepted |
+| [0009](0009-media-model.md) | Media as `kind` + JSONB payload; uploads content-addressed and served unauthenticated | Accepted |
+| [0012](0012-progression-rules.md) | Linear, double and duration progression; advance-or-hold only | Accepted |
+| [0015](0015-no-eden-treaty.md) | No Eden Treaty; a contract-typed fetch client instead | Accepted |
+| [0017](0017-webview-for-ui-verification.md) | `Bun.WebView` for UI verification; no component tests | Accepted |
+| [0018](0018-n1-detection.md) | N+1 detected by query-count invariant, not a threshold | Accepted |
 
 ADRs for the remaining decisions land with the milestone that implements them.
+
+This table is **checked mechanically** by `bun run docs:links`: an ADR file that is not listed here
+fails the build. It drifted once already — three ADRs existed and none of them appeared above —
+because keeping an index current by discipline does not work.

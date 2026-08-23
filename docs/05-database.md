@@ -137,10 +137,10 @@ The concrete case that exposed it: `GET /exercises?q=…` uses `ILIKE '%…%'`, 
 `exercises_name_trgm_idx` GIN index serves. At 20,000 rows the planner ignored that index and
 sequentially scanned, discarding 20,044 rows by filter.
 
-|                                | Buffers | Time     |
-| ------------------------------ | ------- | -------- |
-| `random_page_cost=4` (default) | 354     | 5.96 ms  |
-| `random_page_cost=1.1`         | 17      | 0.077 ms |
+|  | Buffers | Time |
+| --- | --- | --- |
+| `random_page_cost=4` (default) | 354 | 5.96 ms |
+| `random_page_cost=1.1` | 17 | 0.077 ms |
 
 The index was never the problem — forcing `enable_seqscan=off` produced the fast plan all along.
 **An index existing is not the same as an index being used**, which is exactly why `bun run perf`

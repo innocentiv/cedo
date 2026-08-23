@@ -46,11 +46,23 @@ Authorization: Bearer <token>
 `/mcp`; it is not accepted on the HTTP API, and a session token is not accepted by MCP. That
 separation is asserted by a test.
 
-### The auth macro resolves the caller in one query
+### The auth macro resolves the caller in one query, before validation
 
 It runs on every authenticated request, so it joins sessions → users → group_members and aggregates
 memberships in JavaScript. One round trip. Looking up the session and then fetching memberships
 would be two, on every request. `bun run perf` asserts the count stays at one.
+
+**Authentication happens in `transform`, not `resolve` — do not "simplify" it back.** Elysia runs
+`transform` *before* schema validation and `resolve` *after* it. With the check in `resolve`, an
+anonymous caller sending a malformed body got a 422 telling them their body was wrong, when the real
+answer was that they were not signed in.
+
+The resolved caller is handed from `transform` to `resolve` through a `WeakMap` keyed on the request
+object. That indirection is load-bearing for two reasons: it keeps authentication at exactly one
+query, and it leaves the context type inferable — annotating the context parameter directly breaks
+`caller`'s type in every handler in the API.
+
+A regression test asserts an anonymous POST with an invalid body returns 401, not 422.
 
 Handlers receive:
 
@@ -79,14 +91,14 @@ One envelope, produced by a single `onError` handler. Handlers never build an er
 { "error": { "code": "not_found", "message": "No such exercise", "details": null } }
 ```
 
-| Situation                                    | Code                | Status |
-| -------------------------------------------- | ------------------- | ------ |
-| Schema rejected the input                    | `validation_failed` | 422    |
-| Body could not be parsed at all              | `validation_failed` | 400    |
-| Missing or invalid credentials               | `unauthenticated`   | 401    |
-| Missing, **or present but not yours**        | `not_found`         | 404    |
-| Duplicate, or a rule that forbids the change | `conflict`          | 409    |
-| Anything unhandled                           | `internal`          | 500    |
+| Situation | Code | Status |
+| --- | --- | --- |
+| Schema rejected the input | `validation_failed` | 422 |
+| Body could not be parsed at all | `validation_failed` | 400 |
+| Missing or invalid credentials | `unauthenticated` | 401 |
+| Missing, **or present but not yours** | `not_found` | 404 |
+| Duplicate, or a rule that forbids the change | `conflict` | 409 |
+| Anything unhandled | `internal` | 500 |
 
 Services throw the typed helpers in `lib/error.ts` (`notFound`, `conflict`, `unauthenticated`,
 `invalid`). There is deliberately no `forbidden`.
@@ -99,12 +111,12 @@ input on every issue, which on a registration includes the plaintext password; o
 
 List endpoints take `PaginationQuery` (`cursor`, `limit` ≤ 100) plus a `scope`:
 
-| Scope        | Means                            |
-| ------------ | -------------------------------- |
-| `all`        | everything visible to the caller |
-| `mine`       | the caller's personal group only |
-| `favourites` | pinned by the caller             |
-| `group`      | one group; requires `groupId`    |
+| Scope | Means |
+| --- | --- |
+| `all` | everything visible to the caller |
+| `mine` | the caller's personal group only |
+| `favourites` | pinned by the caller |
+| `group` | one group; requires `groupId` |
 
 Query schemas must use `z.coerce` — query strings are always strings.
 

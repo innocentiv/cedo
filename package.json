@@ -20,11 +20,12 @@
     "e2e": "bun test apps/app/e2e",
     "shot": "bun run apps/app/e2e/shot.ts",
     "perf": "bun test apps/api/src/test/perf --serial",
-    "check": "bun run format:check && bun run lint && bun run typecheck && bun run docs:links && bun run test",
+    "check": "bun run format && bun run lint && bun run typecheck && bun run docs:links && bun run test",
     "db:up": "docker compose up -d --wait db",
     "db:test": "docker compose -f docker-compose.test.yml up -d --wait",
     "docs:links": "bun run scripts/check-doc-links.ts",
-    "db:reset": "docker compose down -v && docker compose up -d --wait db && bun run apps/api/src/db/migrate.ts && bun run apps/api/src/db/seed.ts"
+    "db:reset": "docker compose down -v && docker compose up -d --wait db && bun run apps/api/src/db/migrate.ts && bun run apps/api/src/db/seed.ts",
+    "check:ci": "bun run format:check && bun run lint && bun run typecheck && bun run docs:links && bun run test"
   },
   "devDependencies": {
     "@types/bun": "1.4.0",

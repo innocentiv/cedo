@@ -107,3 +107,8 @@ bun run check
 
 It must exit 0. Warnings are failures — there is deliberately no ambient warning noise in this
 repository, so that any warning means something.
+
+`check` **formats** as part of the run; `check:ci` verifies formatting instead and never writes.
+Do not run the formatter after every individual edit: it rewrites the exact text your next edit is
+trying to match, and neither the linter nor the compiler cares about formatting. See the working
+notes in `CLAUDE.md`.

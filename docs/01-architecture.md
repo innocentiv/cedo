@@ -36,11 +36,11 @@ This is why we do not use Eden Treaty, despite it being Elysia's headline featur
 
 ## Workspaces
 
-| Workspace           | Runtime | TypeScript | Purpose                                                            |
-| ------------------- | ------- | ---------- | ------------------------------------------------------------------ |
-| `packages/contract` | any     | 7.0.2      | Zod schemas, units, pure domain functions. Only dependency: `zod`. |
-| `apps/api`          | Bun     | 7.0.2      | Elysia HTTP API, Drizzle/Postgres, MCP server.                     |
-| `apps/app`          | Expo    | ~6.0.3     | React Native for web, iOS and Android.                             |
+| Workspace | Runtime | TypeScript | Purpose |
+| --- | --- | --- | --- |
+| `packages/contract` | any | 7.0.2 | Zod schemas, units, pure domain functions. Only dependency: `zod`. |
+| `apps/api` | Bun | 7.0.2 | Elysia HTTP API, Drizzle/Postgres, MCP server. |
+| `apps/app` | Expo | ~6.0.3 | React Native for web, iOS and Android. |
 
 The TypeScript split is forced: type-aware linting requires TypeScript 7, and Expo will not support
 it until 7.1. See `docs/adr/0007-typescript-version-split.md`.
