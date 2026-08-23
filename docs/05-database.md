@@ -120,3 +120,31 @@ threshold — see [adr/0018](adr/0018-n1-detection.md).
 ```ts
 const { result, count, statements } = await withQueryCount(() => ExerciseService.list(ctx, query))
 ```
+
+## Planner settings
+
+The `db` service overrides one Postgres default that matters a great deal here:
+
+```
+-c random_page_cost=1.1
+```
+
+The default of `4.0` models a spinning disk. Every machine cedo realistically runs on — a NAS, a
+mini PC, a VPS — has SSD or NVMe, and at the default the planner systematically overvalues
+sequential scans.
+
+The concrete case that exposed it: `GET /exercises?q=…` uses `ILIKE '%…%'`, which the
+`exercises_name_trgm_idx` GIN index serves. At 20,000 rows the planner ignored that index and
+sequentially scanned, discarding 20,044 rows by filter.
+
+|                                | Buffers | Time     |
+| ------------------------------ | ------- | -------- |
+| `random_page_cost=4` (default) | 354     | 5.96 ms  |
+| `random_page_cost=1.1`         | 17      | 0.077 ms |
+
+The index was never the problem — forcing `enable_seqscan=off` produced the fast plan all along.
+**An index existing is not the same as an index being used**, which is exactly why `bun run perf`
+asserts plans rather than just timings. See [adr/0018](adr/0018-n1-detection.md).
+
+`docker-compose.test.yml` sets the same value, so the performance suite measures the plans
+production will actually get.

@@ -6,6 +6,11 @@ services:
     # pg_stat_statements and auto_explain make a stranger's slow instance diagnosable remotely,
     # through GET /api/admin/slow-queries and the db_slow_queries MCP tool.
     # See docs/adr/0018-n1-detection.md.
+    #
+    # random_page_cost: the Postgres default of 4 models a spinning disk. Every machine this
+    # realistically runs on has SSD or NVMe, and at the default the planner refuses the trigram
+    # index on exercise search and sequentially scans instead — measured at 20k rows,
+    # 5.96ms / 354 buffers versus 0.077ms / 17 buffers. See docs/05-database.md.
     command: >
       postgres
       -c shared_preload_libraries=pg_stat_statements,auto_explain
@@ -14,6 +19,7 @@ services:
       -c auto_explain.log_min_duration=200ms
       -c auto_explain.log_analyze=on
       -c auto_explain.log_buffers=on
+      -c random_page_cost=1.1
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-cedo}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
