@@ -1,0 +1,9 @@
+{
+  "// ": "drizzle.config.ts lives at the package root because drizzle-kit requires it there. Type-checked separately so it does not pollute the emitted declaration rootDir.",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": ["drizzle.config.ts"]
+}

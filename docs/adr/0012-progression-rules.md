@@ -13,8 +13,8 @@ assumed.
 
 ## Decision
 
-Three rule kinds, stored as a Zod discriminated union in a JSONB column on `workout_entries`:
-`none`, `linear`, `double`.
+Four rule kinds, stored as a Zod discriminated union in a JSONB column on `workout_entries`:
+`none`, `linear`, `double`, `linear_duration`.
 
 **`nextTarget()` is a pure function in `packages/contract`.** One implementation, called by the API,
 by the `progression_suggest` MCP tool, and by the logging screen. It is impossible for them to
@@ -44,6 +44,26 @@ Rejected: automatic deload after N consecutive failures. Classic novice-linear b
 needs a failure definition that survives skipped sessions, a floor weight, and a deload percentage —
 roughly doubling the truth table — to automate a judgement that depends on context the function does
 not have (illness, a bad week, form breakdown). The AI has that context; the pure function does not.
+
+### Warm-up sets are excluded from progression
+
+Added after the initial design, because the omission was a real defect rather than a missing luxury.
+Real sessions ramp up to a working weight. Without a flag, a lifter who logs `10 @ 20kg, 5 @ 40kg`
+before `3 × 8 @ 60kg` has the _warm-ups_ evaluated as their working sets — which never clear the
+target, so **they would never progress**.
+
+Both `workout_sets` and `set_logs` carry `is_warmup`. `nextTarget` drops warm-ups before doing
+anything else, and a session consisting only of warm-ups is not a session. An entry must prescribe
+at least one working set, enforced in the contract.
+
+### `linear_duration` for time under load
+
+`tracking: 'duration'` exercises — planks, dead hangs, loaded carries — progress by holding longer,
+not by adding weight. `linear_duration` adds seconds on the same advance-or-hold basis.
+
+`distance_duration` exercises (runs, rows) deliberately have **no** automatic rule: progressing them
+usually means going _faster_, which is a decreasing target, and that contradicts the advance-or-hold
+guarantee. They use `none` and are adjusted deliberately.
 
 ## Consequences
 

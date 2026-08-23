@@ -73,3 +73,25 @@ declarations. There is no `typescript/no-redeclare` counterpart to switch to, so
 `no-await-in-loop` and `consistent-function-scoping`. Asserting a value is present is the point of a
 test, `describe` blocks are legitimately long, and sequential awaits in a test are clearer than
 `Promise.all`. These stay ON in application code.
+
+### Justified inline disables
+
+| Location                  | Rule               | Why                                                                                                                                                                                    |
+| ------------------------- | ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apps/api/src/db/seed.ts` | `no-await-in-loop` | The library is seeded sequentially on purpose. Parallelising ~45 transactions would exhaust the small connection pool a self-hosted box runs with, for no benefit in a one-off script. |
+
+Note that `oxlint-disable-next-line` targets the **immediately** following line. Put the
+justification comment _above_ the directive, not between the directive and the code, or it silently
+suppresses nothing.
+
+### Files excluded from linting
+
+`apps/api/drizzle.config.ts` — drizzle-kit requires it at the package root and runs it under Node,
+so it sits outside the api tsconfig and has no type information for the type-aware rules to use.
+It is type-checked separately by `apps/api/tsconfig.tools.json`.
+
+`**/seed-data/**` relaxes `max-lines`: splitting the exercise library to satisfy a line count would
+make it harder to read, not easier.
+
+`ignorePatterns` is **not inherited through `extends`**, so `.oxlintrc.typeaware.json` carries its
+own copy. Keep the two lists in sync.

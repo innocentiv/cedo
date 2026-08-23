@@ -40,7 +40,17 @@
     "require-await": "off",
     "no-redeclare": "off"
   },
-  "ignorePatterns": ["node_modules", "dist", "build", ".expo", ".artifacts", "apps/api/drizzle"],
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    "build",
+    ".expo",
+    ".artifacts",
+    ".tsbuild",
+    "apps/api/drizzle",
+    "**/*.d.ts",
+    "apps/api/drizzle.config.ts"
+  ],
   "overrides": [
     {
       "files": ["**/*.test.ts", "**/*.test.tsx", "**/e2e/**"],

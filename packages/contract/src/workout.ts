@@ -22,16 +22,25 @@ export const WorkoutSetInput = z.strictObject({
   targetReps: z.int().positive().max(1000).nullable().default(null),
   targetWeightG: z.int().nonnegative().nullable().default(null),
   targetRpe: z.int().min(1).max(10).nullable().default(null),
+  targetDurationS: z.int().positive().max(86_400).nullable().default(null),
+  targetDistanceMm: z.int().positive().max(1_000_000_000).nullable().default(null),
+  /** Ramp-up sets. Excluded from progression and from volume totals. */
+  isWarmup: z.boolean().default(false),
 })
 export type WorkoutSetInput = z.output<typeof WorkoutSetInput>
 
-export const WorkoutEntryInput = z.strictObject({
-  exerciseId: Id,
-  supersetGroup: SupersetGroup.default(null),
-  restSeconds: z.int().nonnegative().max(3600).nullable().default(null),
-  progression: Progression.default({ kind: 'none' }),
-  sets: z.array(WorkoutSetInput).min(1).max(20),
-})
+export const WorkoutEntryInput = z
+  .strictObject({
+    exerciseId: Id,
+    supersetGroup: SupersetGroup.default(null),
+    restSeconds: z.int().nonnegative().max(3600).nullable().default(null),
+    progression: Progression.default({ kind: 'none' }),
+    sets: z.array(WorkoutSetInput).min(1).max(20),
+  })
+  .refine((e) => e.sets.some((s) => !s.isWarmup), {
+    path: ['sets'],
+    message: 'An entry must prescribe at least one working set',
+  })
 export type WorkoutEntryInput = z.output<typeof WorkoutEntryInput>
 
 export const WorkoutDayInput = z.strictObject({
@@ -49,6 +58,7 @@ export type WorkoutPlanInput = z.output<typeof WorkoutPlanInput>
 export const WorkoutSet = z.object({
   id: Id,
   index: OrderIndex,
+  isWarmup: z.boolean(),
   target: SetTarget,
 })
 export type WorkoutSet = z.output<typeof WorkoutSet>

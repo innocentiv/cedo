@@ -20,6 +20,9 @@ export const SetLog = z.object({
   weightG: z.int().nonnegative().nullable(),
   reps: z.int().nonnegative().max(1000).nullable(),
   rpe: z.int().min(1).max(10).nullable(),
+  durationS: z.int().nonnegative().max(86_400).nullable(),
+  distanceMm: z.int().nonnegative().max(1_000_000_000).nullable(),
+  isWarmup: z.boolean(),
   loggedAt: Timestamp,
 })
 export type SetLog = z.output<typeof SetLog>
@@ -64,6 +67,9 @@ export const LogSetInput = z.strictObject({
   weightG: z.int().nonnegative().nullable().default(null),
   reps: z.int().nonnegative().max(1000).nullable().default(null),
   rpe: z.int().min(1).max(10).nullable().default(null),
+  durationS: z.int().nonnegative().max(86_400).nullable().default(null),
+  distanceMm: z.int().nonnegative().max(1_000_000_000).nullable().default(null),
+  isWarmup: z.boolean().default(false),
 })
 export type LogSetInput = z.output<typeof LogSetInput>
 
@@ -86,6 +92,9 @@ export const ExerciseHistoryEntry = z.object({
       weightG: z.int().nonnegative().nullable(),
       reps: z.int().nonnegative().nullable(),
       rpe: z.int().min(1).max(10).nullable(),
+      durationS: z.int().nonnegative().nullable(),
+      distanceMm: z.int().nonnegative().nullable(),
+      isWarmup: z.boolean(),
     }),
   ),
 })

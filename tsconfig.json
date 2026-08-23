@@ -7,6 +7,9 @@
       "path": "packages/contract"
     },
     {
+      "path": "apps/api"
+    },
+    {
       "path": "scripts"
     },
     {

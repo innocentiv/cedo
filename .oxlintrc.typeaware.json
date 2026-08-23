@@ -19,5 +19,24 @@
     "typescript/prefer-nullish-coalescing": "error",
     "typescript/return-await": ["error", "always"],
     "typescript/prefer-readonly-parameter-types": "off"
-  }
+  },
+  "ignorePatterns": [
+    "node_modules",
+    "dist",
+    "build",
+    ".expo",
+    ".artifacts",
+    ".tsbuild",
+    "apps/api/drizzle",
+    "**/*.d.ts",
+    "apps/api/drizzle.config.ts"
+  ],
+  "overrides": [
+    {
+      "files": ["**/seed-data/**"],
+      "rules": {
+        "max-lines": "off"
+      }
+    }
+  ]
 }

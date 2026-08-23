@@ -18,6 +18,16 @@ const target = (reps: number | null, weightKg: number | null): SetTarget => ({
   reps,
   weightG: weightKg === null ? null : kgToG(weightKg),
   rpe: null,
+  durationS: null,
+  distanceMm: null,
+})
+
+const held = (seconds: number | null): SetTarget => ({
+  reps: null,
+  weightG: null,
+  rpe: null,
+  durationS: seconds,
+  distanceMm: null,
 })
 
 const DOUBLE: Progression = { kind: 'double', repRange: [8, 12], incrementG: kgToG(2.5) }
@@ -25,7 +35,7 @@ const LINEAR: Progression = { kind: 'linear', incrementG: kgToG(2.5), afterSucce
 
 describe('nextTarget — double progression (3 sets of 8-12, +2.5kg)', () => {
   const run = (t: SetTarget, ...sessions: SessionAttempts[]) =>
-    nextTarget({ rule: DOUBLE, target: t, prescribedSets: 3, sessions })
+    nextTarget({ rule: DOUBLE, target: t, workingSets: 3, sessions })
 
   // These four cases are the agreed truth table. See docs/adr/0012-progression-rules.md.
   test('all sets clear the top of the range -> add weight, restart at the bottom', () => {
@@ -92,7 +102,7 @@ describe('nextTarget — double progression (3 sets of 8-12, +2.5kg)', () => {
     const result = nextTarget({
       rule: reversed,
       target: target(12, 60),
-      prescribedSets: 3,
+      workingSets: 3,
       sessions: [at60(12, 12, 12)],
     })
     expect(result).toEqual(target(8, 62.5))
@@ -104,7 +114,7 @@ describe('nextTarget — linear progression', () => {
     const result = nextTarget({
       rule: LINEAR,
       target: target(5, 100),
-      prescribedSets: 3,
+      workingSets: 3,
       sessions: [sets(100)(5, 5, 5)],
     })
     expect(result).toEqual(target(5, 102.5))
@@ -114,7 +124,7 @@ describe('nextTarget — linear progression', () => {
     const result = nextTarget({
       rule: LINEAR,
       target: target(5, 100),
-      prescribedSets: 3,
+      workingSets: 3,
       sessions: [sets(100)(5, 5, 4)],
     })
     expect(result).toEqual(target(5, 100))
@@ -126,13 +136,13 @@ describe('nextTarget — linear progression', () => {
     const clean = sets(100)(5, 5, 5)
     const missed = sets(100)(5, 5, 4)
 
-    expect(nextTarget({ rule, target: t, prescribedSets: 3, sessions: [clean] })).toEqual(t)
-    expect(nextTarget({ rule, target: t, prescribedSets: 3, sessions: [clean, clean] })).toEqual(
+    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [clean] })).toEqual(t)
+    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [clean, clean] })).toEqual(
       target(5, 102.5),
     )
     // Most recent first: a miss in the most recent session blocks it.
-    expect(nextTarget({ rule, target: t, prescribedSets: 3, sessions: [missed, clean] })).toEqual(t)
-    expect(nextTarget({ rule, target: t, prescribedSets: 3, sessions: [clean, missed] })).toEqual(t)
+    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [missed, clean] })).toEqual(t)
+    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [clean, missed] })).toEqual(t)
   })
 })
 
@@ -150,7 +160,7 @@ describe('nextTarget — invariants that must hold for every rule', () => {
     const t = target(10, 60)
     for (const rule of rules) {
       for (const sessions of histories) {
-        const next = nextTarget({ rule, target: t, prescribedSets: 3, sessions })
+        const next = nextTarget({ rule, target: t, workingSets: 3, sessions })
 
         if (next.weightG !== null && t.weightG !== null) {
           expect(next.weightG).toBeGreaterThanOrEqual(t.weightG)
@@ -167,9 +177,7 @@ describe('nextTarget — invariants that must hold for every rule', () => {
   test("'none' is always the identity", () => {
     const t = target(10, 60)
     for (const sessions of histories) {
-      expect(
-        nextTarget({ rule: { kind: 'none' }, target: t, prescribedSets: 3, sessions }),
-      ).toEqual(t)
+      expect(nextTarget({ rule: { kind: 'none' }, target: t, workingSets: 3, sessions })).toEqual(t)
     }
   })
 
@@ -178,9 +186,85 @@ describe('nextTarget — invariants that must hold for every rule', () => {
     const next = nextTarget({
       rule: DOUBLE,
       target: t,
-      prescribedSets: 3,
+      workingSets: 3,
       sessions: [at60(12, 12, 12)],
     })
     expect(formatWeight(next.weightG ?? 0)).toBe('62.5 kg')
+  })
+})
+
+describe('nextTarget — warm-up sets are excluded entirely', () => {
+  const warmup = (weightKg: number, reps: number) => ({
+    weightG: kgToG(weightKg),
+    reps,
+    isWarmup: true,
+  })
+
+  /**
+   * The reason warm-ups exist in the model at all: without the flag, a ramp logged before the
+   * working sets is evaluated AS the working sets, and the lifter never progresses.
+   * See docs/adr/0012-progression-rules.md.
+   */
+  test('a ramp logged before the working sets does not block progression', () => {
+    const session: SessionAttempts = [warmup(20, 10), warmup(40, 5), ...at60(12, 12, 12)]
+    expect(
+      nextTarget({ rule: DOUBLE, target: target(12, 60), workingSets: 3, sessions: [session] }),
+    ).toEqual(target(8, 62.5))
+  })
+
+  test('warm-ups do not count toward the working-set requirement', () => {
+    const session: SessionAttempts = [warmup(20, 10), warmup(40, 5), ...at60(12, 12)]
+    expect(
+      nextTarget({ rule: DOUBLE, target: target(12, 60), workingSets: 3, sessions: [session] }),
+    ).toEqual(target(12, 60))
+  })
+
+  test('a session of nothing but warm-ups is not a session', () => {
+    const session: SessionAttempts = [warmup(20, 10), warmup(40, 5)]
+    expect(
+      nextTarget({ rule: LINEAR, target: target(5, 100), workingSets: 1, sessions: [session] }),
+    ).toEqual(target(5, 100))
+  })
+})
+
+describe('nextTarget — linear_duration (planks, dead hangs, carries)', () => {
+  const RULE: Progression = { kind: 'linear_duration', incrementS: 5, afterSuccesses: 1 }
+  const hold = (...seconds: number[]): SessionAttempts =>
+    seconds.map((durationS) => ({ durationS }))
+
+  test('holding the target on every set adds time', () => {
+    expect(
+      nextTarget({ rule: RULE, target: held(60), workingSets: 3, sessions: [hold(60, 60, 60)] }),
+    ).toEqual(held(65))
+  })
+
+  test('holding longer than target still advances by exactly one increment', () => {
+    expect(
+      nextTarget({ rule: RULE, target: held(60), workingSets: 3, sessions: [hold(90, 90, 90)] }),
+    ).toEqual(held(65))
+  })
+
+  test('a short hold on any set holds the target', () => {
+    expect(
+      nextTarget({ rule: RULE, target: held(60), workingSets: 3, sessions: [hold(60, 60, 45)] }),
+    ).toEqual(held(60))
+  })
+
+  test('an unrecorded hold blocks advancement', () => {
+    const partial: SessionAttempts = [{ durationS: 60 }, { durationS: null }, { durationS: 60 }]
+    expect(
+      nextTarget({ rule: RULE, target: held(60), workingSets: 3, sessions: [partial] }),
+    ).toEqual(held(60))
+  })
+
+  test('no duration target -> unchanged', () => {
+    expect(
+      nextTarget({
+        rule: RULE,
+        target: target(10, 60),
+        workingSets: 3,
+        sessions: [hold(60, 60, 60)],
+      }),
+    ).toEqual(target(10, 60))
   })
 })

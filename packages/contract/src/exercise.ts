@@ -13,6 +13,19 @@ export type MuscleLoad = z.output<typeof MuscleLoad>
 const MUSCLE_LOAD_TOTAL = 100
 
 /**
+ * How an exercise is measured. The UI reads this to decide which inputs to render, so screens
+ * never guess. Progression rules act on whichever dimension the mode designates.
+ */
+export const TRACKING_MODES = [
+  'weight_reps',
+  'bodyweight_reps',
+  'duration',
+  'distance_duration',
+] as const
+export const TrackingMode = z.enum(TRACKING_MODES)
+export type TrackingMode = z.output<typeof TrackingMode>
+
+/**
  * Two invariants, enforced here so the API, the MCP tools and the UI form all reject the same
  * input with the same message — rather than the database raising a primary-key violation that
  * nobody can act on.
@@ -34,6 +47,11 @@ function checkMuscles(muscles: MuscleLoad[], ctx: z.RefinementCtx): void {
 
 const exerciseFields = {
   name: NonEmptyString.max(120),
+  /**
+   * For `bodyweight_reps`, a logged `weightG` means weight ADDED to bodyweight (a +20 kg pull-up),
+   * not total system load. Documented here because it is the only place the convention lives.
+   */
+  tracking: TrackingMode.default('weight_reps'),
   description: z.string().max(4000).default(''),
   instructions: z.string().max(8000).default(''),
   equipment: z.string().max(80).nullable().default(null),

@@ -12,7 +12,7 @@
     "lint:server": "oxlint -c .oxlintrc.typeaware.json --deny-warnings packages/contract apps/api scripts test",
     "lint:app": "if [ -d apps/app/src ]; then oxlint --deny-warnings apps/app; else echo 'skip lint:app — apps/app not scaffolded yet (M8)'; fi",
     "lint": "bun run lint:server && bun run lint:app",
-    "typecheck:server": "tsc -b .",
+    "typecheck:server": "tsc -b . && tsc -p apps/api/tsconfig.tools.json",
     "typecheck:app": "if [ -d apps/app/src ]; then bun --cwd apps/app x tsc --noEmit; else echo 'skip typecheck:app — apps/app not scaffolded yet (M8)'; fi",
     "typecheck": "bun run typecheck:server && bun run typecheck:app",
     "test": "bun test --parallel",

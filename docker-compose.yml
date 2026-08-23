@@ -1,0 +1,37 @@
+# Three containers, one published port. See docs/09-deployment.md.
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    # pg_stat_statements and auto_explain make a stranger's slow instance diagnosable remotely,
+    # through GET /api/admin/slow-queries and the db_slow_queries MCP tool.
+    # See docs/adr/0018-n1-detection.md.
+    command: >
+      postgres
+      -c shared_preload_libraries=pg_stat_statements,auto_explain
+      -c pg_stat_statements.max=500
+      -c pg_stat_statements.track=top
+      -c auto_explain.log_min_duration=200ms
+      -c auto_explain.log_analyze=on
+      -c auto_explain.log_buffers=on
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-cedo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-cedo}
+    volumes:
+      # Postgres 18+ wants the mount at /var/lib/postgresql, NOT /var/lib/postgresql/data, so the
+      # cluster lives in a version subdirectory and `pg_upgrade --link` works across major versions
+      # without a mount-point boundary. Getting this wrong makes future upgrades painful for
+      # everyone self-hosting. See docs/09-deployment.md.
+      - pgdata:/var/lib/postgresql
+    ports:
+      # Exposed for local development only. Remove this mapping for a hardened deployment.
+      - '${POSTGRES_PORT:-55432}:5432'
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-cedo} -d ${POSTGRES_DB:-cedo}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:
