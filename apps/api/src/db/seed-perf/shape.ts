@@ -54,6 +54,11 @@ export interface PerfProfile {
   readonly token: string
   readonly workoutId: string
   readonly sessionId: string
+  /**
+   * A session that has NOT been finished, because `logSet` refuses a finished one — and logging a
+   * set mid-workout is the one write a user repeats dozens of times an hour.
+   */
+  readonly openSessionId: string
   /** The exercise carrying this profile's deepest log history. */
   readonly exerciseId: string
 }
@@ -142,10 +147,17 @@ export async function required(query: ReturnType<typeof sql>, what: string): Pro
  * Three muscles per exercise, picked by modular arithmetic over the seeded muscle list, with load
  * percentages summing to 100 exactly as the contract requires.
  *
+ * The distribution is SKEWED on purpose. A real library has hundreds of chest and quad movements
+ * and a handful for the rotator cuff, and a uniform spread hides the case that matters: filtering
+ * by a rare muscle. With every muscle equally common the planner never has a reason to enter
+ * through `exercise_muscles_muscle_idx`, and the index looks dead when it is not.
+ *
  * The row counts are read first and inlined as literals rather than joined on a `count(*) over ()`
  * column: a modulus against a windowed column is not an equijoin, so the planner falls back to a
  * nested loop that rescans the whole list once per row.
  */
+const COMMON_MUSCLES = 12
+
 export async function attachMuscles(ownerGroupId: string): Promise<void> {
   const muscleCount = await countRows('muscles')
 
@@ -160,7 +172,12 @@ export async function attachMuscles(ownerGroupId: string): Promise<void> {
     select n.id, m.slug, (array[60, 25, 15])[position + 1]
       from numbered n
       cross join generate_series(0, ${PERF_VOLUME.musclesPerExercise - 1}) as position
-      join m on m.rn = (n.rn * 3 + position) % ${muscleCount}
+      join m on m.rn = case
+                  -- One exercise in ten reaches the whole list; the rest crowd into the common
+                  -- twelve, which is roughly how a real library is shaped.
+                  when n.rn % 10 = 0 then (n.rn * 7 + position) % ${muscleCount}
+                  else (n.rn * 3 + position) % ${COMMON_MUSCLES}
+                end
     on conflict do nothing
   `)
 }

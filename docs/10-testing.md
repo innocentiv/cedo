@@ -51,6 +51,23 @@ Two things are mandatory in every module:
 between tests. `TEST_DATABASE_URL` is a safety interlock: with `NODE_ENV=test`, `DATABASE_URL` is
 ignored entirely, so a stray `bun test` cannot truncate a real instance.
 
+## Why the perf and e2e files are named `.perf.ts` and `.e2e.ts`
+
+`bun test` only collects files with `.test.`, `_test_`, `.spec.` or `_spec_` in the name, so neither
+tier is picked up by a bare `bun test` — which is exactly what is wanted: both need infrastructure
+that `bun run check` must not require.
+
+The corollary is a trap. `bun test apps/app/e2e` matches nothing and **exits 0**, reporting success
+for a suite it never ran. Both scripts therefore pass explicit paths beginning with `./`, which bun
+treats as files rather than filters:
+
+```jsonc
+"perf": "CEDO_PERF=1 bun test ./apps/api/src/test/perf/*.perf.ts",
+"e2e":  "bun test ./apps/app/e2e/*.e2e.ts"
+```
+
+If either ever prints "0 files were searched", the glob is wrong — not the suite empty.
+
 ## T3 — UI verification
 
 Planned with the frontend (`docs/08-frontend.md`). Deliberately not behaviour tests: they check that
@@ -103,7 +120,12 @@ grows to production volume.
 The search path is the clearest example: for a rare term Postgres uses the trigram index, and for a
 common one it walks `exercises_name_id_idx` in order and stops at the page size. Both are correct, so
 the hot path asserts only the absence of a sequential scan, and a separate test pins the trigram
-index with a deliberately selective term — the case where it must earn its place.
+index with a deliberately selective term — the case where it must earn its place. The muscle filter
+has the same shape, and the same pair of tests.
+
+The corollary is a rule about seed data: **make it as lopsided as the real thing.** Uniform data
+gives the planner no reason to choose the selective plan, so the index that exists for exactly that
+case is never exercised and looks like dead weight.
 
 ### What this suite has already caught
 
@@ -117,6 +139,13 @@ index with a deliberately selective term — the case where it must earn its pla
   in the service claimed the two matched, and they did not. Adding `id` to the index fixed it.
 - Both the media and favourites tables were empty in the first version of the seed, so their joins
   read `Seq Scan on media (rows=0)` — which looks like a pass and measures nothing.
+- `exercise_muscles_muscle_idx` appeared to be dead: zero scans across every guarded path, which
+  would have made it pure write cost on every exercise write. It was the SEED that was wrong. The
+  first version gave every muscle the same number of exercises, and with no rare muscle the planner
+  never had a reason to enter through it. Skewing the library the way a real one is skewed —
+  hundreds of chest movements, a handful for the adductors — the planner picks it immediately and
+  reads 68 rows instead of walking the library. Uniform test data hides the only case an index
+  exists for.
 
 ### Adding a guard for a new endpoint
 

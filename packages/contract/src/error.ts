@@ -26,6 +26,7 @@ export const ErrorDetail = z.object({
   path: z.string(),
   message: z.string(),
 })
+export type ErrorDetail = z.output<typeof ErrorDetail>
 
 export const ApiError = z.object({
   error: z.object({

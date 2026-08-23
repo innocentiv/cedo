@@ -116,6 +116,13 @@ async function seedProfileHistory(
            now() - ((s * 2) || ' days')::interval + interval '65 minutes'
       from generate_series(1, ${shape.sessions}) s
   `)
+
+  // One session left open, and it is filled by the same statement as the rest, so the write path
+  // is measured against a session that already holds work rather than an empty one.
+  await db.execute(sql`
+    insert into workout_sessions (user_id, workout_id, started_at, notes)
+    values (${userId}::uuid, ${workoutId}::uuid, now() - interval '20 minutes', 'In progress.')
+  `)
   await fillLogs({
     sessions: sql`select id, started_at from workout_sessions where user_id = ${userId}::uuid`,
     perSession: shape.logsPerSession,
@@ -170,9 +177,15 @@ async function profileFrom(
   workoutId: string,
 ): Promise<PerfProfile> {
   const sessionId = await required(
-    sql`select id::text from workout_sessions where user_id = ${userId}::uuid
-        order by started_at desc limit 1`,
-    `a session for perf_${label}`,
+    sql`select id::text from workout_sessions
+         where user_id = ${userId}::uuid and ended_at is not null
+         order by started_at desc limit 1`,
+    `a finished session for perf_${label}`,
+  )
+  const openSessionId = await required(
+    sql`select id::text from workout_sessions
+         where user_id = ${userId}::uuid and ended_at is null limit 1`,
+    `an open session for perf_${label}`,
   )
   const exerciseId = await required(
     sql`select exercise_id::text from set_logs l
@@ -188,6 +201,7 @@ async function profileFrom(
     token: await mintSession(userId),
     workoutId,
     sessionId,
+    openSessionId,
     exerciseId,
   }
 }
@@ -197,6 +211,9 @@ async function profileFrom(
  * recovered. Minting a fresh one on every load is cheap and keeps the auth measurement honest.
  */
 async function mintSession(userId: string): Promise<string> {
+  // Replaced, not appended. Minting on every load would grow `sessions` by two rows per run, and
+  // the whole claim of this seed is that two runs leave the database identical.
+  await db.execute(sql`delete from sessions where user_id = ${userId}::uuid`)
   const { token, hash } = mintToken()
   await db.execute(sql`
     insert into sessions (user_id, token_hash, expires_at)

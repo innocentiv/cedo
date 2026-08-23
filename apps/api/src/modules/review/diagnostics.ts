@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import { z } from 'zod'
 import type { PlatformStatus, SlowQuery } from '@cedo/contract'
 import { db } from '../../db/client.ts'
+import { conflict } from '../../lib/error.ts'
 
 /**
  * Instance diagnostics, for a CURATOR only.
@@ -96,8 +97,13 @@ export async function slowQueries(limit: number): Promise<SlowQuery[]> {
     sql`select count(*)::text as value from pg_extension where extname = 'pg_stat_statements'`,
   )
   if (Number(firstText(available)) === 0) {
-    throw new Error(
-      'pg_stat_statements is not installed on this instance. It is enabled by the db service in docker-compose.yml.',
+    /**
+     * A DomainError, not a plain one: the single `onError` handler answers 500 "Something went
+     * wrong" to anything it does not recognise, which threw away the one sentence that tells an
+     * operator how to fix their instance — for exactly the audience this endpoint exists to serve.
+     */
+    throw conflict(
+      'pg_stat_statements is not installed on this instance. Enable it with the shared_preload_libraries flag on the db service in docker-compose.yml, then restart Postgres.',
     )
   }
 

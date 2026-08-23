@@ -7,7 +7,7 @@ import * as sessionService from '../../modules/session/service.ts'
 import { history } from '../../modules/session/history.ts'
 import { suggestForWorkout } from '../../modules/progression/service.ts'
 import { trainingReview } from '../../modules/review/service.ts'
-import { type QueryPlan, explain, slowestPlan } from '../explain.ts'
+import { type QueryPlan, explain, slowestOf } from '../explain.ts'
 import type { RecordedQuery } from '../../db/client.ts'
 
 /**
@@ -183,6 +183,31 @@ export const HOT_PATHS: readonly HotPath[] = [
     },
   },
   {
+    name: 'POST /sessions/:id/logs (write)',
+    why:
+      'The one write a user repeats dozens of times an hour, mid-workout, on a phone. It is also ' +
+      'the only guarded path that mutates, so its plans are read without ANALYZE.',
+    dimension: 'sets already logged in the session (9 vs 60)',
+    maxQueries: 4,
+    budgetMs: 40,
+    noSeqScan: ['workout_sessions', 'set_logs'],
+    indexes: [],
+    run: async (fixtures, size) => {
+      const profile = pick(fixtures, size)
+      return await sessionService.logSet(profile.caller, profile.openSessionId, {
+        exerciseId: profile.exerciseId,
+        entryId: null,
+        setIndex: 0,
+        weightG: 60_000,
+        reps: 8,
+        rpe: null,
+        durationS: null,
+        distanceMm: null,
+        isWarmup: false,
+      })
+    },
+  },
+  {
     name: 'training review',
     why: 'The MCP review tool. It aggregates a whole training block and is the slowest read here.',
     dimension: 'sessions in the window (5 vs 200)',
@@ -211,14 +236,21 @@ export interface Measurement {
  * query count comparable, and its plans are the ones nobody is at risk from.
  */
 export async function measure(path: HotPath, fixtures: PerfFixtures): Promise<Measurement> {
-  // Warmed first so the measurement is not dominated by the first connection and plan cache miss.
+  /**
+   * Warmed first so the measurement is not dominated by the first connection and plan cache miss.
+   *
+   * This means a write path runs three times per measurement. That is deliberate and harmless — the
+   * rows it adds are the same shape as the seed's — but it is why no write path may assert on row
+   * counts, and why `explain` never runs a write under ANALYZE.
+   */
   await path.run(fixtures, 'small')
 
   const small = await withQueryCount(async () => await path.run(fixtures, 'small'))
   const large = await withQueryCount(async () => await path.run(fixtures, 'large'))
 
-  const plans = await Promise.all(large.statements.map(explain))
-  const slowest = await slowestPlan(large.statements)
+  // Explained once, and the budget read off the same plans: a second pass would re-run every
+  // statement under ANALYZE, doubling both the work and the writes on a write path.
+  const plans = await Promise.all(large.statements.map(async (s) => await explain(s)))
 
   return {
     path,
@@ -226,6 +258,6 @@ export async function measure(path: HotPath, fixtures: PerfFixtures): Promise<Me
     largeCount: large.count,
     statements: large.statements,
     plans,
-    slowestMs: slowest.executionMs ?? 0,
+    slowestMs: slowestOf(plans),
   }
 }

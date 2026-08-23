@@ -51,8 +51,20 @@ export interface QueryPlan {
 /**
  * Only read-only statements are run under ANALYZE. ANALYZE executes the statement, so explaining a
  * write that way would perform it — silently doubling an insert in the middle of a measurement.
+ *
+ * `with` counts, because a CTE is usually a read: `with ranked as (…) select …` is the shape three
+ * services use. Matching on `select` alone excluded those from the timing budget AND reported their
+ * node rows as zero, since a plan produced without ANALYZE carries estimates and no actual counts —
+ * a silent hole in exactly the queries complex enough to need a CTE.
+ *
+ * A data-modifying CTE (`with x as (insert … returning …)`) is excluded by the second test. It is
+ * deliberately a crude keyword scan: being wrong towards "do not ANALYZE" costs a timing, while
+ * being wrong the other way performs a write in the middle of a measurement.
  */
-const readOnly = (statement: string): boolean => /^\s*select\b/iu.test(statement)
+function readOnly(statement: string): boolean {
+  if (!/^\s*(select|with)\b/iu.test(statement)) return false
+  return !/\b(insert|update|delete)\s/iu.test(statement)
+}
 
 export async function explain(query: RecordedQuery): Promise<QueryPlan> {
   const analyze = readOnly(query.sql)
@@ -72,18 +84,18 @@ export async function explain(query: RecordedQuery): Promise<QueryPlan> {
   }
 }
 
+/** postgres.js rows are objects; typed as `unknown` so reading one column stays honest. */
+const RawRow = z.looseObject({})
+
+function asRecord(row: unknown): Record<string, unknown> {
+  return RawRow.parse(row)
+}
+
 /**
  * The recorder stores parameters as `unknown`, which is what Drizzle's logger hands over. Anything
  * that is not already a scalar Postgres understands is serialised — in practice that is only the
  * jsonb progression rule.
  */
-/** postgres.js rows are objects; typed as `unknown` so the read of one column stays honest. */
-function asRecord(row: unknown): Record<string, unknown> {
-  return RawRow.parse(row)
-}
-
-const RawRow = z.looseObject({})
-
 function toParam(value: unknown): string | number | boolean | Date | null {
   if (value === null || value === undefined) return null
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
@@ -142,24 +154,14 @@ export function expectIndexUsed(plan: QueryPlan, index: string): void {
   expect(used, `Index "${index}" was not used:\n${planSummary(plan)}`).toBe(true)
 }
 
-/** The statements from one recorded call that touch a table, in the order they were issued. */
-export function statementsFor(
-  statements: readonly RecordedQuery[],
-  table: string,
-): RecordedQuery[] {
-  return statements.filter((s) => new RegExp(`\\b"?${table}"?\\b`, 'u').test(s.sql))
-}
-
 /**
- * The single slowest statement of a recorded call, by measured execution time. This is what a
- * budget should be asserted against: the total wall clock of a service call also contains the
- * round trips, which vary with the machine.
+ * The slowest of a set of already-explained plans, by measured execution time.
+ *
+ * A budget belongs here rather than on the wall clock of the service call, which also contains the
+ * round trips and varies with the machine. Plans without a measured time — the writes, explained
+ * without ANALYZE — cannot be compared and are skipped rather than counted as zero.
  */
-export async function slowestPlan(statements: readonly RecordedQuery[]): Promise<QueryPlan> {
-  const plans = await Promise.all(
-    statements.filter((s) => readOnly(s.sql)).map(async (s) => await explain(s)),
-  )
-  const slowest = plans.toSorted((a, b) => (b.executionMs ?? 0) - (a.executionMs ?? 0))[0]
-  if (slowest === undefined) throw new Error('The call issued no read-only statements to explain.')
-  return slowest
+export function slowestOf(plans: readonly QueryPlan[]): number {
+  const timed = plans.filter((p) => p.executionMs !== null)
+  return timed.reduce((worst, p) => Math.max(worst, p.executionMs ?? 0), 0)
 }

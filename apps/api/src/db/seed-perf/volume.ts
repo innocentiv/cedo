@@ -116,11 +116,22 @@ export async function seedBackgroundWorkouts(
       join library l on l.rn = (t.rn * 7 + e) % ${libraryCount}
   `)
 
+  await expandSets(sharedGroupId)
+}
+
+/**
+ * Scoped to this group's entries. Unscoped it happens to be correct today only because profiles are
+ * seeded afterwards — a reorder would silently give every profile entry a second set of sets.
+ */
+async function expandSets(sharedGroupId: string): Promise<void> {
   await db.execute(sql`
     insert into workout_sets (entry_id, index, is_warmup, target_reps, target_weight_g)
     select en.id, s, s = 0, 8, 40000 + s * 5000
       from workout_entries en
+      join workout_days d on d.id = en.day_id
+      join workouts w on w.id = d.workout_id
       cross join generate_series(0, ${PERF_VOLUME.setsPerEntry - 1}) s
+     where w.owner_group_id = ${sharedGroupId}::uuid
   `)
 }
 
@@ -214,7 +225,9 @@ export async function seedBackgroundSessions(sharedGroupId: string): Promise<voi
   `)
 
   await fillLogs({
-    sessions: sql`select id, started_at from workout_sessions`,
+    // Explicitly the sessions with no workout — the background ones. Selecting every session would
+    // be correct only until a profile is seeded before this runs.
+    sessions: sql`select id, started_at from workout_sessions where workout_id is null`,
     perSession: PERF_VOLUME.logsPerSession,
     sharedGroupId,
     workoutId: null,

@@ -87,9 +87,9 @@ for (const path of HOT_PATHS) {
 }
 
 /**
- * The trigram index has no test above, because on a common term the planner correctly prefers an
- * ordered walk it can stop early. This is where it must earn its place: a rare term over 10,000
- * exercises. Without it, that is a full scan of the table on every keystroke.
+ * Two indexes have no assertion in the table above, because on the COMMON case the planner
+ * correctly prefers an ordered walk it can stop early. These are the cases where each must earn its
+ * place — and both were invisible until the seed stopped spreading its data uniformly.
  */
 test('a selective search uses the trigram index', async () => {
   const { statements } = await withQueryCount(
@@ -107,4 +107,26 @@ test('a selective search uses the trigram index', async () => {
   const plan = await explain(first)
   expectIndexUsed(plan, 'exercises_name_trgm_idx')
   expectNoSeqScan(plan, 'exercises')
+})
+
+test('a rare muscle filter enters through the muscle index', async () => {
+  // The seeded library is skewed like a real one: hundreds of chest movements, a handful for the
+  // adductors. On a common muscle Postgres walks exercises in name order and stops at the page
+  // size; on a rare one the cheap plan is to read the 68 matching rows and join back by primary
+  // key. Uniform seed data never produced the second case, which made the index look dead.
+  const { statements } = await withQueryCount(
+    async () =>
+      await exerciseService.list(fixtures.large.caller, {
+        scope: 'all',
+        muscle: 'adductors',
+        limit: 20,
+      }),
+  )
+  const first = statements[0]
+  expect(first).toBeDefined()
+  if (first === undefined) return
+
+  const plan = await explain(first)
+  expectIndexUsed(plan, 'exercise_muscles_muscle_idx')
+  expectNoSeqScan(plan, 'exercise_muscles')
 })

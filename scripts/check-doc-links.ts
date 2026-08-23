@@ -26,7 +26,6 @@ const SOURCE_EXTENSIONS = ['.ts', '.tsx']
  * DELETE AN ENTRY THE MOMENT ITS DOC IS WRITTEN — this list is meant to shrink to nothing.
  */
 const PLANNED: Readonly<Record<string, string>> = {
-  'docs/08-frontend.md': 'M8 — frontend foundation',
   'docs/09-deployment.md': 'M10 — deployment',
 }
 
