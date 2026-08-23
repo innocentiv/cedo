@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { Exercise } from './exercise.ts'
+import { Rpe, TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 import { Progression, SetTarget } from './progression.ts'
 import { Id, NonEmptyString, OrderIndex, PaginationQuery, Timestamp } from './primitives.ts'
 
@@ -19,11 +20,11 @@ export const SupersetGroup = z
   .nullable()
 
 export const WorkoutSetInput = z.strictObject({
-  targetReps: z.int().positive().max(1000).nullable().default(null),
-  targetWeightG: z.int().nonnegative().nullable().default(null),
-  targetRpe: z.int().min(1).max(10).nullable().default(null),
-  targetDurationS: z.int().positive().max(86_400).nullable().default(null),
-  targetDistanceMm: z.int().positive().max(1_000_000_000).nullable().default(null),
+  targetReps: TargetReps.nullable().default(null),
+  targetWeightG: TargetWeightG.nullable().default(null),
+  targetRpe: Rpe.nullable().default(null),
+  targetDurationS: TargetDurationS.nullable().default(null),
+  targetDistanceMm: TargetDistanceMm.nullable().default(null),
   /** Ramp-up sets. Excluded from progression and from volume totals. */
   isWarmup: z.boolean().default(false),
 })

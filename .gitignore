@@ -9,6 +9,9 @@ build/
 apps/app/dist/
 *.tsbuildinfo
 .tsbuild/
+# stray declaration output emitted next to source rather than into dist/
+*.d.ts
+*.d.ts.map
 
 # AI/verification artifacts — screenshots and perf reports (see docs/10-testing.md)
 .artifacts/

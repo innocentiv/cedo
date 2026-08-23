@@ -11,12 +11,28 @@ import { groupMembers, groups, users } from '../../db/schema.ts'
 import { conflict, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
-const slugify = (name: string): string =>
-  `${name
+/**
+ * Must ALWAYS satisfy the contract's `Slug` schema. It does not merely name the group: `Group.slug`
+ * is validated on the way out, and `GroupMembership` appears in `GET /groups` AND `GET /auth/me` —
+ * so one bad slug 422s those routes permanently for every member of that group.
+ *
+ * The two ways the naive version broke: slicing to a fixed length could cut on a hyphen and leave
+ * a trailing or doubled separator, and a name with no ASCII alphanumerics at all ('💪',
+ * 'Тренировки', '!!!') reduced to an empty base.
+ */
+const SLUG_BASE_LIMIT = 40
+
+export function slugify(name: string): string {
+  const base = name
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/gu, '-')
-    .replaceAll(/^-|-$/gu, '')
-    .slice(0, 40)}-${crypto.randomUUID().slice(0, 8)}`
+    .slice(0, SLUG_BASE_LIMIT)
+    // Strip separators AFTER slicing — slicing is what creates a dangling one.
+    .replaceAll(/^-+|-+$/gu, '')
+
+  const suffix = crypto.randomUUID().slice(0, 8)
+  return base === '' ? `group-${suffix}` : `${base}-${suffix}`
+}
 
 const toGroup = (row: typeof groups.$inferSelect): Group => ({
   id: row.id,
@@ -82,18 +98,27 @@ export async function create(caller: Caller, input: GroupCreate): Promise<GroupM
 export async function members(caller: Caller, groupId: string): Promise<GroupMember[]> {
   if (!caller.groupIds.includes(groupId)) throw notFound('group')
 
+  // Columns projected explicitly. `select({ user: users })` would pull password_hash across the
+  // wire on every membership listing, one careless spread away from a response body.
   const rows = await db
-    .select({ user: users, role: groupMembers.role, joinedAt: groupMembers.joinedAt })
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      createdAt: users.createdAt,
+      role: groupMembers.role,
+      joinedAt: groupMembers.joinedAt,
+    })
     .from(groupMembers)
     .innerJoin(users, eq(users.id, groupMembers.userId))
     .where(eq(groupMembers.groupId, groupId))
 
   return rows.map((r) => ({
     user: {
-      id: r.user.id,
-      username: r.user.username,
-      displayName: r.user.displayName,
-      createdAt: r.user.createdAt.toISOString(),
+      id: r.id,
+      username: r.username,
+      displayName: r.displayName,
+      createdAt: r.createdAt.toISOString(),
     },
     role: r.role,
     joinedAt: r.joinedAt.toISOString(),
@@ -112,7 +137,17 @@ export async function addMember(
   if (group === undefined) throw notFound('group')
   if (group.kind === 'personal') throw conflict('A personal group cannot take members')
 
-  const [user] = await db.select().from(users).where(eq(users.username, input.username)).limit(1)
+  // Projected: this row is serialised into the response, so it must not carry password_hash.
+  const [user] = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(eq(users.username, input.username))
+    .limit(1)
   if (user === undefined) throw notFound('user')
 
   const [existing] = await db
@@ -143,21 +178,29 @@ export async function addMember(
 export async function removeMember(caller: Caller, groupId: string, userId: string): Promise<void> {
   if (!caller.editorGroupIds.includes(groupId)) throw notFound('group')
 
-  const remaining = await db
-    .select({ userId: groupMembers.userId, role: groupMembers.role })
-    .from(groupMembers)
-    .where(eq(groupMembers.groupId, groupId))
+  /**
+   * The count and the delete must be atomic. Two editors removing each other simultaneously would
+   * otherwise both see two editors, both pass the check, and both commit — leaving a group with no
+   * editor, which is unusable and unrecoverable through the API. `for('update')` locks the
+   * membership rows so the second transaction re-reads after the first commits.
+   */
+  await db.transaction(async (tx) => {
+    const remaining = await tx
+      .select({ userId: groupMembers.userId, role: groupMembers.role })
+      .from(groupMembers)
+      .where(eq(groupMembers.groupId, groupId))
+      .for('update')
 
-  const editors = remaining.filter((r) => r.role === 'editor')
-  const target = remaining.find((r) => r.userId === userId)
-  if (target === undefined) throw notFound('member')
+    const editors = remaining.filter((r) => r.role === 'editor')
+    const target = remaining.find((r) => r.userId === userId)
+    if (target === undefined) throw notFound('member')
 
-  // A group nobody can edit is unusable and unrecoverable through the API.
-  if (target.role === 'editor' && editors.length === 1) {
-    throw conflict('A group must keep at least one editor')
-  }
+    if (target.role === 'editor' && editors.length === 1) {
+      throw conflict('A group must keep at least one editor')
+    }
 
-  await db
-    .delete(groupMembers)
-    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)))
+    await tx
+      .delete(groupMembers)
+      .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)))
+  })
 }

@@ -47,6 +47,59 @@ describe('registration', () => {
     expect((await register('alice')).status).toBe(409)
   })
 
+  /**
+   * Regression: uniqueness used to be decided by a SELECT before the INSERT, so two simultaneous
+   * registrations both passed the check and the loser raised a raw unique violation — a 500, not
+   * a 409. The sequential test above cannot catch that.
+   */
+  test('concurrent registrations of the same username produce one success and conflicts, never a 500', async () => {
+    const attempts = await Promise.all(
+      Array.from({ length: 8 }, () =>
+        h.wire('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: 'racer',
+            password: TEST_PASSWORD,
+            displayName: 'Racer',
+          }),
+        }),
+      ),
+    )
+
+    const statuses = attempts.map((a) => a.status)
+    expect(statuses.filter((s) => s === 200)).toHaveLength(1)
+    expect(statuses.filter((s) => s === 409)).toHaveLength(7)
+    expect(statuses.filter((s) => s >= 500)).toHaveLength(0)
+  })
+
+  test('a losing concurrent registration leaves no orphaned personal group', async () => {
+    await Promise.all(
+      Array.from({ length: 5 }, () =>
+        h.wire('/auth/register', {
+          method: 'POST',
+          body: JSON.stringify({
+            username: 'racer',
+            password: TEST_PASSWORD,
+            displayName: 'Racer',
+          }),
+        }),
+      ),
+    )
+    const login = await h.wire('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ username: 'racer', password: TEST_PASSWORD }),
+    })
+    expect(login.status).toBe(200)
+    const session = expectContract(AuthResult, login.body)
+
+    const me = await h.wire('/auth/me', {
+      headers: { authorization: `Bearer ${session.token}` },
+    })
+    // Exactly one personal group: the rolled-back attempts must not have left any behind.
+    const profile = expectContract(Me, me.body)
+    expect(profile.groups.filter((g) => g.kind === 'personal')).toHaveLength(1)
+  })
+
   test('rejects a short password before it reaches the database', async () => {
     expect((await register('bob', 'short')).status).toBe(422)
   })

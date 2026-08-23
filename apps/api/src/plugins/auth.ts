@@ -3,6 +3,7 @@ import { and, eq, gt } from 'drizzle-orm'
 import { db } from '../db/client.ts'
 import { groupMembers, sessions, users } from '../db/schema.ts'
 import type { AccessContext } from '../db/ownable.ts'
+import { unauthenticated } from '../lib/error.ts'
 import { bearerToken, hashToken } from '../lib/token.ts'
 
 /**
@@ -66,17 +67,14 @@ export async function resolveCaller(
  */
 export const authPlugin = new Elysia({ name: 'auth' }).macro({
   auth: {
-    async resolve({ headers, status }) {
+    async resolve({ headers }) {
       const caller = await resolveCaller(headers['authorization'])
-      if (caller === null) {
-        return status(401, {
-          error: {
-            code: 'unauthenticated' as const,
-            message: 'Authentication required',
-            details: null,
-          },
-        })
-      }
+      /**
+       * Thrown, not returned as a hand-built `status(401, ...)`. Every error in this API leaves
+       * through the single `onError` handler, so the envelope shape and the code-to-status mapping
+       * live in exactly one place. See docs/02-conventions.md.
+       */
+      if (caller === null) throw unauthenticated()
       return { caller }
     },
   },

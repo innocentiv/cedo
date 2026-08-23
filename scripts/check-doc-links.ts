@@ -31,8 +31,16 @@ const PLANNED: Readonly<Record<string, string>> = {
 
 interface Reference {
   readonly from: string
+  /** As written, for the error message. */
   readonly target: string
+  /** Absolute path on disk. */
   readonly path: string
+  /**
+   * Root-relative, so PLANNED can be keyed one way for both reference kinds. Markdown links are
+   * written relative to their own file (`../10-testing.md`), which would never match a PLANNED
+   * key and so could never be deferred.
+   */
+  readonly key: string
 }
 
 async function walk(dir: string): Promise<string[]> {
@@ -73,7 +81,10 @@ const references: Reference[] = (
         return [...text.matchAll(MARKDOWN_LINK)]
           .map(([, target]) => target)
           .filter((t): t is string => t !== undefined && !EXTERNAL.test(t))
-          .map((target) => ({ from: file, target, path: normalize(join(dirname(file), target)) }))
+          .map((target) => {
+            const path = normalize(join(dirname(file), target))
+            return { from: file, target, path, key: relative(ROOT, path) }
+          })
       }
 
       // Source comments name docs from the repository root, not relative to the file.
@@ -81,6 +92,7 @@ const references: Reference[] = (
         from: file,
         target,
         path: join(ROOT, target),
+        key: target,
       }))
     }),
   )
@@ -89,8 +101,8 @@ const references: Reference[] = (
 const checked = await Promise.all(references.map(async (r) => ({ r, ok: await exists(r.path) })))
 const missing = checked.filter(({ ok }) => !ok).map(({ r }) => r)
 
-const broken = missing.filter((r) => PLANNED[r.target] === undefined)
-const deferred = missing.filter((r) => PLANNED[r.target] !== undefined)
+const broken = missing.filter((r) => PLANNED[r.key] === undefined)
+const deferred = missing.filter((r) => PLANNED[r.key] !== undefined)
 
 if (broken.length > 0) {
   console.error(`Broken documentation references (${broken.length}):`)
@@ -107,7 +119,7 @@ if (stale.length > 0) {
 
 console.log(`All ${references.length - deferred.length} documentation references resolve.`)
 if (deferred.length > 0) {
-  const pending = [...new Set(deferred.map((r) => r.target))].toSorted()
+  const pending = [...new Set(deferred.map((r) => r.key))].toSorted()
   console.log(`${pending.length} referenced docs are planned for a later milestone:`)
   for (const target of pending) console.log(`  ${target} (${PLANNED[target]})`)
 }

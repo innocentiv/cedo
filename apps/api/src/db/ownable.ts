@@ -26,7 +26,15 @@ export const ownable = () => ({
     .references(() => users.id, { onDelete: 'restrict' }),
   name: text('name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  /**
+   * `$onUpdate` belongs here, not in each service's `.set(patch)`. Without it `updated_at` freezes
+   * at creation for every ownable entity — including the recipes and meal plans this trait is
+   * meant to carry — and any future "changed since" or sync query silently misses every edit.
+   */
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 })
 
 /** Structural type satisfied by any table built with `ownable()`. */

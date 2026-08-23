@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { Rpe, TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 
 /**
  * How a set's targets advance over time. Stored as JSONB on `workout_entries`, so adding a rule
@@ -52,11 +53,11 @@ export const NO_PROGRESSION: Progression = { kind: 'none' }
  * prescribes `reps` and `weightG`.
  */
 export const SetTarget = z.object({
-  reps: z.int().positive().max(1000).nullable(),
-  weightG: z.int().nonnegative().nullable(),
-  rpe: z.int().min(1).max(10).nullable(),
-  durationS: z.int().positive().max(86_400).nullable(),
-  distanceMm: z.int().positive().max(1_000_000_000).nullable(),
+  reps: TargetReps.nullable(),
+  weightG: TargetWeightG.nullable(),
+  rpe: Rpe.nullable(),
+  durationS: TargetDurationS.nullable(),
+  distanceMm: TargetDistanceMm.nullable(),
 })
 export type SetTarget = z.output<typeof SetTarget>
 

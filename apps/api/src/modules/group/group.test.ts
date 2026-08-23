@@ -176,6 +176,44 @@ describe('membership', () => {
     expect(res.status).toBe(200)
   })
 
+  /**
+   * Regression: the editor count and the delete used to be separate statements, so two editors
+   * removing each other simultaneously both saw two editors, both passed the check, and both
+   * committed — stranding the group with no editor and no API path back.
+   *
+   * Measured against the unfixed code, a single round strands the group ~13 times in 15, so one
+   * round would false-pass roughly one run in seven. Five rounds makes that vanishingly unlikely
+   * while staying fast.
+   */
+  test('two editors removing each other concurrently cannot strand the group', async () => {
+    for (let round = 0; round < 5; round++) {
+      const squad = expectContract(
+        GroupMembership,
+        (await createGroup(alice, `Squad ${round}`)).body,
+      )
+      await alice.wire(`/groups/${squad.id}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ username: 'bob', role: 'editor' }),
+      })
+
+      await Promise.all([
+        alice.wire(`/groups/${squad.id}/members/${bob.userId}`, { method: 'DELETE' }),
+        bob.wire(`/groups/${squad.id}/members/${alice.userId}`, { method: 'DELETE' }),
+      ])
+
+      // Whoever survived must still be able to administer the group.
+      const seen = await Promise.all([
+        alice.wire(`/groups/${squad.id}/members`),
+        bob.wire(`/groups/${squad.id}/members`),
+      ])
+      const visible = seen.filter((r) => r.status === 200)
+      expect(visible.length).toBeGreaterThanOrEqual(1)
+
+      const members = expectContract(z.array(GroupMember), visible[0]?.body)
+      expect(members.filter((m) => m.role === 'editor').length).toBeGreaterThanOrEqual(1)
+    }
+  })
+
   test('removing a member revokes their access immediately', async () => {
     const squad = expectContract(GroupMembership, (await createGroup(alice, 'Squad')).body)
     await alice.wire(`/groups/${squad.id}/members`, {

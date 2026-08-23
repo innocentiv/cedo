@@ -1,4 +1,4 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import { DEFAULT_GROUP_SLUG, ExerciseCreate, MUSCLES, parseMediaUrl } from '@cedo/contract'
 import { type Transaction, closeDatabase, db } from './client.ts'
 import {
@@ -24,6 +24,12 @@ import { EXERCISE_LIBRARY, type SeedExercise } from './seed-data/exercises.ts'
  */
 const SYSTEM_USERNAME = 'cedo'
 
+let unusableHash: Promise<string> | undefined
+const unusablePasswordHash = async (): Promise<string> => {
+  unusableHash ??= Bun.password.hash(crypto.randomUUID() + crypto.randomUUID())
+  return await unusableHash
+}
+
 /**
  * Deliberately a YouTube SEARCH url rather than a specific video id. Inventing ids would give
  * every user dead links and broken thumbnails; a search always resolves and stays useful. Users
@@ -48,7 +54,11 @@ export async function seedMuscles(): Promise<void> {
 }
 
 export async function seedSystemUser(): Promise<{ userId: string; groupId: string }> {
-  const existing = await db.select().from(users).where(eq(users.username, SYSTEM_USERNAME)).limit(1)
+  const existing = await db
+    .select({ id: users.id, personalGroupId: users.personalGroupId })
+    .from(users)
+    .where(eq(users.username, SYSTEM_USERNAME))
+    .limit(1)
   const found = existing[0]
   if (found !== undefined) return { userId: found.id, groupId: found.personalGroupId }
 
@@ -70,8 +80,10 @@ export async function seedSystemUser(): Promise<{ userId: string; groupId: strin
       .returning()
     if (personal === undefined) throw new Error('Could not create the system personal group')
 
-    // An unusable credential: the plaintext is generated here and immediately discarded.
-    const passwordHash = await Bun.password.hash(crypto.randomUUID() + crypto.randomUUID())
+    // An unusable credential: the plaintext is generated once per process and discarded. Derived
+    // lazily and cached because the test harness truncates and re-seeds before EVERY test, and an
+    // argon2id derivation per test dominates the suite's runtime.
+    const passwordHash = await unusablePasswordHash()
 
     const [user] = await tx
       .insert(users)
@@ -130,11 +142,15 @@ async function seedExercise(
 ): Promise<boolean> {
   const parsed = validate(entry)
 
+  // Scoped to the seeded group. Matching on name alone means a user who creates their own
+  // "Barbell Back Squat" permanently suppresses that entry from the shared library on every
+  // future upgrade.
   const existing = await db
     .select({ id: exercises.id })
     .from(exercises)
-    .where(eq(exercises.name, parsed.name))
-  if (existing.some(Boolean)) return false
+    .where(and(eq(exercises.ownerGroupId, ownerGroupId), eq(exercises.name, parsed.name)))
+    .limit(1)
+  if (existing.length > 0) return false
 
   await db.transaction(async (tx) => {
     const [created] = await tx

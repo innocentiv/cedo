@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { LoggedDistanceMm, LoggedDurationS, LoggedReps, LoggedWeightG, Rpe } from './measurement.ts'
 import { Id, PaginationQuery, Timestamp } from './primitives.ts'
 
 /**
@@ -17,11 +18,11 @@ export const SetLog = z.object({
   entryId: Id.nullable(),
   exerciseId: Id,
   setIndex: z.int().nonnegative().max(999),
-  weightG: z.int().nonnegative().nullable(),
-  reps: z.int().nonnegative().max(1000).nullable(),
-  rpe: z.int().min(1).max(10).nullable(),
-  durationS: z.int().nonnegative().max(86_400).nullable(),
-  distanceMm: z.int().nonnegative().max(1_000_000_000).nullable(),
+  weightG: LoggedWeightG.nullable(),
+  reps: LoggedReps.nullable(),
+  rpe: Rpe.nullable(),
+  durationS: LoggedDurationS.nullable(),
+  distanceMm: LoggedDistanceMm.nullable(),
   isWarmup: z.boolean(),
   loggedAt: Timestamp,
 })
@@ -64,11 +65,11 @@ export const LogSetInput = z.strictObject({
   exerciseId: Id,
   entryId: Id.nullable().default(null),
   setIndex: z.int().nonnegative().max(999),
-  weightG: z.int().nonnegative().nullable().default(null),
-  reps: z.int().nonnegative().max(1000).nullable().default(null),
-  rpe: z.int().min(1).max(10).nullable().default(null),
-  durationS: z.int().nonnegative().max(86_400).nullable().default(null),
-  distanceMm: z.int().nonnegative().max(1_000_000_000).nullable().default(null),
+  weightG: LoggedWeightG.nullable().default(null),
+  reps: LoggedReps.nullable().default(null),
+  rpe: Rpe.nullable().default(null),
+  durationS: LoggedDurationS.nullable().default(null),
+  distanceMm: LoggedDistanceMm.nullable().default(null),
   isWarmup: z.boolean().default(false),
 })
 export type LogSetInput = z.output<typeof LogSetInput>
@@ -89,11 +90,11 @@ export const ExerciseHistoryEntry = z.object({
   sets: z.array(
     z.object({
       setIndex: z.int().nonnegative(),
-      weightG: z.int().nonnegative().nullable(),
-      reps: z.int().nonnegative().nullable(),
-      rpe: z.int().min(1).max(10).nullable(),
-      durationS: z.int().nonnegative().nullable(),
-      distanceMm: z.int().nonnegative().nullable(),
+      weightG: LoggedWeightG.nullable(),
+      reps: LoggedReps.nullable(),
+      rpe: Rpe.nullable(),
+      durationS: LoggedDurationS.nullable(),
+      distanceMm: LoggedDistanceMm.nullable(),
       isWarmup: z.boolean(),
     }),
   ),

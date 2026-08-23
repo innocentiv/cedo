@@ -25,14 +25,18 @@ let ready: Promise<void> | undefined
  */
 async function ensureDatabaseExists(): Promise<void> {
   const url = new URL(env.DATABASE_URL)
-  const name = url.pathname.slice(1)
+  // Decoded, because postgres.js decodes it before connecting — creating `cedo%20test` and then
+  // connecting to `cedo test` fails with an error that points nowhere near the cause.
+  const name = decodeURIComponent(url.pathname.slice(1))
   const admin = new URL(url)
   admin.pathname = '/postgres'
 
   const client = postgres(admin.toString(), { max: 1, onnotice: () => {} })
   try {
     const rows = await client`select 1 from pg_database where datname = ${name}`
-    if (rows.length === 0) await client.unsafe(`create database "${name}"`)
+    // `create database` cannot be parameterised, so the identifier is quoted and any embedded
+    // quote doubled.
+    if (rows.length === 0) await client.unsafe(`create database "${name.replaceAll('"', '""')}"`)
   } finally {
     await client.end()
   }

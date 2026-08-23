@@ -7,8 +7,11 @@
 /**
  * A hash of a value nobody knows, used to spend the same time on a missing user as on a real one.
  * Without it, sign-in latency reveals which usernames exist.
+ *
+ * Derived lazily: a top-level `await` here would put a full argon2id derivation on the import path
+ * of the server and of every test worker, including runs that never reach a failed login.
  */
-const DECOY_HASH = await Bun.password.hash(crypto.randomUUID() + crypto.randomUUID())
+let decoyHash: Promise<string> | undefined
 
 export const hashPassword = async (plaintext: string): Promise<string> =>
   await Bun.password.hash(plaintext)
@@ -18,5 +21,6 @@ export const verifyPassword = async (plaintext: string, hash: string): Promise<b
 
 /** Call when the username was not found, so the response time matches a real verification. */
 export const burnTime = async (plaintext: string): Promise<void> => {
-  await Bun.password.verify(plaintext, DECOY_HASH)
+  decoyHash ??= Bun.password.hash(crypto.randomUUID() + crypto.randomUUID())
+  await Bun.password.verify(plaintext, await decoyHash)
 }

@@ -1,4 +1,4 @@
-import { count, eq, inArray } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import {
   DEFAULT_GROUP_SLUG,
   type AuthResult,
@@ -7,16 +7,25 @@ import {
   type RegisterInput,
   type User,
 } from '@cedo/contract'
-import { db } from '../../db/client.ts'
+import { type Transaction, db } from '../../db/client.ts'
 import { groupMembers, groups, sessions, users } from '../../db/schema.ts'
 import { conflict, notFound, unauthenticated } from '../../lib/error.ts'
 import { burnTime, hashPassword, verifyPassword } from '../../lib/password.ts'
 import { hashToken, mintToken } from '../../lib/token.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import * as GroupService from '../group/service.ts'
 
 const SESSION_DAYS = 90
 
-const toUser = (row: typeof users.$inferSelect): User => ({
+interface PublicUserRow {
+  readonly id: string
+  readonly username: string
+  readonly displayName: string
+  readonly createdAt: Date
+}
+
+/** Takes the four public columns, so callers are free to project rather than select `users.*`. */
+const toUser = (row: PublicUserRow): User => ({
   id: row.id,
   username: row.username,
   displayName: row.displayName,
@@ -34,6 +43,16 @@ async function issueSession(userId: string): Promise<{ token: string; expiresAt:
   return { token, expiresAt }
 }
 
+/** A user without a personal group could not own anything, so this is never optional. */
+async function createPersonalGroup(tx: Transaction, displayName: string) {
+  const [personal] = await tx
+    .insert(groups)
+    .values({ slug: `user-${crypto.randomUUID()}`, name: displayName, kind: 'personal' })
+    .returning()
+  if (personal === undefined) throw new Error('Could not create the personal group')
+  return personal
+}
+
 /**
  * Creates the user, their personal group, and both memberships in one transaction.
  *
@@ -42,21 +61,15 @@ async function issueSession(userId: string): Promise<{ token: string; expiresAt:
  * See docs/03-domain-model.md.
  */
 export async function register(input: RegisterInput): Promise<AuthResult> {
-  const existing = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.username, input.username))
-  if (existing.length > 0) throw conflict('That username is taken')
-
   const passwordHash = await hashPassword(input.password)
 
   const user = await db.transaction(async (tx) => {
-    const [personal] = await tx
-      .insert(groups)
-      .values({ slug: `user-${crypto.randomUUID()}`, name: input.displayName, kind: 'personal' })
-      .returning()
-    if (personal === undefined) throw new Error('Could not create the personal group')
-
+    const personal = await createPersonalGroup(tx, input.displayName)
+    /**
+     * Uniqueness is decided by the index, not by a prior SELECT. A check-then-insert lets two
+     * concurrent registrations both pass the check, and the loser then raises a raw unique
+     * violation that surfaces as a 500 instead of a 409.
+     */
     const [created] = await tx
       .insert(users)
       .values({
@@ -65,8 +78,9 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
         displayName: input.displayName,
         personalGroupId: personal.id,
       })
+      .onConflictDoNothing({ target: users.username })
       .returning()
-    if (created === undefined) throw new Error('Could not create the user')
+    if (created === undefined) throw conflict('That username is taken')
 
     await tx
       .insert(groupMembers)
@@ -92,7 +106,18 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
 }
 
 export async function login(input: LoginInput): Promise<AuthResult> {
-  const [found] = await db.select().from(users).where(eq(users.username, input.username)).limit(1)
+  // The one query that legitimately reads password_hash. Nothing here reaches the wire.
+  const [found] = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      createdAt: users.createdAt,
+      passwordHash: users.passwordHash,
+    })
+    .from(users)
+    .where(eq(users.username, input.username))
+    .limit(1)
 
   if (found === undefined) {
     // Spend the same time as a real verification so latency does not reveal which users exist.
@@ -111,51 +136,27 @@ export async function logout(token: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.tokenHash, hashToken(token)))
 }
 
+/** Delegates the group half to GroupService so the two never drift. */
 export async function me(caller: Caller): Promise<Me> {
-  const [row] = await db.select().from(users).where(eq(users.id, caller.userId)).limit(1)
+  const [row] = await db
+    .select({
+      id: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      createdAt: users.createdAt,
+    })
+    .from(users)
+    .where(eq(users.id, caller.userId))
+    .limit(1)
   if (row === undefined) throw notFound('user')
 
-  const memberships = await db
-    .select({
-      id: groups.id,
-      slug: groups.slug,
-      name: groups.name,
-      kind: groups.kind,
-      createdAt: groups.createdAt,
-      role: groupMembers.role,
-    })
-    .from(groupMembers)
-    .innerJoin(groups, eq(groups.id, groupMembers.groupId))
-    .where(eq(groupMembers.userId, caller.userId))
-
-  // Scoped to the caller's own groups. Counting without this bound would scan every membership
-  // row in the database and report on groups the caller cannot see.
-  const counts =
-    memberships.length === 0
-      ? []
-      : await db
-          .select({ groupId: groupMembers.groupId, members: count() })
-          .from(groupMembers)
-          .where(
-            inArray(
-              groupMembers.groupId,
-              memberships.map((m) => m.id),
-            ),
-          )
-          .groupBy(groupMembers.groupId)
-
-  const memberCount = new Map(counts.map((c) => [c.groupId, c.members]))
-
   return {
-    user: toUser(row),
-    groups: memberships.map((g) => ({
-      id: g.id,
-      slug: g.slug,
-      name: g.name,
-      kind: g.kind,
-      role: g.role,
-      memberCount: memberCount.get(g.id) ?? 0,
-      createdAt: g.createdAt.toISOString(),
-    })),
+    user: {
+      id: row.id,
+      username: row.username,
+      displayName: row.displayName,
+      createdAt: row.createdAt.toISOString(),
+    },
+    groups: await GroupService.list(caller),
   }
 }
