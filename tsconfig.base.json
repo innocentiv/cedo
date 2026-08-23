@@ -19,6 +19,7 @@
     "useUnknownInCatchVariables": true,
 
     "isolatedModules": true,
+    "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "erasableSyntaxOnly": true,
 

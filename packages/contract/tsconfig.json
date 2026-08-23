@@ -7,7 +7,11 @@
     "noEmit": false,
     "emitDeclarationOnly": true,
     "declaration": true,
-    "declarationMap": true
+    "declarationMap": true,
+    "lib": ["ES2023", "DOM"],
+    "types": ["bun"]
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
+  "// lib": "DOM is here ONLY for WHATWG globals (URL) that exist in every runtime this package targets. Do NOT use document/window/fetch in this package \u2014 it runs on the server too.",
+  "// types": "bun is needed for the colocated *.test.ts files. The SOURCE of this package must stay isomorphic \u2014 isomorphic.test.ts enforces that no Bun/Node global leaks into it."
 }

@@ -37,7 +37,19 @@
     "import/no-cycle": "error",
     "promise/no-return-wrap": "error",
     "no-inline-comments": "off",
-    "require-await": "off"
+    "require-await": "off",
+    "no-redeclare": "off"
   },
-  "ignorePatterns": ["node_modules", "dist", "build", ".expo", ".artifacts", "apps/api/drizzle"]
+  "ignorePatterns": ["node_modules", "dist", "build", ".expo", ".artifacts", "apps/api/drizzle"],
+  "overrides": [
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/e2e/**"],
+      "rules": {
+        "typescript/no-non-null-assertion": "off",
+        "max-lines-per-function": "off",
+        "no-await-in-loop": "off",
+        "unicorn/consistent-function-scoping": "off"
+      }
+    }
+  ]
 }

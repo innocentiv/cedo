@@ -1,1 +1,19 @@
-export const CONTRACT_VERSION = '0.0.0'
+/**
+ * @cedo/contract — the ONLY surface shared between the API and the app.
+ *
+ * Everything here must stay isomorphic (browser, Bun, React Native) and compile under both
+ * TypeScript 7 and TypeScript 6. Its only dependency is `zod`. Never import a server or a UI
+ * concern into this package. See docs/01-architecture.md.
+ */
+export * from './primitives.ts'
+export * from './error.ts'
+export * from './units.ts'
+export * from './muscle.ts'
+export * from './media.ts'
+export * from './user.ts'
+export * from './group.ts'
+export * from './token.ts'
+export * from './progression.ts'
+export * from './exercise.ts'
+export * from './workout.ts'
+export * from './log.ts'

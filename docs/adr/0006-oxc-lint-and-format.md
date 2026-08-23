@@ -53,3 +53,23 @@ Strictness is only useful if every warning means something. These are off on pur
 | `unicorn/no-null`                            | `null` is meaningful and load-bearing here: it distinguishes "explicitly absent" from "not provided" at the database and contract boundary.                  |
 
 If you add a `// oxlint-disable` anywhere, add a line here explaining why, or fix the code instead.
+
+### `no-redeclare`
+
+Disabled outright. TypeScript keeps types and values in separate namespaces, so the canonical Zod
+idiom is correct and unambiguous:
+
+```ts
+export const Exercise = z.object({ ... })
+export type Exercise = z.output<typeof Exercise>
+```
+
+oxlint only ships the base ESLint rule, which has no TypeScript awareness, and it flagged 63 correct
+declarations. There is no `typescript/no-redeclare` counterpart to switch to, so the rule is off.
+
+### Relaxations for test files
+
+`**/*.test.ts` and `**/e2e/**` turn off `no-non-null-assertion`, `max-lines-per-function`,
+`no-await-in-loop` and `consistent-function-scoping`. Asserting a value is present is the point of a
+test, `describe` blocks are legitimately long, and sequential awaits in a test are clearer than
+`Promise.all`. These stay ON in application code.
