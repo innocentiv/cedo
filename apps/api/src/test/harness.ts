@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { sql as raw } from 'drizzle-orm'
 import { treaty } from '@elysiajs/eden'
 import postgres from 'postgres'
@@ -6,6 +8,9 @@ import { db } from '../db/client.ts'
 import { env } from '../env.ts'
 import { runMigrations } from '../db/migrate.ts'
 import { seedCore } from '../db/seed.ts'
+import { type Caller, resolveCaller } from '../plugins/auth.ts'
+import { LocalBlobStore } from '../lib/storage/local.ts'
+import { setBlobStore } from '../lib/storage/instance.ts'
 
 /**
  * Integration tests run through `treaty(app)`, which exercises the REAL Elysia lifecycle —
@@ -42,11 +47,21 @@ async function ensureDatabaseExists(): Promise<void> {
   }
 }
 
+/**
+ * Uploads go to a disposable directory per worker, never to the configured UPLOAD_DIR — the same
+ * interlock as the database: a test run must not be able to write into a real deployment.
+ */
+function useDisposableBlobStore(): void {
+  const worker = Bun.env['BUN_TEST_WORKER_ID'] ?? '0'
+  setBlobStore(new LocalBlobStore(join(tmpdir(), `cedo-test-blobs-${worker}`)))
+}
+
 /** Migrations run once per worker process, not once per test. */
 async function ensureSchema(): Promise<void> {
   ready ??= (async () => {
     await ensureDatabaseExists()
     await runMigrations()
+    useDisposableBlobStore()
   })()
   await ready
 }
@@ -103,6 +118,8 @@ export interface TestApi {
 export interface TestUser {
   readonly api: Treaty
   readonly wire: Wire
+  /** The resolved access context, for tests that call a service directly. */
+  readonly caller: Caller
   readonly token: string
   readonly userId: string
   readonly username: string
@@ -115,7 +132,11 @@ function wireFor(app: ReturnType<typeof createApp>, token: string | undefined): 
   return async (path, init) => {
     const headers = new Headers(init?.headers)
     if (token !== undefined) headers.set('authorization', `Bearer ${token}`)
-    if (init?.body !== undefined) headers.set('content-type', 'application/json')
+    /**
+     * Only for a string body. FormData carries its own multipart content-type WITH a boundary,
+     * which `Request` generates — overriding it makes the body unparseable.
+     */
+    if (typeof init?.body === 'string') headers.set('content-type', 'application/json')
 
     const response = await app.handle(new Request(`http://localhost${path}`, { ...init, headers }))
     const text = await response.text()
@@ -159,9 +180,13 @@ export async function makeApi(): Promise<TestApi> {
     const personal = me.data.groups.find((g) => g.kind === 'personal')
     if (personal === undefined) throw new Error(`${username} has no personal group`)
 
+    const caller = await resolveCaller(`Bearer ${data.token}`)
+    if (caller === null) throw new Error(`Could not resolve the caller for ${username}`)
+
     return {
       api: authed,
       wire: makeWire(data.token),
+      caller,
       token: data.token,
       userId: data.user.id,
       username,

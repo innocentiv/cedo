@@ -58,7 +58,21 @@
         "typescript/no-non-null-assertion": "off",
         "max-lines-per-function": "off",
         "no-await-in-loop": "off",
-        "unicorn/consistent-function-scoping": "off"
+        "unicorn/consistent-function-scoping": "off",
+        "import/max-dependencies": "off",
+        "max-lines": "off"
+      }
+    },
+    {
+      "files": ["**/test/**"],
+      "rules": {
+        "import/max-dependencies": "off"
+      }
+    },
+    {
+      "files": ["**/app.ts"],
+      "rules": {
+        "import/max-dependencies": "off"
       }
     }
   ]

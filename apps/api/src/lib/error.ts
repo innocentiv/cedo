@@ -40,3 +40,11 @@ export function toApiError(error: DomainError): { status: number; body: ApiError
     body: { error: { code: error.code, message: error.message, details: error.details } },
   }
 }
+
+/**
+ * Exhaustiveness guard for a union that arrives from outside the type system — a query parameter,
+ * a JSONB column, a row written by an older version. Throwing beats silently taking a wrong branch.
+ */
+export function unreachable(value: never): never {
+  throw new Error(`Unhandled case: ${JSON.stringify(value)}`)
+}

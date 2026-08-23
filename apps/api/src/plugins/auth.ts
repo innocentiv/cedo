@@ -64,17 +64,33 @@ export async function resolveCaller(
 /**
  * Routes opt in with `{ auth: true }` and receive a fully resolved `caller` in context.
  * There is no way to read an ownable table without one.
+ *
+ * Authentication happens in `transform`, NOT in `resolve`, because Elysia runs `transform` before
+ * schema validation and `resolve` after it. With the check in `resolve`, an anonymous caller
+ * posting a malformed body got a 422 telling them their body was wrong, when the real answer was
+ * that they were not signed in.
+ *
+ * The resolved caller is handed from one hook to the other through a WeakMap keyed on the request
+ * object, so authentication still costs exactly one query, the context stays inferable by Elysia
+ * (annotating it breaks `caller`'s type in every handler), and nothing is retained after the
+ * request is collected.
  */
+const callerByRequest = new WeakMap<Request, Caller>()
+
 export const authPlugin = new Elysia({ name: 'auth' }).macro({
   auth: {
-    async resolve({ headers }) {
+    async transform({ request, headers }) {
       const caller = await resolveCaller(headers['authorization'])
       /**
-       * Thrown, not returned as a hand-built `status(401, ...)`. Every error in this API leaves
-       * through the single `onError` handler, so the envelope shape and the code-to-status mapping
-       * live in exactly one place. See docs/02-conventions.md.
+       * Thrown, not returned as a hand-built `status(401, ...)`. Every error leaves through the
+       * single `onError` handler, so the envelope and the code-to-status map live in one place.
        */
       if (caller === null) throw unauthenticated()
+      callerByRequest.set(request, caller)
+    },
+    resolve({ request }) {
+      const caller = callerByRequest.get(request)
+      if (caller === undefined) throw unauthenticated()
       return { caller }
     },
   },

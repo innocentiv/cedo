@@ -10,7 +10,7 @@ import {
   text,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { TRACKING_MODES } from '@cedo/contract'
+import { type MuscleSlug, TRACKING_MODES } from '@cedo/contract'
 import { favouriteTable, ownable } from '../ownable.ts'
 import { media, muscles } from './reference.ts'
 
@@ -49,7 +49,9 @@ export const exerciseMuscles = pgTable(
     exerciseId: uuid('exercise_id')
       .notNull()
       .references(() => exercises.id, { onDelete: 'cascade' }),
+    /** `$type` only narrows TypeScript; the foreign key is what actually constrains the value. */
     muscleSlug: text('muscle_slug')
+      .$type<MuscleSlug>()
       .notNull()
       .references(() => muscles.slug, { onDelete: 'restrict' }),
     loadPct: smallint('load_pct').notNull(),

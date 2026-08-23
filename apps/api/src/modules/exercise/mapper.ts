@@ -1,0 +1,133 @@
+import { eq, inArray } from 'drizzle-orm'
+import { type Exercise, type Media, videoEmbedUrl, videoThumbnailUrl } from '@cedo/contract'
+import { db } from '../../db/client.ts'
+import { exerciseMedia, exerciseMuscles, media } from '../../db/schema.ts'
+import type { exercises } from '../../db/schema.ts'
+import type { Caller } from '../../plugins/auth.ts'
+
+export type ExerciseRow = typeof exercises.$inferSelect
+type MediaRow = typeof media.$inferSelect
+type AttachedMedia = { sortIndex: number; row: MediaRow }
+
+/** `/media/:id/blob` and `/media/:id/thumb` are served by the API; blob keys never reach a client. */
+const mediaUrl = (mediaId: string, variant: 'blob' | 'thumb') => `/media/${mediaId}/${variant}`
+
+export function toMedia(row: MediaRow): Media {
+  const payload = row.payload
+  if (payload.kind === 'image') {
+    return {
+      id: row.id,
+      kind: 'image',
+      title: row.title,
+      url: mediaUrl(row.id, 'blob'),
+      thumbnailUrl: row.thumbnailKey === null ? null : mediaUrl(row.id, 'thumb'),
+      embedUrl: null,
+      width: payload.width,
+      height: payload.height,
+      createdAt: row.createdAt.toISOString(),
+    }
+  }
+  return {
+    id: row.id,
+    kind: 'video_link',
+    title: row.title,
+    url: payload.sourceUrl,
+    thumbnailUrl: videoThumbnailUrl(payload),
+    embedUrl: videoEmbedUrl(payload),
+    width: null,
+    height: null,
+    createdAt: row.createdAt.toISOString(),
+  }
+}
+
+function groupBy<T, V>(
+  rows: readonly T[],
+  key: (row: T) => string,
+  value: (row: T) => V,
+): Map<string, V[]> {
+  const grouped = new Map<string, V[]>()
+  for (const row of rows) {
+    const existing = grouped.get(key(row)) ?? []
+    existing.push(value(row))
+    grouped.set(key(row), existing)
+  }
+  return grouped
+}
+
+interface Attachments {
+  readonly muscles: Exercise['muscles']
+  readonly media: AttachedMedia[]
+  readonly isFavourite: boolean
+  readonly caller: Caller
+}
+
+function toExercise(row: ExerciseRow, attachments: Attachments): Exercise {
+  const { muscles, media: attached, isFavourite, caller } = attachments
+  return {
+    id: row.id,
+    name: row.name,
+    tracking: row.tracking,
+    description: row.description,
+    instructions: row.instructions,
+    equipment: row.equipment,
+    isUnilateral: row.isUnilateral,
+    muscles,
+    mediaIds: attached.map((m) => m.row.id),
+    media: attached.map((m) => toMedia(m.row)),
+    ownerGroupId: row.ownerGroupId,
+    createdBy: row.createdBy,
+    canEdit: caller.editorGroupIds.includes(row.ownerGroupId),
+    isFavourite,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString(),
+  }
+}
+
+/**
+ * Loading exercises means loading their muscles and media too. Doing that per row is the textbook
+ * N+1, so this issues exactly TWO queries regardless of how many rows it is given — one `inArray`
+ * for muscles, one for media. Together with the caller's own query that is three per read, at any
+ * page size.
+ *
+ * `bun run perf` asserts the count is identical at 10 rows and at 1000.
+ * See docs/adr/0018-n1-detection.md.
+ */
+export async function hydrate(
+  rows: ExerciseRow[],
+  favouriteIds: ReadonlySet<string>,
+  caller: Caller,
+): Promise<Exercise[]> {
+  if (rows.length === 0) return []
+  const ids = rows.map((r) => r.id)
+
+  const muscleRows = await db
+    .select()
+    .from(exerciseMuscles)
+    .where(inArray(exerciseMuscles.exerciseId, ids))
+
+  const mediaRows = await db
+    .select({ exerciseId: exerciseMedia.exerciseId, sortIndex: exerciseMedia.sortIndex, media })
+    .from(exerciseMedia)
+    .innerJoin(media, eq(media.id, exerciseMedia.mediaId))
+    .where(inArray(exerciseMedia.exerciseId, ids))
+
+  const musclesByExercise = groupBy(
+    muscleRows,
+    (m) => m.exerciseId,
+    (m) => ({ muscle: m.muscleSlug, loadPct: m.loadPct }),
+  )
+  const mediaByExercise = groupBy(
+    mediaRows,
+    (m) => m.exerciseId,
+    (m): AttachedMedia => ({ sortIndex: m.sortIndex, row: m.media }),
+  )
+
+  return rows.map((row) =>
+    toExercise(row, {
+      muscles: musclesByExercise.get(row.id) ?? [],
+      media: (mediaByExercise.get(row.id) ?? []).toSorted((a, b) => a.sortIndex - b.sortIndex),
+      isFavourite: favouriteIds.has(row.id),
+      caller,
+    }),
+  )
+}

@@ -6,7 +6,9 @@ import { db } from './db/client.ts'
 import { DomainError, toApiError } from './lib/error.ts'
 import { createOpenapiPlugin } from './plugins/openapi.ts'
 import { authRoutes } from './modules/auth/index.ts'
+import { exerciseRoutes } from './modules/exercise/index.ts'
 import { groupRoutes } from './modules/group/index.ts'
+import { mediaRoutes } from './modules/media/index.ts'
 import { tokenRoutes } from './modules/token/index.ts'
 
 const envelope = (
@@ -64,7 +66,9 @@ export function createApp() {
       { detail: { summary: 'Liveness and database reachability' } },
     )
     .use(authRoutes)
+    .use(exerciseRoutes)
     .use(groupRoutes)
+    .use(mediaRoutes)
     .use(tokenRoutes)
 }
 
