@@ -93,8 +93,8 @@ async function replaceMuscles(
 }
 
 /**
- * Media must be visible to the caller before it can be attached, or one user could hotlink
- * another's uploads into their own exercise by guessing an id.
+ * Verifies EXISTENCE only — media are not ownable and carry no ACL, by design. An unknown id is a
+ * 404 rather than a dangling reference. See docs/adr/0009-media-model.md.
  */
 async function replaceMedia(
   tx: Transaction,

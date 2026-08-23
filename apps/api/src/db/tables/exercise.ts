@@ -32,8 +32,15 @@ export const exercises = pgTable(
     isUnilateral: boolean('is_unilateral').notNull().default(false),
   },
   (t) => [
-    index('exercises_owner_idx').on(t.ownerGroupId),
-    /** Trigram index for substring search across a library that will reach five figures. */
+    /**
+     * Serves the whole list query in one index walk: `visible()` filters on owner_group_id, and
+     * the keyset cursor both ranges and orders on (name, id). Without it Postgres sequentially
+     * scanned every visible exercise and sorted, so page 200 cost the same as page 1.
+     *
+     * `owner_group_id` alone needs no separate index — it is this one's left prefix.
+     */
+    index('exercises_owner_name_idx').on(t.ownerGroupId, t.name, t.id),
+    /** Substring search. A GIN trigram index can serve neither ORDER BY nor a range on `name`. */
     index('exercises_name_trgm_idx').using('gin', sql`${t.name} gin_trgm_ops`),
   ],
 )

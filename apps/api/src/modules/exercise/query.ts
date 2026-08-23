@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { ExerciseQuery } from '@cedo/contract'
 import { visible } from '../../db/ownable.ts'
 import { exerciseFavourites, exerciseMuscles, exercises } from '../../db/schema.ts'
-import { unreachable } from '../../lib/error.ts'
+import { invalid, unreachable } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
 /**
@@ -33,12 +33,20 @@ function scopeFilter(query: ExerciseQuery, caller: Caller) {
   switch (query.scope) {
     case 'mine':
       return eq(exercises.ownerGroupId, caller.personalGroupId)
-    case 'group':
+    case 'group': {
+      /**
+       * Thrown, not defaulted. `?? ''` fed an empty string to a uuid column, which Postgres
+       * rejects at cast time — a 500 for what is a programmer error. The HTTP route is protected
+       * by ExerciseQuery's refine, but invariant 4 requires MCP tools to call this same function,
+       * and `{ scope: 'group' }` without a groupId typechecks.
+       */
+      if (query.groupId === undefined) throw invalid("groupId is required when scope is 'group'")
       /**
        * Intersected with `visible` deliberately: asking about a group the caller cannot reach
        * returns an empty page rather than an error that would confirm the group exists.
        */
-      return and(visible(exercises, caller), eq(exercises.ownerGroupId, query.groupId ?? ''))
+      return and(visible(exercises, caller), eq(exercises.ownerGroupId, query.groupId))
+    }
     case 'favourites':
     case 'all':
       return visible(exercises, caller)
@@ -47,12 +55,23 @@ function scopeFilter(query: ExerciseQuery, caller: Caller) {
   }
 }
 
+/**
+ * `%`, `_` and `\\` are wildcards to LIKE. Unescaped, searching for '50%' matches everything
+ * starting '50', a lone '_' matches every row, and a bare '%' scans the whole table — defeating
+ * the very index the search was built around. The value is parameterised, so this is about
+ * correctness and cost, not injection.
+ */
+function escapeLikePattern(term: string): string {
+  return term.replaceAll(/[\\%_]/gu, (match) => `\\${match}`)
+}
+
 export function listConditions(caller: Caller, query: ExerciseQuery) {
   const after = decodeCursor(query.cursor)
   const conditions = [scopeFilter(query, caller)]
 
-  if (query.q !== undefined && query.q !== '')
-    conditions.push(ilike(exercises.name, `%${query.q}%`))
+  if (query.q !== undefined && query.q !== '') {
+    conditions.push(ilike(exercises.name, `%${escapeLikePattern(query.q)}%`))
+  }
 
   if (after !== null) {
     conditions.push(

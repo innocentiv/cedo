@@ -1,13 +1,7 @@
-import { mkdir, rm } from 'node:fs/promises'
+import { mkdir, rename, rm } from 'node:fs/promises'
 import { dirname, join, normalize, resolve } from 'node:path'
+import { EXTENSION_BY_MIME } from '../media.ts'
 import { type BlobStore, blobKeyFor, sha256Of } from './index.ts'
-
-const EXTENSION_BY_TYPE: Readonly<Record<string, string>> = {
-  'image/webp': '.webp',
-  'image/jpeg': '.jpg',
-  'image/png': '.png',
-  'image/gif': '.gif',
-}
 
 /**
  * Files on a docker volume. Phase 1, and probably phase 5 too — a self-hosted instance has no
@@ -32,14 +26,29 @@ export class LocalBlobStore implements BlobStore {
   }
 
   async put(bytes: Uint8Array, contentType: string): Promise<string> {
-    const key = blobKeyFor(sha256Of(bytes), EXTENSION_BY_TYPE[contentType] ?? '')
+    const key = blobKeyFor(sha256Of(bytes), EXTENSION_BY_MIME[contentType] ?? '')
     const path = this.#pathFor(key)
 
     // Content-addressed, so identical bytes are already the right bytes.
     if (await Bun.file(path).exists()) return key
 
     await mkdir(dirname(path), { recursive: true })
-    await Bun.write(path, bytes)
+
+    /**
+     * Written to a temporary name in the same directory and renamed, which is atomic on one
+     * filesystem. A direct write is not: a concurrent uploader of the same bytes sees the
+     * half-written file via `exists()` and returns early, and a reader in between gets a truncated
+     * blob. Under content addressing that corruption is PERMANENT — every later `put()` of those
+     * bytes also short-circuits, so nothing ever repairs it.
+     */
+    const temporary = `${path}.${crypto.randomUUID()}.partial`
+    try {
+      await Bun.write(temporary, bytes)
+      await rename(temporary, path)
+    } catch (cause) {
+      await rm(temporary, { force: true })
+      throw cause
+    }
     return key
   }
 

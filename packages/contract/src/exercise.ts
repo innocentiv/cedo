@@ -30,6 +30,18 @@ export type TrackingMode = z.output<typeof TrackingMode>
  * input with the same message — rather than the database raising a primary-key violation that
  * nobody can act on.
  */
+function checkMediaIds(mediaIds: string[], ctx: z.RefinementCtx): void {
+  // `exercise_media` has a composite primary key, so a repeated id is a duplicate-key violation —
+  // a 500 for what is plainly a bad request.
+  if (new Set(mediaIds).size !== mediaIds.length) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['mediaIds'],
+      message: 'Each media may be attached only once',
+    })
+  }
+}
+
 function checkMuscles(muscles: MuscleLoad[], ctx: z.RefinementCtx): void {
   const total = muscles.reduce((sum, m) => sum + m.loadPct, 0)
   if (total !== MUSCLE_LOAD_TOTAL) {
@@ -65,12 +77,14 @@ const ExerciseFields = z.strictObject(exerciseFields)
 
 export const ExerciseCreate = ExerciseFields.superRefine((value, ctx) => {
   checkMuscles(value.muscles, ctx)
+  checkMediaIds(value.mediaIds, ctx)
 })
 export type ExerciseCreate = z.output<typeof ExerciseCreate>
 
 /** Every field optional; the muscle invariants apply only when `muscles` is actually being set. */
 export const ExerciseUpdate = ExerciseFields.partial().superRefine((value, ctx) => {
   if (value.muscles !== undefined) checkMuscles(value.muscles, ctx)
+  if (value.mediaIds !== undefined) checkMediaIds(value.mediaIds, ctx)
 })
 export type ExerciseUpdate = z.output<typeof ExerciseUpdate>
 

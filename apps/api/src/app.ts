@@ -8,7 +8,7 @@ import { createOpenapiPlugin } from './plugins/openapi.ts'
 import { authRoutes } from './modules/auth/index.ts'
 import { exerciseRoutes } from './modules/exercise/index.ts'
 import { groupRoutes } from './modules/group/index.ts'
-import { mediaRoutes } from './modules/media/index.ts'
+import { mediaBlobRoutes, mediaRoutes } from './modules/media/index.ts'
 import { tokenRoutes } from './modules/token/index.ts'
 
 const envelope = (
@@ -68,6 +68,7 @@ export function createApp() {
     .use(authRoutes)
     .use(exerciseRoutes)
     .use(groupRoutes)
+    .use(mediaBlobRoutes)
     .use(mediaRoutes)
     .use(tokenRoutes)
 }

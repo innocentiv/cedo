@@ -9,12 +9,23 @@ import { invalid } from './error.ts'
 export const ACCEPTED_IMAGE_FORMATS = ['jpeg', 'png', 'webp', 'gif'] as const
 export type AcceptedImageFormat = (typeof ACCEPTED_IMAGE_FORMATS)[number]
 
-const MIME_BY_FORMAT: Readonly<Record<AcceptedImageFormat, string>> = {
-  jpeg: 'image/jpeg',
-  png: 'image/png',
-  webp: 'image/webp',
-  gif: 'image/gif',
+/**
+ * The ONE table describing accepted formats. `LocalBlobStore` previously kept a second, separate
+ * mime-to-extension map, and a format added to one but not the other produced an extensionless
+ * blob key rather than a loud failure.
+ */
+export const IMAGE_FORMATS: Readonly<
+  Record<AcceptedImageFormat, { mime: string; extension: string }>
+> = {
+  jpeg: { mime: 'image/jpeg', extension: '.jpg' },
+  png: { mime: 'image/png', extension: '.png' },
+  webp: { mime: 'image/webp', extension: '.webp' },
+  gif: { mime: 'image/gif', extension: '.gif' },
 }
+
+export const EXTENSION_BY_MIME: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.values(IMAGE_FORMATS).map((f) => [f.mime, f.extension]),
+)
 
 /** 12 MB. A phone photo is 3–5 MB; anything larger is a mistake or an attack. */
 export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024
@@ -79,7 +90,7 @@ export async function processImage(bytes: Uint8Array): Promise<ProcessedImage> {
     throw invalid('That image could not be decoded past its header')
   }
 
-  return { bytes, thumbnail, width, height, mime: MIME_BY_FORMAT[format] }
+  return { bytes, thumbnail, width, height, mime: IMAGE_FORMATS[format].mime }
 }
 
 function isAccepted(format: string): format is AcceptedImageFormat {

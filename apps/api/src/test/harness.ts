@@ -1,5 +1,3 @@
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
 import { sql as raw } from 'drizzle-orm'
 import { treaty } from '@elysiajs/eden'
 import postgres from 'postgres'
@@ -9,8 +7,6 @@ import { env } from '../env.ts'
 import { runMigrations } from '../db/migrate.ts'
 import { seedCore } from '../db/seed.ts'
 import { type Caller, resolveCaller } from '../plugins/auth.ts'
-import { LocalBlobStore } from '../lib/storage/local.ts'
-import { setBlobStore } from '../lib/storage/instance.ts'
 
 /**
  * Integration tests run through `treaty(app)`, which exercises the REAL Elysia lifecycle —
@@ -47,21 +43,11 @@ async function ensureDatabaseExists(): Promise<void> {
   }
 }
 
-/**
- * Uploads go to a disposable directory per worker, never to the configured UPLOAD_DIR — the same
- * interlock as the database: a test run must not be able to write into a real deployment.
- */
-function useDisposableBlobStore(): void {
-  const worker = Bun.env['BUN_TEST_WORKER_ID'] ?? '0'
-  setBlobStore(new LocalBlobStore(join(tmpdir(), `cedo-test-blobs-${worker}`)))
-}
-
 /** Migrations run once per worker process, not once per test. */
 async function ensureSchema(): Promise<void> {
   ready ??= (async () => {
     await ensureDatabaseExists()
     await runMigrations()
-    useDisposableBlobStore()
   })()
   await ready
 }

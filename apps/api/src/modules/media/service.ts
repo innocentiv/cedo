@@ -4,6 +4,7 @@ import { db } from '../../db/client.ts'
 import { media } from '../../db/schema.ts'
 import { invalid, notFound } from '../../lib/error.ts'
 import { processImage } from '../../lib/media.ts'
+import { sha256Of } from '../../lib/storage/index.ts'
 import { blobStore } from '../../lib/storage/instance.ts'
 import { toMedia } from '../exercise/mapper.ts'
 import type { Caller } from '../../plugins/auth.ts'
@@ -35,6 +36,14 @@ export async function upload(caller: Caller, file: File): Promise<Media> {
     blobStore().put(processed.thumbnail, 'image/webp'),
   ])
 
+  /**
+   * Computed, not parsed back out of the key. The `aa/bb/<digest>.<ext>` layout is a LocalBlobStore
+   * detail — the interface promises only "the key the bytes were stored under" — so an S3 store
+   * returning a prefixed or extensionless key would have silently stored an empty digest, which
+   * ImagePayload declares as exactly 64 characters and nothing revalidates on write.
+   */
+  const digest = sha256Of(processed.bytes)
+
   const [created] = await db
     .insert(media)
     .values({
@@ -49,7 +58,7 @@ export async function upload(caller: Caller, file: File): Promise<Media> {
         width: processed.width,
         height: processed.height,
         byteSize: processed.bytes.byteLength,
-        sha256: blobKey.split('/').at(-1)?.split('.')[0] ?? '',
+        sha256: digest,
       },
     })
     .returning()
