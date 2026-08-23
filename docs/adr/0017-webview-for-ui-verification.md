@@ -1,6 +1,6 @@
 # 0017 — `Bun.WebView` for UI verification; no component tests
 
-**Status:** Accepted (2026-08-23)
+**Status:** Accepted (2026-08-23), corrected (2026-08-24)
 
 ## Context
 
@@ -21,24 +21,40 @@ what does it look like._
 
 ## Why
 
-Verified on 2026-08-23 with zero dependencies installed, in 850ms:
+Re-measured on 2026-08-24 against Bun 1.4.0, because the first note in this file overstated what the
+runtime does on its own. The actual API surface is `navigate`, `evaluate`, `click`, `type`, `press`,
+`scroll`, `screenshot`, `resize`, `title`, `url`, `reload` — there is no `loadHTML`, so a page must
+be served over HTTP, which is what the harness does anyway.
 
+What the `console:` constructor option captures, exactly:
+
+| Event | Reaches the handler? |
+| --- | --- |
+| `console.log` / `warn` / `error` | **yes** |
+| Uncaught exception | only if the page forwards it |
+| Unhandled promise rejection | only if the page forwards it |
+| Failed `fetch` | only if the page forwards it |
+
+So the "fail on any console error" harness needs a **six-line capture shim** installed before the
+app bundle runs:
+
+```js
+addEventListener('error', (e) => console.error('[pageerror]', e.message))
+addEventListener('unhandledrejection', (e) => console.error('[rejection]', String(e.reason)))
 ```
-CAPTURED: [
- ["warn",  "a warning"],
- ["error", "[rejection] Error: async boom"],
- ["error", "[network] TypeError: Load failed"],
- ["error", "[pageerror] ReferenceError: Can't find variable: undefinedFunction"]
-]
-PNG BYTES: 15077
-```
 
-A single `console:` handler on the constructor captures console output, unhandled promise
-rejections, failed network calls, and uncaught exceptions from real simulated clicks. Screenshots
-come back as a `Blob`. The screenshot was read back and visually confirmed.
+The shim is injected by the harness into the served `index.html`, **not** shipped in the app bundle.
+There is no `addInitScript`-style hook, and injecting with `evaluate` after navigation would miss
+every error thrown during initial render — which is precisely the class of error worth catching.
+Keeping it in the harness also honours the thinness rule: no test scaffolding in production code.
 
-This means the harness can fail a run on _any_ console error without a single hand-written
-assertion, and hand the AI both the message and a picture.
+Confirmed working end to end on this machine: console capture through the shim, `screenshot()`
+returning a `Blob` that `Bun.write` accepts, `click`/`type` driving a real form submit, `localStorage`
+persisting (so web token storage works), `resize` switching to tablet width, and `data-testid`
+queryable via `evaluate` — which is what `testID` compiles to under `react-native-web`.
+
+This means the harness can fail a run on _any_ console error without a hand-written assertion, and
+hand the AI both the message and a picture.
 
 ## Rejected
 
@@ -59,3 +75,6 @@ assertion, and hand the AI both the message and a picture.
   `backend: 'chrome'`.
 - `Bun.WebView` is new in Bun 1.4. If it regresses, the fallback is Playwright with the same harness
   shape.
+- **The capture shim is load-bearing.** Delete it and every e2e test still passes while proving
+  nothing about runtime errors — the worst kind of green. `apps/app/e2e/harness.ts` has a test that
+  a page throwing during load actually fails the run.

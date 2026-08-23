@@ -58,9 +58,17 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   two indexes that were never chosen by the planner, both of which looked correct in the schema.
 - **A perf guard is worthless until you have watched it fail.** Drop the index against
   `cedo_test_perf`, or reintroduce the N+1, and confirm the message names the problem.
-- **An empty table makes every assertion about it vacuous.** The first perf seed left `media` and
-  the favourites tables empty; their plans read `Seq Scan on media (rows=0)`, which passes and
-  proves nothing.
+- **An empty table makes every assertion about it vacuous, and uniform data is nearly as bad.** The
+  first perf seed left `media` and the favourites tables empty (`Seq Scan on media (rows=0)` — passes,
+  proves nothing), and gave every muscle the same number of exercises, which made a real index look
+  dead because the planner never had a selective case to use it on.
+- **`bun test <dir>` matches only `*.test.*` / `*.spec.*` and exits 0 when it matches nothing.** The
+  `perf` and `e2e` scripts pass explicit `./path/*.perf.ts` globs for this reason. "0 files were
+  searched" is a broken script, not an empty suite.
+- **Explicit `.ts` extensions defeat Metro's platform resolution.** `import './x.ts'` never picks
+  `x.web.ts`. Branch on `Platform.OS` in one file instead — see `apps/app/src/auth/token-storage.ts`.
+- **Read the screenshot, do not just check the test passed.** Two real layout bugs in M8 were green
+  in every assertion and obvious in the PNG.
 
 ## Documentation map
 

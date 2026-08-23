@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "cedo",
+    "slug": "cedo",
+    "version": "0.0.0",
+    "scheme": "cedo",
+    "orientation": "default",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "plugins": ["expo-router"],
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "ios": { "supportsTablet": true },
+    "android": { "edgeToEdgeEnabled": true },
+    "experiments": { "typedRoutes": false }
+  }
+}

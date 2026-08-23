@@ -18,3 +18,7 @@ apps/app/dist/
 
 # os
 .DS_Store
+
+# expo
+apps/app/dist/
+apps/app/.expo/

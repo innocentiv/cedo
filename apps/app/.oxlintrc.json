@@ -1,0 +1,26 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "extends": ["../../.oxlintrc.json"],
+  "ignorePatterns": ["dist/**", ".expo/**", "node_modules/**"],
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["@cedo/api", "@cedo/api/*", "**/apps/api/*", "../../api/*", "../../../api/*"],
+            "message": "apps/app must never import from apps/api. The only shared surface is @cedo/contract. See docs/01-architecture.md."
+          }
+        ]
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["src/api/errors.ts"],
+      "rules": {
+        "max-classes-per-file": "off"
+      }
+    }
+  ]
+}
