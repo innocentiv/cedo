@@ -18,7 +18,14 @@ seed-data/         the library as plain data, validated by a test
 bun run db:up                          # postgres on :55432
 bun run apps/api/src/db/migrate.ts     # apply migrations
 bun run apps/api/src/db/seed.ts        # muscles + cedo group + starter library
+
+bun run db:reset                       # all of the above, from an empty volume
 ```
+
+**Always start the database with `--wait`** (which `db:up` does). `docker compose up -d` returns as
+soon as the container is _running_, which is well before Postgres accepts connections — the next
+command then fails with `FATAL: the database system is starting up`. `--wait` blocks on the
+healthcheck instead. The same applies in CI and in any script that seeds or tests.
 
 Both scripts are safe to re-run. That is a requirement, not a nicety: a self-hosted instance
 restarts for reasons nobody planned, and an upgrade must be able to add library entries without
