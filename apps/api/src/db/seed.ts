@@ -33,7 +33,7 @@ function demonstrationSearchUrl(name: string): string {
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} form`)}`
 }
 
-async function seedMuscles(): Promise<void> {
+export async function seedMuscles(): Promise<void> {
   await db
     .insert(muscles)
     .values(MUSCLES.map((m, sortIndex) => ({ ...m, sortIndex })))
@@ -47,7 +47,7 @@ async function seedMuscles(): Promise<void> {
     })
 }
 
-async function seedSystemUser(): Promise<{ userId: string; groupId: string }> {
+export async function seedSystemUser(): Promise<{ userId: string; groupId: string }> {
   const existing = await db.select().from(users).where(eq(users.username, SYSTEM_USERNAME)).limit(1)
   const found = existing[0]
   if (found !== undefined) return { userId: found.id, groupId: found.personalGroupId }
@@ -165,18 +165,32 @@ async function seedExercise(
   return true
 }
 
-export async function runSeed(): Promise<void> {
+/**
+ * Muscles, the `cedo` group and the system account — everything `register()` depends on, without
+ * the 45-exercise library. Tests reset to this state; it is cheap enough to run between them.
+ */
+export async function seedCore(): Promise<{ userId: string; groupId: string }> {
   await seedMuscles()
-  const { userId, groupId } = await seedSystemUser()
+  return await seedSystemUser()
+}
 
+/** Adds the starter library on top of `seedCore`. Returns how many exercises were new. */
+export async function seedLibrary(ownerGroupId: string, createdBy: string): Promise<number> {
   let created = 0
   for (const entry of EXERCISE_LIBRARY) {
     // Deliberately sequential: parallelising ~45 transactions would exhaust the small connection
     // pool a self-hosted box runs with, for no benefit in a one-off seed.
     // See docs/adr/0006-oxc-lint-and-format.md.
     // oxlint-disable-next-line no-await-in-loop
-    if (await seedExercise(entry, groupId, userId)) created += 1
+    if (await seedExercise(entry, ownerGroupId, createdBy)) created += 1
   }
+  return created
+}
+
+export async function runSeed(): Promise<void> {
+  const { userId, groupId } = await seedCore()
+
+  const created = await seedLibrary(groupId, userId)
 
   console.log(
     `Seeded ${MUSCLES.length} muscles, the '${DEFAULT_GROUP_SLUG}' group, ` +

@@ -14,8 +14,38 @@ const Env = z.object({
 
 export type Env = z.output<typeof Env>
 
+/**
+ * Under test, the database URL comes from TEST_DATABASE_URL and DATABASE_URL is IGNORED.
+ *
+ * This is a safety interlock, not a convenience: the test harness truncates every table, so it
+ * must be impossible for a stray `bun test` to reach a development or production database.
+ * `bun test` sets NODE_ENV=test on its own, so this cannot be forgotten.
+ *
+ * Under `bun test --parallel` each worker gets its own database, since workers run concurrently
+ * and would otherwise truncate each other's rows mid-test.
+ */
+function resolveDatabaseUrl(source: Record<string, string | undefined>): string | undefined {
+  if (source['NODE_ENV'] !== 'test') return source['DATABASE_URL']
+
+  const testUrl = source['TEST_DATABASE_URL']
+  if (testUrl === undefined || testUrl === '') {
+    throw new Error(
+      'TEST_DATABASE_URL is required when NODE_ENV=test.\n' +
+        'The test harness truncates every table, so it will not use DATABASE_URL.\n' +
+        'Start one with `bun run db:test` and see .env.example.',
+    )
+  }
+
+  const worker = source['BUN_TEST_WORKER_ID']
+  if (worker === undefined) return testUrl
+
+  const url = new URL(testUrl)
+  url.pathname = `${url.pathname}_w${worker}`
+  return url.toString()
+}
+
 function load(): Env {
-  const parsed = Env.safeParse(Bun.env)
+  const parsed = Env.safeParse({ ...Bun.env, DATABASE_URL: resolveDatabaseUrl(Bun.env) })
   if (!parsed.success) {
     const problems = parsed.error.issues
       .map((i) => `  ${i.path.join('.')}: ${i.message}`)
