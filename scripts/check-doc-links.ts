@@ -2,9 +2,12 @@
  * The `docs/` tree is this project's primary deliverable: it is what lets a future session extend
  * the codebase without drifting. A dead reference there wastes a whole cycle, so it fails the gate.
  *
- * Two kinds of reference are checked:
+ * Three things are checked:
  *   1. Relative Markdown links in any `.md` file.
- *   2. `docs/...md` paths mentioned in source comments — a pointer an AI will actually follow.
+ *   2. `docs/...md` paths mentioned anywhere — a source comment OR markdown prose. Prose was the
+ *      original blind spot: four documents promised `docs/playbooks/add-entity.md` in backticks,
+ *      which is not a Markdown link, so nothing noticed the file did not exist.
+ *   3. That every ADR file appears in the ADR index, which had drifted to missing three of eight.
  *
  * External URLs are never fetched.
  */
