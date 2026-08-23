@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import type { Exercise, ExerciseCreate, ExerciseQuery, ExerciseUpdate, Page } from '@cedo/contract'
 import { type Transaction, db } from '../../db/client.ts'
 import { editable, visible } from '../../db/ownable.ts'
@@ -166,7 +166,7 @@ export async function update(caller: Caller, id: string, patch: ExerciseUpdate):
     // Always touch the row so `updated_at` advances even for a media-only or muscle-only change.
     await tx
       .update(exercises)
-      .set({ ...columns, updatedAt: new Date() })
+      .set({ ...columns, updatedAt: sql`now()` })
       .where(eq(exercises.id, id))
 
     if (patch.muscles !== undefined) await replaceMuscles(tx, id, patch.muscles)
@@ -216,7 +216,7 @@ export async function transfer(caller: Caller, id: string, toGroupId: string): P
 
   const moved = await db
     .update(exercises)
-    .set({ ownerGroupId: toGroupId, updatedAt: new Date() })
+    .set({ ownerGroupId: toGroupId, updatedAt: sql`now()` })
     .where(and(editable(exercises, caller), eq(exercises.id, id)))
     .returning({ id: exercises.id })
   if (moved.length === 0) throw notFound('exercise')

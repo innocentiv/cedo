@@ -74,6 +74,13 @@
       "rules": {
         "import/max-dependencies": "off"
       }
+    },
+    {
+      "files": ["**/mcp/tools/**"],
+      "rules": {
+        "max-lines-per-function": "off",
+        "max-lines": "off"
+      }
     }
   ]
 }

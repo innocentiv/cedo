@@ -1,4 +1,4 @@
-import { inArray } from 'drizzle-orm'
+import { inArray, sql } from 'drizzle-orm'
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core'
 import { pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
 import { groups, users } from './tables/identity.ts'
@@ -31,10 +31,17 @@ export const ownable = () => ({
    * at creation for every ownable entity — including the recipes and meal plans this trait is
    * meant to carry — and any future "changed since" or sync query silently misses every edit.
    */
+  /**
+   * `sql\`now()\`` and NOT `new Date()`: `created_at` comes from the DATABASE clock, so taking
+   * `updated_at` from the application clock compares two different clocks. With the API and
+   * Postgres in separate containers even a few milliseconds of skew produces
+   * `updated_at < created_at`, which is nonsense and quietly breaks any "changed since" query.
+   * Observed as exactly that, 3ms backwards, before this was fixed.
+   */
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()
     .defaultNow()
-    .$onUpdate(() => new Date()),
+    .$onUpdate(() => sql`now()`),
 })
 
 /** Structural type satisfied by any table built with `ownable()`. */

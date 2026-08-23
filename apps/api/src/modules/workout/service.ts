@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
 import type {
   Page,
   Workout,
@@ -8,19 +8,13 @@ import type {
   WorkoutSummary,
   WorkoutUpdate,
 } from '@cedo/contract'
-import { type Transaction, db } from '../../db/client.ts'
+import { db } from '../../db/client.ts'
 import { editable, visible } from '../../db/ownable.ts'
-import {
-  exercises,
-  workoutDays,
-  workoutEntries,
-  workoutFavourites,
-  workoutSets,
-  workouts,
-} from '../../db/schema.ts'
+import { exercises, workoutDays, workoutFavourites, workouts } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydratePlan, toSummary } from './mapper.ts'
+import { insertPlan } from './plan.ts'
 import { encodeCursor, listConditions } from './query.ts'
 
 export async function list(caller: Caller, query: WorkoutQuery): Promise<Page<WorkoutSummary>> {
@@ -116,7 +110,7 @@ export async function update(caller: Caller, id: string, patch: WorkoutUpdate): 
   // `editable()` on the statement itself, not merely on a guard SELECT. See docs/02-conventions.md.
   const written = await db
     .update(workouts)
-    .set({ ...columns, updatedAt: new Date() })
+    .set({ ...columns, updatedAt: sql`now()` })
     .where(and(editable(workouts, caller), eq(workouts.id, id)))
     .returning({ id: workouts.id })
   if (written.length === 0) throw notFound('workout')
@@ -158,7 +152,10 @@ export async function replacePlan(
     // Days cascade to entries, which cascade to sets.
     await tx.delete(workoutDays).where(eq(workoutDays.workoutId, id))
     await insertPlan(tx, id, plan)
-    await tx.update(workouts).set({ updatedAt: new Date() }).where(eq(workouts.id, id))
+    await tx
+      .update(workouts)
+      .set({ updatedAt: sql`now()` })
+      .where(eq(workouts.id, id))
   })
 
   return await get(caller, id)
@@ -181,55 +178,6 @@ async function assertExercisesVisible(caller: Caller, plan: WorkoutPlanInput): P
   const known = new Set(found.map((e) => e.id))
   const missing = ids.filter((exerciseId) => !known.has(exerciseId))
   if (missing.length > 0) throw notFound(`exercise ${missing[0]}`)
-}
-
-/** Three bulk inserts, one per level — never one statement per row. */
-async function insertPlan(
-  tx: Transaction,
-  workoutId: string,
-  plan: WorkoutPlanInput,
-): Promise<void> {
-  const days = await tx
-    .insert(workoutDays)
-    .values(plan.days.map((day, index) => ({ workoutId, index, name: day.name })))
-    .returning({ id: workoutDays.id, index: workoutDays.index })
-
-  const dayIdByIndex = new Map(days.map((d) => [d.index, d.id]))
-
-  const entryValues = plan.days.flatMap((day, dayIndex) =>
-    day.entries.map((entry, index) => ({
-      dayId: dayIdByIndex.get(dayIndex) ?? '',
-      index,
-      exerciseId: entry.exerciseId,
-      supersetGroup: entry.supersetGroup,
-      restSeconds: entry.restSeconds,
-      progression: entry.progression,
-    })),
-  )
-  if (entryValues.length === 0) return
-
-  const insertedEntries = await tx
-    .insert(workoutEntries)
-    .values(entryValues)
-    .returning({ id: workoutEntries.id, dayId: workoutEntries.dayId, index: workoutEntries.index })
-
-  const entryIdByPosition = new Map(insertedEntries.map((e) => [`${e.dayId}:${e.index}`, e.id]))
-
-  const setValues = plan.days.flatMap((day, dayIndex) =>
-    day.entries.flatMap((entry, entryIndex) =>
-      entry.sets.map((set, index) => ({
-        entryId: entryIdByPosition.get(`${dayIdByIndex.get(dayIndex) ?? ''}:${entryIndex}`) ?? '',
-        index,
-        isWarmup: set.isWarmup,
-        targetReps: set.targetReps,
-        targetWeightG: set.targetWeightG,
-        targetRpe: set.targetRpe,
-        targetDurationS: set.targetDurationS,
-        targetDistanceMm: set.targetDistanceMm,
-      })),
-    ),
-  )
-  if (setValues.length > 0) await tx.insert(workoutSets).values(setValues)
 }
 
 /** Deep copy: the plan comes with it, since a workout without its days is not a workout. */
@@ -268,7 +216,7 @@ export async function transfer(caller: Caller, id: string, toGroupId: string): P
 
   const moved = await db
     .update(workouts)
-    .set({ ownerGroupId: toGroupId, updatedAt: new Date() })
+    .set({ ownerGroupId: toGroupId, updatedAt: sql`now()` })
     .where(and(editable(workouts, caller), eq(workouts.id, id)))
     .returning({ id: workouts.id })
   if (moved.length === 0) throw notFound('workout')

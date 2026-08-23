@@ -1,10 +1,12 @@
 import { and, eq, sql } from 'drizzle-orm'
 import { DEFAULT_GROUP_SLUG, ExerciseCreate, MUSCLES, parseMediaUrl } from '@cedo/contract'
 import { type Transaction, closeDatabase, db } from './client.ts'
+import { env } from '../env.ts'
 import {
   exerciseMedia,
   exerciseMuscles,
   exercises,
+  groupMembers,
   groups,
   media,
   muscles,
@@ -53,15 +55,39 @@ export async function seedMuscles(): Promise<void> {
     })
 }
 
+/**
+ * Returns the system account and the id of the SHARED group that owns the library.
+ *
+ * `groupId` is the shared group in BOTH paths. An earlier version returned the system user's
+ * PERSONAL group on the already-exists path, so every seed after the first wrote all 45 exercises
+ * into the wrong group — 90 rows, half of them invisible to everyone. It stayed hidden while the
+ * idempotency check matched names across the whole table, and became live the moment that check
+ * was correctly scoped to a group.
+ */
 export async function seedSystemUser(): Promise<{ userId: string; groupId: string }> {
   const existing = await db
-    .select({ id: users.id, personalGroupId: users.personalGroupId })
+    .select({ id: users.id })
     .from(users)
     .where(eq(users.username, SYSTEM_USERNAME))
     .limit(1)
   const found = existing[0]
-  if (found !== undefined) return { userId: found.id, groupId: found.personalGroupId }
 
+  if (found !== undefined) {
+    const [shared] = await db
+      .select({ id: groups.id })
+      .from(groups)
+      .where(eq(groups.slug, DEFAULT_GROUP_SLUG))
+      .limit(1)
+    if (shared === undefined)
+      throw new Error('The system account exists but the cedo group does not')
+    return { userId: found.id, groupId: shared.id }
+  }
+
+  return await createSystemAccount()
+}
+
+/** First run only: the shared group, the system account, and its unusable credential. */
+async function createSystemAccount(): Promise<{ userId: string; groupId: string }> {
   return await db.transaction(async (tx) => {
     const [shared] = await tx
       .insert(groups)
@@ -187,7 +213,43 @@ async function seedExercise(
  */
 export async function seedCore(): Promise<{ userId: string; groupId: string }> {
   await seedMuscles()
-  return await seedSystemUser()
+  const core = await seedSystemUser()
+  await promoteCurator(core.groupId)
+  return core
+}
+
+/**
+ * Makes `CEDO_ADMIN_USERNAME` an editor of the shared `cedo` group.
+ *
+ * Without this NOBODY can edit the shared library: the system account owns those rows but is not a
+ * member of the group, and registration only ever grants `reader`. Idempotent, and a no-op when the
+ * variable is unset or names an account that does not exist yet — register first, then restart.
+ * See docs/07-mcp.md.
+ */
+export async function promoteCurator(sharedGroupId: string): Promise<boolean> {
+  const username = env.CEDO_ADMIN_USERNAME
+  if (username === undefined) return false
+
+  const [user] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.username, username.toLowerCase()))
+    .limit(1)
+  if (user === undefined) {
+    console.warn(
+      `CEDO_ADMIN_USERNAME='${username}' does not exist yet — register that account, then restart to grant it curator rights.`,
+    )
+    return false
+  }
+
+  await db
+    .insert(groupMembers)
+    .values({ groupId: sharedGroupId, userId: user.id, role: 'editor' })
+    .onConflictDoUpdate({
+      target: [groupMembers.groupId, groupMembers.userId],
+      set: { role: 'editor' },
+    })
+  return true
 }
 
 /** Adds the starter library on top of `seedCore`. Returns how many exercises were new. */

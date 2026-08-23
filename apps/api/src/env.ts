@@ -10,6 +10,13 @@ const Env = z.object({
   PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('production'),
   UPLOAD_DIR: z.string().min(1).default('/data/uploads'),
+  /**
+   * Promoted to editor of the seeded `cedo` group on every seed run, which is what makes someone a
+   * platform curator: they can edit the shared exercise library and read diagnostics. Everyone else
+   * joins that group as a reader. Optional — an instance with no curator still works, its library
+   * is just fixed at whatever shipped. See docs/07-mcp.md.
+   */
+  CEDO_ADMIN_USERNAME: z.string().min(1).optional(),
 })
 
 export type Env = z.output<typeof Env>
@@ -44,8 +51,25 @@ function resolveDatabaseUrl(source: Record<string, string | undefined>): string 
   return url.toString()
 }
 
+/**
+ * An empty variable means UNSET, not "the empty string".
+ *
+ * `.env` files are written by hand and blank values are the natural way to leave something out —
+ * `.env.example` itself ships `CEDO_ADMIN_USERNAME=`. Without this, that blank line is a hard boot
+ * failure with a message about minimum string length, which is a miserable first experience for
+ * someone self-hosting.
+ */
+function withoutBlanks(
+  source: Record<string, string | undefined>,
+): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(source).map(([key, value]) => [key, value?.trim() === '' ? undefined : value]),
+  )
+}
+
 function load(): Env {
-  const parsed = Env.safeParse({ ...Bun.env, DATABASE_URL: resolveDatabaseUrl(Bun.env) })
+  const source = withoutBlanks(Bun.env)
+  const parsed = Env.safeParse({ ...source, DATABASE_URL: resolveDatabaseUrl(source) })
   if (!parsed.success) {
     const problems = parsed.error.issues
       .map((i) => `  ${i.path.join('.')}: ${i.message}`)

@@ -1,6 +1,7 @@
 import { createApp } from './app.ts'
 import { closeDatabase } from './db/client.ts'
 import { runMigrations } from './db/migrate.ts'
+import { runSeed } from './db/seed.ts'
 import { env } from './env.ts'
 import { MAX_UPLOAD_BYTES } from './lib/media.ts'
 
@@ -9,6 +10,19 @@ import { MAX_UPLOAD_BYTES } from './lib/media.ts'
  * whose schema is current. See docs/09-deployment.md.
  */
 await runMigrations()
+
+/**
+ * Seeding at boot, not as a separate deploy step.
+ *
+ * It is idempotent, so this costs a few queries on restart, and it buys three things a self-hosted
+ * instance needs: `docker compose up` alone produces a working install with a library, an upgrade
+ * that ships new library entries delivers them without anyone running a command, and
+ * CEDO_ADMIN_USERNAME takes effect on the restart the operator has already been told to do.
+ *
+ * Without this the curator promotion only ran under `bun run db:seed`, which nothing in the
+ * deployment path invokes. See docs/09-deployment.md.
+ */
+await runSeed()
 
 /**
  * A transport-level body cap, which is the only place this can be enforced honestly. The 12 MB

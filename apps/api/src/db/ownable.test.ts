@@ -75,4 +75,25 @@ describe('seed idempotency is scoped to the seeded group', () => {
     expect(first).toBeGreaterThan(40)
     expect(await seedLibrary(h.groupId, h.systemUserId)).toBe(0)
   })
+
+  /**
+   * Regression: this exercises `runSeed` END TO END, which the test above deliberately does not.
+   * `seedSystemUser` used to return the system account's PERSONAL group on the already-exists path
+   * instead of the shared one, so the second run wrote all 45 exercises into the wrong group — 90
+   * rows, half of them visible to nobody. Passing an explicit group id, as the test above does,
+   * bypasses exactly the function that was wrong.
+   */
+  test('running the WHOLE seed twice leaves one library, in the shared group', async () => {
+    const { runSeed } = await import('./seed.ts')
+    await runSeed()
+    await runSeed()
+
+    const rows = await db
+      .select({ ownerGroupId: exercises.ownerGroupId, name: exercises.name })
+      .from(exercises)
+
+    expect(rows.length).toBe(new Set(rows.map((r) => r.name)).size)
+    expect(new Set(rows.map((r) => r.ownerGroupId)).size).toBe(1)
+    expect(rows[0]?.ownerGroupId).toBe(h.groupId)
+  })
 })

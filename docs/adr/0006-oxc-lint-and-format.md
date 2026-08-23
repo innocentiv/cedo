@@ -95,3 +95,13 @@ make it harder to read, not easier.
 
 `ignorePatterns` is **not inherited through `extends`**, so `.oxlintrc.typeaware.json` carries its
 own copy. Keep the two lists in sync.
+
+### `**/mcp/tools/**`
+
+`max-lines-per-function` and `max-lines` are off. A `registerTrainingTools` is a **list** of tool
+registrations, not a function with logic in it — every entry is a declaration plus a handler that
+delegates to a service in one line. Splitting it to satisfy a line count would scatter the tool
+catalogue across files for no gain, exactly as with `seed-data`.
+
+The rule that matters there is enforced by review, not the linter: **a tool handler calls one
+service function and formats the result. It contains no domain logic.**

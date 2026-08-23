@@ -4,6 +4,7 @@ import { sql as raw } from 'drizzle-orm'
 import type { ApiError } from '@cedo/contract'
 import { db } from './db/client.ts'
 import { DomainError, toApiError } from './lib/error.ts'
+import { mcpHandler, resolveTokenCaller, withCaller } from './mcp/index.ts'
 import { createOpenapiPlugin } from './plugins/openapi.ts'
 import { authRoutes } from './modules/auth/index.ts'
 import { exerciseRoutes } from './modules/exercise/index.ts'
@@ -50,6 +51,30 @@ export function createApp() {
     .use(sessionRoutes)
     .use(workoutRoutes)
     .use(tokenRoutes)
+    .mount('/mcp', serveMcp)
+}
+
+/**
+ * The MCP server, mounted as a plain fetch handler.
+ *
+ * Authentication happens HERE, before the handler runs: the SDK "never reads tokens from headers
+ * and never verifies them" by design — its caller does, and passes the result in. A personal access
+ * token resolves to the same `Caller` the HTTP routes use, so every tool gets exactly the
+ * permissions the UI would. See docs/07-mcp.md.
+ */
+async function serveMcp(request: Request): Promise<Response> {
+  const caller = await resolveTokenCaller(request.headers.get('authorization'))
+  if (caller === null) {
+    return Response.json(
+      envelope(
+        'unauthenticated',
+        'MCP requires a personal access token. Create one in Settings, then pass it as ' +
+          'Authorization: Bearer <token>.',
+      ),
+      { status: 401 },
+    )
+  }
+  return await mcpHandler.fetch(request, withCaller(caller))
 }
 
 export type App = ReturnType<typeof createApp>
