@@ -9,6 +9,8 @@ import { authRoutes } from './modules/auth/index.ts'
 import { exerciseRoutes } from './modules/exercise/index.ts'
 import { groupRoutes } from './modules/group/index.ts'
 import { mediaBlobRoutes, mediaRoutes } from './modules/media/index.ts'
+import { exerciseHistoryRoutes, sessionRoutes } from './modules/session/index.ts'
+import { workoutRoutes } from './modules/workout/index.ts'
 import { tokenRoutes } from './modules/token/index.ts'
 
 const envelope = (
@@ -27,35 +29,9 @@ export function createApp() {
   return new Elysia()
     .use(createOpenapiPlugin())
     .onError(({ error, code, set }) => {
-      if (error instanceof DomainError) {
-        const { status, body } = toApiError(error)
-        set.status = status
-        return body
-      }
-
-      if (code === 'VALIDATION') {
-        set.status = 422
-        return envelope('validation_failed', 'Request failed validation', validationDetails(error))
-      }
-      /**
-       * A malformed or undecodable request body. Without this branch it falls through to the 500
-       * handler, so any client sending broken JSON looks like a server fault and pollutes the logs
-       * of whoever is self-hosting this.
-       */
-      if (code === 'PARSE') {
-        set.status = 400
-        return envelope('validation_failed', 'Could not parse the request body')
-      }
-
-      if (code === 'NOT_FOUND') {
-        set.status = 404
-        return envelope('not_found', 'No such route')
-      }
-
-      // Anything reaching here is a bug. Log it in full; tell the caller nothing.
-      console.error('Unhandled error:', error)
-      set.status = 500
-      return envelope('internal', 'Something went wrong')
+      const { status, body } = describeError(error, code)
+      set.status = status
+      return body
     })
     .get(
       '/health',
@@ -67,13 +43,52 @@ export function createApp() {
     )
     .use(authRoutes)
     .use(exerciseRoutes)
+    .use(exerciseHistoryRoutes)
     .use(groupRoutes)
     .use(mediaBlobRoutes)
     .use(mediaRoutes)
+    .use(sessionRoutes)
+    .use(workoutRoutes)
     .use(tokenRoutes)
 }
 
 export type App = ReturnType<typeof createApp>
+
+/**
+ * Maps anything thrown anywhere in the API onto the wire envelope. Pure, so it can be reasoned
+ * about and tested without a server, and so there is exactly ONE place where a failure becomes a
+ * status code. No handler anywhere constructs an error response. See docs/02-conventions.md.
+ */
+export function describeError(
+  error: unknown,
+  code: string | number,
+): { status: number; body: ApiError } {
+  if (error instanceof DomainError) return toApiError(error)
+
+  if (code === 'VALIDATION') {
+    return {
+      status: 422,
+      body: envelope('validation_failed', 'Request failed validation', validationDetails(error)),
+    }
+  }
+
+  /**
+   * A malformed or undecodable request body. Without this branch it falls through to the 500 case,
+   * so any client sending broken JSON looks like a server fault and pollutes the logs of whoever is
+   * self-hosting this.
+   */
+  if (code === 'PARSE') {
+    return { status: 400, body: envelope('validation_failed', 'Could not parse the request body') }
+  }
+
+  if (code === 'NOT_FOUND') {
+    return { status: 404, body: envelope('not_found', 'No such route') }
+  }
+
+  // Anything reaching here is a bug. Log it in full; tell the caller nothing.
+  console.error('Unhandled error:', error)
+  return { status: 500, body: envelope('internal', 'Something went wrong') }
+}
 
 /**
  * Elysia's ValidationError exposes `.all`, which works the same for every Standard Schema

@@ -143,7 +143,7 @@ against a realistic data volume — see [adr/0018](adr/0018-n1-detection.md).
 | **`exercises_owner_name_idx`** on `(owner_group_id, name, id)` | the **entire** list query in one index walk — the `visible()` filter, the keyset range, and the ordering |
 | `exercises_name_trgm_idx` (GIN, `pg_trgm`) | substring search over a five-figure library |
 | `exercise_muscles_muscle_idx` | filtering the library by muscle |
-| `workouts_owner_idx` | the `visible()` predicate. **Needs the same composite treatment as exercises when M5 adds workout listing.** |
+| **`workouts_owner_name_idx`** on `(owner_group_id, name, id)` | the workout list, same shape and same reason as the exercise one |
 | `muscles_region_idx` | rendering the muscle picker in display order |
 | `media_created_by_idx` | a user's own uploads |
 | `workout_days_workout_idx`, `workout_entries_day_idx`, `workout_sets_entry_idx` | loading a plan without N+1 |

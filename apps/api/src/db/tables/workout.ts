@@ -22,7 +22,15 @@ export const workouts = pgTable(
     ...ownable(),
     notes: text('notes'),
   },
-  (t) => [index('workouts_owner_idx').on(t.ownerGroupId)],
+  (t) => [
+    /**
+     * Same shape as `exercises_owner_name_idx`, and for the same reason: `visible()` filters on
+     * owner_group_id while the keyset cursor ranges and orders on (name, id). Without the
+     * composite, Postgres sorts every visible workout on every page.
+     * See docs/03-domain-model.md.
+     */
+    index('workouts_owner_name_idx').on(t.ownerGroupId, t.name, t.id),
+  ],
 )
 
 export const workoutDays = pgTable(

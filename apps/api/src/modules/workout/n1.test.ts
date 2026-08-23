@@ -1,0 +1,153 @@
+import { beforeEach, describe, expect, test } from 'bun:test'
+import { Exercise, Workout, WorkoutSession } from '@cedo/contract'
+import { withQueryCount } from '../../db/client.ts'
+import { expectContract } from '../../test/contract.ts'
+import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
+import * as ProgressionService from '../progression/service.ts'
+import { history } from '../session/history.ts'
+import * as WorkoutService from './service.ts'
+
+let h: TestApi
+let alice: TestUser
+
+beforeEach(async () => {
+  h = await makeApi()
+  alice = await h.as('alice')
+})
+
+async function exerciseIds(count: number): Promise<string[]> {
+  const ids: string[] = []
+  for (let i = 0; i < count; i++) {
+    // oxlint-disable-next-line no-await-in-loop
+    const res = await alice.wire('/exercises', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: `Lift ${i}`,
+        muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+      }),
+    })
+    ids.push(expectContract(Exercise, res.body).id)
+  }
+  return ids
+}
+
+/** `days` × `entriesPerDay` × 3 sets, drawing from `ids` in rotation. */
+async function planned(days: number, entriesPerDay: number, ids: string[]): Promise<string> {
+  const created = expectContract(
+    Workout,
+    (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Plan' }) }))
+      .body,
+  )
+
+  await alice.wire(`/workouts/${created.id}/plan`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      days: Array.from({ length: days }, (_unusedDay, d) => ({
+        name: `Day ${d}`,
+        entries: Array.from({ length: entriesPerDay }, (_unusedEntry, e) => ({
+          exerciseId: ids[(d * entriesPerDay + e) % ids.length],
+          progression: { kind: 'linear', incrementG: 2500, afterSuccesses: 1 },
+          sets: [{ targetReps: 8 }, { targetReps: 8 }, { targetReps: 8 }],
+        })),
+      })),
+    }),
+  })
+  return created.id
+}
+
+/**
+ * The three-level plan is the worst N+1 risk in the codebase: days, then entries, then sets, with a
+ * full exercise on every entry. The invariant is that the query count does not change with the size
+ * of the plan. See docs/adr/0018-n1-detection.md.
+ */
+describe('reads do not N+1', () => {
+  test('fetching a plan costs the same for 1 day × 1 entry as for 6 days × 8 entries', async () => {
+    const ids = await exerciseIds(12)
+
+    const small = await planned(1, 1, ids)
+    const smallCount = await withQueryCount(() => WorkoutService.get(alice.caller, small))
+
+    const large = await planned(6, 8, ids)
+    const largeCount = await withQueryCount(() => WorkoutService.get(alice.caller, large))
+
+    expect(smallCount.result.days).toHaveLength(1)
+    expect(largeCount.result.days).toHaveLength(6)
+    expect(largeCount.result.days.flatMap((d) => d.entries)).toHaveLength(48)
+
+    expect(largeCount.count).toBe(smallCount.count)
+    // summary + day count + days + entries + sets + exercises + favourites + muscles + media
+    expect(largeCount.count).toBeLessThanOrEqual(10)
+  })
+
+  test('listing workouts costs the same for 1 as for 20', async () => {
+    const ids = await exerciseIds(2)
+
+    await planned(1, 1, ids)
+    const one = await withQueryCount(() =>
+      WorkoutService.list(alice.caller, { limit: 50, scope: 'all' }),
+    )
+
+    for (let i = 0; i < 19; i++) {
+      // oxlint-disable-next-line no-await-in-loop
+      await planned(1, 1, ids)
+    }
+    const many = await withQueryCount(() =>
+      WorkoutService.list(alice.caller, { limit: 50, scope: 'all' }),
+    )
+
+    expect(one.result.items).toHaveLength(1)
+    expect(many.result.items).toHaveLength(20)
+    expect(many.count).toBe(one.count)
+    // The rows, plus one grouped query for every day count on the page.
+    expect(many.count).toBeLessThanOrEqual(2)
+  })
+
+  test('progression suggestions cost the same for 1 entry as for 48', async () => {
+    const ids = await exerciseIds(12)
+
+    const small = await planned(1, 1, ids)
+    const smallCount = await withQueryCount(() =>
+      ProgressionService.suggestForWorkout(alice.caller, small),
+    )
+
+    const large = await planned(6, 8, ids)
+    const largeCount = await withQueryCount(() =>
+      ProgressionService.suggestForWorkout(alice.caller, large),
+    )
+
+    expect(smallCount.result).toHaveLength(1)
+    expect(largeCount.result).toHaveLength(48)
+
+    expect(largeCount.count).toBe(smallCount.count)
+    // The workout, its entries, their prescribed sets, and the caller's logs.
+    expect(largeCount.count).toBeLessThanOrEqual(4)
+  })
+
+  test('session history costs the same for 1 session as for 15', async () => {
+    const [exerciseId] = await exerciseIds(1)
+    if (exerciseId === undefined) throw new Error('no exercise')
+
+    const logOne = async () => {
+      const session = await alice.wire('/sessions', { method: 'POST', body: '{}' })
+      const { id } = expectContract(WorkoutSession, session.body)
+      await alice.wire(`/sessions/${id}/logs`, {
+        method: 'POST',
+        body: JSON.stringify({ exerciseId, setIndex: 0, reps: 8, weightG: 60_000 }),
+      })
+    }
+
+    await logOne()
+    const one = await withQueryCount(() => history(alice.caller, exerciseId, { limit: 20 }))
+
+    for (let i = 0; i < 14; i++) {
+      // oxlint-disable-next-line no-await-in-loop
+      await logOne()
+    }
+    const many = await withQueryCount(() => history(alice.caller, exerciseId, { limit: 20 }))
+
+    expect(one.result.sessions).toHaveLength(1)
+    expect(many.result.sessions).toHaveLength(15)
+    expect(many.count).toBe(one.count)
+    expect(many.count).toBeLessThanOrEqual(2)
+  })
+})

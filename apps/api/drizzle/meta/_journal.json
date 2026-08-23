@@ -15,6 +15,13 @@
       "when": 1787517994513,
       "tag": "0001_exercise_keyset_index",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787519352481,
+      "tag": "0002_workout_keyset_index",
+      "breakpoints": true
     }
   ]
 }

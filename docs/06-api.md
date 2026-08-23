@@ -107,6 +107,34 @@ Services throw the typed helpers in `lib/error.ts` (`notFound`, `conflict`, `una
 input on every issue, which on a registration includes the plaintext password; only `path` and
 `message` are ever returned. A test asserts a distinctive password never appears in a 422 body.
 
+## Nested resources: replace, do not patch
+
+`PUT /workouts/:id/plan` replaces the **entire** nested plan — days, entries and sets — in one
+transaction. There is deliberately no per-day or per-entry endpoint.
+
+Granular CRUD over three levels would need reorder endpoints, index-collision handling, and a
+partial-failure story for each. A transactional replace is one endpoint, one MCP tool, atomic
+reordering, and it matches how an editor actually works: the client holds the whole plan and saves
+it.
+
+**Inputs carry no indices.** Order is array position and the server assigns `index`, which removes
+duplicate and gap indices as a category. A client that sends `index` gets a 422 — the input schemas
+are strict.
+
+Two things the replace checks before touching anything:
+
+- The caller must be able to **edit** the workout.
+- Every referenced exercise must be **visible** to them. Without that, a plan could reference a
+  hidden exercise and leak its name and description straight back through `GET /workouts/:id`.
+
+Both happen before the transaction opens, so a rejected replace leaves the previous plan exactly as
+it was. A test asserts that.
+
+## The route list lives in the spec, not here
+
+`/openapi` is generated from the same Zod schemas the routes validate with, so it cannot drift.
+Enumerating routes in this file would only give a second version to forget to update.
+
 ## Pagination and scope
 
 List endpoints take `PaginationQuery` (`cursor`, `limit` ≤ 100) plus a `scope`:

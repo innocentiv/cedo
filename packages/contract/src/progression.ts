@@ -61,6 +61,25 @@ export const SetTarget = z.object({
 })
 export type SetTarget = z.output<typeof SetTarget>
 
+/**
+ * What `nextTarget` proposes for one workout entry, alongside what it proposes to change from.
+ * Returned by `GET /workouts/:id/progression` and by the `progression_suggest` MCP tool — the AI's
+ * entry point for "evaluate my progression and set next week's numbers".
+ */
+export const ProgressionSuggestion = z.object({
+  entryId: z.uuid(),
+  exerciseId: z.uuid(),
+  exerciseName: z.string(),
+  rule: Progression,
+  current: SetTarget,
+  suggested: SetTarget,
+  /** False when the rule held rather than advanced — the UI shows that as a stall. */
+  changed: z.boolean(),
+  /** How many past sessions were considered. Zero means there is no history to judge from. */
+  sessionsConsidered: z.int().nonnegative(),
+})
+export type ProgressionSuggestion = z.output<typeof ProgressionSuggestion>
+
 /** One logged set. Every measurement is optional; only what the exercise tracks is recorded. */
 export interface SetAttempt {
   readonly weightG?: number | null
