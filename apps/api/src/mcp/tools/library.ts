@@ -157,7 +157,9 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
       const audit = await libraryAudit(caller, target)
       return text(
         [
-          `${audit.total} exercises in this library.`,
+          audit.scannedForDuplicates < audit.total
+            ? `${audit.total} exercises in this library. The duplicate scan compared the first ${audit.scannedForDuplicates} by name.`
+            : `${audit.total} exercises in this library.`,
           '',
           section(
             'Possible duplicates',

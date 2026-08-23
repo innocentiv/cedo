@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import type {
   LogSetInput,
   Page,
@@ -20,6 +20,7 @@ import {
   workouts,
 } from '../../db/schema.ts'
 import { conflict, invalid, notFound } from '../../lib/error.ts'
+import { decodeCursor, encodeCursor } from './cursor.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
 /**
@@ -118,10 +119,19 @@ export async function list(
   if (query.workoutId !== undefined) conditions.push(eq(workoutSessions.workoutId, query.workoutId))
   if (query.since !== undefined)
     conditions.push(sql`${workoutSessions.startedAt} >= ${query.since}`)
-  // Keyset on started_at descending, matching workout_sessions_user_time_idx.
-  if (query.cursor !== undefined) {
-    const at = new Date(query.cursor)
-    if (!Number.isNaN(at.getTime())) conditions.push(lt(workoutSessions.startedAt, at))
+  /**
+   * Keyset on (started_at, id) descending, matching workout_sessions_user_time_idx.
+   *
+   * The id tiebreaker is load-bearing. A bare `started_at <` cursor built from an ISO string is
+   * truncated to milliseconds while the column holds microseconds, so page 2 silently skipped every
+   * session inside the truncated millisecond — and two sessions in the same millisecond (easy
+   * through MCP `session_log`) lost one permanently.
+   */
+  const after = decodeCursor(query.cursor)
+  if (after !== null) {
+    conditions.push(
+      sql`(${workoutSessions.startedAt}, ${workoutSessions.id}) < (${after.startedAt}, ${after.id})`,
+    )
   }
 
   const rows = await db
@@ -130,7 +140,7 @@ export async function list(
     .leftJoin(workouts, eq(workouts.id, workoutSessions.workoutId))
     .leftJoin(workoutDays, eq(workoutDays.id, workoutSessions.dayId))
     .where(and(...conditions))
-    .orderBy(desc(workoutSessions.startedAt))
+    .orderBy(desc(workoutSessions.startedAt), desc(workoutSessions.id))
     .limit(query.limit + 1)
 
   const hasMore = rows.length > query.limit
@@ -139,22 +149,32 @@ export async function list(
   const totalBySession = await totalsFor(items.map((r) => r.session.id))
 
   return {
-    items: items.map((r) => {
-      const total = totalBySession.get(r.session.id)
-      return {
-        id: r.session.id,
-        workoutId: r.session.workoutId,
-        dayId: r.session.dayId,
-        startedAt: r.session.startedAt.toISOString(),
-        endedAt: r.session.endedAt?.toISOString() ?? null,
-        notes: r.session.notes,
-        workoutName: r.workoutName,
-        dayName: r.dayName,
-        setCount: total?.sets ?? 0,
-        totalVolumeG: total?.volume ?? 0,
-      }
-    }),
-    nextCursor: hasMore ? (items.at(-1)?.session.startedAt.toISOString() ?? null) : null,
+    items: items.map((r) => toSummary(r, totalBySession.get(r.session.id))),
+    nextCursor: hasMore ? encodeCursor(items.at(-1)?.session) : null,
+  }
+}
+
+interface SummaryRow {
+  readonly session: SessionRow
+  readonly workoutName: string | null
+  readonly dayName: string | null
+}
+
+function toSummary(
+  r: SummaryRow,
+  total: { sets: number; volume: number } | undefined,
+): WorkoutSessionSummary {
+  return {
+    id: r.session.id,
+    workoutId: r.session.workoutId,
+    dayId: r.session.dayId,
+    startedAt: r.session.startedAt.toISOString(),
+    endedAt: r.session.endedAt?.toISOString() ?? null,
+    notes: r.session.notes,
+    workoutName: r.workoutName,
+    dayName: r.dayName,
+    setCount: total?.sets ?? 0,
+    totalVolumeG: total?.volume ?? 0,
   }
 }
 
@@ -193,6 +213,13 @@ export async function update(
     ...(patch.notes !== undefined && { notes: patch.notes }),
   }
 
+  /**
+   * An empty patch is valid input — `SessionUpdate` has only optional fields — but Drizzle throws
+   * "No values to set" on `.set({})`, which surfaces as a 500. Exercise and workout updates escape
+   * this only because they always touch `updated_at`; `workout_sessions` has no such column.
+   */
+  if (Object.keys(columns).length === 0) return await get(caller, id)
+
   const written = await db
     .update(workoutSessions)
     .set(columns)
@@ -224,13 +251,23 @@ export async function logSet(
     .limit(1)
   if (exercise === undefined) throw notFound('exercise')
 
+  /**
+   * The entry must belong to a workout the caller can SEE, and must prescribe the exercise being
+   * logged. Existence alone let any caller attach a log to a guessed entry id from someone else's
+   * plan, which then polluted the entry-keyed joins that progression and history rely on.
+   */
   if (input.entryId !== null) {
     const [entry] = await db
-      .select({ id: workoutEntries.id })
+      .select({ id: workoutEntries.id, exerciseId: workoutEntries.exerciseId })
       .from(workoutEntries)
-      .where(eq(workoutEntries.id, input.entryId))
+      .innerJoin(workoutDays, eq(workoutDays.id, workoutEntries.dayId))
+      .innerJoin(workouts, eq(workouts.id, workoutDays.workoutId))
+      .where(and(visible(workouts, caller), eq(workoutEntries.id, input.entryId)))
       .limit(1)
     if (entry === undefined) throw notFound('entry')
+    if (entry.exerciseId !== input.exerciseId) {
+      throw invalid('That entry prescribes a different exercise')
+    }
   }
 
   const [created] = await db

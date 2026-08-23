@@ -81,6 +81,12 @@
         "max-lines-per-function": "off",
         "max-lines": "off"
       }
+    },
+    {
+      "files": ["**/modules/workout/service.ts"],
+      "rules": {
+        "import/max-dependencies": "off"
+      }
     }
   ]
 }

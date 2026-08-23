@@ -1,6 +1,7 @@
 import { eq, inArray } from 'drizzle-orm'
 import { type Exercise, type Media, videoEmbedUrl, videoThumbnailUrl } from '@cedo/contract'
 import { db } from '../../db/client.ts'
+import { groupBy } from '../../lib/keyset.ts'
 import { exerciseMedia, exerciseMuscles, media } from '../../db/schema.ts'
 import type { exercises } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
@@ -38,20 +39,6 @@ export function toMedia(row: MediaRow): Media {
     height: null,
     createdAt: row.createdAt.toISOString(),
   }
-}
-
-function groupBy<T, V>(
-  rows: readonly T[],
-  key: (row: T) => string,
-  value: (row: T) => V,
-): Map<string, V[]> {
-  const grouped = new Map<string, V[]>()
-  for (const row of rows) {
-    const existing = grouped.get(key(row)) ?? []
-    existing.push(value(row))
-    grouped.set(key(row), existing)
-  }
-  return grouped
 }
 
 interface Attachments {

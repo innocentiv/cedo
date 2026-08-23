@@ -1,5 +1,6 @@
 import type { Exercise, ProgressionSuggestion, Workout, WorkoutSummary } from '@cedo/contract'
-import { formatWeight, gToKg } from '@cedo/contract'
+import { formatDistance, formatWeight } from '@cedo/contract'
+import type { TrainingReview } from '../modules/review/service.ts'
 
 /**
  * Tool output is TEXT the model reads, and its size is the real cost of an MCP tool — not the
@@ -67,7 +68,7 @@ const setLine = (set: Workout['days'][number]['entries'][number]['sets'][number]
   if (set.target.reps !== null) parts.push(`${set.target.reps} reps`)
   if (set.target.weightG !== null) parts.push(formatWeight(set.target.weightG))
   if (set.target.durationS !== null) parts.push(`${set.target.durationS}s`)
-  if (set.target.distanceMm !== null) parts.push(`${Math.round(set.target.distanceMm / 1000)}m`)
+  if (set.target.distanceMm !== null) parts.push(formatDistance(set.target.distanceMm))
   if (set.target.rpe !== null) parts.push(`RPE ${set.target.rpe}`)
   return `${set.isWarmup ? 'warm-up' : 'work'}: ${parts.join(' × ') || 'unspecified'}`
 }
@@ -83,8 +84,10 @@ export function workoutDetail(workout: Workout): string {
       const rest = entry.restSeconds === null ? '' : `, rest ${entry.restSeconds}s`
       const rule =
         entry.progression.kind === 'none' ? '' : `, progression: ${entry.progression.kind}`
+      // Null when the caller cannot see the exercise — see the note on WorkoutEntry.exercise.
+      const name = entry.exercise?.name ?? '[unavailable exercise]'
       return [
-        `  - ${entry.exercise.name}${superset}${rest}${rule}   [entry ${entry.id}]`,
+        `  - ${name}${superset}${rest}${rule}   [entry ${entry.id}]`,
         ...entry.sets.map((set) => `      ${setLine(set)}`),
       ].join('\n')
     })
@@ -112,7 +115,62 @@ export function suggestionLines(suggestions: readonly ProgressionSuggestion[]): 
 function describeTarget(target: ProgressionSuggestion['current']): string {
   const parts: string[] = []
   if (target.reps !== null) parts.push(`${target.reps} reps`)
-  if (target.weightG !== null) parts.push(`${gToKg(target.weightG)}kg`)
+  // `formatWeight`, not a hand-rolled conversion: the two MCP outputs otherwise disagreed
+  // (`62.5kg` here versus `62.5 kg` from setLine). See CLAUDE.md invariant 6.
+  if (target.weightG !== null) parts.push(formatWeight(target.weightG))
   if (target.durationS !== null) parts.push(`${target.durationS}s`)
   return parts.join(' × ') || 'no target set'
+}
+
+/**
+ * The coaching summary. Lives here with its siblings rather than inline in the tool, because a tool
+ * handler calls one service and formats the result — it does not BE the formatter.
+ * See docs/07-mcp.md.
+ */
+export function reviewSummary(review: TrainingReview, weeks: number): string {
+  const a = review.adherence
+
+  const days =
+    review.dayBalance.length === 0
+      ? 'No sessions were tied to a planned day (all ad hoc).'
+      : `Planned days trained:\n  ${review.dayBalance
+          .map((d) => `${d.workout} / ${d.day}: ${d.sessions}x`)
+          .join('\n  ')}`
+
+  const volume =
+    review.muscleVolume.length === 0
+      ? 'No working volume recorded.'
+      : `Volume by muscle (vs the preceding ${weeks} weeks):\n  ${review.muscleVolume
+          .slice(0, 12)
+          .map((m) => {
+            const change =
+              m.changePct === null
+                ? 'no prior data'
+                : `${m.changePct > 0 ? '+' : ''}${m.changePct}%`
+            return `${m.muscle}: ${m.volumeKg}kg (${change})`
+          })
+          .join('\n  ')}`
+
+  const stalled =
+    review.stalled.length === 0
+      ? 'Nothing looks stalled.'
+      : `Stalled (no improvement across 3+ sessions):\n  ${review.stalled
+          .map(
+            (s) =>
+              `${s.exercise}: ${s.sessions} sessions at ${s.bestWeightKg ?? '?'}kg × ${s.bestReps ?? '?'}`,
+          )
+          .join('\n  ')}`
+
+  return [
+    `Last ${weeks} weeks: ${a.sessions} sessions (${a.perWeek}/week).`,
+    a.lastSessionAt === null
+      ? 'No sessions logged in this window.'
+      : `Last session ${a.lastSessionAt}. Current streak ${a.currentStreakDays} days, longest gap ${a.longestGapDays} days.`,
+    '',
+    days,
+    '',
+    volume,
+    '',
+    stalled,
+  ].join('\n')
 }

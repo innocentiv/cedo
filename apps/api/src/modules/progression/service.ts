@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import {
   type Progression,
   type ProgressionSuggestion,
@@ -8,6 +8,7 @@ import {
   nextTarget,
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
+import { groupBy } from '../../lib/keyset.ts'
 import { visible } from '../../db/ownable.ts'
 import {
   exercises,
@@ -76,7 +77,12 @@ async function loadForWorkout(caller: Caller, workoutId: string) {
     .from(workoutEntries)
     .innerJoin(workoutDays, eq(workoutDays.id, workoutEntries.dayId))
     .innerJoin(exercises, eq(exercises.id, workoutEntries.exerciseId))
-    .where(eq(workoutDays.workoutId, workoutId))
+    /**
+     * `visible()` here too: without it a suggestion returns the name and prescribed load of an
+     * exercise the caller cannot see. Entries whose exercise is hidden simply do not appear —
+     * there is nothing useful to advise about a movement you cannot read.
+     */
+    .where(and(eq(workoutDays.workoutId, workoutId), visible(exercises, caller)))
     .orderBy(asc(workoutDays.index), asc(workoutEntries.index))
   if (entries.length === 0) return null
 
@@ -96,7 +102,14 @@ async function loadForWorkout(caller: Caller, workoutId: string) {
  * another's suggestions, even when they share the workout.
  */
 async function loadLogs(caller: Caller, entryIds: string[]) {
-  return await db
+  /**
+   * The depth cap is applied in SQL, per entry, via a window function.
+   *
+   * `HISTORY_DEPTH` used to truncate in JavaScript AFTER every log for every entry had been read —
+   * so a 48-entry plan with two years of training read tens of thousands of rows to use the newest
+   * ten sessions each, while the comment claimed the read was bounded.
+   */
+  const ranked = db
     .select({
       entryId: setLogs.entryId,
       sessionId: setLogs.sessionId,
@@ -107,11 +120,30 @@ async function loadLogs(caller: Caller, entryIds: string[]) {
       durationS: setLogs.durationS,
       distanceMm: setLogs.distanceMm,
       startedAt: workoutSessions.startedAt,
+      rank: sql<number>`dense_rank() over (partition by ${setLogs.entryId} order by ${workoutSessions.startedAt} desc)`.as(
+        'rank',
+      ),
     })
     .from(setLogs)
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
     .where(and(eq(workoutSessions.userId, caller.userId), inArray(setLogs.entryId, entryIds)))
-    .orderBy(desc(workoutSessions.startedAt), asc(setLogs.setIndex))
+    .as('ranked')
+
+  return await db
+    .select({
+      entryId: ranked.entryId,
+      sessionId: ranked.sessionId,
+      setIndex: ranked.setIndex,
+      isWarmup: ranked.isWarmup,
+      weightG: ranked.weightG,
+      reps: ranked.reps,
+      durationS: ranked.durationS,
+      distanceMm: ranked.distanceMm,
+      startedAt: ranked.startedAt,
+    })
+    .from(ranked)
+    .where(sql`${ranked.rank} <= ${HISTORY_DEPTH}`)
+    .orderBy(desc(ranked.startedAt), asc(ranked.setIndex))
 }
 
 interface EntryContext {
@@ -187,8 +219,8 @@ function toSessions(rows: readonly LoggedSet[]): SessionAttempts[] {
     })
     bySession.set(row.sessionId, list)
   }
-  // The query already ordered by session start descending, so insertion order is newest first.
-  return [...bySession.values()].slice(0, HISTORY_DEPTH)
+  // Already capped to HISTORY_DEPTH sessions per entry in SQL, and ordered newest first.
+  return [...bySession.values()]
 }
 
 const sameTarget = (a: SetTarget, b: SetTarget): boolean =>
@@ -197,13 +229,3 @@ const sameTarget = (a: SetTarget, b: SetTarget): boolean =>
   a.rpe === b.rpe &&
   a.durationS === b.durationS &&
   a.distanceMm === b.distanceMm
-
-function groupBy<T>(rows: readonly T[], key: (row: T) => string): Map<string, T[]> {
-  const grouped = new Map<string, T[]>()
-  for (const row of rows) {
-    const list = grouped.get(key(row)) ?? []
-    list.push(row)
-    grouped.set(key(row), list)
-  }
-  return grouped
-}

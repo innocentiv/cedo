@@ -68,8 +68,16 @@ export const WorkoutEntry = z.object({
   id: Id,
   index: OrderIndex,
   exerciseId: Id,
-  /** Resolved so a day renders without an extra request per entry. */
-  exercise: Exercise,
+  /**
+   * Resolved so a day renders without an extra request per entry.
+   *
+   * **Null when the caller cannot see the exercise.** A workout can be shared with a group while
+   * one of its exercises is not — usually because the exercise was transferred away afterwards.
+   * The prescription stays legible (the sets are still there) but nothing about the hidden exercise
+   * is disclosed. A screen renders this as an unavailable row.
+   * See docs/03-domain-model.md.
+   */
+  exercise: Exercise.nullable(),
   supersetGroup: SupersetGroup,
   restSeconds: z.int().nonnegative().nullable(),
   progression: Progression,

@@ -6,7 +6,14 @@ import * as ProgressionService from '../../modules/progression/service.ts'
 import * as SessionService from '../../modules/session/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
 import { trainingReview } from '../../modules/review/service.ts'
-import { json, suggestionLines, text, workoutDetail, workoutLine } from '../format.ts'
+import {
+  json,
+  reviewSummary,
+  suggestionLines,
+  text,
+  workoutDetail,
+  workoutLine,
+} from '../format.ts'
 
 const READ = { readOnlyHint: true, openWorldHint: false } as const
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const
@@ -32,46 +39,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       }),
       annotations: READ,
     },
-    async ({ weeks }) => {
-      const review = await trainingReview(caller, weeks)
-      const a = review.adherence
-
-      const lines = [
-        `Last ${weeks} weeks: ${a.sessions} sessions (${a.perWeek}/week).`,
-        a.lastSessionAt === null
-          ? 'No sessions logged in this window.'
-          : `Last session ${a.lastSessionAt}. Current streak ${a.currentStreakDays}, longest gap ${a.longestGapDays} days.`,
-        '',
-        review.dayBalance.length === 0
-          ? 'No sessions were tied to a planned day (all ad hoc).'
-          : `Planned days trained:\n  ${review.dayBalance
-              .map((d) => `${d.workout} / ${d.day}: ${d.sessions}x`)
-              .join('\n  ')}`,
-        '',
-        review.muscleVolume.length === 0
-          ? 'No working volume recorded.'
-          : `Volume by muscle (vs the preceding ${weeks} weeks):\n  ${review.muscleVolume
-              .slice(0, 12)
-              .map(
-                (m) =>
-                  `${m.muscle}: ${m.volumeKg}kg` +
-                  (m.changePct === null
-                    ? ' (no prior data)'
-                    : ` (${m.changePct > 0 ? '+' : ''}${m.changePct}%)`),
-              )
-              .join('\n  ')}`,
-        '',
-        review.stalled.length === 0
-          ? 'Nothing looks stalled.'
-          : `Stalled (best set unchanged across 3+ sessions):\n  ${review.stalled
-              .map(
-                (s) =>
-                  `${s.exercise}: ${s.sessions} sessions at ${s.bestWeightKg ?? '?'}kg × ${s.bestReps ?? '?'}`,
-              )
-              .join('\n  ')}`,
-      ]
-      return text(lines.join('\n'))
-    },
+    async ({ weeks }) => text(reviewSummary(await trainingReview(caller, weeks), weeks)),
   )
 
   server.registerTool(

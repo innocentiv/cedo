@@ -12,7 +12,8 @@ import {
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydrate } from './mapper.ts'
-import { encodeCursor, listConditions } from './query.ts'
+import { encodeCursor } from '../../lib/keyset.ts'
+import { listConditions } from './query.ts'
 
 export async function list(caller: Caller, query: ExerciseQuery): Promise<Page<Exercise>> {
   // One row beyond the limit answers "is there more?" without a second count query.

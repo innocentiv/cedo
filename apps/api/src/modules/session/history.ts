@@ -11,21 +11,41 @@ import type { Caller } from '../../plugins/auth.ts'
  * `set_logs_exercise_time_idx` plus the join — this is the shape a progress chart will consume
  * later without a schema change. See docs/03-domain-model.md.
  */
-export async function history(
-  caller: Caller,
-  exerciseId: string,
-  query: ExerciseHistoryQuery,
-): Promise<ExerciseHistory> {
+async function assertVisible(caller: Caller, exerciseId: string): Promise<void> {
   const [exercise] = await db
     .select({ id: exercises.id })
     .from(exercises)
     .where(and(visible(exercises, caller), eq(exercises.id, exerciseId)))
     .limit(1)
   if (exercise === undefined) throw notFound('exercise')
+}
+
+export async function history(
+  caller: Caller,
+  exerciseId: string,
+  query: ExerciseHistoryQuery,
+): Promise<ExerciseHistory> {
+  await assertVisible(caller, exerciseId)
 
   const conditions = [eq(setLogs.exerciseId, exerciseId), eq(workoutSessions.userId, caller.userId)]
   if (query.since !== undefined)
     conditions.push(sql`${workoutSessions.startedAt} >= ${query.since}`)
+
+  /**
+   * The session cap is applied in SQL, not by slicing afterwards.
+   *
+   * Reading every log for the exercise and keeping the newest twenty sessions transferred hundreds
+   * of rows to return a handful — two years of a main lift is easily a thousand. The subquery picks
+   * the session ids first, which `set_logs_exercise_time_idx` serves directly.
+   */
+  const recentSessions = db
+    .selectDistinct({ id: workoutSessions.id, startedAt: workoutSessions.startedAt })
+    .from(setLogs)
+    .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
+    .where(and(...conditions))
+    .orderBy(desc(workoutSessions.startedAt))
+    .limit(query.limit)
+    .as('recent')
 
   const rows = await db
     .select({
@@ -41,10 +61,11 @@ export async function history(
     })
     .from(setLogs)
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
-    .where(and(...conditions))
+    .innerJoin(recentSessions, eq(sql`recent.id`, setLogs.sessionId))
+    .where(eq(setLogs.exerciseId, exerciseId))
     .orderBy(desc(workoutSessions.startedAt), asc(setLogs.setIndex))
 
-  return { exerciseId, sessions: groupIntoSessions(rows).slice(0, query.limit) }
+  return { exerciseId, sessions: groupIntoSessions(rows) }
 }
 
 type HistoryRow = {

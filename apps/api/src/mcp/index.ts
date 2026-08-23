@@ -4,7 +4,7 @@ import { and, eq, gt, isNull, or } from 'drizzle-orm'
 import { db } from '../db/client.ts'
 import { groupMembers, personalAccessTokens, users } from '../db/schema.ts'
 import { bearerToken, hashToken } from '../lib/token.ts'
-import type { Caller } from '../plugins/auth.ts'
+import { type Caller, foldCaller } from '../plugins/auth.ts'
 import { registerDiagnosticTools } from './tools/diagnostics.ts'
 import { registerLibraryTools } from './tools/library.ts'
 import { registerTrainingTools } from './tools/training.ts'
@@ -44,13 +44,7 @@ export async function resolveTokenCaller(authorization: string | null): Promise<
       console.error('Could not record personal access token use:', error)
     })
 
-  return {
-    userId: first.userId,
-    username: first.username,
-    displayName: first.displayName,
-    personalGroupId: first.personalGroupId,
-    ...memberships(rows),
-  }
+  return foldCaller(first, rows)
 }
 
 /** One query: the token, its user, and every group membership. Same shape as the HTTP auth macro. */
@@ -74,20 +68,6 @@ async function tokenRows(token: string) {
         or(isNull(personalAccessTokens.expiresAt), gt(personalAccessTokens.expiresAt, new Date())),
       ),
     )
-}
-
-/** The join returns one row per membership; fold them into the two lists the ACL consumes. */
-function memberships(
-  rows: readonly { groupId: string | null; role: 'editor' | 'reader' | null }[],
-) {
-  const groupIds: string[] = []
-  const editorGroupIds: string[] = []
-  for (const row of rows) {
-    if (row.groupId === null) continue
-    groupIds.push(row.groupId)
-    if (row.role === 'editor') editorGroupIds.push(row.groupId)
-  }
-  return { groupIds, editorGroupIds }
 }
 
 /**

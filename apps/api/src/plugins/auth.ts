@@ -43,6 +43,29 @@ export async function resolveCaller(
   const first = rows[0]
   if (first === undefined) return null
 
+  return foldCaller(first, rows)
+}
+
+/** One row per membership arrives from the join; this is the shape the ACL consumes. */
+export interface MembershipRow {
+  readonly groupId: string | null
+  readonly role: 'editor' | 'reader' | null
+}
+
+export interface IdentityRow {
+  readonly userId: string
+  readonly username: string
+  readonly displayName: string
+  readonly personalGroupId: string
+}
+
+/**
+ * Shared by BOTH credential paths — browser sessions here, personal access tokens in mcp/index.ts.
+ * They differ only in which table the credential lives in and how expiry is expressed; the fold was
+ * previously duplicated character for character, so adding a role or a scoped membership to one
+ * would have left the other silently permissive.
+ */
+export function foldCaller(identity: IdentityRow, rows: readonly MembershipRow[]): Caller {
   const groupIds: string[] = []
   const editorGroupIds: string[] = []
   for (const row of rows) {
@@ -50,15 +73,7 @@ export async function resolveCaller(
     groupIds.push(row.groupId)
     if (row.role === 'editor') editorGroupIds.push(row.groupId)
   }
-
-  return {
-    userId: first.userId,
-    username: first.username,
-    displayName: first.displayName,
-    personalGroupId: first.personalGroupId,
-    groupIds,
-    editorGroupIds,
-  }
+  return { ...identity, groupIds, editorGroupIds }
 }
 
 /**

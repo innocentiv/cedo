@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, gte, lt, sql } from 'drizzle-orm'
+import { gToKg } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import {
   exerciseMuscles,
@@ -92,17 +93,23 @@ function adherenceOf(
   }
 
   /**
-   * Consecutive days from today with a session, allowing a one-day rest between them — training
-   * every other day is a streak, not a broken one, which a naive consecutive-days count would miss.
+   * Counted in DISTINCT CALENDAR DAYS, not sessions. Counting sessions reported a two-day streak
+   * for a morning and an evening workout on the same date, while the field is named `...Days` and
+   * an AI coach reasons about it as days.
+   *
+   * A one-day rest does not break it: training every other day is a streak, which a naive
+   * consecutive-days count would miss.
    */
+  const days = [...new Set(times.map((t) => Math.floor(t / DAY_MS)))].toSorted((a, b) => b - a)
   let currentStreakDays = 0
-  if (last !== undefined && Date.now() - last <= 2 * DAY_MS) {
+  const today = Math.floor(Date.now() / DAY_MS)
+  if (days[0] !== undefined && today - days[0] <= 1) {
     currentStreakDays = 1
-    for (let i = 0; i + 1 < times.length; i++) {
-      const a = times[i]
-      const b = times[i + 1]
+    for (let i = 0; i + 1 < days.length; i++) {
+      const a = days[i]
+      const b = days[i + 1]
       if (a === undefined || b === undefined) break
-      if (a - b > 2 * DAY_MS) break
+      if (a - b > 2) break
       currentStreakDays += 1
     }
   }
@@ -137,48 +144,57 @@ async function dayBalance(caller: Caller, since: Date): Promise<TrainingReview['
  * One query for the current window and one for the window before it, so the trend is a comparison
  * rather than a number with no context.
  */
+async function volumeBetween(caller: Caller, from: Date, to: Date) {
+  return await db
+    .select({
+      muscle: exerciseMuscles.muscleSlug,
+      volume:
+        sql<number>`coalesce(sum(${setLogs.weightG} * ${setLogs.reps} * ${exerciseMuscles.loadPct} / 100.0), 0)`.mapWith(
+          Number,
+        ),
+    })
+    .from(setLogs)
+    .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
+    .innerJoin(exerciseMuscles, eq(exerciseMuscles.exerciseId, setLogs.exerciseId))
+    .where(
+      and(
+        eq(workoutSessions.userId, caller.userId),
+        eq(setLogs.isWarmup, false),
+        gte(workoutSessions.startedAt, from),
+        // `lt`, not raw sql: a JS Date interpolated into a template serialises via toString
+        // ("Sun Aug 23 2026 ...") which Postgres cannot parse in a timestamp comparison.
+        lt(workoutSessions.startedAt, to),
+      ),
+    )
+    .groupBy(exerciseMuscles.muscleSlug)
+}
+
 async function muscleVolume(
   caller: Caller,
   since: Date,
   previousSince: Date,
 ): Promise<TrainingReview['muscleVolume']> {
-  const volumeSince = async (from: Date, to: Date) =>
-    await db
-      .select({
-        muscle: exerciseMuscles.muscleSlug,
-        volume:
-          sql<number>`coalesce(sum(${setLogs.weightG} * ${setLogs.reps} * ${exerciseMuscles.loadPct} / 100.0), 0)`.mapWith(
-            Number,
-          ),
-      })
-      .from(setLogs)
-      .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
-      .innerJoin(exerciseMuscles, eq(exerciseMuscles.exerciseId, setLogs.exerciseId))
-      .where(
-        and(
-          eq(workoutSessions.userId, caller.userId),
-          eq(setLogs.isWarmup, false),
-          gte(workoutSessions.startedAt, from),
-          // `lt`, not raw sql: a JS Date interpolated into a template serialises via toString
-          // ("Sun Aug 23 2026 ...") which Postgres cannot parse in a timestamp comparison.
-          lt(workoutSessions.startedAt, to),
-        ),
-      )
-      .groupBy(exerciseMuscles.muscleSlug)
-
-  const now = new Date()
-  const current = await volumeSince(since, now)
+  const current = await volumeBetween(caller, since, new Date())
   const previous = new Map(
-    (await volumeSince(previousSince, since)).map((r) => [r.muscle, r.volume]),
+    (await volumeBetween(caller, previousSince, since)).map((r) => [r.muscle, r.volume]),
   )
 
-  return current
-    .map((r) => {
-      const before = previous.get(r.muscle) ?? 0
+  /**
+   * The UNION of both windows, not just the current one. Iterating `current` alone made a muscle
+   * trained hard last period and abandoned this one simply disappear — indistinguishable from never
+   * having been trained, and precisely the regression the comparison exists to surface.
+   */
+  const currentByMuscle = new Map(current.map((r) => [r.muscle, r.volume]))
+  const muscles = new Set([...currentByMuscle.keys(), ...previous.keys()])
+
+  return [...muscles]
+    .map((muscle) => {
+      const volume = currentByMuscle.get(muscle) ?? 0
+      const before = previous.get(muscle) ?? 0
       return {
-        muscle: r.muscle,
-        volumeKg: Math.round(r.volume / 1000),
-        changePct: before === 0 ? null : Math.round(((r.volume - before) / before) * 100),
+        muscle,
+        volumeKg: gToKg(Math.round(volume)),
+        changePct: before === 0 ? null : Math.round(((volume - before) / before) * 100),
       }
     })
     .toSorted((a, b) => b.volumeKg - a.volumeKg)
@@ -196,7 +212,16 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
       sessions: sql<number>`count(distinct ${setLogs.sessionId})`.mapWith(Number),
       bestWeight: sql<number | null>`max(${setLogs.weightG})`.mapWith(Number),
       bestReps: sql<number | null>`max(${setLogs.reps})`.mapWith(Number),
-      distinctBest: sql<number>`count(distinct ${setLogs.weightG})`.mapWith(Number),
+      /**
+       * Progress is any improvement in weight OR reps OR duration — not weight alone.
+       * `count(distinct weight_g)` was 0 for every bodyweight and duration exercise, because
+       * `count(distinct NULL)` is 0, so a pull-up progressing 8 -> 10 -> 12 reps was reported as
+       * stalled: the tool advised changing the one movement that was actually working.
+       */
+      distinctEfforts:
+        sql<number>`count(distinct (${setLogs.weightG}, ${setLogs.reps}, ${setLogs.durationS}))`.mapWith(
+          Number,
+        ),
     })
     .from(setLogs)
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
@@ -213,12 +238,12 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
     .orderBy(asc(exercises.name))
 
   return rows
-    .filter((r) => r.distinctBest <= 1)
+    .filter((r) => r.distinctEfforts <= 1)
     .map((r) => ({
       exercise: r.exercise,
       sessions: r.sessions,
       // `mapWith(Number)` turns a SQL NULL into NaN, never null.
-      bestWeightKg: Number.isNaN(r.bestWeight) ? null : Math.round(r.bestWeight / 100) / 10,
+      bestWeightKg: Number.isNaN(r.bestWeight) ? null : gToKg(Math.round(r.bestWeight)),
       bestReps: Number.isNaN(r.bestReps) ? null : r.bestReps,
     }))
 }

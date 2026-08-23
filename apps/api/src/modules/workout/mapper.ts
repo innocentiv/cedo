@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray } from 'drizzle-orm'
 import type { Workout, WorkoutDay, WorkoutSummary } from '@cedo/contract'
 import { db } from '../../db/client.ts'
+import { groupBy } from '../../lib/keyset.ts'
 import {
   exerciseFavourites,
   exercises,
@@ -9,6 +10,7 @@ import {
   workoutSets,
 } from '../../db/schema.ts'
 import type { workouts } from '../../db/schema.ts'
+import { visible } from '../../db/ownable.ts'
 import { hydrate as hydrateExercises } from '../exercise/mapper.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
@@ -93,17 +95,19 @@ type EntryRow = typeof workoutEntries.$inferSelect
 type SetRow = typeof workoutSets.$inferSelect
 type ExerciseById = Map<string, Awaited<ReturnType<typeof hydrateExercises>>[number]>
 
+/**
+ * An exercise can become invisible AFTER a workout was shared — a membership is removed, or the
+ * exercise is transferred away. Reported as `exercise: null` rather than thrown or omitted: the
+ * plan stays legible and the prescribed sets still make sense, while nothing about the hidden
+ * exercise escapes. `transfer` blocks creating this state in the first place; this is the defence
+ * for when it happens anyway. See docs/03-domain-model.md.
+ */
 function toEntry(entry: EntryRow, sets: SetRow[], exerciseById: ExerciseById) {
-  const exercise = exerciseById.get(entry.exerciseId)
-  if (exercise === undefined) {
-    // A foreign key guarantees the row exists; `visible()` is what can hide it.
-    throw new Error(`Exercise ${entry.exerciseId} is referenced but not visible to the caller`)
-  }
   return {
     id: entry.id,
     index: entry.index,
     exerciseId: entry.exerciseId,
-    exercise,
+    exercise: exerciseById.get(entry.exerciseId) ?? null,
     supersetGroup: entry.supersetGroup,
     restSeconds: entry.restSeconds,
     progression: entry.progression,
@@ -122,21 +126,19 @@ function toEntry(entry: EntryRow, sets: SetRow[], exerciseById: ExerciseById) {
   }
 }
 
-function groupBy<T>(rows: readonly T[], key: (row: T) => string): Map<string, T[]> {
-  const grouped = new Map<string, T[]>()
-  for (const row of rows) {
-    const list = grouped.get(key(row)) ?? []
-    list.push(row)
-    grouped.set(key(row), list)
-  }
-  return grouped
-}
-
 async function hydrateExerciseRows(ids: string[], caller: Caller) {
   if (ids.length === 0)
     return new Map<string, Awaited<ReturnType<typeof hydrateExercises>>[number]>()
 
-  const rows = await db.select().from(exercises).where(inArray(exercises.id, ids))
+  /**
+   * `visible()` is NOT optional here. Without it a workout shared with a group hands every member
+   * the full record — name, description, instructions, media — of exercises they cannot otherwise
+   * see, which is invariant 5 in CLAUDE.md. Anything filtered out is redacted by the caller.
+   */
+  const rows = await db
+    .select()
+    .from(exercises)
+    .where(and(visible(exercises, caller), inArray(exercises.id, ids)))
 
   // Fetched rather than assumed: passing an empty set would report `isFavourite: false` for an
   // exercise the caller has actually pinned.
