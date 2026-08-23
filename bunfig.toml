@@ -1,0 +1,6 @@
+[install]
+# Workspaces are linked from the repo root.
+exact = true
+
+[test]
+coverageThreshold = 0

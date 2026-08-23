@@ -1,0 +1,16 @@
+{
+  "// ": "Solution file. `tsc -b .` type-checks every TypeScript 7 (server-side) project.",
+  "// apps/app": "Deliberately NOT referenced: Expo 57 is pinned to TypeScript 6, and Expo will not support TypeScript 7 until 7.1. See docs/adr/0007-typescript-version-split.md",
+  "files": [],
+  "references": [
+    {
+      "path": "packages/contract"
+    },
+    {
+      "path": "scripts"
+    },
+    {
+      "path": "test"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+node_modules/
+.env
+.env.local
+
+# build output
+dist/
+build/
+.expo/
+apps/app/dist/
+*.tsbuildinfo
+.tsbuild/
+
+# AI/verification artifacts — screenshots and perf reports (see docs/10-testing.md)
+.artifacts/
+
+# os
+.DS_Store

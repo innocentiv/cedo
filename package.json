@@ -1,0 +1,38 @@
+{
+  "name": "cedo",
+  "private": true,
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "type": "module",
+  "scripts": {
+    "format": "oxfmt .",
+    "format:check": "oxfmt --check .",
+    "lint:server": "oxlint -c .oxlintrc.typeaware.json --deny-warnings packages/contract apps/api scripts test",
+    "lint:app": "if [ -d apps/app/src ]; then oxlint --deny-warnings apps/app; else echo 'skip lint:app — apps/app not scaffolded yet (M8)'; fi",
+    "lint": "bun run lint:server && bun run lint:app",
+    "typecheck:server": "tsc -b .",
+    "typecheck:app": "if [ -d apps/app/src ]; then bun --cwd apps/app x tsc --noEmit; else echo 'skip typecheck:app — apps/app not scaffolded yet (M8)'; fi",
+    "typecheck": "bun run typecheck:server && bun run typecheck:app",
+    "test": "bun test --parallel",
+    "test:changed": "bun test --changed",
+    "e2e": "bun test apps/app/e2e",
+    "shot": "bun run apps/app/e2e/shot.ts",
+    "perf": "bun test apps/api/src/test/perf --serial",
+    "check": "bun run format:check && bun run lint && bun run typecheck && bun run docs:links && bun run test",
+    "db:up": "docker compose up -d db",
+    "db:test": "docker compose -f docker-compose.test.yml up -d",
+    "docs:links": "bun run scripts/check-doc-links.ts"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.0",
+    "oxfmt": "0.64.0",
+    "oxlint": "1.79.0",
+    "oxlint-tsgolint": "7.0.2001",
+    "typescript": "7.0.2"
+  },
+  "engines": {
+    "bun": ">=1.4.0"
+  }
+}
