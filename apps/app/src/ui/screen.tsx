@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { color, space } from './tokens.ts'
+import { CONTENT_MAX_WIDTH, color, space } from './tokens.ts'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
@@ -54,8 +54,23 @@ export function Screen({
 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: color.bg },
-  content: { flexGrow: 1, padding: space.lg, gap: space.lg },
+  /**
+   * Capped and centred. A form stretched across 1280px of tablet reads badly — the eye travels the
+   * whole width for a field that needs a fifth of it — and this is the one place to say so, since
+   * every route is a Screen.
+   */
+  content: {
+    flexGrow: 1,
+    padding: space.lg,
+    gap: space.lg,
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
+  },
   footer: {
+    width: '100%',
+    maxWidth: CONTENT_MAX_WIDTH,
+    alignSelf: 'center',
     paddingHorizontal: space.lg,
     paddingTop: space.md,
     borderTopWidth: 1,

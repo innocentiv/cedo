@@ -135,3 +135,15 @@ assertion.
 Adding a screen: give every element a `testID`, add it to the sweep in `e2e/routes.e2e.ts`, and run
 `bun run e2e`. The harness fails on any console error without a single hand-written assertion, so
 the sweep is coverage rather than a set of expectations. See `docs/10-testing.md`.
+
+## One rule is calibrated differently here
+
+`max-lines-per-function` is 50 across the repo and **120 for `.tsx` files in the app**.
+
+The rule is a proxy for complexity, and it is a good one for imperative code. A declarative render
+function is a different shape: a form with six fields is a hundred lines of markup with one branch
+in it, and splitting it into `<TopHalf>` and `<BottomHalf>` makes it harder to read, not easier.
+
+Every genuinely separable piece has been extracted — `Loaded`, `FormError`, `MuscleOptions`,
+`TokenList`, `History`, `EntryEditor`. What remains long is markup. If a screen approaches 120 lines
+it is usually because it grew a rule, and the rule belongs in `@cedo/contract`.

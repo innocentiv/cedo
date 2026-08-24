@@ -19,6 +19,20 @@ import {
 
 const PASSWORD = 'e2e-password'
 
+/**
+ * Every route a signed-in user can reach without an id. Detail routes need real data and are
+ * covered by the journeys in `journeys.e2e.ts` instead.
+ */
+const ROUTES: readonly (readonly [string, string])[] = [
+  ['/today', 'today-screen'],
+  ['/workouts', 'workouts-screen'],
+  ['/exercises', 'exercises-screen'],
+  ['/exercises/new', 'exercise-new-screen'],
+  ['/settings', 'settings-screen'],
+  ['/settings/groups', 'groups-screen'],
+  ['/settings/tokens', 'tokens-screen'],
+]
+
 // Started here rather than lazily inside the first test, so migrating and seeding is not charged
 // to whichever journey happens to run first.
 beforeAll(async () => {
@@ -67,9 +81,8 @@ test(
   async () => {
     await withApp('route-sweep', async (page) => {
       await register(page, `sweep${Date.now().toString(36)}`)
-      for (const route of ['/today', '/workouts', '/exercises', '/settings']) {
+      for (const [route, id] of ROUTES) {
         await page.goto(route)
-        const id = `${route.slice(1)}-screen`
         await page.waitFor(id)
         expect(await page.exists('error-boundary')).toBe(false)
       }

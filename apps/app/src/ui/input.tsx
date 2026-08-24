@@ -101,6 +101,12 @@ export function NumberInput({
     <TextInput
       testID={testID}
       value={value === null ? '' : String(value)}
+      /**
+       * Focusing a prefilled numeric field selects it, so typing REPLACES the prescribed value.
+       * Without this, tapping "8 reps" and typing 8 logs 88 — which is what happened the first time
+       * a set was logged through the e2e run.
+       */
+      selectTextOnFocus
       onChangeText={(text) => {
         const cleaned = decimals ? text.replaceAll(/[^\d.]/gu, '') : text.replaceAll(/\D/gu, '')
         if (cleaned === '') {

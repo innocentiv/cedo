@@ -51,3 +51,9 @@ export const TABLET_MIN_WIDTH = 768
 
 /** Touch targets. 44 is the smallest reliably hittable control with a thumb, mid-set. */
 export const CONTROL_HEIGHT = 48
+
+/**
+ * How wide content is allowed to get. Beyond this a line of text or a form field is harder to read,
+ * not easier — a tablet gets more margin, not wider inputs.
+ */
+export const CONTENT_MAX_WIDTH = 720

@@ -141,6 +141,14 @@ export interface Page {
   readonly exists: (testId: string) => Promise<boolean>
   /** Wait until a test id is present, or fail with what was on screen instead. */
   readonly waitFor: (testId: string, timeoutMs?: number) => Promise<void>
+  /**
+   * Wait for any element matching a CSS selector, and return its test id.
+   *
+   * Needed for anything whose id is not known ahead of time — a row in a list that has just been
+   * fetched. Waiting is the point: without it a test reads the DOM before the query resolves and
+   * fails for a reason that has nothing to do with what it is testing.
+   */
+  readonly waitForSelector: (css: string, timeoutMs?: number) => Promise<string>
   readonly evaluate: (script: string) => Promise<unknown>
   readonly errors: readonly string[]
 }
@@ -210,6 +218,11 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
     },
     fill: async (testId, text) => {
       await view.click(selector(testId))
+      // Selected first, so `fill` REPLACES rather than appends. A prefilled field is the normal
+      // case here — prescribed reps, a target weight — and appending silently logs 88 for 8.
+      await view.evaluate(
+        `(() => { const el = document.activeElement; if (el && 'select' in el) el.select() })()`,
+      )
       await view.type(text)
     },
     text: async (testId) => {
@@ -233,6 +246,16 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
         `Timed out waiting for "${testId}". On screen: ${String(seen)}\n` +
           (errors.length > 0 ? `Console errors so far:\n  ${errors.join('\n  ')}` : ''),
       )
+    },
+    waitForSelector: async (css, timeoutMs = 8000) => {
+      const deadline = Date.now() + timeoutMs
+      const read = `document.querySelector(${quote(css)})?.getAttribute('data-testid') ?? null`
+      while (Date.now() < deadline) {
+        const found = await view.evaluate(read)
+        if (typeof found === 'string') return found
+        await Bun.sleep(150)
+      }
+      throw new Error(`Timed out waiting for an element matching ${css}.`)
     },
     evaluate: async (script) => await view.evaluate(script),
     get errors() {

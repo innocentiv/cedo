@@ -124,6 +124,7 @@ export type Workout = z.output<typeof Workout>
 
 export const WORKOUT_SCOPES = ['all', 'mine', 'favourites', 'group'] as const
 export const WorkoutScope = z.enum(WORKOUT_SCOPES)
+export type WorkoutScope = z.output<typeof WorkoutScope>
 
 export const WorkoutQuery = PaginationQuery.extend({
   scope: WorkoutScope.default('all'),

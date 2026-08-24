@@ -21,6 +21,12 @@
       "rules": {
         "max-classes-per-file": "off"
       }
+    },
+    {
+      "files": ["app/**/*.tsx", "src/ui/*.tsx", "src/lib/*.tsx"],
+      "rules": {
+        "max-lines-per-function": ["warn", 120]
+      }
     }
   ]
 }

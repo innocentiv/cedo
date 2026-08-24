@@ -16,6 +16,12 @@ export interface TextProps extends Omit<RNTextProps, 'style'> {
   readonly variant?: TypeVariant | undefined
   readonly tone?: Tone | undefined
   readonly align?: 'left' | 'center' | 'right'
+  /**
+   * Opt in to selection. Text is unselectable by default so a long-press does what the screen
+   * intended, but a value the user must copy out — an access token, shown exactly once — has to be
+   * selectable or the screen is useless.
+   */
+  readonly selectable?: boolean | undefined
 }
 
 /**
@@ -26,12 +32,18 @@ export function Text({
   variant = 'body',
   tone = 'default',
   align = 'left',
+  selectable = false,
   ...rest
 }: TextProps): React.JSX.Element {
   return (
     <RNText
       {...rest}
-      style={[styles.base, typeScale[variant], { color: TONE[tone], textAlign: align }]}
+      selectable={selectable}
+      style={[
+        selectable ? styles.selectable : styles.base,
+        typeScale[variant],
+        { color: TONE[tone], textAlign: align },
+      ]}
     />
   )
 }
@@ -42,4 +54,5 @@ const styles = StyleSheet.create({
     // text instead of doing what the screen intended.
     userSelect: 'none',
   },
+  selectable: { userSelect: 'text' },
 })
