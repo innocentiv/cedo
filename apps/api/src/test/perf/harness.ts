@@ -23,7 +23,15 @@ export async function perfFixtures(): Promise<PerfFixtures> {
     }
     await ensureDatabaseExists()
 
-    const existing = await loadPerfFixtures()
+    /**
+     * A THROWN load counts as "not seeded", not as a crash.
+     *
+     * The database can exist with no schema at all — `docker compose down -v` on the test stack
+     * removes the volume — and the first query then fails on a missing table rather than returning
+     * nothing. Treating that as a reason to reseed makes the suite self-healing; treating it as an
+     * error made `bun run perf` unrunnable until someone worked out what had happened.
+     */
+    const existing = await loadPerfFixtures().catch(() => null)
     if (existing !== null) return existing
 
     console.log(
