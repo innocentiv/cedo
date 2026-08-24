@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
+import { useGoBack } from '../../../../src/lib/use-go-back.ts'
 import type { Exercise } from '@cedo/contract'
 import { ErrorNotice, type LoggedValues, Screen, Spinner, Text } from '../../../../src/ui/index.ts'
 import { AdHoc, LoggedSets, PlannedDay, SessionFooter } from '../../../../src/lib/session-parts.tsx'
@@ -75,7 +76,7 @@ export default function LiveSession(): React.JSX.Element {
   // `[id]`, not `[sessionId]`: route filenames are kebab-case like every other file, and a
   // camelCase segment cannot be spelled that way.
   const { id: sessionId } = useLocalSearchParams<{ id: string }>()
-  const router = useRouter()
+  const goBack = useGoBack('/today')
   const id = sessionId ?? ''
 
   const { chosen, picking, startPicking, stopPicking, choose } = useAdHocExercises()
@@ -129,12 +130,12 @@ export default function LiveSession(): React.JSX.Element {
           ended={ended}
           busy={busy}
           onLeave={() => {
-            router.back()
+            goBack()
           }}
           onFinish={() => {
             void submit(async () => {
               await finish.mutateAsync({ endedAt: new Date().toISOString() })
-              router.back()
+              goBack()
             })
           }}
         />

@@ -166,6 +166,20 @@ no third-party scripts; moving to an httpOnly cookie touches this file and the l
 a router that treats "not known yet" as "signed out" flashes the login screen at a returning user
 for one frame before bouncing them back.
 
+## The web build is a SPA, not prerendered
+
+`app.json` sets `web.output: "single"` — one `index.html`, no server rendering.
+
+`"static"` prerenders one HTML file per route, which cannot work for a route whose parameter is only
+known at request time. Opening `/exercises/<id>` directly — a shared link, or just reloading a detail
+screen — served markup rendered without that id, the client hydrated with it, and React threw
+`#418: Hydration failed`. Every dynamic route was affected, and the route sweep never caught it
+because it only visits routes without ids.
+
+Nothing here wants server rendering: the whole app is behind authentication and is served from
+someone's NAS, so there is no SEO and no first-paint budget to defend. Caddy's fallback is
+correspondingly simple — `try_files {path} /index.html`.
+
 ## Development runs the same shape as production
 
 `bun run dev` starts the API on :3000 and Metro on :8081. The app calls the relative path `/api` in

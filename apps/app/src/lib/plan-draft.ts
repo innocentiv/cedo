@@ -1,5 +1,11 @@
-import type { Workout, WorkoutDayInput, WorkoutEntryInput, WorkoutPlanInput } from '@cedo/contract'
-import { NO_PROGRESSION } from '@cedo/contract'
+import type {
+  Exercise,
+  Workout,
+  WorkoutDayInput,
+  WorkoutEntryInput,
+  WorkoutPlanInput,
+} from '@cedo/contract'
+import { NO_PROGRESSION, tracks } from '@cedo/contract'
 
 /**
  * The plan editor's working copy.
@@ -43,18 +49,25 @@ export const emptyDay = (index: number): DayDraft => ({
   entries: [],
 })
 
-/** A new entry starts with three working sets, which is what almost every prescription is. */
-export const emptyEntry = (exerciseId: string): EntryDraft => ({
-  exerciseId,
+/**
+ * A new entry starts with three working sets, which is what almost every prescription is — and with
+ * a target in whatever the exercise actually measures.
+ *
+ * Seeding `targetReps` regardless left a plank with three sets and an empty Seconds box: a required
+ * field, blank, with nothing saying what belongs in it. The mode is known here because the picker
+ * hands back the whole exercise.
+ */
+export const emptyEntry = (exercise: Exercise): EntryDraft => ({
+  exerciseId: exercise.id,
   supersetGroup: null,
   restSeconds: 120,
   progression: NO_PROGRESSION,
   sets: Array.from({ length: 3 }, () => ({
-    targetReps: 8,
+    targetReps: tracks(exercise.tracking, 'reps') ? 8 : null,
     targetWeightG: null,
     targetRpe: null,
-    targetDurationS: null,
-    targetDistanceMm: null,
+    targetDurationS: tracks(exercise.tracking, 'duration') ? 30 : null,
+    targetDistanceMm: tracks(exercise.tracking, 'distance') ? 100_000 : null,
     isWarmup: false,
   })),
 })

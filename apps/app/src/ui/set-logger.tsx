@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import { type SetTarget, type TrackingMode, formatWeight, gToKg, kgToG } from '@cedo/contract'
+import {
+  type SetTarget,
+  type TrackingMode,
+  formatWeight,
+  gToKg,
+  kgToG,
+  tracks,
+} from '@cedo/contract'
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
 import { NumberInput } from './input.tsx'
@@ -53,10 +60,12 @@ export function SetLogger({
       : target.distanceMm / 1000,
   )
 
-  const showsWeight = tracking === 'weight_reps' || tracking === 'bodyweight_reps'
-  const showsReps = showsWeight
-  const showsDuration = tracking === 'duration' || tracking === 'distance_duration'
-  const showsDistance = tracking === 'distance_duration'
+  // From the contract, not restated here: the plan editor asks the same question and the two
+  // answers must not drift. See `DIMENSIONS_BY_TRACKING`.
+  const showsWeight = tracks(tracking, 'weight')
+  const showsReps = tracks(tracking, 'reps')
+  const showsDuration = tracks(tracking, 'duration')
+  const showsDistance = tracks(tracking, 'distance')
 
   return (
     <Card testID={testID}>

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { useLocalSearchParams, useRouter } from 'expo-router'
+import { useLocalSearchParams } from 'expo-router'
+import { useGoBack } from '../../../../src/lib/use-go-back.ts'
 import {
   Button,
   DayEditor,
@@ -26,7 +27,7 @@ import { useSubmit } from '../../../../src/lib/use-submit.ts'
 
 export default function EditPlan(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const router = useRouter()
+  const goBack = useGoBack('/workouts')
   const workout = useWorkout(id ?? '')
   const library = useExercises({ scope: 'all', limit: 100 })
   const replace = useReplacePlan(id ?? '')
@@ -36,15 +37,15 @@ export default function EditPlan(): React.JSX.Element {
   const [picking, setPicking] = useState<number | null>(null)
 
   const draft = days ?? (workout.data === undefined ? [] : draftFrom(workout.data))
-  const names = useMemo(
-    () => new Map((library.data?.items ?? []).map((e) => [e.id, e.name])),
+  const byId = useMemo(
+    () => new Map((library.data?.items ?? []).map((e) => [e.id, e])),
     [library.data],
   )
 
   const save = () => {
     void submit(async () => {
       await replace.mutateAsync(toPlanInput(draft))
-      router.back()
+      goBack()
     })
   }
 
@@ -69,7 +70,7 @@ export default function EditPlan(): React.JSX.Element {
             setDays(
               replaceAt(draft, picking, {
                 ...day,
-                entries: [...day.entries, emptyEntry(exercise.id)],
+                entries: [...day.entries, emptyEntry(exercise)],
               }),
             )
           }
@@ -108,7 +109,7 @@ export default function EditPlan(): React.JSX.Element {
             key={`day-${dayIndex}`}
             day={day}
             index={dayIndex}
-            exerciseNames={names}
+            library={byId}
             onChange={(next) => {
               setDays(replaceAt(draft, dayIndex, next))
             }}

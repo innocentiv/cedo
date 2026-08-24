@@ -48,17 +48,12 @@ export interface StaticServer {
 }
 
 /**
- * Static export writes one HTML file per route (`/login` -> `login.html`), so paths are resolved
- * against real files first and only then fall back — which is what Caddy's `try_files` does.
+ * One `index.html` for every route, mirroring the Caddyfile's `try_files {path} /index.html`. The
+ * app is `output: "single"`; see docs/08-frontend.md for why it is not prerendered.
  */
 async function resolveHtml(distDir: string, pathname: string): Promise<string | null> {
   const clean = pathname.replace(/\/$/u, '')
-  for (const candidate of [
-    clean === '' ? 'index.html' : `${clean.slice(1)}.html`,
-    clean === '' ? 'index.html' : `${clean.slice(1)}/index.html`,
-    '+not-found.html',
-    'index.html',
-  ]) {
+  for (const candidate of [clean === '' ? 'index.html' : `${clean.slice(1)}.html`, 'index.html']) {
     const handle = file(join(distDir, candidate))
     if (await handle.exists()) return candidate
   }

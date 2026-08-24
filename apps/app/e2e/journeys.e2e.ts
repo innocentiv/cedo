@@ -227,3 +227,55 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+test(
+  'an empty list still leaves its filter chips one row tall',
+  async () => {
+    await withApp('empty-list-chips', async (page) => {
+      await register(page, unique('chip'))
+
+      // "Mine" is empty for a new account: the seeded library belongs to the shared group.
+      await page.goto('/exercises')
+      await page.waitFor('exercise-scope')
+      await page.click('[data-testid="exercise-scope-mine"]')
+      await page.waitFor('exercises-empty')
+
+      /**
+       * Regression: `Chips` was a horizontal ScrollView, which carries no intrinsic height. With an
+       * empty list under it there was space going spare, so three chips took the whole screen.
+       */
+      const height = await page.evaluate(
+        `document.querySelector('[data-testid="exercise-scope"]').getBoundingClientRect().height`,
+      )
+      expect(typeof height).toBe('number')
+      expect(height as number).toBeLessThan(80)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
+  'finishing a session reached directly still leaves somewhere to go',
+  async () => {
+    await withApp('finish-without-history', async (page) => {
+      await register(page, unique('back'))
+
+      // Start a session, then navigate to it by URL — a reload, a shared link, or simply coming
+      // back to the tab. The router's history is empty, so `router.back()` warned
+      // "The action 'GO_BACK' was not handled by any navigator" and did nothing, stranding the user
+      // on a finished session.
+      await page.goto('/today')
+      await page.waitFor('start-adhoc')
+      await page.click('[data-testid="start-adhoc"]')
+      await page.waitFor('session-screen')
+
+      const sessionPath = String(await page.evaluate('location.pathname'))
+      await page.goto(sessionPath)
+      await page.waitFor('finish-session')
+      await page.click('[data-testid="finish-session"]')
+
+      await page.waitFor('today-screen')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)

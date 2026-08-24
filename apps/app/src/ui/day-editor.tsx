@@ -1,3 +1,4 @@
+import type { Exercise } from '@cedo/contract'
 import type { DayDraft, EntryDraft } from '../lib/plan-draft.ts'
 import { removeAt, replaceAt } from '../lib/plan-draft.ts'
 import { Button } from './button.tsx'
@@ -9,7 +10,8 @@ import { Stack } from './stack.tsx'
 export interface DayEditorProps {
   readonly day: DayDraft
   readonly index: number
-  readonly exerciseNames: ReadonlyMap<string, string>
+  /** The exercises this day may reference, by id. Carries the tracking mode, not just a name. */
+  readonly library: ReadonlyMap<string, Exercise>
   readonly onChange: (day: DayDraft) => void
   readonly onMoveUp: () => void
   readonly onRemove: () => void
@@ -20,7 +22,7 @@ export interface DayEditorProps {
 export function DayEditor({
   day,
   index,
-  exerciseNames,
+  library,
   onChange,
   onMoveUp,
   onRemove,
@@ -59,7 +61,8 @@ export function DayEditor({
           <EntryEditor
             key={`entry-${index}-${entryIndex}`}
             entry={entry}
-            exerciseName={exerciseNames.get(entry.exerciseId) ?? 'Exercise'}
+            exerciseName={library.get(entry.exerciseId)?.name ?? 'Exercise'}
+            tracking={library.get(entry.exerciseId)?.tracking ?? 'weight_reps'}
             testID={`plan-entry-${index}-${entryIndex}`}
             onChange={(next) => {
               setEntries(replaceAt(day.entries, entryIndex, next))

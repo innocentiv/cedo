@@ -11,9 +11,9 @@
 
 	handle {
 		root * /srv
-		# Static export writes one HTML file per route, so a real file is tried first and the SPA
-		# fallback only catches what genuinely is not there.
-		try_files {path} {path}.html {path}/index.html /index.html
+		# The web build is `output: "single"` — one index.html — so a real asset is tried first and
+		# everything else is the app. See apps/app/app.json and docs/08-frontend.md.
+		try_files {path} /index.html
 		file_server
 	}
 

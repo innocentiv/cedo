@@ -10,10 +10,16 @@
     "plugins": ["expo-router"],
     "web": {
       "bundler": "metro",
-      "output": "static"
+      "output": "single"
     },
-    "ios": { "supportsTablet": true },
-    "android": { "edgeToEdgeEnabled": true },
-    "experiments": { "typedRoutes": false }
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "edgeToEdgeEnabled": true
+    },
+    "experiments": {
+      "typedRoutes": false
+    }
   }
 }

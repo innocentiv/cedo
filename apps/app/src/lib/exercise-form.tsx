@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { useRouter } from 'expo-router'
 import {
   type Exercise,
   type ExerciseCreate,
@@ -10,6 +9,7 @@ import {
 } from '@cedo/contract'
 import { Button, Chips, Field, FormError, Input, MusclePicker, Screen } from '../ui/index.ts'
 import { MediaLinks } from './media-links.tsx'
+import { useGoBack } from './use-go-back.ts'
 import { useSubmit } from './use-submit.ts'
 
 const TRACKING_LABELS: Record<TrackingMode, string> = {
@@ -41,7 +41,7 @@ export function ExerciseForm({
   onSave,
   testID,
 }: ExerciseFormProps): React.JSX.Element {
-  const router = useRouter()
+  const goBack = useGoBack('/exercises')
   const [name, setName] = useState(initial?.name ?? '')
   const [tracking, setTracking] = useState<TrackingMode>(initial?.tracking ?? 'weight_reps')
   const [description, setDescription] = useState(initial?.description ?? '')
@@ -65,7 +65,7 @@ export function ExerciseForm({
         muscles,
         mediaIds: media.map((m) => m.id),
       })
-      router.back()
+      goBack()
     })
   }
 

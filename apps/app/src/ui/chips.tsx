@@ -1,4 +1,4 @@
-import { Pressable, ScrollView, StyleSheet } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import { color, radius, space } from './tokens.ts'
 import { Text } from './text.tsx'
 
@@ -14,7 +14,14 @@ export interface ChipsProps<T extends string> {
   readonly testID?: string | undefined
 }
 
-/** A single-choice row. Used for list scopes and any other short, flat set of options. */
+/**
+ * A single-choice row: list scopes, tracking mode, progression kind.
+ *
+ * Wrapped, NOT a horizontal `ScrollView`. A ScrollView carries no intrinsic height, so inside a
+ * flex column it grew to fill whatever space was going — with an empty list underneath it, three
+ * chips took the entire screen. Every set of options here is short enough to wrap, and a wrapped row
+ * is also the one nobody has to discover a sideways gesture to use.
+ */
 export function Chips<T extends string>({
   options,
   value,
@@ -22,7 +29,7 @@ export function Chips<T extends string>({
   testID,
 }: ChipsProps<T>): React.JSX.Element {
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} testID={testID}>
+    <View style={styles.row} testID={testID}>
       {options.map((option) => (
         <Pressable
           key={option.value}
@@ -39,15 +46,15 @@ export function Chips<T extends string>({
           </Text>
         </Pressable>
       ))}
-    </ScrollView>
+    </View>
   )
 }
 
 const styles = StyleSheet.create({
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, flexGrow: 0, flexShrink: 0 },
   chip: {
     paddingHorizontal: space.md,
     paddingVertical: space.sm,
-    marginRight: space.sm,
     borderRadius: radius.pill,
     borderWidth: 1,
     borderColor: color.border,
