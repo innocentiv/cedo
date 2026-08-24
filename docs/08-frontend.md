@@ -100,6 +100,27 @@ read from the contract's own `details` array. Anything that is not an `ApiError`
 network — is re-thrown into the console rather than flattened into "something went wrong", because
 hiding it would hide exactly what the client exists to catch.
 
+### Configuration reaches the bundle only through dot access
+
+`process.env.EXPO_PUBLIC_API_URL` — **never** `process.env['EXPO_PUBLIC_API_URL']`. Expo's Babel
+plugin substitutes `EXPO_PUBLIC_*` for static member access only; bracket access is left alone and
+evaluates to `undefined` in a built app, so a native build threw "EXPO_PUBLIC_API_URL must be set"
+no matter what was set. Verified by grepping the bundle: with bracket access neither the value nor
+the variable name appears in it.
+
+`apps/app/expo-env.d.ts` declares the variable as a real property, which is what lets dot access
+coexist with `noPropertyAccessFromIndexSignature`.
+
+### A rejected credential ends the session
+
+`http.ts` calls a handler whenever the API answers `unauthenticated` **and** a token was actually
+sent. `AuthProvider` registers one that clears the session and returns to login.
+
+Without it a token revoked elsewhere — signed out on another device, or simply expired after a month
+— left every screen showing "Authentication required" with no way back to the login form. The guard
+for it revokes the session server-side and then navigates WITHOUT a reload, because a reload would
+exercise the restore-on-startup path instead, which is a different thing that already worked.
+
 ### Where the token lives
 
 `src/auth/token-storage.ts` branches on `Platform.OS`: the OS keychain on native, `localStorage` on
@@ -131,6 +152,10 @@ bun run e2e                        # every route, both widths, fails on any cons
 `bun run shot` is the inner loop: edit a screen, run it, **read the PNG**, read the errors. Both the
 sidebar bug and the platform-resolution bug above were found by looking at the picture, not by an
 assertion.
+
+The harness reveals a target before touching it (`scrollIntoView`, then click) and can wait for a
+selector whose id is not known ahead of time. Both exist because their absence produced failures
+about viewport geometry and query timing rather than about the app.
 
 Adding a screen: give every element a `testID`, add it to the sweep in `e2e/routes.e2e.ts`, and run
 `bun run e2e`. The harness fails on any console error without a single hand-written assertion, so

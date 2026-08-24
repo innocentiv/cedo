@@ -19,7 +19,9 @@ import type { z } from 'zod'
  * prefix, so this is resolved at bundle time.
  */
 function resolveBaseUrl(): string {
-  const configured = process.env['EXPO_PUBLIC_API_URL']
+  // DOT access, deliberately: Expo substitutes `EXPO_PUBLIC_*` only for static member access, and
+  // `process.env['NAME']` silently stays undefined in a built app. See expo-env.d.ts.
+  const configured = process.env.EXPO_PUBLIC_API_URL
   if (configured !== undefined && configured !== '') return configured.replace(/\/$/u, '')
   if (Platform.OS === 'web') return '/api'
   throw new Error(
@@ -49,6 +51,20 @@ let bearer: string | null = null
 
 export function setAuthToken(token: string | null): void {
   bearer = token
+}
+
+/**
+ * Called when the API rejects the credential we are holding.
+ *
+ * A token can be revoked or expire mid-session — from the settings screen on another device, or
+ * simply by sitting unopened for a month. Without this the app keeps a token the server has
+ * forgotten and every screen fills with "Authentication required" and no way out. The auth provider
+ * registers a handler that signs out and returns to the login screen.
+ */
+let onUnauthenticated: (() => void) | null = null
+
+export function setUnauthenticatedHandler(handler: (() => void) | null): void {
+  onUnauthenticated = handler
 }
 
 async function toApiError(response: Response, path: string): Promise<ApiError> {
@@ -90,7 +106,13 @@ export async function request<S extends z.ZodType>(
     body,
   })
 
-  if (!response.ok) throw await toApiError(response, path)
+  if (!response.ok) {
+    const failure = await toApiError(response, path)
+    // Only when we actually sent a credential: a 401 from the login route means "wrong password",
+    // which the form must show rather than the shell reacting to.
+    if (failure.code === 'unauthenticated' && bearer !== null) onUnauthenticated?.()
+    throw failure
+  }
 
   const text = await response.text()
   const payload: unknown = text === '' ? null : JSON.parse(text)

@@ -149,3 +149,81 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+test(
+  'a credential revoked mid-session returns you to the login screen',
+  async () => {
+    await withApp('revoked-token', async (page) => {
+      await register(page, unique('rev'))
+
+      /**
+       * Revoke the session SERVER-side while the app keeps holding the token, which is what happens
+       * when you sign out on another device or a token expires. Then navigate WITHOUT a reload, so
+       * the next request carries a credential the server has forgotten.
+       *
+       * A page reload would prove nothing: the restore-on-startup path already handles a bad stored
+       * token, and it is not the path this guards.
+       */
+      await page.evaluate(
+        `fetch('/api/auth/logout', {
+           method: 'POST',
+           headers: { authorization: 'Bearer ' + localStorage.getItem('cedo.session') },
+         })`,
+      )
+      await page.click('[data-testid="nav-workouts"]')
+
+      await page.waitFor('login-screen')
+      expect(await page.exists('error-boundary')).toBe(false)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
+  'a shared exercise can be duplicated and the copy edited',
+  async () => {
+    await withApp('duplicate-exercise', async (page) => {
+      await register(page, unique('dup'))
+
+      // The seeded library belongs to the shared `cedo` group, where a new user is a READER — so
+      // this is the path the ACL is designed around: copy it, then edit the copy.
+      await page.goto('/exercises')
+      await page.waitFor('exercise-list')
+      const row = await page.waitForSelector('[data-testid^="exercise-row-"]')
+      await page.click(`[data-testid="${row}"]`)
+
+      await page.waitFor('exercise-detail-screen')
+      await page.waitFor('duplicate-exercise')
+      await page.click('[data-testid="duplicate-exercise"]')
+
+      // Lands straight in the editor for the copy, which is the whole point of duplicating.
+      await page.waitFor('exercise-edit-screen')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
+  'a video link can be attached to an exercise',
+  async () => {
+    await withApp('attach-media', async (page) => {
+      await register(page, unique('med'))
+
+      await page.goto('/exercises/new')
+      await page.waitFor('exercise-new-screen')
+      await page.fill('exercise-name', 'Face Pull With Video')
+      await page.click('[data-testid="muscle-option-deltoid_posterior"]')
+      await page.fill('muscle-load-deltoid_posterior', '100')
+
+      await page.fill('media-url', 'https://www.youtube.com/watch?v=rep-etition')
+      await page.click('[data-testid="attach-media"]')
+      await page.waitForSelector('[data-testid^="media-row-"]')
+
+      await page.click('[data-testid="exercise-new-screen-save"]')
+      await page.goto('/exercises')
+      await page.waitFor('exercise-list')
+      expect(await page.text('exercise-list')).toContain('Face Pull With Video')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)

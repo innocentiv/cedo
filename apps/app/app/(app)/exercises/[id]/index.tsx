@@ -1,10 +1,14 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { MUSCLES, formatWeight } from '@cedo/contract'
+import type { ExerciseHistory } from '@cedo/contract'
 import {
   Button,
   Card,
   ErrorNotice,
+  FormError,
   ListRow,
+  Loaded,
+  type QueryLike,
   NavButton,
   Screen,
   Spinner,
@@ -12,12 +16,62 @@ import {
   Text,
 } from '../../../../src/ui/index.ts'
 import {
+  useDuplicateExercise,
   useExercise,
   useExerciseHistory,
   useFavouriteExercise,
 } from '../../../../src/api/queries.ts'
+import { useSubmit } from '../../../../src/lib/use-submit.ts'
 
 const muscleName = (slug: string): string => MUSCLES.find((m) => m.slug === slug)?.name ?? slug
+
+/**
+ * The last few sessions for this exercise. Rendered through `Loaded` so a failed history request
+ * says so, rather than reading as "nothing logged yet" — which is a different fact entirely.
+ */
+function RecentHistory({
+  query,
+}: {
+  readonly query: QueryLike<ExerciseHistory>
+}): React.JSX.Element {
+  const router = useRouter()
+  return (
+    <Stack gap="sm" testID="exercise-history">
+      <Text variant="label" tone="muted">
+        Recent history
+      </Text>
+      <Loaded query={query} testID="exercise-history">
+        {(history) =>
+          history.sessions.length === 0 ? (
+            <Text tone="faint" variant="caption">
+              Nothing logged yet.
+            </Text>
+          ) : (
+            <Stack gap="xs">
+              {history.sessions.map((entry) => (
+                <ListRow
+                  key={entry.sessionId}
+                  title={new Date(entry.performedAt).toLocaleDateString()}
+                  subtitle={entry.sets
+                    .map(
+                      (set) =>
+                        `${set.reps ?? '—'}×${
+                          set.weightG === null ? 'bw' : formatWeight(set.weightG)
+                        }`,
+                    )
+                    .join('  ')}
+                  onPress={() => {
+                    router.push(`/today/session/${entry.sessionId}`)
+                  }}
+                />
+              ))}
+            </Stack>
+          )
+        }
+      </Loaded>
+    </Stack>
+  )
+}
 
 export default function ExerciseDetail(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -25,6 +79,8 @@ export default function ExerciseDetail(): React.JSX.Element {
   const { data, isPending, error, refetch } = useExercise(id ?? '')
   const history = useExerciseHistory(id ?? '')
   const favourite = useFavouriteExercise()
+  const duplicate = useDuplicateExercise()
+  const { submit, busy, error: copyError } = useSubmit()
 
   if (error !== null) {
     return (
@@ -53,13 +109,27 @@ export default function ExerciseDetail(): React.JSX.Element {
             testID="edit-exercise"
           />
         ) : (
-          <Text variant="caption" tone="faint" align="center">
-            Shared with you as a reader. Duplicate it to make changes.
-          </Text>
+          <Stack gap="xs">
+            <Text variant="caption" tone="faint" align="center">
+              Shared with you as a reader.
+            </Text>
+            <Button
+              title="Duplicate into my group"
+              onPress={() => {
+                void submit(async () => {
+                  const copy = await duplicate.mutateAsync(data.id)
+                  router.replace(`/exercises/${copy.id}/edit`)
+                })
+              }}
+              busy={busy}
+              testID="duplicate-exercise"
+            />
+          </Stack>
         )
       }
     >
       <Stack gap="md">
+        <FormError message={copyError} testID="exercise-detail-error" />
         <Button
           title={data.isFavourite ? 'Pinned ★' : 'Pin'}
           variant="secondary"
@@ -104,32 +174,7 @@ export default function ExerciseDetail(): React.JSX.Element {
           </Stack>
         )}
 
-        <Stack gap="sm" testID="exercise-history">
-          <Text variant="label" tone="muted">
-            Recent history
-          </Text>
-          {history.data === undefined || history.data.sessions.length === 0 ? (
-            <Text tone="faint" variant="caption">
-              Nothing logged yet.
-            </Text>
-          ) : (
-            history.data.sessions.map((entry) => (
-              <ListRow
-                key={entry.sessionId}
-                title={new Date(entry.performedAt).toLocaleDateString()}
-                subtitle={entry.sets
-                  .map(
-                    (s) =>
-                      `${s.reps ?? '—'}×${s.weightG === null ? 'bw' : formatWeight(s.weightG)}`,
-                  )
-                  .join('  ')}
-                onPress={() => {
-                  router.push(`/today/session/${entry.sessionId}`)
-                }}
-              />
-            ))
-          )}
-        </Stack>
+        <RecentHistory query={history} />
       </Stack>
     </Screen>
   )

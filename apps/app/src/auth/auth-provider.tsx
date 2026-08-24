@@ -1,8 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { type QueryClient, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { AuthResult, type LoginInput, Me, type RegisterInput } from '@cedo/contract'
-import { ApiError, GET, POST, setAuthToken } from '../api/http.ts'
+import { ApiError, GET, POST, setAuthToken, setUnauthenticatedHandler } from '../api/http.ts'
 import { clearToken, readToken, writeToken } from './token-storage.ts'
 
 /**
@@ -71,11 +71,34 @@ function useRestoreSession(set: {
   }, [setStatus, setMe])
 }
 
-export function AuthProvider({
-  children,
-}: {
-  readonly children: React.ReactNode
-}): React.JSX.Element {
+/**
+ * A credential the server no longer honours ends the local session too, rather than leaving every
+ * screen showing "Authentication required" with no way back to the login form.
+ */
+function useSignOutOnRejection(forget: () => void, queryClient: QueryClient): void {
+  useEffect(() => {
+    setUnauthenticatedHandler(() => {
+      forget()
+      queryClient.clear()
+    })
+    return () => {
+      setUnauthenticatedHandler(null)
+    }
+  }, [forget, queryClient])
+}
+
+/**
+ * The session itself: who is signed in, and the two operations that change it.
+ *
+ * Separated from the provider so `AuthProvider` is only wiring. `adopt` is shared by sign-in and
+ * registration, which differ solely in which route mints the token.
+ */
+function useSessionState(): {
+  status: AuthStatus
+  me: Me | null
+  adopt: (token: string) => Promise<void>
+  signOut: () => Promise<void>
+} {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [me, setMe] = useState<Me | null>(null)
   const queryClient = useQueryClient()
@@ -83,23 +106,38 @@ export function AuthProvider({
   const adopt = useCallback(async (token: string) => {
     setAuthToken(token)
     await writeToken(token)
-    const identity = await GET('/auth/me', Me)
-    setMe(identity)
+    setMe(await GET('/auth/me', Me))
     setStatus('signed-in')
+  }, [])
+
+  /** Drops the local session. Shared by an explicit sign-out and a credential the server rejects. */
+  const forget = useCallback(() => {
+    setAuthToken(null)
+    void clearToken()
+    setMe(null)
+    setStatus('signed-out')
   }, [])
 
   const signOut = useCallback(async () => {
     // Best effort: the local session ends either way, and a network failure must not trap someone
     // in a signed-in shell they cannot use.
     await POST('/auth/logout', z.object({ ok: z.boolean() })).catch(() => null)
-    setAuthToken(null)
-    await clearToken()
-    setMe(null)
-    setStatus('signed-out')
+    forget()
     queryClient.clear()
-  }, [queryClient])
+  }, [forget, queryClient])
 
   useRestoreSession({ setStatus, setMe })
+  useSignOutOnRejection(forget, queryClient)
+
+  return { status, me, adopt, signOut }
+}
+
+export function AuthProvider({
+  children,
+}: {
+  readonly children: React.ReactNode
+}): React.JSX.Element {
+  const { status, me, adopt, signOut } = useSessionState()
 
   const value = useMemo<AuthValue>(
     () => ({

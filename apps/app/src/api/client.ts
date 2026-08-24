@@ -7,7 +7,6 @@ import {
   type ExerciseHistoryQuery,
   type ExerciseQuery,
   type ExerciseUpdate,
-  Group,
   type GroupCreate,
   GroupMember,
   GroupMembership,
@@ -42,8 +41,8 @@ import { DELETE, GET, PATCH, POST, PUT, type QueryInput } from './http.ts'
  * request at all. The database copy exists only to give `exercise_muscles` a foreign key.
  */
 
+/** Routes that answer `{ ok: true }` rather than the object they acted on. */
 const Ok = z.object({ ok: z.boolean() })
-const Empty = z.null()
 
 /** Contract query types carry defaults and refinements; the wire wants plain scalars. */
 const asQuery = (query: Record<string, unknown>): QueryInput =>
@@ -133,5 +132,3 @@ export const api = {
     revoke: async (id: string) => await DELETE(`/tokens/${id}`, Ok),
   },
 } as const
-
-export { Empty, Group, Ok }

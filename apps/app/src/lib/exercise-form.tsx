@@ -3,11 +3,13 @@ import { useRouter } from 'expo-router'
 import {
   type Exercise,
   type ExerciseCreate,
+  type Media,
   type MuscleLoad,
   TRACKING_MODES,
   type TrackingMode,
 } from '@cedo/contract'
 import { Button, Chips, Field, FormError, Input, MusclePicker, Screen } from '../ui/index.ts'
+import { MediaLinks } from './media-links.tsx'
 import { useSubmit } from './use-submit.ts'
 
 const TRACKING_LABELS: Record<TrackingMode, string> = {
@@ -48,6 +50,7 @@ export function ExerciseForm({
   const [muscles, setMuscles] = useState<MuscleLoad[]>(
     initial?.muscles.map((m) => ({ ...m })) ?? [],
   )
+  const [media, setMedia] = useState<Media[]>(initial?.media ?? [])
   const { submit, busy, error, fieldError } = useSubmit()
 
   const save = () => {
@@ -60,7 +63,7 @@ export function ExerciseForm({
         equipment: equipment.trim() === '' ? null : equipment.trim(),
         isUnilateral: initial?.isUnilateral ?? false,
         muscles,
-        mediaIds: initial?.media.map((m) => m.id) ?? [],
+        mediaIds: media.map((m) => m.id),
       })
       router.back()
     })
@@ -102,6 +105,10 @@ export function ExerciseForm({
 
       <Field label="Muscles" error={fieldError('muscles')}>
         <MusclePicker value={muscles} onChange={setMuscles} />
+      </Field>
+
+      <Field label="Media" error={fieldError('mediaIds')}>
+        <MediaLinks value={media} onChange={setMedia} />
       </Field>
 
       <Field label="Description" error={fieldError('description')}>

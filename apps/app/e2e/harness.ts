@@ -203,6 +203,20 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
   const quote = (value: string) => JSON.stringify(value)
   const selector = (testId: string) => `[data-testid=${quote(testId)}]`
 
+  /**
+   * Scrolls a target into view before touching it.
+   *
+   * WebView refuses to click something that is not on screen ("not actionable"), and a real form is
+   * taller than a 420x900 phone — so without this a test fails on the geometry of the viewport
+   * rather than on anything about the app.
+   */
+  const reveal = async (css: string): Promise<void> => {
+    await view.evaluate(
+      `document.querySelector(${quote(css)})?.scrollIntoView({ block: 'center' })`,
+    )
+    await Bun.sleep(120)
+  }
+
   const page: Page = {
     goto: async (path) => {
       await view.navigate(`${siteUrl}${path}`)
@@ -210,6 +224,7 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
       await Bun.sleep(700)
     },
     click: async (css) => {
+      await reveal(css)
       await view.click(css)
       await Bun.sleep(250)
     },
@@ -217,6 +232,7 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
       await view.type(text)
     },
     fill: async (testId, text) => {
+      await reveal(selector(testId))
       await view.click(selector(testId))
       // Selected first, so `fill` REPLACES rather than appends. A prefilled field is the normal
       // case here — prescribed reps, a target weight — and appending silently logs 88 for 8.

@@ -67,8 +67,13 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   searched" is a broken script, not an empty suite.
 - **Explicit `.ts` extensions defeat Metro's platform resolution.** `import './x.ts'` never picks
   `x.web.ts`. Branch on `Platform.OS` in one file instead — see `apps/app/src/auth/token-storage.ts`.
-- **Read the screenshot, do not just check the test passed.** Two real layout bugs in M8 were green
-  in every assertion and obvious in the PNG.
+- **Read the screenshot, do not just check the test passed.** Four real bugs across M8 and M9 were
+  green in every assertion and obvious in the PNG — including a numeric field that appended instead
+  of replacing, which logged 88 reps for 8.
+- **Grep the built bundle when a build-time substitution matters.** `process.env['EXPO_PUBLIC_X']`
+  typechecks, lints and runs in dev, and is silently `undefined` in the shipped app.
+- **Run the e2e suite in the foreground.** A backgrounded `bun run e2e` reported every journey as
+  failed after seventeen minutes; the WebView needs the session it was started from.
 
 ## Documentation map
 

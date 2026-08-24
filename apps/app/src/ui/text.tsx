@@ -1,13 +1,14 @@
 import { StyleSheet, Text as RNText, type TextProps as RNTextProps } from 'react-native'
 import { type TypeVariant, color, type as typeScale } from './tokens.ts'
 
-export type Tone = 'default' | 'muted' | 'faint' | 'danger' | 'success' | 'accent'
+export type Tone = 'default' | 'muted' | 'faint' | 'danger' | 'warning' | 'success' | 'accent'
 
 const TONE: Record<Tone, string> = {
   default: color.text,
   muted: color.textMuted,
   faint: color.textFaint,
   danger: color.danger,
+  warning: color.warning,
   success: color.success,
   accent: color.accent,
 }
