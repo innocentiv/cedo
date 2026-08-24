@@ -76,7 +76,7 @@ function toExercise(row: ExerciseRow, attachments: Attachments): Exercise {
  * for muscles, one for media. Together with the caller's own query that is three per read, at any
  * page size.
  *
- * `bun run perf` asserts the count is identical at 10 rows and at 1000.
+ * `bun run perf` asserts that count is identical whether the page holds 5 rows or 50.
  * See docs/adr/0018-n1-detection.md.
  */
 export async function hydrate(

@@ -61,7 +61,7 @@ regardless of what indexes exist — so a small-seed latency budget proves nothi
 
 ## Consequences
 
-- A deterministic large seed (`seed-perf.ts`) must be maintained alongside the schema. Every value
+- A deterministic large seed (`db/seed-perf/`) must be maintained alongside the schema. Every value
   is derived arithmetically from a row number — not even a seeded PRNG — so two runs produce
   byte-identical data and a plan that changed did so because the code changed.
 - **An empty table makes every assertion about it vacuous.** The first version of the seed left

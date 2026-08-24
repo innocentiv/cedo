@@ -7,8 +7,9 @@ import { z } from 'zod'
  * columns. A value that passes validation and then overflows the column surfaces as an unhandled
  * 500, so the contract is what keeps the database in range.
  *
- * Previously these were spelled out separately in progression.ts, workout.ts and log.ts, and had
- * already drifted — history rows validated more loosely than the log rows they were read from.
+ * Declared here once rather than per module. Spelled out separately in progression.ts, workout.ts
+ * and log.ts they drift, and the shape that drifts first is history — validating more loosely than
+ * the log rows it is read from.
  */
 
 /** 2 tonnes. Beyond any human lift, any machine stack, and any loaded sled. */

@@ -27,16 +27,17 @@ export const ownable = () => ({
   name: text('name').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   /**
-   * `$onUpdate` belongs here, not in each service's `.set(patch)`. Without it `updated_at` freezes
-   * at creation for every ownable entity — including the recipes and meal plans this trait is
-   * meant to carry — and any future "changed since" or sync query silently misses every edit.
-   */
-  /**
-   * `sql\`now()\`` and NOT `new Date()`: `created_at` comes from the DATABASE clock, so taking
+   * Two decisions, both load-bearing.
+   *
+   * `$onUpdate` belongs HERE, not in each service's `.set(patch)`. Without it `updated_at` freezes
+   * at creation for every ownable entity — including the recipes and meal plans this trait is meant
+   * to carry — and any future "changed since" or sync query silently misses every edit.
+   *
+   * And `sql\`now()\``, NOT `new Date()`. `created_at` comes from the DATABASE clock, so taking
    * `updated_at` from the application clock compares two different clocks. With the API and
-   * Postgres in separate containers even a few milliseconds of skew produces
-   * `updated_at < created_at`, which is nonsense and quietly breaks any "changed since" query.
-   * Observed as exactly that, 3ms backwards, before this was fixed.
+   * Postgres in separate containers, a few milliseconds of skew is enough to write
+   * `updated_at < created_at` — nonsense, and it quietly breaks any "changed since" query. The skew
+   * measured here was 3ms, backwards.
    */
   updatedAt: timestamp('updated_at', { withTimezone: true })
     .notNull()

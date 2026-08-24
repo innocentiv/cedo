@@ -5,11 +5,16 @@ import { env } from '../env.ts'
 import * as schema from './schema.ts'
 
 /**
- * Per-call query recording, used by the performance suite to detect N+1 by invariant: the same
- * endpoint must issue the SAME number of queries at 10 rows and at 1000.
+ * Per-call query recording, which is what makes N+1 detectable as an invariant rather than a
+ * guessed threshold: run a path at both ends of the one dimension an N+1 would grow along — page
+ * size, plan size, history depth, group count — and the query count must be IDENTICAL.
  * See docs/adr/0018-n1-detection.md.
  */
-/** A statement exactly as issued, so the performance suite can EXPLAIN the real thing. */
+
+/**
+ * A statement exactly as issued, params included, so the performance suite can EXPLAIN the real
+ * thing rather than a hand-written lookalike that drifts from it.
+ */
 export interface RecordedQuery {
   readonly sql: string
   readonly params: readonly unknown[]

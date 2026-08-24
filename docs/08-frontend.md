@@ -39,13 +39,23 @@ app/index.tsx                the only cold-start redirect
 app/(auth)/_layout.tsx       bounces a signed-in visitor out
 app/(auth)/login.tsx  register.tsx
 app/(app)/_layout.tsx        the signed-in shell: bottom bar on phone, sidebar on tablet
-app/(app)/{today,workouts,exercises,settings}.tsx
+
+app/(app)/today/            index · session/[id]        the live logging screen
+app/(app)/workouts/         index · [id]/index · [id]/edit
+app/(app)/exercises/        index · new · [id]/index · [id]/edit
+app/(app)/settings/         index · groups · tokens
+
 src/ui/                      the entire visual vocabulary
-src/api/                     http.ts, errors.ts, client.ts, query-client.ts
+src/api/                     http.ts, errors.ts, client.ts, query-client.ts, queries.ts
 src/auth/                    auth-provider.tsx, token-storage.ts
-src/lib/                     use-submit.ts
-e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts
+src/lib/                     use-submit.ts, plan-draft.ts, forms and pickers
+e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts
 ```
+
+Each tab directory has its own `_layout.tsx` holding a `Stack`, so pushing a detail screen keeps the
+tab bar and the back gesture. A route that is **not** a `TabTrigger` in `app/(app)/_layout.tsx` is
+unreachable under the headless tabs navigator — which is why live logging sits under `today/` rather
+than at a top-level `log/`.
 
 ### One navigator, two arrangements
 
@@ -75,10 +85,20 @@ Two constraints found by building it:
 | `Button`, `NavButton` | actions, and actions that navigate |
 | `Field`, `Input`, `NumberInput` | forms |
 | `Card`, `ListRow` | the one row shape every list uses |
+| `Chips` | one choice from a short flat set — list scopes, tracking mode, progression kind |
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |
+| `Loaded` | failed / not-yet / here, around any query. A screen never writes that ternary |
 | `ErrorBoundary` | the last line of defence |
-| `color`, `space`, `radius`, `type` | the only source of visual values |
+| `color`, `space`, `radius`, `type`, `CONTENT_MAX_WIDTH` | the only source of visual values |
 | `useLayout()` | the only layout branch: `'phone' | 'tablet'` |
+
+Four composites are here rather than in a screen, because each is used from more than one and each
+would otherwise be copied: `MusclePicker`, `SetLogger`, `EntryEditor`, `DayEditor`. They are still
+presentational — the rules they render (loads summing to 100, which inputs a tracking mode implies,
+what a progression rule contains) all live in `@cedo/contract`.
+
+**If you need something not on this list, add it here rather than inline in a screen.** The list
+being complete is what stops the next session re-inventing `Loaded` under a different name.
 
 Dark only, deliberately: this is used in a gym, usually in poor light. A light theme is a second
 token map plus a `useColorScheme()` lookup, and no screen changes.

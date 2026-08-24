@@ -7,9 +7,9 @@ import { conflict } from '../../lib/error.ts'
 /**
  * Instance diagnostics, for a CURATOR only.
  *
- * The honest use for this is not local development — there I have psql, the source and the tests.
- * It is diagnosing a deployment I have no shell on: someone reports "it is slow on my NAS" and this
- * is the only way to see their actual query profile and data shape. See docs/07-mcp.md.
+ * The honest use for this is not local development — there you have psql, the source and the tests.
+ * It is diagnosing a deployment nobody has a shell on: someone reports that it is slow on their NAS
+ * and this is the only way to see their actual query profile and data shape. See docs/07-mcp.md.
  */
 
 /** Counted per table rather than by a single query, so a missing table is visible as a gap. */

@@ -7,8 +7,7 @@ import { z } from 'zod'
  * `mapJsonSchema` is required because Elysia's native validator is TypeBox; Zod has its own JSON
  * Schema output and the plugin has to be told how to reach it. Without this, every route
  * documents as an empty object. See docs/04-contract.md.
- */
-/**
+ *
  * A FACTORY, not a shared constant. The plugin registers the Scalar UI as a static `Response`, and
  * a Response body can only be read once — so a module-level singleton works until something
  * requests /openapi, after which every later `createApp()` throws ERR_BODY_ALREADY_USED. Since the

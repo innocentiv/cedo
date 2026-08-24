@@ -58,11 +58,10 @@ export async function seedMuscles(): Promise<void> {
 /**
  * Returns the system account and the id of the SHARED group that owns the library.
  *
- * `groupId` is the shared group in BOTH paths. An earlier version returned the system user's
- * PERSONAL group on the already-exists path, so every seed after the first wrote all 45 exercises
- * into the wrong group — 90 rows, half of them invisible to everyone. It stayed hidden while the
- * idempotency check matched names across the whole table, and became live the moment that check
- * was correctly scoped to a group.
+ * `groupId` must be the SHARED group on both paths — the one that already exists as much as the one
+ * just created. Returning the system account's personal group instead makes every seed after the
+ * first write the whole library into a group nobody is a member of, which is invisible rather than
+ * loud.
  */
 export async function seedSystemUser(): Promise<{ userId: string; groupId: string }> {
   const existing = await db

@@ -103,8 +103,8 @@ export function NumberInput({
       value={value === null ? '' : String(value)}
       /**
        * Focusing a prefilled numeric field selects it, so typing REPLACES the prescribed value.
-       * Without this, tapping "8 reps" and typing 8 logs 88 — which is what happened the first time
-       * a set was logged through the e2e run.
+       * Without it, tapping a field showing "8" and typing 8 logs 88 — into permanent history,
+       * mid-workout, where nobody is checking.
        */
       selectTextOnFocus
       onChangeText={(text) => {

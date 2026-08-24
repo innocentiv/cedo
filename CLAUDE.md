@@ -32,8 +32,8 @@ is designed to prevent.
 | `bun run test:changed` | Inner loop — only tests affected by your diff. |
 | `bun run db:reset` | Empty volume → migrate → seed, in one command. |
 | `bun run db:test` | The throwaway Postgres the test suite needs. |
-| `bun run shot <route>` | Render a UI route, screenshot it to `.artifacts/`, print console errors. |
-| `bun run e2e` | Full UI journeys; fails on any console error. |
+| `bun run shot <route>` | Rebuild, render a UI route, screenshot to `.artifacts/`, print console errors. |
+| `bun run e2e` | Rebuild, then the full UI journeys; fails on any console error. Foreground only. |
 | `bun run perf` | N+1 and missing-index guards against its own 250k-row database. Pre-release. |
 | `bun run perf:report` | Writes `.artifacts/perf.md` — every hot path's query counts and full plans. |
 
@@ -74,6 +74,9 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   typechecks, lints and runs in dev, and is silently `undefined` in the shipped app.
 - **Run the e2e suite in the foreground.** A backgrounded `bun run e2e` reported every journey as
   failed after seventeen minutes; the WebView needs the session it was started from.
+- **`e2e` and `shot` serve `apps/app/dist`, so both rebuild first.** They used not to, which meant
+  editing a screen and running either tested the PREVIOUS bundle and passed. Use `e2e:only` to skip
+  the rebuild when you know the bundle is current.
 
 ## Documentation map
 

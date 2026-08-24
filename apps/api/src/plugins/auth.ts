@@ -60,10 +60,10 @@ export interface IdentityRow {
 }
 
 /**
- * Shared by BOTH credential paths — browser sessions here, personal access tokens in mcp/index.ts.
- * They differ only in which table the credential lives in and how expiry is expressed; the fold was
- * previously duplicated character for character, so adding a role or a scoped membership to one
- * would have left the other silently permissive.
+ * Shared by BOTH credential paths — browser sessions here, personal access tokens in mcp/token.ts.
+ * They differ only in which table the credential holds and how expiry is expressed, so the fold
+ * itself stays in one place: duplicated, adding a role or a scoped membership to one would leave
+ * the other silently permissive.
  */
 export function foldCaller(identity: IdentityRow, rows: readonly MembershipRow[]): Caller {
   const groupIds: string[] = []

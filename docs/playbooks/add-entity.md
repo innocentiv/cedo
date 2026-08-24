@@ -184,13 +184,34 @@ often it reproduces and loop enough rounds that a false pass is unlikely.
 `apps/api/src/mcp/tools/widget.ts` — wraps the same service function, ≤5 lines. See
 `docs/07-mcp.md`.
 
-## 8. The client method and the screen
+## 8. The client, the hooks, and the screen
 
-`apps/app/src/api/client.ts` gets one 2-line method naming its response schema. Then the screen —
-which may call `api.*`, render UI primitives, hold form state, and call pure helpers from the
-contract, and **nothing else**. See `docs/08-frontend.md`.
+Three small steps, in order. Skipping the middle one is how a stale list happens.
 
-## 9. Documentation, in the same commit
+1. `apps/app/src/api/client.ts` — one 2-line method naming its response schema.
+2. `apps/app/src/api/query-client.ts` — its keys in `keys`. Mutations invalidate the **whole
+   resource** (`keys.widgets`), never one key.
+3. `apps/app/src/api/queries.ts` — a `useWidgets` / `useWidget` / `useCreateWidget` hook.
+
+Only then the screen, which calls **those hooks** — not `api.*`, not `fetch` — renders UI
+primitives, holds form state, and calls pure helpers from the contract. Nothing else.
+See `docs/08-frontend.md` and `docs/playbooks/add-screen.md`.
+
+## 9. The perf guard
+
+An entity nobody measured is an entity that is fast until someone has a thousand of them.
+
+- Extend `apps/api/src/db/seed-perf/` so the new tables carry production volume. An empty table
+  makes every assertion about it vacuous, and uniform data hides the selective case an index exists
+  for.
+- Add the list and detail reads to `HOT_PATHS` in `apps/api/src/test/perf/hot-paths.ts`, naming the
+  one dimension an N+1 would grow along.
+- Run `bun run perf:report`, read `.artifacts/perf.md`, and fill in `noSeqScan` and `indexes` from
+  the plans you actually see — never from what you assume the planner will do.
+- **Watch the guard fail.** Drop the index against `cedo_test_perf` and confirm the message names
+  the problem. See `docs/10-testing.md`.
+
+## 10. Documentation, in the same commit
 
 - `docs/03-domain-model.md`: the tables, the invariants, **and the index plan table**.
 - An ADR if you made a decision someone might otherwise reverse.
@@ -207,9 +228,11 @@ contract, and **nothing else**. See `docs/08-frontend.md`.
 [ ] children loaded in a fixed number of queries
 [ ] routes <=5 lines, mounted in app.ts
 [ ] duplicate / transfer / favourite
-[ ] tests: isolation, expectContract via wire, 401, N+1
+[ ] tests: isolation, expectContract via wire, 401
 [ ] MCP tool
-[ ] client method + screen
+[ ] client method + query keys + hooks, THEN the screen
+[ ] e2e: the route in the sweep, a journey if it needs real data
+[ ] perf: seeded at volume, in HOT_PATHS, and the guard watched failing
 [ ] docs/03 updated, ADR if needed
 [ ] bun run check green
 ```

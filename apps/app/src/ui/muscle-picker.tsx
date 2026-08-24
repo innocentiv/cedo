@@ -69,9 +69,8 @@ export function MusclePicker({ value, onChange }: MusclePickerProps): React.JSX.
 }
 
 /**
- * Wrapped, not a horizontal scroller. There are 32 muscles and a one-line scroller hides most of
- * them behind a gesture nobody discovers — and made two thirds of them unclickable in the e2e run,
- * which is the same problem stated mechanically.
+ * Wrapped, not a horizontal scroller. There are 32 muscles, and a one-line scroller puts most of
+ * them behind a sideways gesture nobody discovers.
  */
 function MuscleOptions({
   chosen,

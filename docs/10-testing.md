@@ -63,10 +63,15 @@ treats as files rather than filters:
 
 ```jsonc
 "perf": "CEDO_PERF=1 bun test ./apps/api/src/test/perf/*.perf.ts",
-"e2e":  "bun test ./apps/app/e2e/*.e2e.ts"
+"e2e":  "bun run build:app && bun test ./apps/app/e2e/*.e2e.ts"
 ```
 
 If either ever prints "0 files were searched", the glob is wrong — not the suite empty.
+
+`e2e` and `shot` **rebuild the web bundle first**, because both serve `apps/app/dist`. Without that,
+editing a screen and running either one tests the previous bundle and passes. `e2e:only` skips the
+rebuild when the bundle is known to be current. And run e2e in the FOREGROUND: backgrounded, the
+WebView loses the session it was started from and every journey fails after several minutes.
 
 ## T3 — UI verification
 
@@ -151,7 +156,7 @@ case is never exercised and looks like dead weight.
 
 1. Add an entry to `HOT_PATHS` in `apps/api/src/test/perf/hot-paths.ts`: a `run(fixtures, size)`
    that calls the **service**, and the one `dimension` that differs between `small` and `large`.
-2. If the endpoint reads something the seed does not populate, extend `seed-perf.ts`. An empty table
+2. If the endpoint reads something the seed does not populate, extend `db/seed-perf/`. An empty table
    makes every assertion about it vacuous.
 3. Run `bun run perf:report` and read `.artifacts/perf.md`. Fill in `noSeqScan` and `indexes` from
    the plans you actually see — never from what you assume the planner will do.

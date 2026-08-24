@@ -105,9 +105,9 @@ async function loadLogs(caller: Caller, entryIds: string[]) {
   /**
    * The depth cap is applied in SQL, per entry, via a window function.
    *
-   * `HISTORY_DEPTH` used to truncate in JavaScript AFTER every log for every entry had been read —
-   * so a 48-entry plan with two years of training read tens of thousands of rows to use the newest
-   * ten sessions each, while the comment claimed the read was bounded.
+   * Truncating to `HISTORY_DEPTH` in JavaScript instead reads every log for every entry first: a
+   * 48-entry plan with two years behind it fetches tens of thousands of rows to use the newest ten
+   * sessions of each. The cap has to be where the rows are selected.
    */
   const ranked = db
     .select({

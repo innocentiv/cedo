@@ -16,11 +16,6 @@ import { registerTrainingTools } from './tools/training.ts'
  */
 
 /**
- * A fresh `McpServer` per request, holding nothing between them — so this is stateless and needs no
- * session store. The tools close over the resolved caller, which is what makes every ACL check
- * identical to the one the UI gets.
- */
-/**
  * The caller travels in `authInfo.extra`, which is the SDK's designated slot for data attached to a
  * token. Parsed on the way out rather than cast, because it crosses an untyped boundary.
  */
@@ -42,6 +37,11 @@ export const withCaller = (caller: Caller): { authInfo: AuthInfo } => ({
   },
 })
 
+/**
+ * A fresh `McpServer` per request, holding nothing between them — so this is stateless and needs no
+ * session store. The tools close over the resolved caller, which is what makes every ACL check
+ * identical to the one the UI gets.
+ */
 export const mcpHandler = createMcpHandler(({ authInfo }) => {
   const server = new McpServer({ name: 'cedo', version: VERSION })
 

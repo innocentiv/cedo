@@ -6,8 +6,14 @@ import { samplePng } from './fixtures.ts'
 import { type TestApi, type TestUser, makeApi } from './harness.ts'
 
 /**
- * One case per defect found in the M4 review. Each was verified to fail against the code as it
- * stood before the fix.
+ * Cases where a plausible implementation is subtly wrong.
+ *
+ * These do not belong to one module — each is a seam between two: a validation rule the database
+ * would otherwise enforce as a 500, a search term that is also LIKE syntax, an auth check on the
+ * wrong layer. They live here rather than beside a service because no single service owns them.
+ *
+ * Every test in this file was watched failing against the code before its fix. Add to it the same
+ * way: reproduce first, then fix. See docs/10-testing.md.
  */
 
 let h: TestApi

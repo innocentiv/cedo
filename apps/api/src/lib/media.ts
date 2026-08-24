@@ -10,9 +10,9 @@ export const ACCEPTED_IMAGE_FORMATS = ['jpeg', 'png', 'webp', 'gif'] as const
 export type AcceptedImageFormat = (typeof ACCEPTED_IMAGE_FORMATS)[number]
 
 /**
- * The ONE table describing accepted formats. `LocalBlobStore` previously kept a second, separate
- * mime-to-extension map, and a format added to one but not the other produced an extensionless
- * blob key rather than a loud failure.
+ * The ONE table describing accepted formats. `LocalBlobStore` derives its extensions from here
+ * rather than keeping its own mime map: with two maps, a format added to one and not the other
+ * yields an extensionless blob key instead of a loud failure.
  */
 export const IMAGE_FORMATS: Readonly<
   Record<AcceptedImageFormat, { mime: string; extension: string }>
