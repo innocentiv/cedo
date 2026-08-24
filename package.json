@@ -10,10 +10,10 @@
     "format": "oxfmt .",
     "format:check": "oxfmt --check .",
     "lint:server": "oxlint -c .oxlintrc.typeaware.json --deny-warnings packages/contract apps/api scripts test",
-    "lint:app": "if [ -d apps/app/src ]; then oxlint --deny-warnings apps/app; else echo 'skip lint:app — apps/app not scaffolded yet (M8)'; fi",
+    "lint:app": "oxlint --deny-warnings apps/app",
     "lint": "bun run lint:server && bun run lint:app",
     "typecheck:server": "tsc -b . && tsc -p apps/api/tsconfig.tools.json",
-    "typecheck:app": "if [ -d apps/app/src ]; then apps/app/node_modules/.bin/tsc -p apps/app --noEmit; else echo 'skip typecheck:app — apps/app not scaffolded yet'; fi",
+    "typecheck:app": "apps/app/node_modules/.bin/tsc -p apps/app --noEmit",
     "typecheck": "bun run typecheck:server && bun run typecheck:app",
     "test": "bun test --parallel",
     "test:changed": "bun test --changed",
@@ -27,7 +27,8 @@
     "db:reset": "docker compose down -v && docker compose up -d --wait db && bun run apps/api/src/db/migrate.ts && bun run apps/api/src/db/seed.ts",
     "check:ci": "bun run format:check && bun run lint && bun run typecheck && bun run docs:links && bun run test",
     "perf:seed": "CEDO_PERF=1 NODE_ENV=test bun run apps/api/src/db/seed-perf/index.ts",
-    "perf:report": "CEDO_PERF=1 NODE_ENV=test bun run apps/api/src/test/perf/report.ts"
+    "perf:report": "CEDO_PERF=1 NODE_ENV=test bun run apps/api/src/test/perf/report.ts",
+    "build:app": "cd apps/app && ./node_modules/.bin/expo export --platform web --output-dir dist"
   },
   "devDependencies": {
     "@types/bun": "1.4.0",

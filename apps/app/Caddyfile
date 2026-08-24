@@ -1,0 +1,30 @@
+# The single published surface. Everything the browser sees is one origin, so there is no CORS
+# configuration anywhere in this project and no preflight on any mutation.
+# See docs/09-deployment.md.
+:80 {
+	encode zstd gzip
+
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy api:3000
+	}
+
+	handle {
+		root * /srv
+		# Static export writes one HTML file per route, so a real file is tried first and the SPA
+		# fallback only catches what genuinely is not there.
+		try_files {path} {path}.html {path}/index.html /index.html
+		file_server
+	}
+
+	# The bundle is content-hashed, so it can be cached forever; the HTML must not be.
+	@immutable path /_expo/static/*
+	header @immutable Cache-Control "public, max-age=31536000, immutable"
+	@html path *.html /
+	header @html Cache-Control "no-cache"
+
+	log {
+		output stderr
+		format console
+	}
+}

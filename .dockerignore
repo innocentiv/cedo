@@ -1,0 +1,9 @@
+node_modules
+**/node_modules
+.git
+.artifacts
+apps/app/dist
+apps/app/.expo
+**/*.tsbuildinfo
+.env
+.env.local

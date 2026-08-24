@@ -93,4 +93,12 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
 | `docs/adr/` | Why each decision was made, and what was rejected |
 | `docs/playbooks/` | Step-by-step recipes — start here to add anything |
 
+| Playbook | For |
+| --- | --- |
+| `docs/playbooks/add-entity.md` | A new entity, contract to screen. Start here. |
+| `docs/playbooks/add-screen.md` | A new UI route |
+| `docs/playbooks/add-mcp-tool.md` | A new MCP tool |
+| `docs/playbooks/add-progression-rule.md` | A new progression kind |
+| `docs/playbooks/diagnose-slow-instance.md` | "It is slow on my NAS" |
+
 To add a new entity end to end, follow `docs/playbooks/add-entity.md` exactly.

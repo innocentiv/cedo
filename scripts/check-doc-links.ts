@@ -25,9 +25,7 @@ const SOURCE_EXTENSIONS = ['.ts', '.tsx']
  * Documentation referenced by code that already exists but whose file lands in a later milestone.
  * DELETE AN ENTRY THE MOMENT ITS DOC IS WRITTEN — this list is meant to shrink to nothing.
  */
-const PLANNED: Readonly<Record<string, string>> = {
-  'docs/09-deployment.md': 'M10 — deployment',
-}
+const PLANNED: Readonly<Record<string, string>> = {}
 
 interface Reference {
   readonly from: string

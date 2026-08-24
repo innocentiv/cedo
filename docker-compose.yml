@@ -39,5 +39,58 @@ services:
       timeout: 5s
       retries: 10
 
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    environment:
+      # Composed here rather than read from .env, so the host is always the service name and a
+      # DATABASE_URL left pointing at localhost cannot silently break the deployment.
+      DATABASE_URL: postgres://${POSTGRES_USER:-cedo}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/${POSTGRES_DB:-cedo}
+      PORT: 3000
+      NODE_ENV: production
+      UPLOAD_DIR: /data/uploads
+      CEDO_ADMIN_USERNAME: ${CEDO_ADMIN_USERNAME:-}
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+    # NOT published. The only way in is through the web container's proxy, which is what keeps the
+    # deployment to one open port.
+    expose:
+      - '3000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'bun',
+          '-e',
+          "fetch('http://127.0.0.1:3000/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 40s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/app/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      # The ONLY host mapping. Browser, API and MCP all arrive here.
+      - '${WEB_PORT:-8080}:80'
+    healthcheck:
+      test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1/']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
 volumes:
   pgdata:
+  uploads:
