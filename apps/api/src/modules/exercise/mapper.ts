@@ -10,7 +10,16 @@ export type ExerciseRow = typeof exercises.$inferSelect
 type MediaRow = typeof media.$inferSelect
 type AttachedMedia = { sortIndex: number; row: MediaRow }
 
-/** `/media/:id/blob` and `/media/:id/thumb` are served by the API; blob keys never reach a client. */
+/**
+ * Relative to the API ROOT, not to the site. The API does not know what it is mounted under — Caddy
+ * puts it at `/api` in the deployed shape, a native build reaches it at an absolute host — so
+ * prefixing here would bake one deployment into the payload.
+ *
+ * A client MUST resolve it: `apiUrl(media.url)` in `apps/app/src/api/http.ts`. Rendering
+ * `<img src={media.url}>` directly asks the SITE for `/media/…`, which Caddy answers with the SPA's
+ * own index.html — HTTP 200, `text/html`, a broken image that never fires an error handler.
+ * Blob keys never reach a client either way. See docs/04-contract.md.
+ */
 const mediaUrl = (mediaId: string, variant: 'blob' | 'thumb') => `/media/${mediaId}/${variant}`
 
 export function toMedia(row: MediaRow): Media {

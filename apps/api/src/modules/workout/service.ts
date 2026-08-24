@@ -10,19 +10,14 @@ import type {
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { editable, visible } from '../../db/ownable.ts'
-import {
-  exercises,
-  workoutDays,
-  workoutEntries,
-  workoutFavourites,
-  workouts,
-} from '../../db/schema.ts'
-import { conflict, notFound } from '../../lib/error.ts'
+import { exercises, workoutDays, workoutFavourites, workouts } from '../../db/schema.ts'
+import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydratePlan, toSummary } from './mapper.ts'
 import { insertPlan } from './plan.ts'
 import { encodeCursor } from '../../lib/keyset.ts'
 import { listConditions } from './query.ts'
+import { assertExercisesVisibleToGroup } from './transfer.ts'
 
 export async function list(caller: Caller, query: WorkoutQuery): Promise<Page<WorkoutSummary>> {
   const rows = await db
@@ -146,16 +141,25 @@ export async function replacePlan(
   id: string,
   plan: WorkoutPlanInput,
 ): Promise<Workout> {
-  const editableRows = await db
-    .select({ id: workouts.id })
-    .from(workouts)
-    .where(and(editable(workouts, caller), eq(workouts.id, id)))
-    .limit(1)
-  if (editableRows.length === 0) throw notFound('workout')
-
   await assertExercisesVisible(caller, plan)
 
   await db.transaction(async (tx) => {
+    /**
+     * The permission check is INSIDE the transaction and takes a row lock.
+     *
+     * Checked outside it, this was a check-then-act on the endpoint that rewrites the most data: a
+     * co-editor transferring the workout away — or an admin removing the caller's membership —
+     * between the guard and the delete left the entire plan replaced by someone who no longer had
+     * rights to it. `for('update')` holds the row until this commits. See docs/02-conventions.md.
+     */
+    const [own] = await tx
+      .select({ id: workouts.id })
+      .from(workouts)
+      .where(and(editable(workouts, caller), eq(workouts.id, id)))
+      .limit(1)
+      .for('update')
+    if (own === undefined) throw notFound('workout')
+
     // Days cascade to entries, which cascade to sets.
     await tx.delete(workoutDays).where(eq(workoutDays.workoutId, id))
     await insertPlan(tx, id, plan)
@@ -166,42 +170,6 @@ export async function replacePlan(
   })
 
   return await get(caller, id)
-}
-
-/**
- * Moving a workout into a group requires every exercise it references to be visible THERE.
- *
- * Otherwise sharing a plan silently shares the private exercises it uses — the group's members can
- * read a workout, and reading a workout means reading its exercises. Refusing at transfer time
- * keeps the exercise ACL honest and gives the sharer something actionable: share or duplicate the
- * exercise into the group first. The read path redacts as a second line of defence, because
- * visibility can also change after the fact. See docs/03-domain-model.md.
- */
-async function assertExercisesVisibleToGroup(
-  caller: Caller,
-  workoutId: string,
-  toGroupId: string,
-): Promise<void> {
-  const referenced = await db
-    .selectDistinct({
-      id: exercises.id,
-      name: exercises.name,
-      ownerGroupId: exercises.ownerGroupId,
-    })
-    .from(workoutEntries)
-    .innerJoin(workoutDays, eq(workoutDays.id, workoutEntries.dayId))
-    .innerJoin(exercises, eq(exercises.id, workoutEntries.exerciseId))
-    .where(and(eq(workoutDays.workoutId, workoutId), visible(exercises, caller)))
-
-  const unreachable = referenced.filter((e) => e.ownerGroupId !== toGroupId)
-  // An exercise already in the target group is fine; so is one in a group the target can also see.
-  // Groups do not nest, so "visible to the target group" means "owned by it".
-  if (unreachable.length > 0) {
-    const names = unreachable.map((e) => `"${e.name}"`).join(', ')
-    throw conflict(
-      `That group cannot see ${names}. Share or duplicate ${unreachable.length === 1 ? 'it' : 'them'} into the group first.`,
-    )
-  }
 }
 
 /**
@@ -256,6 +224,22 @@ export async function duplicate(caller: Caller, id: string, toGroupId?: string):
 
 export async function transfer(caller: Caller, id: string, toGroupId: string): Promise<Workout> {
   if (!caller.editorGroupIds.includes(toGroupId)) throw notFound('group')
+
+  /**
+   * Establish that the caller may edit THIS workout before saying anything about its contents.
+   *
+   * `assertExercisesVisibleToGroup` throws a 409 naming the exercises that would be left behind,
+   * which is helpful to an owner and an oracle to anyone else: running it first let a stranger
+   * transfer-probe any id and learn both that the workout exists and what it prescribes, while
+   * `GET /workouts/:id` correctly answered 404. The write below carries `editable()` too — this is
+   * about WHICH error comes back, and 404 has to win.
+   */
+  const [own] = await db
+    .select({ id: workouts.id })
+    .from(workouts)
+    .where(and(editable(workouts, caller), eq(workouts.id, id)))
+    .limit(1)
+  if (own === undefined) throw notFound('workout')
 
   await assertExercisesVisibleToGroup(caller, id, toGroupId)
 

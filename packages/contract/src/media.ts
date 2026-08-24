@@ -50,7 +50,12 @@ export const Media = z.object({
   id: Id,
   kind: MediaKind,
   title: z.string(),
-  /** Full-size: the blob route for an upload, the original page for a link. */
+  /**
+   * Full-size. For an upload this is a path RELATIVE TO THE API ROOT (`/media/:id/blob`) which a
+   * client must resolve against its own base — the server cannot know whether it is reached at
+   * `/api` behind a proxy or at an absolute host from a native build. For a link it is the original
+   * page, already absolute. `thumbnailUrl` follows the same rule.
+   */
   url: z.string(),
   thumbnailUrl: z.string().nullable(),
   /** Embeddable player URL; null when the media is not embeddable. */

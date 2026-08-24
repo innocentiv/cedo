@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import type { Exercise } from '@cedo/contract'
 import { Button, Empty, Input, ListRow, Loaded, Screen, Stack } from '../ui/index.ts'
 import { useExercises } from '../api/queries.ts'
 
 export interface ExercisePickerProps {
-  readonly onPick: (exerciseId: string) => void
+  /** The whole exercise, not just the id — callers need its name and tracking mode to render it. */
+  readonly onPick: (exercise: Exercise) => void
   readonly onCancel: () => void
 }
 
@@ -49,7 +51,7 @@ export function ExercisePicker({ onPick, onCancel }: ExercisePickerProps): React
                   title={exercise.name}
                   subtitle={exercise.equipment ?? undefined}
                   onPress={() => {
-                    onPick(exercise.id)
+                    onPick(exercise)
                   }}
                   testID={`picker-row-${exercise.id}`}
                 />

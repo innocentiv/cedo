@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { type Media, parseMediaUrl } from '@cedo/contract'
 import { Button, FormError, Input, ListRow, Stack, Text } from '../ui/index.ts'
+import { apiUrl } from '../api/http.ts'
 import { useCreateMediaLink } from '../api/queries.ts'
 import { useSubmit } from './use-submit.ts'
 
@@ -37,7 +38,7 @@ export function MediaLinks({ value, onChange }: MediaLinksProps): React.JSX.Elem
       {value.map((media) => (
         <ListRow
           key={media.id}
-          title={media.title === '' ? media.url : media.title}
+          title={media.title === '' ? apiUrl(media.url) : media.title}
           subtitle={media.kind === 'video_link' ? 'Video' : 'Image'}
           trailing="Remove"
           onPress={() => {

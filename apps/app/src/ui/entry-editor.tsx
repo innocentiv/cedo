@@ -45,9 +45,22 @@ export function EntryEditor({
   onRemove,
   testID,
 }: EntryEditorProps): React.JSX.Element {
-  const working = entry.sets.filter((s) => !s.isWarmup).length
-  const first = entry.sets[0]
+  const warmups = entry.sets.filter((s) => s.isWarmup)
+  const workingSets = entry.sets.filter((s) => !s.isWarmup)
+  /**
+   * The prescription is the first WORKING set, which is also what `progression/service.ts` reads.
+   * Taking `sets[0]` instead showed a warm-up's light load as the prescription whenever the plan
+   * had one — and plans authored through MCP routinely do.
+   */
+  const first = workingSets[0]
 
+  /**
+   * The field counts WORKING sets, so it must rebuild working sets and leave the warm-ups alone.
+   *
+   * Rebuilding every set from `sets[0]` turned each of them into a copy of the warm-up — including
+   * `isWarmup: true` — which drops the entry below the contract's "at least one working set" and
+   * makes the whole plan unsavable with no control on this screen to undo it.
+   */
   const setCount = (count: number | null) => {
     const next = Math.max(1, Math.min(count ?? 1, 20))
     const template = first ?? {
@@ -58,12 +71,18 @@ export function EntryEditor({
       targetDistanceMm: null,
       isWarmup: false,
     }
-    onChange({ ...entry, sets: Array.from({ length: next }, () => ({ ...template })) })
+    onChange({
+      ...entry,
+      sets: [...warmups, ...Array.from({ length: next }, () => ({ ...template, isWarmup: false }))],
+    })
   }
 
-  // One prescription per entry: sets never diverge, so editing one edits them all.
+  /** One prescription per entry: working sets never diverge. Warm-ups keep their own lighter load. */
   const setAll = (patch: Partial<(typeof entry.sets)[number]>) => {
-    onChange({ ...entry, sets: entry.sets.map((s) => ({ ...s, ...patch })) })
+    onChange({
+      ...entry,
+      sets: entry.sets.map((s) => (s.isWarmup ? s : { ...s, ...patch })),
+    })
   }
 
   return (
@@ -81,7 +100,7 @@ export function EntryEditor({
             <Text variant="caption" tone="muted">
               Sets
             </Text>
-            <NumberInput value={working} onChange={setCount} testID={`${testID}-sets`} />
+            <NumberInput value={workingSets.length} onChange={setCount} testID={`${testID}-sets`} />
           </Stack>
           <Stack grow>
             <Text variant="caption" tone="muted">

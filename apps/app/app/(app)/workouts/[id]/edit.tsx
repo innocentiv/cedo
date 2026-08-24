@@ -63,13 +63,13 @@ export default function EditPlan(): React.JSX.Element {
         onCancel={() => {
           setPicking(null)
         }}
-        onPick={(exerciseId) => {
+        onPick={(exercise) => {
           const day = draft[picking]
           if (day !== undefined) {
             setDays(
               replaceAt(draft, picking, {
                 ...day,
-                entries: [...day.entries, emptyEntry(exerciseId)],
+                entries: [...day.entries, emptyEntry(exercise.id)],
               }),
             )
           }

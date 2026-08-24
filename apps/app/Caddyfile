@@ -17,11 +17,17 @@
 		file_server
 	}
 
-	# The bundle is content-hashed, so it can be cached forever; the HTML must not be.
+	# The bundle is content-hashed, so it can be cached forever; everything else must not be.
+	#
+	# Matched on what is NOT the bundle, rather than on `*.html`. Caddy evaluates `header` before
+	# `handle`, so a matcher sees the request path BEFORE try_files rewrites it — and `/today` does
+	# not end in `.html`. Only `/` was getting the no-cache header, so a browser holding a stale
+	# `/today.html` asked for a content-hashed bundle that the new image no longer contains, and the
+	# app failed to boot on exactly the route the user had left it on.
 	@immutable path /_expo/static/*
 	header @immutable Cache-Control "public, max-age=31536000, immutable"
-	@html path *.html /
-	header @html Cache-Control "no-cache"
+	@document not path /_expo/static/*
+	header @document Cache-Control "no-cache"
 
 	log {
 		output stderr

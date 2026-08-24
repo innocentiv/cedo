@@ -64,11 +64,14 @@ leaks its existence to a stranger.
 One envelope, everywhere:
 
 ```json
-{ "error": { "code": "exercise_not_found", "message": "No such exercise", "details": null } }
+{ "error": { "code": "not_found", "message": "No such exercise", "details": null } }
 ```
 
-`code` is a member of the `ErrorCode` union in `packages/contract/src/error.ts` — add to the union
-when adding a case, so the client can exhaustively switch on it. Services throw typed domain errors;
+`code` is a member of the `ErrorCode` union in `packages/contract/src/error.ts`, and the codes are
+**generic, never per-resource** — `not_found`, not `exercise_not_found`. That is what lets a client
+switch exhaustively over a fixed set; the resource is named in `message`. Adding
+`workout_not_found` to the union breaks every exhaustive switch downstream, so a new case is a new
+KIND of failure, not a new noun. Services throw typed domain errors;
 a single `onError` handler maps them to status codes. Route handlers never construct responses for
 errors.
 

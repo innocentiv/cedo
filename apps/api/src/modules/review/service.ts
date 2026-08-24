@@ -11,6 +11,7 @@ import {
   workouts,
 } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { adherenceOf } from './adherence.ts'
 
 /**
  * A READ MODEL for coaching, not new domain rules.
@@ -79,52 +80,6 @@ export async function trainingReview(caller: Caller, weeks: number): Promise<Tra
   }
 }
 
-function adherenceOf(
-  sessions: readonly { startedAt: Date }[],
-  weeks: number,
-): TrainingReview['adherence'] {
-  const times = sessions.map((s) => s.startedAt.getTime())
-  const last = times[0]
-
-  let longestGapDays = 0
-  for (let i = 0; i + 1 < times.length; i++) {
-    const a = times[i]
-    const b = times[i + 1]
-    if (a === undefined || b === undefined) continue
-    longestGapDays = Math.max(longestGapDays, Math.round((a - b) / DAY_MS))
-  }
-
-  /**
-   * Counted in DISTINCT CALENDAR DAYS, not sessions. Counting sessions reported a two-day streak
-   * for a morning and an evening workout on the same date, while the field is named `...Days` and
-   * an AI coach reasons about it as days.
-   *
-   * A one-day rest does not break it: training every other day is a streak, which a naive
-   * consecutive-days count would miss.
-   */
-  const days = [...new Set(times.map((t) => Math.floor(t / DAY_MS)))].toSorted((a, b) => b - a)
-  let currentStreakDays = 0
-  const today = Math.floor(Date.now() / DAY_MS)
-  if (days[0] !== undefined && today - days[0] <= 1) {
-    currentStreakDays = 1
-    for (let i = 0; i + 1 < days.length; i++) {
-      const a = days[i]
-      const b = days[i + 1]
-      if (a === undefined || b === undefined) break
-      if (a - b > 2) break
-      currentStreakDays += 1
-    }
-  }
-
-  return {
-    sessions: sessions.length,
-    perWeek: Math.round((sessions.length / weeks) * 10) / 10,
-    currentStreakDays,
-    longestGapDays,
-    lastSessionAt: last === undefined ? null : new Date(last).toISOString(),
-  }
-}
-
 async function dayBalance(caller: Caller, since: Date): Promise<TrainingReview['dayBalance']> {
   const rows = await db
     .select({
@@ -142,7 +97,12 @@ async function dayBalance(caller: Caller, since: Date): Promise<TrainingReview['
      */
     .innerJoin(workouts, and(eq(workouts.id, workoutDays.workoutId), visible(workouts, caller)))
     .where(and(eq(workoutSessions.userId, caller.userId), gte(workoutSessions.startedAt, since)))
-    .groupBy(workoutDays.name, workouts.name)
+    /**
+     * By ID, not by name. Two days can share a name across two plans, and two plans can share a
+     * name outright — duplicating one is the documented way to get an editable copy. Grouping on
+     * the text merges them into one row whose session count is the sum of both.
+     */
+    .groupBy(workoutDays.id, workoutDays.name, workouts.name)
     .orderBy(desc(sql`count(*)`))
 
   return rows.map((r) => ({ day: r.day, workout: r.workout, sessions: r.sessions }))
@@ -158,18 +118,34 @@ async function volumeBetween(caller: Caller, from: Date, to: Date) {
     .select({
       muscle: exerciseMuscles.muscleSlug,
       volume:
-        sql<number>`coalesce(sum(${setLogs.weightG} * ${setLogs.reps} * ${exerciseMuscles.loadPct} / 100.0), 0)`.mapWith(
+        /**
+         * `::bigint` on the first factor, or the PER-ROW product overflows int4 before the divide
+         * ever happens: 500 kg × 50 reps × 100% is 2.5e9 against a 2.147e9 ceiling, and both those
+         * inputs are well inside what the contract allows. It is not a rounding artefact — Postgres
+         * raises `integer out of range`, so a single heavy sled set 500s that user's review for the
+         * whole window, and the one before it, until the log is deleted.
+         */
+        sql<number>`coalesce(sum(${setLogs.weightG}::bigint * ${setLogs.reps} * ${exerciseMuscles.loadPct} / 100.0), 0)`.mapWith(
           Number,
         ),
     })
     .from(setLogs)
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
     .innerJoin(exerciseMuscles, eq(exerciseMuscles.exerciseId, setLogs.exerciseId))
+    .innerJoin(exercises, eq(exercises.id, setLogs.exerciseId))
     .where(
       and(
         eq(workoutSessions.userId, caller.userId),
         eq(setLogs.isWarmup, false),
         gte(workoutSessions.startedAt, from),
+        /**
+         * The third branch of this review, held to the same rule as `stalled` and `dayBalance`.
+         * Weaker than those — it reveals a muscle slug, not a name — but it reads the CURRENT
+         * `load_pct` of an exercise the caller may have lost access to, so their volume shifts to
+         * reflect an edit they cannot see. Leaving one of three inconsistent is how the next
+         * session concludes the rule does not apply here.
+         */
+        visible(exercises, caller),
         // `lt`, not raw sql: a JS Date interpolated into a template serialises via toString
         // ("Sun Aug 23 2026 ...") which Postgres cannot parse in a timestamp comparison.
         lt(workoutSessions.startedAt, to),
@@ -249,17 +225,34 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
         visible(exercises, caller),
       ),
     )
-    .groupBy(exercises.name)
+    /**
+     * By ID, not by name. Duplicate names are the NORMAL case here — `library_audit` exists because
+     * "Bench Press" next to "Barbell Bench Press" is the expected library failure, and duplicating
+     * a shared exercise into your own group produces an identical name by construction. Grouped on
+     * the text, two sessions on the shared copy and two on your own became one row with
+     * `sessions: 4`, clearing the `>= 3` threshold it never should have reached and telling the AI
+     * a movement had stalled that was never trained three times.
+     */
+    .groupBy(exercises.id, exercises.name)
     .having(sql`count(distinct ${setLogs.sessionId}) >= 3`)
     .orderBy(asc(exercises.name))
 
-  return rows
-    .filter((r) => r.distinctEfforts <= 1)
-    .map((r) => ({
-      exercise: r.exercise,
-      sessions: r.sessions,
-      // `mapWith(Number)` turns a SQL NULL into NaN, never null.
-      bestWeightKg: Number.isNaN(r.bestWeight) ? null : gToKg(Math.round(r.bestWeight)),
-      bestReps: Number.isNaN(r.bestReps) ? null : r.bestReps,
-    }))
+  return rows.filter((r) => r.distinctEfforts <= 1).map((r) => toStalled(r))
+}
+
+interface StalledRow {
+  readonly exercise: string
+  readonly sessions: number
+  readonly bestWeight: number
+  readonly bestReps: number
+}
+
+function toStalled(r: StalledRow): TrainingReview['stalled'][number] {
+  return {
+    exercise: r.exercise,
+    sessions: r.sessions,
+    // `mapWith(Number)` turns a SQL NULL into NaN, never null.
+    bestWeightKg: Number.isNaN(r.bestWeight) ? null : gToKg(Math.round(r.bestWeight)),
+    bestReps: Number.isNaN(r.bestReps) ? null : r.bestReps,
+  }
 }

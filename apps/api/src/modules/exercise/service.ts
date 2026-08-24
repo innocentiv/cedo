@@ -148,12 +148,23 @@ export async function create(
 
 export async function update(caller: Caller, id: string, patch: ExerciseUpdate): Promise<Exercise> {
   await db.transaction(async (tx) => {
-    // `editable` is what makes this a 404 rather than an edit of someone else's exercise.
+    /**
+     * `editable` is what makes this a 404 rather than an edit of someone else's exercise — and the
+     * row is LOCKED, not merely read.
+     *
+     * The transaction is READ COMMITTED, so an unlocked guard SELECT is a check-then-act: a
+     * co-editor calling `transfer` between this statement and the UPDATE below moves the exercise
+     * into a group the caller is not in, and the writes then land on a row they no longer have any
+     * rights to. `for('update')` holds it until this transaction commits. Invariant 5 asks for
+     * `editable()` on the write itself; here the writes are three statements against children, so
+     * the lock is what makes the guard binding on all of them. See docs/02-conventions.md.
+     */
     const [existing] = await tx
       .select({ id: exercises.id })
       .from(exercises)
       .where(and(editable(exercises, caller), eq(exercises.id, id)))
       .limit(1)
+      .for('update')
     if (existing === undefined) throw notFound('exercise')
 
     const columns = {

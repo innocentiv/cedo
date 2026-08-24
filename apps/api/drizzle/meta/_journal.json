@@ -36,6 +36,13 @@
       "when": 1787524412206,
       "tag": "0004_session_keyset_index",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787557114107,
+      "tag": "0005_drop_session_last_seen",
+      "breakpoints": true
     }
   ]
 }

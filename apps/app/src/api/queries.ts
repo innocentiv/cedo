@@ -116,6 +116,14 @@ export function useTokens(): UseQueryResult<PersonalAccessToken[]> {
  * Creating an exercise changes the `all` list, the `mine` list, every filtered list and the group
  * it landed in. Enumerating those is how a stale screen happens; invalidating `['exercises']`
  * refetches only what is currently mounted anyway.
+ *
+ * There is deliberately no `onError`.
+ *
+ * A blanket handler cannot tell a failure nobody is watching from one a form is already showing —
+ * it logged every rejected validation, including the ones `useSubmit` renders, and turned an
+ * expected 422 into a failed e2e run. The rule instead: **every caller awaits `mutateAsync` inside
+ * `submit()`**, so the message reaches `FormError` and, when it is not an `ApiError`, the console.
+ * A bare `.mutate()` is the smell — it reads nothing back.
  */
 function useResourceMutation<TInput, TResult>(
   resource: readonly string[],

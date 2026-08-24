@@ -86,7 +86,7 @@ Three containers, one published port.
 
 ```
 db    postgres:18-alpine    pgdata volume     (+ pg_stat_statements, auto_explain)
-api   oven/bun:1.4-slim     uploads volume    exposed to the compose network only
+api   oven/bun:1.4-alpine   uploads volume    exposed to the compose network only
 web   caddy:2-alpine        :8080 -> :80      static export + /api reverse proxy
 ```
 

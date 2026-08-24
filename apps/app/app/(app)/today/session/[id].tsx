@@ -1,18 +1,8 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { formatWeight } from '@cedo/contract'
-import type { ProgressionSuggestion, SetLog, SetTarget, WorkoutEntry } from '@cedo/contract'
-import {
-  Button,
-  Card,
-  ErrorNotice,
-  ListRow,
-  Screen,
-  SetLogger,
-  Spinner,
-  Stack,
-  Text,
-} from '../../../../src/ui/index.ts'
+import type { Exercise } from '@cedo/contract'
+import { ErrorNotice, type LoggedValues, Screen, Spinner, Text } from '../../../../src/ui/index.ts'
+import { AdHoc, LoggedSets, PlannedDay, SessionFooter } from '../../../../src/lib/session-parts.tsx'
 import {
   useLogSet,
   useProgression,
@@ -21,63 +11,64 @@ import {
   useUpdateSession,
   useWorkout,
 } from '../../../../src/api/queries.ts'
+import { ExercisePicker } from '../../../../src/lib/exercise-picker.tsx'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
 
-/** The prescription for an entry is its first working set. See docs/adr/0012. */
-const targetOf = (entry: WorkoutEntry): SetTarget | null =>
-  entry.sets.find((s) => !s.isWarmup)?.target ?? null
-
 /**
- * What the progression rule says to do next, in one line.
- *
- * `nextTarget` itself lives in the contract and is computed by the API — this only renders the
- * result, so the hint on this screen and the answer the MCP tool gives can never disagree.
+ * The one write this screen makes. Planned and ad-hoc sets differ only in whether they name a
+ * prescribed entry — `entry_id` is nullable for exactly that reason — so they share a path rather
+ * than each keeping a copy of the payload.
  */
-function hintFor(suggestion: ProgressionSuggestion | undefined): string | null {
-  if (suggestion === undefined || !suggestion.changed) return null
-  const { suggested } = suggestion
-  const load = suggested.weightG === null ? 'bodyweight' : formatWeight(suggested.weightG)
-  return `Next time: ${suggested.reps ?? '—'} × ${load}`
+function useRecordSet(
+  logSet: ReturnType<typeof useLogSet>,
+  submit: ReturnType<typeof useSubmit>['submit'],
+) {
+  return (
+    exerciseId: string,
+    entryId: string | null,
+    setIndex: number,
+    values: LoggedValues,
+  ): void => {
+    void submit(async () => {
+      await logSet.mutateAsync({
+        exerciseId,
+        entryId,
+        setIndex,
+        weightG: values.weightG,
+        reps: values.reps,
+        rpe: null,
+        durationS: values.durationS,
+        distanceMm: values.distanceMm,
+        isWarmup: false,
+      })
+    })
+  }
 }
 
-/** What has actually been done this session, and the only way to take a mistake back. */
-function LoggedSets({
-  logs,
-  editable,
-  onRemove,
-}: {
-  readonly logs: readonly SetLog[]
-  readonly editable: boolean
-  readonly onRemove: (logId: string) => void
-}): React.JSX.Element | null {
-  if (logs.length === 0) return null
-  return (
-    <Card testID="session-logs">
-      <Stack gap="xs">
-        <Text variant="label" tone="muted">
-          Logged
-        </Text>
-        {logs.map((log) => (
-          <ListRow
-            key={log.id}
-            title={`Set ${log.setIndex + 1}`}
-            subtitle={`${log.reps ?? '—'} × ${
-              log.weightG === null ? 'bodyweight' : formatWeight(log.weightG)
-            }`}
-            trailing={editable ? 'Undo' : undefined}
-            onPress={
-              editable
-                ? () => {
-                    onRemove(log.id)
-                  }
-                : undefined
-            }
-            testID={`logged-set-${log.id}`}
-          />
-        ))}
-      </Stack>
-    </Card>
-  )
+/**
+ * Which exercises an ad-hoc session is working through. Local, not persisted: the logs themselves
+ * are the record, and re-picking after a reload continues where it left off.
+ */
+function useAdHocExercises() {
+  const [chosen, setChosen] = useState<Exercise[]>([])
+  const [picking, setPicking] = useState(false)
+
+  return {
+    chosen,
+    picking,
+    startPicking: () => {
+      setPicking(true)
+    },
+    stopPicking: () => {
+      setPicking(false)
+    },
+    choose: (exercise: Exercise) => {
+      setChosen((current) =>
+        current.some((e) => e.id === exercise.id) ? current : [...current, exercise],
+      )
+      setPicking(false)
+    },
+  }
 }
 
 export default function LiveSession(): React.JSX.Element {
@@ -87,6 +78,8 @@ export default function LiveSession(): React.JSX.Element {
   const router = useRouter()
   const id = sessionId ?? ''
 
+  const { chosen, picking, startPicking, stopPicking, choose } = useAdHocExercises()
+
   const session = useSession(id)
   const workoutId = session.data?.workoutId ?? ''
   const workout = useWorkout(workoutId)
@@ -95,7 +88,13 @@ export default function LiveSession(): React.JSX.Element {
   const removeLog = useRemoveLog(id)
   const finish = useUpdateSession(id)
   const { submit, busy, error } = useSubmit()
+  const record = useRecordSet(logSet, submit)
 
+  /**
+   * The one write this screen makes. Planned and ad-hoc sets differ only in whether they name a
+   * prescribed entry — `entry_id` is nullable for exactly that reason — so they share a path rather
+   * than each keeping their own copy of the payload.
+   */
   const day = useMemo(
     () => workout.data?.days.find((d) => d.id === session.data?.dayId),
     [workout.data, session.data],
@@ -114,6 +113,10 @@ export default function LiveSession(): React.JSX.Element {
   }
   if (session.isPending) return <Spinner testID="session-loading" />
 
+  if (picking) {
+    return <ExercisePicker onCancel={stopPicking} onPick={choose} />
+  }
+
   const logs = session.data.logs
   const ended = session.data.endedAt !== null
 
@@ -122,28 +125,19 @@ export default function LiveSession(): React.JSX.Element {
       title={day?.name ?? 'Session'}
       testID="session-screen"
       footer={
-        ended ? (
-          <Button
-            title="Done"
-            variant="secondary"
-            onPress={() => {
+        <SessionFooter
+          ended={ended}
+          busy={busy}
+          onLeave={() => {
+            router.back()
+          }}
+          onFinish={() => {
+            void submit(async () => {
+              await finish.mutateAsync({ endedAt: new Date().toISOString() })
               router.back()
-            }}
-            testID="leave-session"
-          />
-        ) : (
-          <Button
-            title="Finish session"
-            onPress={() => {
-              void submit(async () => {
-                await finish.mutateAsync({ endedAt: new Date().toISOString() })
-                router.back()
-              })
-            }}
-            busy={busy}
-            testID="finish-session"
-          />
-        )
+            })
+          }}
+        />
       }
     >
       {error === null ? null : <Text tone="danger">{error}</Text>}
@@ -153,47 +147,41 @@ export default function LiveSession(): React.JSX.Element {
           {`Finished. ${logs.length} ${logs.length === 1 ? 'set' : 'sets'} logged.`}
         </Text>
       ) : day === undefined ? (
-        <Text tone="muted" testID="session-adhoc">
-          Ad-hoc session. Open an exercise to log against it.
-        </Text>
+        <AdHoc
+          chosen={chosen}
+          onAdd={startPicking}
+          onLog={(exercise, values) => {
+            record(
+              exercise.id,
+              null,
+              logs.filter((l) => l.exerciseId === exercise.id).length,
+              values,
+            )
+          }}
+          logs={logs}
+          busy={logSet.isPending}
+        />
       ) : (
-        day.entries.map((entry) => {
-          const done = logs.filter((l) => l.entryId === entry.id && !l.isWarmup).length
-          return (
-            <SetLogger
-              key={entry.id}
-              exerciseName={entry.exercise?.name ?? 'Unavailable exercise'}
-              tracking={entry.exercise?.tracking ?? 'weight_reps'}
-              target={targetOf(entry)}
-              suggestion={hintFor(suggestions.get(entry.id))}
-              done={done}
-              busy={logSet.isPending}
-              testID={`log-entry-${entry.index}`}
-              onLog={(values) => {
-                void submit(async () => {
-                  await logSet.mutateAsync({
-                    exerciseId: entry.exerciseId,
-                    entryId: entry.id,
-                    setIndex: done,
-                    weightG: values.weightG,
-                    reps: values.reps,
-                    rpe: null,
-                    durationS: values.durationS,
-                    distanceMm: values.distanceMm,
-                    isWarmup: false,
-                  })
-                })
-              }}
-            />
-          )
-        })
+        <PlannedDay
+          day={day}
+          logs={logs}
+          suggestions={suggestions}
+          busy={logSet.isPending}
+          onLog={(entry, done, values) => {
+            record(entry.exerciseId, entry.id, done, values)
+          }}
+        />
       )}
 
       <LoggedSets
         logs={logs}
         editable={!ended}
         onRemove={(logId) => {
-          removeLog.mutate(logId)
+          // Through `submit`: a set finished on another device answers 404, and the row would
+          // otherwise just sit there while the user tapped it again.
+          void submit(async () => {
+            await removeLog.mutateAsync(logId)
+          })
         }}
       />
     </Screen>

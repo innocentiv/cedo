@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq, lt } from 'drizzle-orm'
 import {
   DEFAULT_GROUP_SLUG,
   type AuthResult,
@@ -36,9 +36,24 @@ function expiry(days: number): Date {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000)
 }
 
+/**
+ * Expired rows are cleared for this user whenever they sign in.
+ *
+ * Nothing else ever deletes a session, and at a 90-day expiry a long-lived instance would keep one
+ * dead row per sign-in forever. Doing it here rather than on a schedule keeps the cost amortised
+ * and proportional — the people who create rows are the people who clean them up — and needs no
+ * background job on a box that may be asleep.
+ */
+async function pruneExpiredSessions(userId: string): Promise<void> {
+  await db
+    .delete(sessions)
+    .where(and(eq(sessions.userId, userId), lt(sessions.expiresAt, new Date())))
+}
+
 async function issueSession(userId: string): Promise<{ token: string; expiresAt: Date }> {
   const { token, hash } = mintToken()
   const expiresAt = expiry(SESSION_DAYS)
+  await pruneExpiredSessions(userId)
   await db.insert(sessions).values({ userId, tokenHash: hash, expiresAt })
   return { token, expiresAt }
 }

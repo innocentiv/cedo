@@ -134,7 +134,9 @@ export default function ExerciseDetail(): React.JSX.Element {
           title={data.isFavourite ? 'Pinned ★' : 'Pin'}
           variant="secondary"
           onPress={() => {
-            favourite.mutate({ id: data.id, on: !data.isFavourite })
+            void submit(async () => {
+              await favourite.mutateAsync({ id: data.id, on: !data.isFavourite })
+            })
           }}
           testID="toggle-favourite"
         />

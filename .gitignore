@@ -12,6 +12,9 @@ apps/app/dist/
 # stray declaration output emitted next to source rather than into dist/
 *.d.ts
 *.d.ts.map
+# ...but this one is SOURCE. `apps/app/tsconfig.json` includes it and the app does not typecheck
+# without it, so the blanket rule above made a fresh clone fail `bun run check` on step one.
+!apps/app/expo-env.d.ts
 
 # AI/verification artifacts — screenshots and perf reports (see docs/10-testing.md)
 .artifacts/

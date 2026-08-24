@@ -113,7 +113,9 @@ async function totalsFor(sessionIds: string[]) {
       sessionId: setLogs.sessionId,
       sets: sql<number>`count(*) filter (where not ${setLogs.isWarmup})`.mapWith(Number),
       volume:
-        sql<number>`coalesce(sum(${setLogs.weightG} * ${setLogs.reps}) filter (where not ${setLogs.isWarmup}), 0)`.mapWith(
+        // `::bigint` for the same reason as the review's volume sum: weight × reps overflows int4
+        // at loads the contract permits. See modules/review/service.ts.
+        sql<number>`coalesce(sum(${setLogs.weightG}::bigint * ${setLogs.reps}) filter (where not ${setLogs.isWarmup}), 0)`.mapWith(
           Number,
         ),
     })

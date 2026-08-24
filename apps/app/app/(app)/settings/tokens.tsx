@@ -91,7 +91,11 @@ export default function Tokens(): React.JSX.Element {
           <TokenList
             tokens={data}
             onRevoke={(id) => {
-              revoke.mutate(id)
+              // Through `submit`, so a failed revoke SAYS so. Believing a credential is dead when
+              // it is still live is the one mistake this screen must not let someone make.
+              void submit(async () => {
+                await revoke.mutateAsync(id)
+              })
             }}
           />
         )}

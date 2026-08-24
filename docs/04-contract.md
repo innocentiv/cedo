@@ -40,6 +40,18 @@ openapi({ mapJsonSchema: { zod: (s) => z.toJSONSchema(s, { io: 'input' }) } })
 
 If a rule appears in one of those and not the others, it is a bug. Put it in the schema.
 
+
+## Two fields are relative to the API, not to the site
+
+`Media.url` and `Media.thumbnailUrl` are paths against the **API root** for an uploaded image
+(`/media/:id/blob`), and absolute URLs for a link. The server cannot resolve them itself: the same
+payload is read by a browser that reaches the API at `/api` behind Caddy and by a native build that
+reaches it at an absolute host, so baking either in would pick one deployment.
+
+A client resolves them with `apiUrl()` from `apps/app/src/api/http.ts`. Rendering `media.url`
+straight into an `<img src>` asks the **web origin** for `/media/…`, which Caddy answers with the
+SPA's own `index.html` — HTTP 200, `text/html`, a blank image and no error handler ever fires.
+
 ## Input schemas are strict; output schemas are not
 
 ```ts

@@ -37,6 +37,20 @@ function base(): string {
   return baseUrl
 }
 
+/**
+ * Resolves an API-root-relative path — `Media.url`, `Media.thumbnailUrl` — into something a browser
+ * or a native image loader can actually fetch.
+ *
+ * Needed because those fields are relative to the API, not to the site: rendering them straight into
+ * an `<img src>` asks the web origin for `/media/…`, and Caddy answers with the SPA's index.html.
+ * That is a 200 with `text/html`, so the image is simply blank and no error handler ever runs.
+ * An absolute URL (a YouTube link) is returned unchanged.
+ */
+export function apiUrl(path: string): string {
+  if (/^https?:\/\//u.test(path)) return path
+  return `${base()}${path.startsWith('/') ? path : `/${path}`}`
+}
+
 export type QueryInput = Record<string, string | number | boolean | undefined>
 
 function queryString(query: QueryInput | undefined): string {
