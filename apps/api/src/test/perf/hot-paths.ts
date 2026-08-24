@@ -4,6 +4,7 @@ import { resolveCaller } from '../../plugins/auth.ts'
 import * as exerciseService from '../../modules/exercise/service.ts'
 import * as workoutService from '../../modules/workout/service.ts'
 import * as sessionService from '../../modules/session/service.ts'
+import { list as listSessions } from '../../modules/session/list.ts'
 import { history } from '../../modules/session/history.ts'
 import { suggestForWorkout } from '../../modules/progression/service.ts'
 import { trainingReview } from '../../modules/review/service.ts'
@@ -153,8 +154,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     budgetMs: 60,
     noSeqScan: ['workout_sessions', 'set_logs'],
     indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
-    run: async (fixtures, size) =>
-      await sessionService.list(fixtures.large.caller, { limit: PAGE[size] }),
+    run: async (fixtures, size) => await listSessions(fixtures.large.caller, { limit: PAGE[size] }),
   },
   {
     name: 'GET /sessions/:id',

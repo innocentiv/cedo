@@ -1,12 +1,14 @@
 import { and, asc, desc, eq, gte, lt, sql } from 'drizzle-orm'
 import { gToKg } from '@cedo/contract'
 import { db } from '../../db/client.ts'
+import { visible } from '../../db/ownable.ts'
 import {
   exerciseMuscles,
   exercises,
   setLogs,
   workoutDays,
   workoutSessions,
+  workouts,
 } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
@@ -127,13 +129,20 @@ async function dayBalance(caller: Caller, since: Date): Promise<TrainingReview['
   const rows = await db
     .select({
       day: workoutDays.name,
-      workout: sql<string>`coalesce((select name from workouts where id = ${workoutDays.workoutId}), '')`,
+      workout: workouts.name,
       sessions: sql<number>`count(*)`.mapWith(Number),
     })
     .from(workoutSessions)
     .innerJoin(workoutDays, eq(workoutDays.id, workoutSessions.dayId))
+    /**
+     * Joined rather than fetched by correlated subquery, so `visible()` applies to it. The subquery
+     * this replaces read `select name from workouts where id = …` with no ACL at all, and named a
+     * workout the caller had lost access to. Inner, so a day whose workout is unreachable drops out
+     * entirely — you cannot balance days you cannot see.
+     */
+    .innerJoin(workouts, and(eq(workouts.id, workoutDays.workoutId), visible(workouts, caller)))
     .where(and(eq(workoutSessions.userId, caller.userId), gte(workoutSessions.startedAt, since)))
-    .groupBy(workoutDays.name, workoutDays.workoutId)
+    .groupBy(workoutDays.name, workouts.name)
     .orderBy(desc(sql`count(*)`))
 
   return rows.map((r) => ({ day: r.day, workout: r.workout, sessions: r.sessions }))
@@ -231,6 +240,13 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
         eq(workoutSessions.userId, caller.userId),
         eq(setLogs.isWarmup, false),
         gte(workoutSessions.startedAt, since),
+        /**
+         * Own logs are not enough: an exercise can stop being visible after it was logged, when a
+         * shared group loses the caller as a member. Omitted rather than redacted, matching
+         * `progression/service.ts` — there is nothing useful to say about a movement whose name the
+         * caller cannot read, and this output goes to an AI over MCP.
+         */
+        visible(exercises, caller),
       ),
     )
     .groupBy(exercises.name)

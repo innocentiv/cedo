@@ -1,13 +1,10 @@
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import type {
   LogSetInput,
-  Page,
-  SessionQuery,
   SessionStart,
   SessionUpdate,
   SetLog,
   WorkoutSession,
-  WorkoutSessionSummary,
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { visible } from '../../db/ownable.ts'
@@ -20,7 +17,6 @@ import {
   workouts,
 } from '../../db/schema.ts'
 import { conflict, invalid, notFound } from '../../lib/error.ts'
-import { decodeCursor, encodeCursor } from './cursor.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
 /**
@@ -28,9 +24,9 @@ import type { Caller } from '../../plugins/auth.ts'
  * never shared, favourited or transferred, so every query here filters on the caller's own id
  * rather than on group membership. See docs/03-domain-model.md.
  */
-const ownedBy = (caller: Caller) => eq(workoutSessions.userId, caller.userId)
+export const ownedBy = (caller: Caller) => eq(workoutSessions.userId, caller.userId)
 
-type SessionRow = typeof workoutSessions.$inferSelect
+export type SessionRow = typeof workoutSessions.$inferSelect
 type LogRow = typeof setLogs.$inferSelect
 
 const toLog = (row: LogRow): SetLog => ({
@@ -109,97 +105,6 @@ export async function get(caller: Caller, id: string): Promise<WorkoutSession> {
     .orderBy(asc(setLogs.loggedAt), asc(setLogs.setIndex))
 
   return toSession(row, logs)
-}
-
-export async function list(
-  caller: Caller,
-  query: SessionQuery,
-): Promise<Page<WorkoutSessionSummary>> {
-  const conditions = [ownedBy(caller)]
-  if (query.workoutId !== undefined) conditions.push(eq(workoutSessions.workoutId, query.workoutId))
-  if (query.since !== undefined)
-    conditions.push(sql`${workoutSessions.startedAt} >= ${query.since}`)
-  /**
-   * Keyset on (started_at, id) descending, which is exactly workout_sessions_user_time_idx —
-   * including the id column, so the index serves the ordering and the walk stops at the page size.
-   *
-   * The id tiebreaker is load-bearing. A bare `started_at <` cursor built from an ISO string is
-   * truncated to milliseconds while the column holds microseconds, so page 2 silently skipped every
-   * session inside the truncated millisecond — and two sessions in the same millisecond (easy
-   * through MCP `session_log`) lost one permanently.
-   */
-  const after = decodeCursor(query.cursor)
-  if (after !== null) {
-    conditions.push(
-      sql`(${workoutSessions.startedAt}, ${workoutSessions.id}) < (${after.startedAt}, ${after.id})`,
-    )
-  }
-
-  const rows = await db
-    .select({ session: workoutSessions, workoutName: workouts.name, dayName: workoutDays.name })
-    .from(workoutSessions)
-    .leftJoin(workouts, eq(workouts.id, workoutSessions.workoutId))
-    .leftJoin(workoutDays, eq(workoutDays.id, workoutSessions.dayId))
-    .where(and(...conditions))
-    .orderBy(desc(workoutSessions.startedAt), desc(workoutSessions.id))
-    .limit(query.limit + 1)
-
-  const hasMore = rows.length > query.limit
-  const items = rows.slice(0, query.limit)
-
-  const totalBySession = await totalsFor(items.map((r) => r.session.id))
-
-  return {
-    items: items.map((r) => toSummary(r, totalBySession.get(r.session.id))),
-    nextCursor: hasMore ? encodeCursor(items.at(-1)?.session) : null,
-  }
-}
-
-interface SummaryRow {
-  readonly session: SessionRow
-  readonly workoutName: string | null
-  readonly dayName: string | null
-}
-
-function toSummary(
-  r: SummaryRow,
-  total: { sets: number; volume: number } | undefined,
-): WorkoutSessionSummary {
-  return {
-    id: r.session.id,
-    workoutId: r.session.workoutId,
-    dayId: r.session.dayId,
-    startedAt: r.session.startedAt.toISOString(),
-    endedAt: r.session.endedAt?.toISOString() ?? null,
-    notes: r.session.notes,
-    workoutName: r.workoutName,
-    dayName: r.dayName,
-    setCount: total?.sets ?? 0,
-    totalVolumeG: total?.volume ?? 0,
-  }
-}
-
-/**
- * Set counts and volume for a whole page in ONE grouped query, never one per session. Warm-ups are
- * excluded from both — they are not work performed. See docs/adr/0012-progression-rules.md.
- */
-async function totalsFor(sessionIds: string[]) {
-  if (sessionIds.length === 0) return new Map<string, { sets: number; volume: number }>()
-
-  const totals = await db
-    .select({
-      sessionId: setLogs.sessionId,
-      sets: sql<number>`count(*) filter (where not ${setLogs.isWarmup})`.mapWith(Number),
-      volume:
-        sql<number>`coalesce(sum(${setLogs.weightG} * ${setLogs.reps}) filter (where not ${setLogs.isWarmup}), 0)`.mapWith(
-          Number,
-        ),
-    })
-    .from(setLogs)
-    .where(inArray(setLogs.sessionId, sessionIds))
-    .groupBy(setLogs.sessionId)
-
-  return new Map(totals.map((t) => [t.sessionId, { sets: t.sets, volume: t.volume }]))
 }
 
 export async function update(

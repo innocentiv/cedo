@@ -17,8 +17,10 @@ is designed to prevent.
    UI all derive from them. Never redeclare a shape.
 4. **Business logic lives in `service.ts`.** Route handlers and MCP tools are ≤5 lines and both call
    the same service function. No logic in controllers.
-5. **Every query against an ownable table must apply `visible()` or `editable()`.** Omitting it is a
-   data leak between users. See `docs/03-domain-model.md`.
+5. **Every query against an ownable table must apply `visible()` or `editable()` — including
+   JOINS.** Reading your own row does not entitle you to a name joined onto it, and visibility is
+   not permanent: a member can be removed from a group after logging against its workouts. This has
+   had to be fixed five times. See `docs/03-domain-model.md`.
 6. **All measurements are stored as integers in base units** (`weight_g`, `distance_mm`,
    `duration_s`). Conversion happens only in `packages/contract/src/units.ts`.
 7. **All behaviour is tested on the backend.** UI code stays trivially thin and holds no domain

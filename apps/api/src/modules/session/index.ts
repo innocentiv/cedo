@@ -15,6 +15,7 @@ import {
 } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
 import * as HistoryService from './history.ts'
+import { list as listSessions } from './list.ts'
 import * as SessionService from './service.ts'
 
 const params = z.object({ id: Id })
@@ -22,7 +23,7 @@ const params = z.object({ id: Id })
 export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller, query }) => SessionService.list(caller, query), {
+  .get('/', ({ caller, query }) => listSessions(caller, query), {
     query: SessionQuery,
     response: page(WorkoutSessionSummary),
     detail: { summary: 'Session history, newest first. Summaries only — no per-set detail.' },

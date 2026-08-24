@@ -60,6 +60,35 @@ db.update(exercises)
 test file must prove cross-user isolation. Not-found and not-permitted both return 404 — a 403 would
 confirm the resource exists.
 
+### It applies to JOINS, not just the row you asked for
+
+This is the part that keeps being missed, and it has now had to be fixed in five places. **Reading
+your own row does not entitle you to a name joined onto it.**
+
+Visibility is not permanent. Any editor may remove another member, so an exercise or workout that
+was legitimately visible when a set was logged can be unreachable by the time anything reads that log
+back. Personal data — sessions, set logs — is yours forever; **the names hanging off it are not.**
+
+So a query that starts from something personal and joins to an ownable table still needs the
+predicate, and there are two shapes depending on whether the row should survive:
+
+| The joined name is | Do this | Because |
+| --- | --- | --- |
+| decoration on a row that must still appear | `visible()` in the **JOIN condition**, left join | the row stays, the name becomes `null` |
+| the subject of the row itself | `visible()` in the **WHERE** | the row drops out; there is nothing to say |
+
+The first is `GET /sessions` (your session, someone else's workout name) and `WorkoutEntry.exercise`.
+The second is `progression`, `stalled` and `dayBalance` — advice about a movement you cannot read is
+not advice.
+
+Two traps worth naming. A child inherits its parent's visibility rather than having its own, so a
+`workout_days` name is gated by joining through its workout. And a correlated subquery
+(`(select name from workouts where id = …)`) is a join that no predicate is watching — `dayBalance`
+leaked exactly that way. Prefer a real join, where `visible()` has somewhere to go.
+
+`review/visibility.test.ts` holds the reproduction, and the counterpart test that fails if the fix
+degenerates into "always return null".
+
 ## Entities
 
 ### Muscles — a hardcoded set
