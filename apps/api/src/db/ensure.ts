@@ -23,7 +23,30 @@ export async function ensureDatabaseExists(): Promise<void> {
     // `create database` cannot be parameterised, so the identifier is quoted and any embedded
     // quote doubled.
     if (rows.length === 0) await client.unsafe(`create database "${name.replaceAll('"', '""')}"`)
+  } catch (error) {
+    throw new Error(unreachable(url, error), { cause: error })
   } finally {
     await client.end()
   }
+}
+
+/**
+ * The first thing a new contributor gets wrong, so it is worth a real sentence.
+ *
+ * Forgetting `bun run db:test` surfaces as `connect ECONNREFUSED ::1:55433` from eleven unrelated
+ * test files at once, which names neither the cause nor the fix.
+ */
+function unreachable(url: URL, error: unknown): string {
+  const refused = error instanceof Error && 'code' in error && error.code === 'ECONNREFUSED'
+  if (!refused) {
+    return `Could not reach Postgres at ${url.host}: ${error instanceof Error ? error.message : String(error)}`
+  }
+  return [
+    `No Postgres is listening on ${url.host}.`,
+    '',
+    'Start the databases with:  bun run db:up',
+    'Or set everything up at once with:  bun run setup',
+    '',
+    'See README.md — "Development".',
+  ].join('\n')
 }

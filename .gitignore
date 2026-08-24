@@ -12,9 +12,12 @@ apps/app/dist/
 # stray declaration output emitted next to source rather than into dist/
 *.d.ts
 *.d.ts.map
-# ...but this one is SOURCE. `apps/app/tsconfig.json` includes it and the app does not typecheck
-# without it, so the blanket rule above made a fresh clone fail `bun run check` on step one.
-!apps/app/expo-env.d.ts
+# ...but `apps/app/types/` is SOURCE. It holds the app's own ambient declarations, which the
+# blanket rule above would otherwise keep out of a fresh clone — and the app does not typecheck
+# without them, so `bun run check` failed on step one for everyone who did not write them.
+# (`expo-env.d.ts` stays ignored: the Expo CLI generates it and deletes anything it did not write.)
+!apps/app/types/
+!apps/app/types/*.d.ts
 
 # AI/verification artifacts — screenshots and perf reports (see docs/10-testing.md)
 .artifacts/

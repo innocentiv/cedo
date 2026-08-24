@@ -128,8 +128,13 @@ evaluates to `undefined` in a built app, so a native build threw "EXPO_PUBLIC_AP
 no matter what was set. Verified by grepping the bundle: with bracket access neither the value nor
 the variable name appears in it.
 
-`apps/app/expo-env.d.ts` declares the variable as a real property, which is what lets dot access
+`apps/app/types/env.d.ts` declares the variable as a real property, which is what lets dot access
 coexist with `noPropertyAccessFromIndexSignature`.
+
+It is **not** called `expo-env.d.ts`. That filename belongs to the Expo CLI, which regenerates it and
+rewrites `tsconfig.json`'s `include` on every `expo start` / `expo export` — a declaration put there
+is deleted the next time either runs, and the app then fails to typecheck with an index-signature
+error that points nowhere near the cause.
 
 ### A rejected credential ends the session
 
@@ -160,6 +165,19 @@ no third-party scripts; moving to an httpOnly cookie touches this file and the l
 `'loading' | 'signed-in' | 'signed-out'`. On first paint the stored token has not been read yet, and
 a router that treats "not known yet" as "signed out" flashes the login screen at a returning user
 for one frame before bouncing them back.
+
+## Development runs the same shape as production
+
+`bun run dev` starts the API on :3000 and Metro on :8081. The app calls the relative path `/api` in
+both, because `apps/app/metro.config.js` proxies `/api/*` to the API — the development counterpart
+of the Caddyfile.
+
+That indirection is the point. Pointing the app at `http://localhost:3000` instead would make every
+development request cross-origin, which would need CORS on the API, which the whole three-container
+shape exists to avoid. Without the proxy the app came up looking fine and every request 404'd
+against Metro. See `docs/09-deployment.md`.
+
+`CEDO_DEV_API_ORIGIN` overrides the target if the API is not on :3000.
 
 ## Seeing what you built
 

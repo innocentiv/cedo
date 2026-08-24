@@ -1,6 +1,11 @@
 /**
  * Declares the app's public runtime configuration as real properties.
  *
+ * Deliberately NOT `expo-env.d.ts`: that filename belongs to the Expo CLI, which regenerates it and
+ * rewrites `tsconfig.json`'s `include` on every `expo start` / `expo export`. A declaration put
+ * there is deleted the next time either runs, and the app stops typechecking with an error about
+ * index signatures that points nowhere near the cause.
+ *
  * This exists so `process.env.EXPO_PUBLIC_API_URL` can be written with DOT access. Expo's Babel
  * plugin substitutes `EXPO_PUBLIC_*` only for static member access — `process.env['NAME']` is left
  * alone and evaluates to undefined at runtime, so a native build threw "EXPO_PUBLIC_API_URL must be

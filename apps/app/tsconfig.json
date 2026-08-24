@@ -22,5 +22,5 @@
       "@cedo/contract": ["../../packages/contract/src/index.ts"]
     }
   },
-  "include": ["app", "src", "e2e", "app.config.ts", "expo-env.d.ts"]
+  "include": ["app", "src", "e2e", "types", "app.config.ts"]
 }
