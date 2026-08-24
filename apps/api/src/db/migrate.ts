@@ -1,6 +1,8 @@
 import { sql as raw } from 'drizzle-orm'
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 import { closeDatabase, db } from './client.ts'
+import { env } from '../env.ts'
+import { unreachableDatabase } from './unreachable.ts'
 
 /**
  * Runs at container start, before the server binds. Idempotent and safe to re-run, because a
@@ -8,7 +10,12 @@ import { closeDatabase, db } from './client.ts'
  */
 export async function runMigrations(): Promise<void> {
   // Drizzle Kit does not generate extension statements, and the trigram index depends on one.
-  await db.execute(raw`create extension if not exists pg_trgm`)
+  // It is also the FIRST statement anything runs, so it is where an absent database shows up.
+  try {
+    await db.execute(raw`create extension if not exists pg_trgm`)
+  } catch (error) {
+    throw new Error(unreachableDatabase(new URL(env.DATABASE_URL), error), { cause: error })
+  }
 
   /**
    * Best-effort: `shared_preload_libraries` loads the library, but the VIEW only exists after
