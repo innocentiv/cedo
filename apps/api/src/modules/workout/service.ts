@@ -154,12 +154,22 @@ export async function replacePlan(
      * rights to it. `for('update')` holds the row until this commits. See docs/02-conventions.md.
      */
     const [own] = await tx
-      .select({ id: workouts.id })
+      .select({ ownerGroupId: workouts.ownerGroupId })
       .from(workouts)
       .where(and(editable(workouts, caller), eq(workouts.id, id)))
       .limit(1)
       .for('update')
     if (own === undefined) throw notFound('workout')
+
+    // Saving is the third way an exercise reaches a group, after transfer and duplicate, and is
+    // held to their rule: in a shared group, a private exercise would be an "Unavailable exercise"
+    // row for every other member. Against the owner read under the lock, so a concurrent transfer
+    // cannot move the target between the check and the write.
+    await assertExercisesCanTravel(
+      caller,
+      plan.days.flatMap((d) => d.entries.map((e) => e.exerciseId)),
+      own.ownerGroupId,
+    )
 
     await writePlan(tx, id, plan)
     await tx

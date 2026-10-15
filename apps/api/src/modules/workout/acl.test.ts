@@ -153,6 +153,42 @@ describe('sharing a workout does not share its exercises', () => {
     expect(JSON.stringify(res.body)).toContain('Alice Secret Movement')
   })
 
+  /**
+   * Saving is the third way an exercise reaches a group, and it is held to the same rule as
+   * transferring and duplicating. Without it, any editor could add a private exercise to a group's
+   * plan and every other member got an "Unavailable exercise" row.
+   */
+  test('saving a group plan with a private exercise is refused; group and library ones are fine', async () => {
+    const { secret, squad } = await sharedWorkoutUsingAPrivateExercise()
+    const groupPlan = expectContract(
+      Workout,
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Ours' }) }))
+        .body,
+    )
+    await alice.wire(`/workouts/${groupPlan.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: squad.id }),
+    })
+    const save = async (exerciseId: string) =>
+      await alice.wire(`/workouts/${groupPlan.id}/plan`, {
+        method: 'PUT',
+        body: JSON.stringify({
+          days: [{ name: 'D', entries: [{ exerciseId, sets: [{ targetReps: 5 }] }] }],
+        }),
+      })
+
+    const refused = await save(secret.id)
+    expect(refused.status).toBe(409)
+    expect(JSON.stringify(refused.body)).toContain('Alice Secret Movement')
+
+    // Moved into the group, the same exercise is fine.
+    await alice.wire(`/exercises/${secret.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: squad.id }),
+    })
+    expect((await save(secret.id)).status).toBe(200)
+  })
+
   test('it succeeds once the exercise is shared too', async () => {
     const { secret, workout, squad } = await sharedWorkoutUsingAPrivateExercise()
 

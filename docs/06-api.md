@@ -136,7 +136,7 @@ what the plan no longer holds is deleted. The ids are a hint, never trusted: one
 neither take over another workout's rows nor inherit another exercise's history. The write is a
 constant number of statements whatever the plan's size — `writePlan` in `modules/workout/plan.ts`.
 
-Two things the replace checks before touching anything:
+Three things the replace checks before touching anything:
 
 - Every referenced exercise must be **visible** to the caller. Without that, a plan could reference
   a hidden exercise and leak its name and description straight back through `GET /workouts/:id`.
@@ -144,6 +144,11 @@ Two things the replace checks before touching anything:
 - The caller must be able to **edit** the workout. Checked INSIDE the transaction, with a row lock
   (`for update`) — checked outside it, a co-editor transferring the workout away between the check
   and the write let someone who had just lost access replace the whole plan.
+- In a shared group, every exercise must be one the group's members can read now and later:
+  owned by that group or by the starter library. The same rule as transfer and duplicate
+  (`assertExercisesCanTravel` in `modules/workout/transfer.ts`), so no route can put an
+  "Unavailable exercise" row in front of a group. Checked inside the transaction, against the
+  owner read under the lock.
 
 Either way a rejected replace leaves the previous plan exactly as it was. A test asserts that.
 
