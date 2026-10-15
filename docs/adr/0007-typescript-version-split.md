@@ -10,6 +10,10 @@ TypeScript 7.0 (the Go-native compiler) has been stable since 2026-07-08 and is 
 Expo SDK 57's template pins `typescript@~6.0.3`, and Expo does not support TypeScript 7 — support is
 expected in TypeScript 7.1. This was confirmed with the user rather than discovered by experiment.
 
+**Re-checked for Expo SDK 58 (2026-10-15):** `expo-template-default@58.0.20` still pins
+`typescript@~6.0.3`, and the SDK 58 release notes say nothing about TypeScript 7. The split stands;
+check again at the next SDK.
+
 ## Decision
 
 - `packages/contract` and `apps/api` use **TypeScript 7.0.2** and get full type-aware linting.

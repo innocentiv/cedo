@@ -5,7 +5,7 @@ import { Slot } from 'expo-router'
 import { StatusBar } from 'react-native'
 import { createQueryClient } from '../src/api/query-client.ts'
 import { AuthProvider } from '../src/auth/auth-provider.tsx'
-import { ErrorBoundary, color } from '../src/ui/index.ts'
+import { ErrorBoundary } from '../src/ui/index.ts'
 
 /**
  * The one place providers are mounted. Everything below is a route.
@@ -22,7 +22,9 @@ export default function RootLayout(): React.JSX.Element {
       <SafeAreaProvider>
         <QueryClientProvider client={queryClient}>
           <AuthProvider>
-            <StatusBar barStyle="light-content" backgroundColor={color.bg} />
+            {/* No `backgroundColor`: React Native 0.88 removed it. Android draws edge to edge, so
+                the screen's own background shows behind the status bar. */}
+            <StatusBar barStyle="light-content" />
             <Slot />
           </AuthProvider>
         </QueryClientProvider>

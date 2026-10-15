@@ -1,5 +1,5 @@
 import { forwardRef } from 'react'
-import { Pressable, type PressableProps, StyleSheet, type View } from 'react-native'
+import { Pressable, type PressableProps, StyleSheet, type ViewInstance } from 'react-native'
 import { CONTROL_HEIGHT, color, radius, space } from './tokens.ts'
 import { Text } from './text.tsx'
 
@@ -14,7 +14,9 @@ export interface NavItemProps extends PressableProps {
  * One entry in the navigation, in both arrangements. It is a `Pressable` so `TabTrigger asChild`
  * can hand it press handlers and the focused flag, and it renders nothing router-specific itself.
  */
-export const NavItem = forwardRef<View, NavItemProps>(function NavItem(
+// `ViewInstance`, not `View`: under React Native's strict TypeScript API (0.87+) `View` is the
+// component, and a ref holds its instance type.
+export const NavItem = forwardRef<ViewInstance, NavItemProps>(function NavItem(
   { label, isFocused = false, horizontal = false, ...rest },
   ref,
 ) {
