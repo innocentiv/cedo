@@ -36,7 +36,7 @@ one UPDATE on the parent; Postgres carries the owner down.
 - oxlint `no-restricted-imports` refuses importing the owned tables outside `db/`, the write files
   and tests. Type imports are allowed.
 - Writes cannot target a subquery, so each module keeps them in `write*.ts`, which may import the
-  raw tables and gates every read and write with `editable()`.
+  raw tables and gates every statement on them — write or guard read — with `editable()`.
 - The Drizzle client is built without `{ schema }`, so the relational `db.query.*` API — which
   reaches every table with no import — does not exist.
 - A source-scan test fails when an `sql` template outside those files names an owned table, the
@@ -62,8 +62,10 @@ join?" — there is nothing else to join.
   `SET LOCAL app.group_ids` reaches it: threaded through every module or carried in
   AsyncLocalStorage. Each request would hold one of ten pooled connections for its whole duration,
   on hardware the size of a NAS. It adds statements per request that the N+1 invariant
-  (ADR-0018) must absorb. And it moves the rule into SQL policies, where the left-join-or-inner-join
-  decision is implicit instead of visible at the call site.
+  (ADR-0018) must absorb. Instance diagnostics, which count every group's rows, would need a second
+  role that bypasses the policies, and role switching inside the app. And it moves the rule into SQL
+  policies, where the left-join-or-inner-join decision is implicit instead of visible at the call
+  site.
 - **Keeping the predicate and adding tests.** A test catches the read paths someone thought to
   test. The five misses were all in paths nobody had.
 - **Every write through gated helpers in the ownable module.** About 35 write sites, including the

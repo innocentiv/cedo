@@ -104,8 +104,9 @@ export interface AccessContext {
 }
 
 /**
- * READ predicate. **Every** select against an ownable table must include this.
- * Omitting it is a data leak between users, not a style issue. See docs/02-conventions.md.
+ * READ predicate, applied in ONE place: the visible relations in `visible.ts` are built from it,
+ * and module code reads through them rather than calling this. See
+ * docs/adr/0019-visible-relations.md.
  */
 export const visible = (table: OwnedTable, ctx: AccessContext) =>
   inArray(table.ownerGroupId, [...ctx.groupIds])

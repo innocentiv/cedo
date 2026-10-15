@@ -14,7 +14,7 @@ though it were written at once.
   | ---------------- | ------------------------------------------------------------- | ------------------ |
   | `index.ts`       | An Elysia instance: routes, schema bindings, `.guard({ auth: true })` | Any business logic |
   | `service.ts`     | All business logic. Functions taking `(caller, input)`; reads through visible relations | Any HTTP concept; a raw owned table |
-  | `write*.ts`      | The statements that change owned rows, each with `editable()` | Any read not gated by `editable()` |
+  | `write*.ts`      | The statements that change owned rows, and the guards that must share their transaction | A statement on an owned table without `editable()` |
   | `<name>.test.ts` | Unit + integration tests, colocated                           | —                  |
 
 - **Never create a `utils.ts`.** Name the file after what it does (`password.ts`, `token.ts`).

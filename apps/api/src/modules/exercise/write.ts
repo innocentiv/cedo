@@ -13,10 +13,10 @@ import { conflict, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
 /**
- * Every statement that changes an exercise. A write file may import the raw tables — a subquery
- * cannot be an UPDATE target — and in exchange every statement here carries `editable()`, or runs
- * inside a transaction that locked an editable parent first. Reads belong in `service.ts`, through
- * the visible relations. See docs/adr/0019-visible-relations.md.
+ * Every statement that changes an exercise, and the guards that must run in the same transaction.
+ * A write file may import the raw tables — a subquery cannot be an UPDATE target — and in exchange
+ * every statement here on an owned table carries `editable()`. Every other read goes through the
+ * visible relations, in `service.ts` and `query.ts`. See docs/adr/0019-visible-relations.md.
  */
 
 async function replaceMuscles(
@@ -111,9 +111,9 @@ export async function updateExercise(
      * The transaction is READ COMMITTED, so an unlocked guard SELECT is a check-then-act: a
      * co-editor calling `transfer` between this statement and the UPDATE below moves the exercise
      * into a group the caller is not in, and the writes then land on a row they no longer have any
-     * rights to. `for('update')` holds it until this transaction commits. Invariant 5 asks for
-     * `editable()` on the write itself; here the writes are three statements against children, so
-     * the lock is what makes the guard binding on all of them. See docs/02-conventions.md.
+     * rights to. `for('update')` holds it until this transaction commits, so the owner read here is
+     * the one the children below are written under. Each of those statements carries `editable()`
+     * as well. See docs/02-conventions.md.
      */
     const [existing] = await tx
       .select({ id: exercises.id, ownerGroupId: exercises.ownerGroupId })

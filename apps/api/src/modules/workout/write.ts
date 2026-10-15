@@ -9,10 +9,11 @@ import { assertExercisesCanTravel, assertWorkoutCanTravel } from './transfer.ts'
 import { writePlan } from './write-plan.ts'
 
 /**
- * Every statement that changes a workout, except the plan diff itself, which is `write-plan.ts`. A
- * write file may import the raw tables — a subquery cannot be an UPDATE target — and in exchange
- * every statement here carries `editable()`. Reads belong in `service.ts`, through the visible
- * relations. See docs/adr/0019-visible-relations.md.
+ * Every statement that changes a workout, and the guards that must run in the same transaction —
+ * the plan diff itself is `write-plan.ts`. A write file may import the raw tables — a subquery
+ * cannot be an UPDATE target — and in exchange every statement here on an owned table carries
+ * `editable()`. The transfer rule it applies is a read, through the visible relations, in
+ * `transfer.ts`. See docs/adr/0019-visible-relations.md.
  */
 
 /** Returns the new workout's id. */
