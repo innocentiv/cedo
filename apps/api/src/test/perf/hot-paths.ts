@@ -135,7 +135,13 @@ export const HOT_PATHS: readonly HotPath[] = [
     maxQueries: 9,
     budgetMs: 120,
     noSeqScan: ['workout_days', 'workout_entries', 'workout_sets', 'exercises'],
-    indexes: ['workout_entries_day_idx', 'workout_sets_entry_idx'],
+    /**
+     * Every level is read through a visible relation, a subquery Postgres must pull up for these
+     * indexes to serve it. An optimisation fence in a relation — `OFFSET 0`, a LIMIT, a DISTINCT —
+     * turns each level into a filtered scan of the whole table. See
+     * docs/adr/0019-visible-relations.md.
+     */
+    indexes: ['workout_days_order_idx', 'workout_entries_day_idx', 'workout_sets_entry_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
       return await workoutService.get(profile.caller, profile.workoutId)
