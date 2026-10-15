@@ -1,19 +1,13 @@
 import { and, eq, inArray, notInArray, sql } from 'drizzle-orm'
 import { type Transaction } from '../../db/client.ts'
 import type { WorkoutPlanInput } from '@cedo/contract'
-import { editable } from '../../db/ownable.ts'
+import { type OwnedRow, editable } from '../../db/ownable.ts'
 import { workoutDays, workoutEntries, workoutSets } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { valuesOf } from '../../lib/values.ts'
 
 type DayInput = WorkoutPlanInput['days'][number]
 type EntryInput = DayInput['entries'][number]
-
-/** The workout being written, and the owner every day, entry and set of its plan carries. */
-export interface PlanOwner {
-  readonly id: string
-  readonly ownerGroupId: string
-}
 
 /**
  * Writes a whole plan over whatever the workout holds now, KEEPING every day and entry whose id is
@@ -40,7 +34,7 @@ export interface PlanOwner {
 export async function writePlan(
   tx: Transaction,
   caller: Caller,
-  workout: PlanOwner,
+  workout: OwnedRow,
   plan: WorkoutPlanInput,
 ): Promise<void> {
   const workoutId = workout.id
@@ -134,7 +128,7 @@ async function park(
 async function writeSets(
   tx: Transaction,
   caller: Caller,
-  workout: PlanOwner,
+  workout: OwnedRow,
   plan: WorkoutPlanInput,
   entryIds: readonly (readonly string[])[],
   keptEntryIds: string[],
@@ -156,7 +150,7 @@ async function writeSets(
 async function placeDays(
   tx: Transaction,
   caller: Caller,
-  workout: PlanOwner,
+  workout: OwnedRow,
   plan: WorkoutPlanInput,
   keptDay: (day: DayInput) => string | undefined,
 ): Promise<string[]> {
@@ -200,7 +194,7 @@ async function placeDays(
 async function placeEntries(
   tx: Transaction,
   caller: Caller,
-  workout: PlanOwner,
+  workout: OwnedRow,
   plan: WorkoutPlanInput,
   dayIds: readonly string[],
   keptEntry: (entry: EntryInput) => string | undefined,

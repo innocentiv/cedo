@@ -10,6 +10,7 @@ import {
   planInputFrom,
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
+import { assertEditorOf } from '../../db/ownable.ts'
 import { workoutFavourites } from '../../db/schema.ts'
 import { visibleExercises, visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
 import { conflict, notFound } from '../../lib/error.ts'
@@ -18,7 +19,6 @@ import { hydratePlan, toSummary } from './mapper.ts'
 import { encodeCursor } from '../../lib/keyset.ts'
 import { listConditions } from './query.ts'
 import {
-  assertCanWriteTo,
   deleteWorkout,
   insertCopy,
   insertWorkout,
@@ -150,7 +150,7 @@ async function assertExercisesVisible(caller: Caller, plan: WorkoutPlanInput): P
  */
 export async function duplicate(caller: Caller, id: string, toGroupId?: string): Promise<Workout> {
   const target = toGroupId ?? caller.personalGroupId
-  assertCanWriteTo(caller, target)
+  assertEditorOf(caller, target)
 
   const source = await get(caller, id)
   const hidden = source.days.flatMap((d) => d.entries).filter((e) => e.exercise === null).length

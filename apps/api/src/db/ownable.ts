@@ -2,6 +2,7 @@ import { inArray, sql } from 'drizzle-orm'
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core'
 import { foreignKey, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core'
 import { groups, users } from './tables/identity.ts'
+import { notFound } from '../lib/error.ts'
 
 /**
  * The ownable trait. Every shareable entity spreads these columns, and the ACL/transfer/duplicate
@@ -108,6 +109,17 @@ export interface AccessContext {
  */
 export const visible = (table: OwnedTable, ctx: AccessContext) =>
   inArray(table.ownerGroupId, [...ctx.groupIds])
+
+/** An owned row as a write needs it: its id, and the owner its children must carry. */
+export interface OwnedRow {
+  readonly id: string
+  readonly ownerGroupId: string
+}
+
+/** A write INTO a group needs editor rights there. Not-an-editor and no-such-group answer alike. */
+export function assertEditorOf(ctx: AccessContext, groupId: string): void {
+  if (!ctx.editorGroupIds.includes(groupId)) throw notFound('group')
+}
 
 /** WRITE predicate. Every update and delete against an ownable table must include this. */
 export const editable = (table: OwnedTable, ctx: AccessContext) =>

@@ -1,6 +1,7 @@
 import { and, asc, eq } from 'drizzle-orm'
 import type { Exercise, ExerciseCreate, ExerciseQuery, ExerciseUpdate, Page } from '@cedo/contract'
 import { db } from '../../db/client.ts'
+import { assertEditorOf } from '../../db/ownable.ts'
 import { visibleExercises } from '../../db/visible.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
@@ -8,7 +9,6 @@ import { hydrate } from './mapper.ts'
 import { encodeCursor } from '../../lib/keyset.ts'
 import { listConditions, withFavourite } from './query.ts'
 import {
-  assertCanWriteTo,
   deleteExercise,
   insertExercise,
   transferExercise,
@@ -83,7 +83,7 @@ export async function remove(caller: Caller, id: string): Promise<void> {
  */
 export async function duplicate(caller: Caller, id: string, toGroupId?: string): Promise<Exercise> {
   const target = toGroupId ?? caller.personalGroupId
-  assertCanWriteTo(caller, target)
+  assertEditorOf(caller, target)
 
   const source = await get(caller, id)
   return await create(

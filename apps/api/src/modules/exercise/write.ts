@@ -1,7 +1,7 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
 import type { ExerciseCreate, ExerciseUpdate } from '@cedo/contract'
 import { type Transaction, db } from '../../db/client.ts'
-import { editable } from '../../db/ownable.ts'
+import { type OwnedRow, assertEditorOf, editable } from '../../db/ownable.ts'
 import {
   exerciseFavourites,
   exerciseMedia,
@@ -19,21 +19,10 @@ import type { Caller } from '../../plugins/auth.ts'
  * the visible relations. See docs/adr/0019-visible-relations.md.
  */
 
-/** Editors of the target group only. Not-an-editor and does-not-exist give the same answer. */
-export function assertCanWriteTo(caller: Caller, groupId: string): void {
-  if (!caller.editorGroupIds.includes(groupId)) throw notFound('group')
-}
-
-/** The exercise a child row belongs to, and the owner it therefore carries. */
-interface Parent {
-  readonly id: string
-  readonly ownerGroupId: string
-}
-
 async function replaceMuscles(
   tx: Transaction,
   caller: Caller,
-  exercise: Parent,
+  exercise: OwnedRow,
   muscles: ExerciseCreate['muscles'],
 ): Promise<void> {
   await tx
@@ -56,7 +45,7 @@ async function replaceMuscles(
 async function replaceMedia(
   tx: Transaction,
   caller: Caller,
-  exercise: Parent,
+  exercise: OwnedRow,
   mediaIds: string[],
 ): Promise<void> {
   await tx
@@ -85,7 +74,7 @@ export async function insertExercise(
   input: ExerciseCreate,
   ownerGroupId: string,
 ): Promise<string> {
-  assertCanWriteTo(caller, ownerGroupId)
+  assertEditorOf(caller, ownerGroupId)
 
   return await db.transaction(async (tx) => {
     const [created] = await tx
@@ -185,7 +174,7 @@ export async function transferExercise(
   id: string,
   toGroupId: string,
 ): Promise<void> {
-  assertCanWriteTo(caller, toGroupId)
+  assertEditorOf(caller, toGroupId)
 
   const moved = await db
     .update(exercises)

@@ -1,7 +1,7 @@
 import { and, eq, sql } from 'drizzle-orm'
 import type { WorkoutCreate, WorkoutPlanInput, WorkoutUpdate } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { editable } from '../../db/ownable.ts'
+import { assertEditorOf, editable } from '../../db/ownable.ts'
 import { workouts } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
@@ -15,18 +15,13 @@ import { writePlan } from './write-plan.ts'
  * relations. See docs/adr/0019-visible-relations.md.
  */
 
-/** Editors of the target group only. Not-an-editor and does-not-exist give the same answer. */
-export function assertCanWriteTo(caller: Caller, groupId: string): void {
-  if (!caller.editorGroupIds.includes(groupId)) throw notFound('group')
-}
-
 /** Returns the new workout's id. */
 export async function insertWorkout(
   caller: Caller,
   input: WorkoutCreate,
   ownerGroupId: string,
 ): Promise<string> {
-  assertCanWriteTo(caller, ownerGroupId)
+  assertEditorOf(caller, ownerGroupId)
 
   const [created] = await db
     .insert(workouts)
@@ -117,7 +112,7 @@ export async function insertCopy(
   plan: WorkoutPlanInput,
   toGroupId: string,
 ): Promise<string> {
-  assertCanWriteTo(caller, toGroupId)
+  assertEditorOf(caller, toGroupId)
   await assertExercisesCanTravel(
     caller,
     plan.days.flatMap((d) => d.entries.map((e) => e.exerciseId)),
@@ -146,7 +141,7 @@ export async function transferWorkout(
   id: string,
   toGroupId: string,
 ): Promise<void> {
-  assertCanWriteTo(caller, toGroupId)
+  assertEditorOf(caller, toGroupId)
 
   /**
    * Establish that the caller may edit THIS workout before saying anything about its contents.
