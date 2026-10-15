@@ -155,10 +155,12 @@ export function reviewSummary(review: TrainingReview, weeks: number): string {
     review.stalled.length === 0
       ? 'Nothing looks stalled.'
       : `Stalled (no improvement across 3+ sessions):\n  ${review.stalled
-          .map(
-            (s) =>
-              `${s.exercise}: ${s.sessions} sessions at ${s.bestWeightKg ?? '?'}kg × ${s.bestReps ?? '?'}`,
-          )
+          .map((s) => {
+            // A bodyweight movement has no weight and a hold has no reps; neither is "?".
+            const load = s.bestWeightKg === null ? 'bodyweight' : `${s.bestWeightKg}kg`
+            const best = s.bestReps === null ? '' : ` at ${s.bestReps} × ${load}`
+            return `${s.exercise}: ${s.sessions} sessions${best}`
+          })
           .join('\n  ')}`
 
   return [

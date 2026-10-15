@@ -185,6 +185,9 @@ async function muscleVolume(
     .toSorted((a, b) => b.volumeKg - a.volumeKg)
 }
 
+/** `mapWith(Number)` would type a nullable aggregate as `number` while it stays null at runtime. */
+const numberOrNull = (value: string | null) => (value === null ? null : Number(value))
+
 /**
  * An exercise trained at least three times whose best logged set has not improved. Deliberately
  * judged on what was LOGGED, not on the prescription: a plan can say anything, the logs say what
@@ -195,8 +198,8 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
     .select({
       exercise: exercises.name,
       sessions: sql<number>`count(distinct ${setLogs.sessionId})`.mapWith(Number),
-      bestWeight: sql<number | null>`max(${setLogs.weightG})`.mapWith(Number),
-      bestReps: sql<number | null>`max(${setLogs.reps})`.mapWith(Number),
+      bestWeight: sql<number | null>`max(${setLogs.weightG})`.mapWith(numberOrNull),
+      bestReps: sql<number | null>`max(${setLogs.reps})`.mapWith(numberOrNull),
       /**
        * Progress is any improvement in weight OR reps OR duration — not weight alone.
        * `count(distinct weight_g)` was 0 for every bodyweight and duration exercise, because
@@ -243,16 +246,18 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
 interface StalledRow {
   readonly exercise: string
   readonly sessions: number
-  readonly bestWeight: number
-  readonly bestReps: number
+  /** Null for a movement that logs no weight — `max()` over nothing but NULLs. */
+  readonly bestWeight: number | null
+  readonly bestReps: number | null
 }
 
 function toStalled(r: StalledRow): TrainingReview['stalled'][number] {
   return {
     exercise: r.exercise,
     sessions: r.sessions,
-    // `mapWith(Number)` turns a SQL NULL into NaN, never null.
-    bestWeightKg: Number.isNaN(r.bestWeight) ? null : gToKg(Math.round(r.bestWeight)),
-    bestReps: Number.isNaN(r.bestReps) ? null : r.bestReps,
+    // Drizzle does not run `mapWith` on a SQL NULL, so it arrives as null — not NaN, as this once
+    // assumed, which let `Math.round(null)` report a stalled pull-up as "0kg".
+    bestWeightKg: r.bestWeight === null ? null : gToKg(Math.round(r.bestWeight)),
+    bestReps: r.bestReps,
   }
 }
