@@ -86,6 +86,11 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   one event, so it never passes through a half-typed "62." or an emptied field. Type key by key
   (`page.type`, `page.press`). And assert on `innerText` lines, not `textContent` substrings:
   `textContent` runs "Set 1" into "8 × 60 kg", and `toContain('8 × 60 kg')` also matches 88 reps.
+- **After an Expo SDK upgrade, count the React Natives in `bun.lock`.** Bun keeps lock entries
+  for auto-installed peers (reanimated, worklets) from the previous SDK, and their old
+  `react-native` range nested a second React Native and Metro under them — green in every test,
+  wrong in every native build. `grep -oE '"react-native@[0-9][^"]*"' bun.lock | sort -u` must print
+  one line. And `expo install --fix` writes `~` ranges: re-pin them exactly.
 - **`e2e` and `shot` serve `apps/app/dist`, so both rebuild first.** They used not to, which meant
   editing a screen and running either tested the PREVIOUS bundle and passed. Use `e2e:only` to skip
   the rebuild when you know the bundle is current.
