@@ -32,12 +32,22 @@ container that is accepting traffic is one whose schema is current and whose lib
 Both are idempotent, so this is also the upgrade path:
 
 ```bash
-git pull && docker compose up --build -d
+git pull
+docker compose pull db          # the latest Postgres 18 minor release
+docker compose build --pull     # rebuild api + web on FRESH Bun and Caddy base images
+docker compose up -d
 ```
 
-`docker compose pull` alone does **nothing** for this app: the `api` and `web` services are built
-from source (`build:` in `docker-compose.yml`, no published `image:`), so only the Postgres image
-would be pulled. Rebuilding is what delivers new code, migrations and library entries.
+Each line does something the others do not:
+
+- `docker compose pull` alone does **nothing** for `api` and `web`: they are built from source
+  (`build:` in `docker-compose.yml`, no published `image:`), so only the Postgres image would be
+  pulled. Rebuilding is what delivers new code, migrations and library entries.
+- `up --build` without `--pull` rebuilds on the base images already cached, so the floating tags
+  (`oven/bun:1.4-alpine`, `caddy:2-alpine`) would never deliver their security patches. `build
+  --pull` re-resolves them.
+- A Postgres **minor** release is a restart; a **major** one (18 → 19) is a dump and restore, and
+  is a deliberate change to the image tag, never something `pull` does on its own.
 
 ## Why one origin
 

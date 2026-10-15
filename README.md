@@ -17,8 +17,14 @@ open http://localhost:8080
 ```
 
 That is the whole install. Migrations and the starter exercise library run inside the API container
-before it accepts traffic, and both are idempotent, so this is also the upgrade path. Details and
-backup instructions: **[docs/09-deployment.md](docs/09-deployment.md)**.
+before it accepts traffic, and both are idempotent, so upgrading is a pull and a rebuild — on fresh
+base images, so Bun and Caddy security patches arrive too:
+
+```bash
+git pull && docker compose pull db && docker compose build --pull && docker compose up -d
+```
+
+Details and backup instructions: **[docs/09-deployment.md](docs/09-deployment.md)**.
 
 ---
 
