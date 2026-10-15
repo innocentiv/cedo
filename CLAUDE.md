@@ -76,6 +76,16 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   typechecks, lints and runs in dev, and is silently `undefined` in the shipped app.
 - **Run the e2e suite in the foreground.** A backgrounded `bun run e2e` reported every journey as
   failed after seventeen minutes; the WebView needs the session it was started from.
+- **Library behaviour that looked right and was not.** Each shipped a bug in this codebase:
+  Zod 4 applies `.default()` inside `.partial()` (use `patchOf`); Drizzle's `.desc()` builds
+  `DESC NULLS LAST`, which an `ORDER BY … DESC` cannot walk (use `.desc().nullsFirst()`); Drizzle
+  skips `mapWith` for SQL NULL, so it stays `null`, never `NaN`; a JS `Date` inside raw `sql`
+  bypasses the column encoder and fails in the driver; `ON DELETE RESTRICT` raises SQLSTATE
+  **23001**, not the 23503 everyone guesses.
+- **`page.fill` cannot catch an input bug.** It selects the field and inserts the whole string in
+  one event, so it never passes through a half-typed "62." or an emptied field. Type key by key
+  (`page.type`, `page.press`). And assert on `innerText` lines, not `textContent` substrings:
+  `textContent` runs "Set 1" into "8 × 60 kg", and `toContain('8 × 60 kg')` also matches 88 reps.
 - **`e2e` and `shot` serve `apps/app/dist`, so both rebuild first.** They used not to, which meant
   editing a screen and running either tested the PREVIOUS bundle and passed. Use `e2e:only` to skip
   the rebuild when you know the bundle is current.
