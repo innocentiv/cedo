@@ -59,6 +59,29 @@ describe('creating and listing', () => {
     expect(workout.days).toEqual([])
   })
 
+  test('renaming keeps the notes — an omitted field is not a cleared one', async () => {
+    const created = expectContract(
+      Workout,
+      (
+        await alice.wire('/workouts', {
+          method: 'POST',
+          body: JSON.stringify({ name: 'Block A', notes: 'Deload every fourth week' }),
+        })
+      ).body,
+    )
+    const renamed = expectContract(
+      Workout,
+      (
+        await alice.wire(`/workouts/${created.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ name: 'Block B' }),
+        })
+      ).body,
+    )
+    expect(renamed.name).toBe('Block B')
+    expect(renamed.notes).toBe('Deload every fourth week')
+  })
+
   test('the list returns summaries with a day count, not full plans', async () => {
     const workout = await aWorkout(alice)
     await alice.wire(`/workouts/${workout.id}/plan`, {

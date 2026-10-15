@@ -2,7 +2,14 @@ import { z } from 'zod'
 import { Exercise } from './exercise.ts'
 import { Rpe, TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 import { Progression, SetTarget } from './progression.ts'
-import { Id, NonEmptyString, OrderIndex, PaginationQuery, Timestamp } from './primitives.ts'
+import {
+  Id,
+  NonEmptyString,
+  OrderIndex,
+  PaginationQuery,
+  Timestamp,
+  patchOf,
+} from './primitives.ts'
 
 /**
  * A workout is a sequence of days; a day is a sequence of entries; an entry is one exercise with
@@ -93,13 +100,16 @@ export const WorkoutDay = z.object({
 })
 export type WorkoutDay = z.output<typeof WorkoutDay>
 
-export const WorkoutCreate = z.strictObject({
+const workoutFields = {
   name: NonEmptyString.max(120),
   notes: z.string().max(4000).nullable().default(null),
-})
+}
+
+export const WorkoutCreate = z.strictObject(workoutFields)
 export type WorkoutCreate = z.output<typeof WorkoutCreate>
 
-export const WorkoutUpdate = WorkoutCreate.partial()
+/** Not `.partial()`: that would turn an omitted `notes` into `null`. See `patchOf`. */
+export const WorkoutUpdate = z.strictObject(patchOf(workoutFields))
 export type WorkoutUpdate = z.output<typeof WorkoutUpdate>
 
 /** List rows: no nested plan, because a list of full plans is a large and useless payload. */

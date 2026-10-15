@@ -29,7 +29,9 @@ const widgetFields = {
 const WidgetFields = z.strictObject(widgetFields)
 
 export const WidgetCreate = WidgetFields.superRefine((value, ctx) => checkInvariants(value, ctx))
-export const WidgetUpdate = WidgetFields.partial().superRefine((value, ctx) => {
+// patchOf, NEVER .partial(): Zod applies .default() inside .partial(), so an omitted `servings`
+// would arrive as 1 and the service would reset it. See patchOf in primitives.ts.
+export const WidgetUpdate = z.strictObject(patchOf(widgetFields)).superRefine((value, ctx) => {
   // Only validate what is actually being set.
   if (value.servings !== undefined) checkInvariants(value, ctx)
 })

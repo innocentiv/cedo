@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { Media } from './media.ts'
 import { MuscleSlug } from './muscle.ts'
-import { Id, NonEmptyString, PaginationQuery, Timestamp } from './primitives.ts'
+import { Id, NonEmptyString, PaginationQuery, Timestamp, patchOf } from './primitives.ts'
 
 /** How much of a movement's load a given muscle carries, as a percentage of the total. */
 export const MuscleLoad = z.object({
@@ -104,8 +104,11 @@ export const ExerciseCreate = ExerciseFields.superRefine((value, ctx) => {
 })
 export type ExerciseCreate = z.output<typeof ExerciseCreate>
 
-/** Every field optional; the muscle invariants apply only when `muscles` is actually being set. */
-export const ExerciseUpdate = ExerciseFields.partial().superRefine((value, ctx) => {
+/**
+ * Every field optional and none defaulted (see `patchOf`); the muscle invariants apply only when
+ * `muscles` is actually being set.
+ */
+export const ExerciseUpdate = z.strictObject(patchOf(exerciseFields)).superRefine((value, ctx) => {
   if (value.muscles !== undefined) checkMuscles(value.muscles, ctx)
   if (value.mediaIds !== undefined) checkMediaIds(value.mediaIds, ctx)
 })

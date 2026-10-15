@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { ApiError, Exercise, GroupMembership, page } from '@cedo/contract'
+import { ApiError, Exercise, GroupMembership, Media, page } from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
@@ -167,6 +167,37 @@ describe('update', () => {
     expect(patched.name).toBe('Bench Press')
     expect(patched.description).toBe('Updated')
     expect(patched.muscles).toHaveLength(2)
+  })
+
+  test('a partial patch leaves DEFAULTED fields alone too — tracking, instructions, media', async () => {
+    const link = await alice.wire('/media/link', {
+      method: 'POST',
+      body: JSON.stringify({ url: 'https://youtu.be/dQw4w9WgXcQ', title: 'Form' }),
+    })
+    const mediaId = expectContract(Media, link.body).id
+    const plank = await created(alice, {
+      name: 'Plank',
+      tracking: 'duration',
+      instructions: 'Hold a straight line.',
+      equipment: 'Mat',
+      isUnilateral: true,
+      mediaIds: [mediaId],
+    })
+
+    const patched = expectContract(
+      Exercise,
+      (
+        await alice.wire(`/exercises/${plank.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ description: 'Core' }),
+        })
+      ).body,
+    )
+    expect(patched.tracking).toBe('duration')
+    expect(patched.instructions).toBe('Hold a straight line.')
+    expect(patched.equipment).toBe('Mat')
+    expect(patched.isUnilateral).toBe(true)
+    expect(patched.media.map((m) => m.id)).toEqual([mediaId])
   })
 
   test('replacing muscles replaces them wholesale', async () => {

@@ -36,6 +36,29 @@ export const PaginationQuery = z.strictObject({
 })
 export type PaginationQuery = z.output<typeof PaginationQuery>
 
+type PatchShape<S extends z.ZodRawShape> = {
+  [K in keyof S]: z.ZodOptional<S[K] extends z.ZodDefault<infer Inner> ? Inner : S[K]>
+}
+
+/**
+ * The PATCH form of a create shape: every field optional, and every `.default()` REMOVED.
+ *
+ * Never `.partial()` a schema with defaults. Zod still applies a default inside `.partial()`, so an
+ * omitted key comes out as its create-time value — and a service, rightly treating every present
+ * key as an instruction, resets it. A description-only exercise patch once turned a plank into a
+ * `weight_reps` lift and detached all of its media.
+ */
+export function patchOf<S extends z.ZodRawShape>(shape: S): PatchShape<S> {
+  // Object.fromEntries cannot carry a mapped type; the schema tests prove the runtime shape.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion
+  return Object.fromEntries(
+    Object.entries(shape).map(([key, field]) => [
+      key,
+      z.optional(field instanceof z.ZodDefault ? field.unwrap() : field),
+    ]),
+  ) as PatchShape<S>
+}
+
 /** `page(Exercise)` -> `{ items: Exercise[]; nextCursor: string | null }`. */
 export function page<T extends z.ZodType>(item: T) {
   return z.object({

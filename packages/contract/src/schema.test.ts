@@ -5,7 +5,7 @@ import { ExerciseCreate, ExerciseQuery, ExerciseUpdate } from './exercise.ts'
 import { MUSCLES, MUSCLE_SLUGS, MuscleSlug } from './muscle.ts'
 import { PaginationQuery } from './primitives.ts'
 import { RegisterInput } from './user.ts'
-import { WorkoutPlanInput } from './workout.ts'
+import { WorkoutPlanInput, WorkoutUpdate } from './workout.ts'
 
 const validMuscles = [
   { muscle: 'pectoralis_major', loadPct: 70 },
@@ -108,6 +108,26 @@ describe('ExerciseUpdate applies invariants only to fields being set', () => {
     expect(
       ExerciseUpdate.safeParse({ muscles: [{ muscle: 'quadriceps', loadPct: 99 }] }).success,
     ).toBe(false)
+  })
+
+  /**
+   * A field the caller omitted must stay ABSENT, not arrive as its create-time default. Zod applies
+   * `.default()` even inside `.partial()`, so a description-only patch used to come out carrying
+   * `tracking: 'weight_reps'` and `mediaIds: []` — and the service, rightly treating every present
+   * key as an instruction, reset the tracking mode and detached every image.
+   */
+  test('omitted fields stay omitted, rather than becoming their defaults', () => {
+    expect(ExerciseUpdate.parse({ description: 'x' })).toEqual({ description: 'x' })
+  })
+})
+
+describe('WorkoutUpdate', () => {
+  test('omitted fields stay omitted, rather than becoming their defaults', () => {
+    expect(WorkoutUpdate.parse({ name: 'Renamed' })).toEqual({ name: 'Renamed' })
+  })
+
+  test('an explicit null still clears the notes', () => {
+    expect(WorkoutUpdate.parse({ notes: null })).toEqual({ notes: null })
   })
 })
 
