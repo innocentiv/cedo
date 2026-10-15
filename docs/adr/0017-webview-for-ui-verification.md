@@ -76,5 +76,11 @@ hand the AI both the message and a picture.
 - `Bun.WebView` is new in Bun 1.4. If it regresses, the fallback is Playwright with the same harness
   shape.
 - **The capture shim is load-bearing.** Delete it and every e2e test still passes while proving
-  nothing about runtime errors — the worst kind of green. `apps/app/e2e/harness.ts` has a test that
-  a page throwing during load actually fails the run.
+  nothing about runtime errors — the worst kind of green. `apps/app/e2e/harness.e2e.ts` has a test
+  that an uncaught exception in the page fails the run; it was watched failing with the shim
+  removed. (The shim lives in `apps/app/e2e/server.ts`. This bullet used to promise that test before
+  it existed.)
+- **A failed read must reach the console too.** A screen renders a failed query as an inline
+  notice and TanStack Query logs nothing, so the route sweep passed over screens whose every request
+  failed. The app's `QueryCache.onError` sends every failed read except a 401 to `console.error`,
+  and `harness.e2e.ts` pins that a 404 read fails the run.

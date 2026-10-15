@@ -1,4 +1,4 @@
-import { QueryClient } from '@tanstack/react-query'
+import { QueryCache, QueryClient } from '@tanstack/react-query'
 import { ApiError } from './http.ts'
 
 /**
@@ -7,6 +7,21 @@ import { ApiError } from './http.ts'
  */
 export function createQueryClient(): QueryClient {
   return new QueryClient({
+    /**
+     * Every failed READ reaches `console.error`. A screen renders one as an inline notice, and
+     * TanStack Query logs nothing itself, so a `ContractDriftError` or a 500 on a GET was invisible
+     * to the e2e harness — which fails a run on console errors and nothing else. The route sweep
+     * passed over screens whose every request was failing. `e2e/harness.e2e.ts` pins this.
+     *
+     * A 401 is the one exception: the auth layer answers it by signing out, which is the designed
+     * response to a revoked token, not a fault.
+     */
+    queryCache: new QueryCache({
+      onError: (error, query) => {
+        if (error instanceof ApiError && error.status === 401) return
+        console.error(`[query ${JSON.stringify(query.queryKey)}]`, error.message)
+      },
+    }),
     defaultOptions: {
       queries: {
         /**

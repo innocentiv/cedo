@@ -202,7 +202,8 @@ against Metro. See `docs/09-deployment.md`.
 ```bash
 bun run shot /exercises            # render, screenshot to .artifacts/, print console errors
 bun run shot /workouts --tablet
-bun run e2e                        # every route, both widths, fails on any console error
+bun run e2e                        # static routes at phone width, the tablet shell, the journeys;
+                                   # fails on any console error, including any failed read
 ```
 
 `bun run shot` is the inner loop: edit a screen, run it, **read the PNG**, read the errors. Both the
