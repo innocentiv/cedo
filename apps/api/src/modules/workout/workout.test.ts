@@ -248,14 +248,6 @@ describe('access control', () => {
     expect((await bob.wire(`/workouts/${mine.id}`, { method: 'DELETE' })).status).toBe(404)
   })
 
-  test('hidden and nonexistent are indistinguishable', async () => {
-    const mine = await aWorkout(alice)
-    const hidden = await bob.wire(`/workouts/${mine.id}`)
-    const missing = await bob.wire(`/workouts/${crypto.randomUUID()}`)
-    expect(hidden.status).toBe(missing.status)
-    expect(hidden.body).toEqual(missing.body)
-  })
-
   test('every route requires authentication', async () => {
     const id = crypto.randomUUID()
     for (const [path, init] of [

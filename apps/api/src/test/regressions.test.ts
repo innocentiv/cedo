@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { ApiError, Exercise } from '@cedo/contract'
-import * as ExerciseService from '../modules/exercise/service.ts'
 import { expectContract } from './contract.ts'
 import { samplePng } from './fixtures.ts'
 import { type TestApi, type TestUser, makeApi } from './harness.ts'
@@ -9,8 +8,9 @@ import { type TestApi, type TestUser, makeApi } from './harness.ts'
  * Cases where a plausible implementation is subtly wrong.
  *
  * These do not belong to one module — each is a seam between two: a validation rule the database
- * would otherwise enforce as a 500, a search term that is also LIKE syntax, an auth check on the
- * wrong layer. They live here rather than beside a service because no single service owns them.
+ * would otherwise enforce as a 500, an auth check on the wrong layer. They live here rather than
+ * beside a service because no single service owns them. What every ownable must do identically —
+ * search escaping, the scope rule, cursors — is `modules/ownable/ownable.test.ts`, run per kind.
  *
  * Every test in this file was watched failing against the code before its fix. Add to it the same
  * way: reproduce first, then fix. See docs/10-testing.md.
@@ -61,46 +61,6 @@ describe('duplicate media ids', () => {
       body: JSON.stringify({ mediaIds: [id, id] }),
     })
     expect(res.status).toBe(422)
-  })
-})
-
-describe('search terms are not wildcards', () => {
-  test('a literal % matches only names containing it', async () => {
-    await alice.wire('/exercises', {
-      method: 'POST',
-      body: JSON.stringify(anExercise({ name: '50% Squat' })),
-    })
-    await alice.wire('/exercises', {
-      method: 'POST',
-      body: JSON.stringify(anExercise({ name: '50 Squat' })),
-    })
-
-    const res = await alice.wire('/exercises?q=50%25')
-    const found = expectContract((await import('@cedo/contract')).page(Exercise), res.body)
-    expect(found.items.map((e) => e.name)).toEqual(['50% Squat'])
-  })
-
-  test('a lone underscore does not match everything', async () => {
-    await alice.wire('/exercises', {
-      method: 'POST',
-      body: JSON.stringify(anExercise({ name: 'Plain Squat' })),
-    })
-    const res = await alice.wire('/exercises?q=_')
-    const found = expectContract((await import('@cedo/contract')).page(Exercise), res.body)
-    expect(found.items).toHaveLength(0)
-  })
-})
-
-describe("scope 'group' without a groupId", () => {
-  /** The HTTP route is protected by the schema, but MCP tools call the service directly. */
-  test('is a validation error from the service, not a uuid cast crash', async () => {
-    let message = '(nothing was thrown)'
-    try {
-      await ExerciseService.list(alice.caller, { scope: 'group', limit: 50 })
-    } catch (error: unknown) {
-      message = error instanceof Error ? error.message : String(error)
-    }
-    expect(message).toMatch(/groupId is required/u)
   })
 })
 
