@@ -1,5 +1,5 @@
 {
-  "id": "42627965-67b7-4e57-b415-5ed7818cb7ca",
+  "id": "8fe720e1-4e6e-49c9-b323-6ff7d68d59b2",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -286,13 +286,6 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
-        },
-        "last_seen_at": {
-          "name": "last_seen_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
         },
         "created_at": {
           "name": "created_at",
@@ -698,6 +691,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "owner_group_id": {
+          "name": "owner_group_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "media_id": {
           "name": "media_id",
           "type": "uuid",
@@ -713,19 +712,6 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "exercise_media_exercise_id_exercises_id_fk": {
-          "name": "exercise_media_exercise_id_exercises_id_fk",
-          "tableFrom": "exercise_media",
-          "tableTo": "exercises",
-          "columnsFrom": [
-            "exercise_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "exercise_media_media_id_media_id_fk": {
           "name": "exercise_media_media_id_media_id_fk",
           "tableFrom": "exercise_media",
@@ -738,6 +724,21 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "exercise_media_exercise_fk": {
+          "name": "exercise_media_exercise_fk",
+          "tableFrom": "exercise_media",
+          "tableTo": "exercises",
+          "columnsFrom": [
+            "exercise_id",
+            "owner_group_id"
+          ],
+          "columnsTo": [
+            "id",
+            "owner_group_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {
@@ -760,6 +761,12 @@
       "columns": {
         "exercise_id": {
           "name": "exercise_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_group_id": {
+          "name": "owner_group_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -795,19 +802,6 @@
         }
       },
       "foreignKeys": {
-        "exercise_muscles_exercise_id_exercises_id_fk": {
-          "name": "exercise_muscles_exercise_id_exercises_id_fk",
-          "tableFrom": "exercise_muscles",
-          "tableTo": "exercises",
-          "columnsFrom": [
-            "exercise_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "exercise_muscles_muscle_slug_muscles_slug_fk": {
           "name": "exercise_muscles_muscle_slug_muscles_slug_fk",
           "tableFrom": "exercise_muscles",
@@ -820,6 +814,21 @@
           ],
           "onDelete": "restrict",
           "onUpdate": "no action"
+        },
+        "exercise_muscles_exercise_fk": {
+          "name": "exercise_muscles_exercise_fk",
+          "tableFrom": "exercise_muscles",
+          "tableTo": "exercises",
+          "columnsFrom": [
+            "exercise_id",
+            "owner_group_id"
+          ],
+          "columnsTo": [
+            "id",
+            "owner_group_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {
@@ -921,11 +930,44 @@
         }
       },
       "indexes": {
-        "exercises_owner_idx": {
-          "name": "exercises_owner_idx",
+        "exercises_owner_name_idx": {
+          "name": "exercises_owner_name_idx",
           "columns": [
             {
               "expression": "owner_group_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "exercises_name_id_idx": {
+          "name": "exercises_name_id_idx",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -981,7 +1023,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "exercises_id_owner_uq": {
+          "name": "exercises_id_owner_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "owner_group_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -999,6 +1050,12 @@
         },
         "workout_id": {
           "name": "workout_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_group_id": {
+          "name": "owner_group_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -1055,22 +1112,33 @@
         }
       },
       "foreignKeys": {
-        "workout_days_workout_id_workouts_id_fk": {
-          "name": "workout_days_workout_id_workouts_id_fk",
+        "workout_days_workout_fk": {
+          "name": "workout_days_workout_fk",
           "tableFrom": "workout_days",
           "tableTo": "workouts",
           "columnsFrom": [
-            "workout_id"
+            "workout_id",
+            "owner_group_id"
           ],
           "columnsTo": [
-            "id"
+            "id",
+            "owner_group_id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "workout_days_id_owner_uq": {
+          "name": "workout_days_id_owner_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "owner_group_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1088,6 +1156,12 @@
         },
         "day_id": {
           "name": "day_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_group_id": {
+          "name": "owner_group_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
@@ -1163,19 +1237,6 @@
         }
       },
       "foreignKeys": {
-        "workout_entries_day_id_workout_days_id_fk": {
-          "name": "workout_entries_day_id_workout_days_id_fk",
-          "tableFrom": "workout_entries",
-          "tableTo": "workout_days",
-          "columnsFrom": [
-            "day_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
         "workout_entries_exercise_id_exercises_id_fk": {
           "name": "workout_entries_exercise_id_exercises_id_fk",
           "tableFrom": "workout_entries",
@@ -1188,10 +1249,34 @@
           ],
           "onDelete": "restrict",
           "onUpdate": "no action"
+        },
+        "workout_entries_day_fk": {
+          "name": "workout_entries_day_fk",
+          "tableFrom": "workout_entries",
+          "tableTo": "workout_days",
+          "columnsFrom": [
+            "day_id",
+            "owner_group_id"
+          ],
+          "columnsTo": [
+            "id",
+            "owner_group_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "workout_entries_id_owner_uq": {
+          "name": "workout_entries_id_owner_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "owner_group_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "workout_entries_superset_ck": {
@@ -1285,6 +1370,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "owner_group_id": {
+          "name": "owner_group_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "index": {
           "name": "index",
           "type": "smallint",
@@ -1368,18 +1459,20 @@
         }
       },
       "foreignKeys": {
-        "workout_sets_entry_id_workout_entries_id_fk": {
-          "name": "workout_sets_entry_id_workout_entries_id_fk",
+        "workout_sets_entry_fk": {
+          "name": "workout_sets_entry_fk",
           "tableFrom": "workout_sets",
           "tableTo": "workout_entries",
           "columnsFrom": [
-            "entry_id"
+            "entry_id",
+            "owner_group_id"
           ],
           "columnsTo": [
-            "id"
+            "id",
+            "owner_group_id"
           ],
           "onDelete": "cascade",
-          "onUpdate": "no action"
+          "onUpdate": "cascade"
         }
       },
       "compositePrimaryKeys": {},
@@ -1444,11 +1537,44 @@
         }
       },
       "indexes": {
-        "workouts_owner_idx": {
-          "name": "workouts_owner_idx",
+        "workouts_owner_name_idx": {
+          "name": "workouts_owner_name_idx",
           "columns": [
             {
               "expression": "owner_group_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "workouts_name_id_idx": {
+          "name": "workouts_name_id_idx",
+          "columns": [
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -1489,7 +1615,16 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "workouts_id_owner_uq": {
+          "name": "workouts_id_owner_uq",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id",
+            "owner_group_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1742,7 +1877,13 @@
               "expression": "started_at",
               "isExpression": false,
               "asc": false,
-              "nulls": "last"
+              "nulls": "first"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "first"
             }
           ],
           "isUnique": false,

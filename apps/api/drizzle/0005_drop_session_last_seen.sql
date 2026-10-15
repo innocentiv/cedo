@@ -1,1 +1,0 @@
-ALTER TABLE "sessions" DROP COLUMN "last_seen_at";

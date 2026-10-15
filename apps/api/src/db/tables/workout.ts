@@ -13,7 +13,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 import type { Progression } from '@cedo/contract'
-import { favouriteTable, ownable } from '../ownable.ts'
+import { childOwner, favouriteTable, ownable, ownerKey, ownerTarget } from '../ownable.ts'
 import { exercises } from './exercise.ts'
 
 export const workouts = pgTable(
@@ -32,6 +32,7 @@ export const workouts = pgTable(
     index('workouts_owner_name_idx').on(t.ownerGroupId, t.name, t.id),
     /** And the same pair without the owner, for the same reason. See `exercises_name_id_idx`. */
     index('workouts_name_id_idx').on(t.name, t.id),
+    ownerTarget('workouts_id_owner_uq', t),
   ],
 )
 
@@ -39,15 +40,16 @@ export const workoutDays = pgTable(
   'workout_days',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    workoutId: uuid('workout_id')
-      .notNull()
-      .references(() => workouts.id, { onDelete: 'cascade' }),
+    workoutId: uuid('workout_id').notNull(),
+    ...childOwner(),
     index: smallint('index').notNull(),
     name: text('name').notNull(),
   },
   (t) => [
     index('workout_days_workout_idx').on(t.workoutId),
     uniqueIndex('workout_days_order_idx').on(t.workoutId, t.index),
+    ownerKey('workout_days_workout_fk', [t.workoutId, t.ownerGroupId], workouts),
+    ownerTarget('workout_days_id_owner_uq', t),
   ],
 )
 
@@ -59,9 +61,8 @@ export const workoutEntries = pgTable(
   'workout_entries',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    dayId: uuid('day_id')
-      .notNull()
-      .references(() => workoutDays.id, { onDelete: 'cascade' }),
+    dayId: uuid('day_id').notNull(),
+    ...childOwner(),
     index: smallint('index').notNull(),
     exerciseId: uuid('exercise_id')
       .notNull()
@@ -74,6 +75,8 @@ export const workoutEntries = pgTable(
   (t) => [
     index('workout_entries_day_idx').on(t.dayId),
     uniqueIndex('workout_entries_order_idx').on(t.dayId, t.index),
+    ownerKey('workout_entries_day_fk', [t.dayId, t.ownerGroupId], workoutDays),
+    ownerTarget('workout_entries_id_owner_uq', t),
     check(
       'workout_entries_superset_ck',
       sql`${t.supersetGroup} is null or ${t.supersetGroup} ~ '^[A-Z]$'`,
@@ -85,9 +88,8 @@ export const workoutSets = pgTable(
   'workout_sets',
   {
     id: uuid('id').primaryKey().defaultRandom(),
-    entryId: uuid('entry_id')
-      .notNull()
-      .references(() => workoutEntries.id, { onDelete: 'cascade' }),
+    entryId: uuid('entry_id').notNull(),
+    ...childOwner(),
     index: smallint('index').notNull(),
     /** Ramp-up sets. Excluded from progression and from volume totals. */
     isWarmup: boolean('is_warmup').notNull().default(false),
@@ -100,6 +102,7 @@ export const workoutSets = pgTable(
   (t) => [
     index('workout_sets_entry_idx').on(t.entryId),
     uniqueIndex('workout_sets_order_idx').on(t.entryId, t.index),
+    ownerKey('workout_sets_entry_fk', [t.entryId, t.ownerGroupId], workoutEntries),
     check('workout_sets_rpe_ck', sql`${t.targetRpe} is null or ${t.targetRpe} between 1 and 10`),
   ],
 )

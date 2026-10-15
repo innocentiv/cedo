@@ -143,7 +143,7 @@ function validate(entry: SeedExercise) {
 /** A library entry stays useful without its demonstration link, so this is best-effort. */
 async function attachDemonstration(
   tx: Transaction,
-  exerciseId: string,
+  exercise: { readonly id: string; readonly ownerGroupId: string },
   name: string,
   createdBy: string,
 ): Promise<void> {
@@ -156,7 +156,12 @@ async function attachDemonstration(
     .returning()
   if (row === undefined) return
 
-  await tx.insert(exerciseMedia).values({ exerciseId, mediaId: row.id, sortIndex: 0 })
+  await tx.insert(exerciseMedia).values({
+    exerciseId: exercise.id,
+    ownerGroupId: exercise.ownerGroupId,
+    mediaId: row.id,
+    sortIndex: 0,
+  })
 }
 
 /** Returns false when the exercise already exists — which is what makes re-running a no-op. */
@@ -196,12 +201,13 @@ async function seedExercise(
     await tx.insert(exerciseMuscles).values(
       parsed.muscles.map((m) => ({
         exerciseId: created.id,
+        ownerGroupId,
         muscleSlug: m.muscle,
         loadPct: m.loadPct,
       })),
     )
 
-    await attachDemonstration(tx, created.id, parsed.name, createdBy)
+    await attachDemonstration(tx, created, parsed.name, createdBy)
   })
   return true
 }

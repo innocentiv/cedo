@@ -163,13 +163,13 @@ export async function attachMuscles(ownerGroupId: string): Promise<void> {
 
   await db.execute(sql`
     with numbered as (
-      select id, (row_number() over (order by name))::int as rn
+      select id, owner_group_id, (row_number() over (order by name))::int as rn
         from exercises where owner_group_id = ${ownerGroupId}::uuid
     ), m as (
       select slug, (row_number() over (order by sort_index))::int - 1 as rn from muscles
     )
-    insert into exercise_muscles (exercise_id, muscle_slug, load_pct)
-    select n.id, m.slug, (array[60, 25, 15])[position + 1]
+    insert into exercise_muscles (exercise_id, owner_group_id, muscle_slug, load_pct)
+    select n.id, n.owner_group_id, m.slug, (array[60, 25, 15])[position + 1]
       from numbered n
       cross join generate_series(0, ${PERF_VOLUME.musclesPerExercise - 1}) as position
       join m on m.rn = case

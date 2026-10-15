@@ -138,22 +138,24 @@ async function expandProfilePlan(
   shape: Shape,
 ): Promise<void> {
   await db.execute(sql`
-    insert into workout_days (workout_id, index, name)
-    select ${workoutId}::uuid, d, 'Day ' || (d + 1)
-      from generate_series(0, ${shape.days - 1}) d
+    insert into workout_days (workout_id, owner_group_id, index, name)
+    select w.id, w.owner_group_id, d, 'Day ' || (d + 1)
+      from workouts w
+      cross join generate_series(0, ${shape.days - 1}) d
+     where w.id = ${workoutId}::uuid
   `)
 
   const libraryCount = await countExercises(ownerGroupId)
   await db.execute(sql`
     with target_days as (
-      select id, (row_number() over (order by index))::int as rn
+      select id, owner_group_id, (row_number() over (order by index))::int as rn
         from workout_days where workout_id = ${workoutId}::uuid
     ), library as (
       select id, (row_number() over (order by name))::int - 1 as rn
         from exercises where owner_group_id = ${ownerGroupId}::uuid
     )
-    insert into workout_entries (day_id, index, exercise_id, superset_group, rest_seconds, progression)
-    select t.id, e, l.id,
+    insert into workout_entries (day_id, owner_group_id, index, exercise_id, superset_group, rest_seconds, progression)
+    select t.id, t.owner_group_id, e, l.id,
            case when e % 4 = 0 then 'A' else null end, 120,
            '{"kind":"linear","incrementG":2500,"afterSuccesses":1}'::jsonb
       from target_days t
@@ -162,8 +164,8 @@ async function expandProfilePlan(
   `)
 
   await db.execute(sql`
-    insert into workout_sets (entry_id, index, is_warmup, target_reps, target_weight_g)
-    select en.id, s, s = 0, 8, 50000 + s * 5000
+    insert into workout_sets (entry_id, owner_group_id, index, is_warmup, target_reps, target_weight_g)
+    select en.id, en.owner_group_id, s, s = 0, 8, 50000 + s * 5000
       from workout_entries en
       join workout_days d on d.id = en.day_id
       cross join generate_series(0, ${PERF_VOLUME.setsPerEntry - 1}) s

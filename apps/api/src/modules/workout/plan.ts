@@ -6,6 +6,12 @@ import { workoutDays, workoutEntries, workoutSets } from '../../db/schema.ts'
 type DayInput = WorkoutPlanInput['days'][number]
 type EntryInput = DayInput['entries'][number]
 
+/** The workout being written, and the owner every day, entry and set of its plan carries. */
+export interface PlanOwner {
+  readonly id: string
+  readonly ownerGroupId: string
+}
+
 /**
  * Writes a whole plan over whatever the workout holds now, KEEPING every day and entry whose id is
  * sent back. Runs inside `replacePlan`'s transaction, after its row lock.
@@ -28,9 +34,10 @@ type EntryInput = DayInput['entries'][number]
  */
 export async function writePlan(
   tx: Transaction,
-  workoutId: string,
+  workout: PlanOwner,
   plan: WorkoutPlanInput,
 ): Promise<void> {
+  const workoutId = workout.id
   const { keptDay, keptEntry, existingEntryIds } = await identify(tx, workoutId)
   const keptEntryIds = plan.days.flatMap((d) => d.entries.flatMap((e) => keptEntry(e) ?? []))
 
@@ -50,11 +57,11 @@ export async function writePlan(
   await park(tx, workoutId, keptEntryIds)
 
   // 3. Days: kept ones renamed and moved into place, new ones inserted.
-  const dayIds = await placeDays(tx, workoutId, plan, keptDay)
+  const dayIds = await placeDays(tx, workout, plan, keptDay)
 
   // 4. Entries: kept ones moved into their day and position — possibly a different day — and new
   //    ones inserted.
-  const entryIds = await placeEntries(tx, plan, dayIds, keptEntry)
+  const entryIds = await placeEntries(tx, workout, plan, dayIds, keptEntry)
 
   // 5. Days the plan no longer holds. Only now: before step 4, a kept entry could still have been
   //    inside one, and the cascade would have taken it.
@@ -63,7 +70,7 @@ export async function writePlan(
     .where(and(eq(workoutDays.workoutId, workoutId), notInArray(workoutDays.id, dayIds)))
 
   // 6. Sets carry no identity anything refers to, so they are simply rewritten.
-  await writeSets(tx, plan, entryIds, keptEntryIds)
+  await writeSets(tx, workout, plan, entryIds, keptEntryIds)
 }
 
 /**
@@ -108,6 +115,7 @@ async function park(tx: Transaction, workoutId: string, keptEntryIds: string[]):
 
 async function writeSets(
   tx: Transaction,
+  workout: PlanOwner,
   plan: WorkoutPlanInput,
   entryIds: readonly (readonly string[])[],
   keptEntryIds: string[],
@@ -117,7 +125,7 @@ async function writeSets(
   }
   const values = plan.days.flatMap((day, d) =>
     day.entries.flatMap((entry, e) =>
-      setsFor(entry, required(entryIds[d]?.[e], `entry ${d}:${e}`)),
+      setsFor(entry, required(entryIds[d]?.[e], `entry ${d}:${e}`), workout.ownerGroupId),
     ),
   )
   if (values.length > 0) await tx.insert(workoutSets).values(values)
@@ -126,10 +134,11 @@ async function writeSets(
 /** Returns each day's id by position. */
 async function placeDays(
   tx: Transaction,
-  workoutId: string,
+  workout: PlanOwner,
   plan: WorkoutPlanInput,
   keptDay: (day: DayInput) => string | undefined,
 ): Promise<string[]> {
+  const workoutId = workout.id
   const kept = plan.days.flatMap((day, index) => {
     const id = keptDay(day)
     return id === undefined ? [] : [{ id, index, name: day.name }]
@@ -148,7 +157,9 @@ async function placeDays(
   for (const row of moved) ids[row.index] = row.id
 
   const fresh = plan.days.flatMap((day, index) =>
-    ids[index] === undefined ? [{ workoutId, index, name: day.name }] : [],
+    ids[index] === undefined
+      ? [{ workoutId, ownerGroupId: workout.ownerGroupId, index, name: day.name }]
+      : [],
   )
   if (fresh.length > 0) {
     const inserted = await tx
@@ -164,6 +175,7 @@ async function placeDays(
 /** Returns each entry's id by `[day][position]`. */
 async function placeEntries(
   tx: Transaction,
+  workout: PlanOwner,
   plan: WorkoutPlanInput,
   dayIds: readonly string[],
   keptEntry: (entry: EntryInput) => string | undefined,
@@ -177,6 +189,7 @@ async function placeEntries(
         ? [
             {
               dayId: required(dayIds[d], `day ${d}`),
+              ownerGroupId: workout.ownerGroupId,
               index,
               exerciseId: entry.exerciseId,
               supersetGroup: entry.supersetGroup,
@@ -256,9 +269,10 @@ function valuesOf(rows: readonly (readonly (string | number | null)[])[]): SQL {
 }
 
 /** Flattens one entry's prescribed sets. `index` is array position, as at every other level. */
-function setsFor(entry: EntryInput, entryId: string) {
+function setsFor(entry: EntryInput, entryId: string, ownerGroupId: string) {
   return entry.sets.map((set, index) => ({
     entryId,
+    ownerGroupId,
     index,
     isWarmup: set.isWarmup,
     targetReps: set.targetReps,

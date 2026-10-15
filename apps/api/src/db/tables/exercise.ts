@@ -11,7 +11,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 import { type MuscleSlug, TRACKING_MODES } from '@cedo/contract'
-import { favouriteTable, ownable } from '../ownable.ts'
+import { childOwner, favouriteTable, ownable, ownerKey, ownerTarget } from '../ownable.ts'
 import { media, muscles } from './reference.ts'
 
 export const trackingMode = pgEnum('tracking_mode', TRACKING_MODES)
@@ -57,6 +57,7 @@ export const exercises = pgTable(
     index('exercises_name_id_idx').on(t.name, t.id),
     /** Substring search. A GIN trigram index can serve neither ORDER BY nor a range on `name`. */
     index('exercises_name_trgm_idx').using('gin', sql`${t.name} gin_trgm_ops`),
+    ownerTarget('exercises_id_owner_uq', t),
   ],
 )
 
@@ -68,9 +69,8 @@ export const exercises = pgTable(
 export const exerciseMuscles = pgTable(
   'exercise_muscles',
   {
-    exerciseId: uuid('exercise_id')
-      .notNull()
-      .references(() => exercises.id, { onDelete: 'cascade' }),
+    exerciseId: uuid('exercise_id').notNull(),
+    ...childOwner(),
     /** `$type` only narrows TypeScript; the foreign key is what actually constrains the value. */
     muscleSlug: text('muscle_slug')
       .$type<MuscleSlug>()
@@ -80,6 +80,7 @@ export const exerciseMuscles = pgTable(
   },
   (t) => [
     primaryKey({ columns: [t.exerciseId, t.muscleSlug] }),
+    ownerKey('exercise_muscles_exercise_fk', [t.exerciseId, t.ownerGroupId], exercises),
     /** Filtering the library by muscle. */
     index('exercise_muscles_muscle_idx').on(t.muscleSlug),
     check('exercise_muscles_load_pct_ck', sql`${t.loadPct} between 1 and 100`),
@@ -89,15 +90,17 @@ export const exerciseMuscles = pgTable(
 export const exerciseMedia = pgTable(
   'exercise_media',
   {
-    exerciseId: uuid('exercise_id')
-      .notNull()
-      .references(() => exercises.id, { onDelete: 'cascade' }),
+    exerciseId: uuid('exercise_id').notNull(),
+    ...childOwner(),
     mediaId: uuid('media_id')
       .notNull()
       .references(() => media.id, { onDelete: 'cascade' }),
     sortIndex: smallint('sort_index').notNull(),
   },
-  (t) => [primaryKey({ columns: [t.exerciseId, t.mediaId] })],
+  (t) => [
+    primaryKey({ columns: [t.exerciseId, t.mediaId] }),
+    ownerKey('exercise_media_exercise_fk', [t.exerciseId, t.ownerGroupId], exercises),
+  ],
 )
 
 export const exerciseFavourites = favouriteTable('exercise_favourites', exercises)

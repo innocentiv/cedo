@@ -1,6 +1,6 @@
 import { inArray, sql } from 'drizzle-orm'
 import type { PgColumn, PgTable } from 'drizzle-orm/pg-core'
-import { pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { foreignKey, pgTable, primaryKey, text, timestamp, unique, uuid } from 'drizzle-orm/pg-core'
 import { groups, users } from './tables/identity.ts'
 
 /**
@@ -54,6 +54,42 @@ export type OwnableTable = PgTable & {
   readonly updatedAt: PgColumn
 }
 
+/** Anything whose rows belong to a group: an ownable table, or a child carrying its owner. */
+export type OwnedTable = PgTable & { readonly ownerGroupId: PgColumn }
+
+/**
+ * The owner a CHILD of an ownable table carries — a workout's days, entries and sets, an exercise's
+ * muscles and media — so that `visible()` and `editable()` apply to it directly.
+ *
+ * Without it a child had no visibility of its own and inherited its parent's by being joined
+ * through it, which every reader had to remember: five reads trusted a child because some earlier
+ * statement had checked the parent. The column is never written independently. `ownerKey` binds
+ * it to the parent's with a cascading foreign key, so a transfer is still one UPDATE on the parent
+ * and Postgres carries the new owner down. See docs/adr/0019-visible-relations.md.
+ */
+export const childOwner = () => ({ ownerGroupId: uuid('owner_group_id').notNull() })
+
+/** What a child's `ownerKey` points at: the parent's `(id, owner_group_id)`, which must be unique. */
+export const ownerTarget = (name: string, table: { id: PgColumn; ownerGroupId: PgColumn }) =>
+  unique(name).on(table.id, table.ownerGroupId)
+
+/**
+ * The child's parent reference AND its owner, as one composite foreign key. Replaces the plain
+ * `parent_id` reference: delete still cascades, and an owner change on the parent cascades too.
+ */
+export const ownerKey = (
+  name: string,
+  child: readonly [PgColumn, PgColumn],
+  parent: { id: PgColumn; ownerGroupId: PgColumn },
+) =>
+  foreignKey({
+    name,
+    columns: [child[0], child[1]],
+    foreignColumns: [parent.id, parent.ownerGroupId],
+  })
+    .onDelete('cascade')
+    .onUpdate('cascade')
+
 /**
  * Who is asking. Resolved once per request by the auth macro, in a single query.
  * See docs/06-api.md.
@@ -70,18 +106,18 @@ export interface AccessContext {
  * READ predicate. **Every** select against an ownable table must include this.
  * Omitting it is a data leak between users, not a style issue. See docs/02-conventions.md.
  */
-export const visible = (table: OwnableTable, ctx: AccessContext) =>
+export const visible = (table: OwnedTable, ctx: AccessContext) =>
   inArray(table.ownerGroupId, [...ctx.groupIds])
 
 /** WRITE predicate. Every update and delete against an ownable table must include this. */
-export const editable = (table: OwnableTable, ctx: AccessContext) =>
+export const editable = (table: OwnedTable, ctx: AccessContext) =>
   inArray(table.ownerGroupId, [...ctx.editorGroupIds])
 
 /**
  * Favourites are per entity kind so each keeps a real foreign key, and the rows disappear with
  * their target rather than becoming orphans. Defined once; called per ownable table.
  */
-export const favouriteTable = (name: string, target: OwnableTable) =>
+export const favouriteTable = <TName extends string>(name: TName, target: OwnableTable) =>
   pgTable(
     name,
     {

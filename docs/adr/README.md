@@ -17,6 +17,7 @@ that says so and links back.
 | [0015](0015-no-eden-treaty.md) | No Eden Treaty; a contract-typed fetch client instead | Accepted |
 | [0017](0017-webview-for-ui-verification.md) | `Bun.WebView` for UI verification; no component tests | Accepted |
 | [0018](0018-n1-detection.md) | N+1 detected by query-count invariant, not a threshold | Accepted |
+| [0019](0019-visible-relations.md) | Visibility is a relation modules join; children carry their owner | Accepted |
 
 The numbering has gaps: decisions that were planned an ADR (such as 0005, the three-container
 deployment shape) are recorded in the relevant doc instead — `docs/01-architecture.md` for that

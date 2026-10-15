@@ -171,7 +171,7 @@ export async function replacePlan(
       own.ownerGroupId,
     )
 
-    await writePlan(tx, id, plan)
+    await writePlan(tx, { id, ownerGroupId: own.ownerGroupId }, plan)
     await tx
       .update(workouts)
       .set({ updatedAt: sql`now()` })
@@ -238,9 +238,9 @@ export async function duplicate(caller: Caller, id: string, toGroupId?: string):
         name: source.name,
         notes: source.notes,
       })
-      .returning({ id: workouts.id })
+      .returning({ id: workouts.id, ownerGroupId: workouts.ownerGroupId })
     if (created === undefined) throw new Error('Could not create the workout')
-    if (plan.days.length > 0) await writePlan(tx, created.id, plan)
+    if (plan.days.length > 0) await writePlan(tx, created, plan)
     return created.id
   })
 

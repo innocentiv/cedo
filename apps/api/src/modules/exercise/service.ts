@@ -82,27 +82,34 @@ function assertCanWriteTo(caller: Caller, groupId: string): void {
   if (!caller.editorGroupIds.includes(groupId)) throw notFound('group')
 }
 
+/** The exercise a child row belongs to, and the owner it therefore carries. */
+interface Parent {
+  readonly id: string
+  readonly ownerGroupId: string
+}
+
 async function replaceMuscles(
   tx: Transaction,
-  exerciseId: string,
+  exercise: Parent,
   muscles: ExerciseCreate['muscles'],
 ): Promise<void> {
-  await tx.delete(exerciseMuscles).where(eq(exerciseMuscles.exerciseId, exerciseId))
-  await tx
-    .insert(exerciseMuscles)
-    .values(muscles.map((m) => ({ exerciseId, muscleSlug: m.muscle, loadPct: m.loadPct })))
+  await tx.delete(exerciseMuscles).where(eq(exerciseMuscles.exerciseId, exercise.id))
+  await tx.insert(exerciseMuscles).values(
+    muscles.map((m) => ({
+      exerciseId: exercise.id,
+      ownerGroupId: exercise.ownerGroupId,
+      muscleSlug: m.muscle,
+      loadPct: m.loadPct,
+    })),
+  )
 }
 
 /**
  * Verifies EXISTENCE only — media are not ownable and carry no ACL, by design. An unknown id is a
  * 404 rather than a dangling reference. See docs/adr/0009-media-model.md.
  */
-async function replaceMedia(
-  tx: Transaction,
-  exerciseId: string,
-  mediaIds: string[],
-): Promise<void> {
-  await tx.delete(exerciseMedia).where(eq(exerciseMedia.exerciseId, exerciseId))
+async function replaceMedia(tx: Transaction, exercise: Parent, mediaIds: string[]): Promise<void> {
+  await tx.delete(exerciseMedia).where(eq(exerciseMedia.exerciseId, exercise.id))
   if (mediaIds.length === 0) return
 
   const found = await tx.select({ id: media.id }).from(media).where(inArray(media.id, mediaIds))
@@ -110,9 +117,14 @@ async function replaceMedia(
   const missing = mediaIds.filter((id) => !known.has(id))
   if (missing.length > 0) throw notFound(`media ${missing[0]}`)
 
-  await tx
-    .insert(exerciseMedia)
-    .values(mediaIds.map((mediaId, sortIndex) => ({ exerciseId, mediaId, sortIndex })))
+  await tx.insert(exerciseMedia).values(
+    mediaIds.map((mediaId, sortIndex) => ({
+      exerciseId: exercise.id,
+      ownerGroupId: exercise.ownerGroupId,
+      mediaId,
+      sortIndex,
+    })),
+  )
 }
 
 export async function create(
@@ -135,11 +147,11 @@ export async function create(
         equipment: input.equipment,
         isUnilateral: input.isUnilateral,
       })
-      .returning({ id: exercises.id })
+      .returning({ id: exercises.id, ownerGroupId: exercises.ownerGroupId })
     if (created === undefined) throw new Error('Could not create the exercise')
 
-    await replaceMuscles(tx, created.id, input.muscles)
-    await replaceMedia(tx, created.id, input.mediaIds)
+    await replaceMuscles(tx, created, input.muscles)
+    await replaceMedia(tx, created, input.mediaIds)
     return created.id
   })
 
@@ -160,7 +172,7 @@ export async function update(caller: Caller, id: string, patch: ExerciseUpdate):
      * the lock is what makes the guard binding on all of them. See docs/02-conventions.md.
      */
     const [existing] = await tx
-      .select({ id: exercises.id })
+      .select({ id: exercises.id, ownerGroupId: exercises.ownerGroupId })
       .from(exercises)
       .where(and(editable(exercises, caller), eq(exercises.id, id)))
       .limit(1)
@@ -181,8 +193,8 @@ export async function update(caller: Caller, id: string, patch: ExerciseUpdate):
       .set({ ...columns, updatedAt: sql`now()` })
       .where(eq(exercises.id, id))
 
-    if (patch.muscles !== undefined) await replaceMuscles(tx, id, patch.muscles)
-    if (patch.mediaIds !== undefined) await replaceMedia(tx, id, patch.mediaIds)
+    if (patch.muscles !== undefined) await replaceMuscles(tx, existing, patch.muscles)
+    if (patch.mediaIds !== undefined) await replaceMedia(tx, existing, patch.mediaIds)
   })
 
   return await get(caller, id)

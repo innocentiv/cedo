@@ -86,8 +86,8 @@ export async function seedBackgroundWorkouts(
   `)
 
   await db.execute(sql`
-    insert into workout_days (workout_id, index, name)
-    select w.id, d, 'Day ' || (d + 1)
+    insert into workout_days (workout_id, owner_group_id, index, name)
+    select w.id, w.owner_group_id, d, 'Day ' || (d + 1)
       from workouts w
       cross join generate_series(0, ${PERF_VOLUME.daysPerWorkout - 1}) d
      where w.owner_group_id = ${sharedGroupId}::uuid
@@ -96,7 +96,7 @@ export async function seedBackgroundWorkouts(
   const libraryCount = await countExercises(sharedGroupId)
   await db.execute(sql`
     with target_days as (
-      select d.id, (row_number() over (order by d.id))::int as rn
+      select d.id, d.owner_group_id, (row_number() over (order by d.id))::int as rn
         from workout_days d
         join workouts w on w.id = d.workout_id
        where w.owner_group_id = ${sharedGroupId}::uuid
@@ -104,8 +104,8 @@ export async function seedBackgroundWorkouts(
       select id, (row_number() over (order by name))::int - 1 as rn
         from exercises where owner_group_id = ${sharedGroupId}::uuid
     )
-    insert into workout_entries (day_id, index, exercise_id, superset_group, rest_seconds, progression)
-    select t.id, e, l.id,
+    insert into workout_entries (day_id, owner_group_id, index, exercise_id, superset_group, rest_seconds, progression)
+    select t.id, t.owner_group_id, e, l.id,
            case when e % 4 = 0 then 'A' else null end,
            90 + (e % 3) * 30,
            case when e % 3 = 0
@@ -125,8 +125,8 @@ export async function seedBackgroundWorkouts(
  */
 async function expandSets(sharedGroupId: string): Promise<void> {
   await db.execute(sql`
-    insert into workout_sets (entry_id, index, is_warmup, target_reps, target_weight_g)
-    select en.id, s, s = 0, 8, 40000 + s * 5000
+    insert into workout_sets (entry_id, owner_group_id, index, is_warmup, target_reps, target_weight_g)
+    select en.id, en.owner_group_id, s, s = 0, 8, 40000 + s * 5000
       from workout_entries en
       join workout_days d on d.id = en.day_id
       join workouts w on w.id = d.workout_id
@@ -157,8 +157,8 @@ export async function seedMedia(sharedGroupId: string, systemUserId: string): Pr
        where e.owner_group_id = ${sharedGroupId}::uuid
       returning id, title
     )
-    insert into exercise_media (exercise_id, media_id, sort_index)
-    select e.id, m.id, 0
+    insert into exercise_media (exercise_id, owner_group_id, media_id, sort_index)
+    select e.id, e.owner_group_id, m.id, 0
       from m
       -- Joined back on the name, which is unique within a group: a returning clause cannot hand
       -- back a column of the row its value came FROM, so there is nothing better to match on.

@@ -5,50 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1787512619331,
+      "when": 1792101473852,
       "tag": "0000_initial_schema",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1787517994513,
-      "tag": "0001_exercise_keyset_index",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1787519352481,
-      "tag": "0002_workout_keyset_index",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1787524279623,
-      "tag": "0003_ordered_keyset_indexes",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1787524412206,
-      "tag": "0004_session_keyset_index",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1787557114107,
-      "tag": "0005_drop_session_last_seen",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1792087079423,
-      "tag": "0006_session_index_nulls_first",
       "breakpoints": true
     }
   ]
