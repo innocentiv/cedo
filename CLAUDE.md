@@ -122,3 +122,18 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
 | `docs/playbooks/diagnose-slow-instance.md` | "It is slow on my NAS" |
 
 To add a new entity end to end, follow `docs/playbooks/add-entity.md` exactly.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub Issues on `innocentiv/cedo`, via `gh`. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five default roles, each label equal to its role name. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `docs/03-domain-model.md` is the vocabulary, `docs/adr/` the decisions. See
+`docs/agents/domain.md`.
