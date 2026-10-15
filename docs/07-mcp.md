@@ -114,6 +114,11 @@ Do not mirror the REST surface. `session_log` records a whole session — start,
 in one call, because the alternative is `1 + N` round trips for one workout. There is no
 `session_start`/`session_log_set`/`session_finish` triple, because no caller wants one.
 
+A task-shaped tool is still ONE service call: `session_log` is `SessionService.logWhole`, one
+transaction, all or nothing. Its first version looped over `logSet` inside the tool — domain logic
+in a handler, and a failure part way left a session that was never finished, which the AI's
+natural retry then logged a second time.
+
 ### Output size is the real cost
 
 Not the number of calls. Forty exercises as raw JSON with nested media is tens of kilobytes of

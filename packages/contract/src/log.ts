@@ -74,6 +74,18 @@ export const LogSetInput = z.strictObject({
 })
 export type LogSetInput = z.output<typeof LogSetInput>
 
+/**
+ * A whole, finished session in one write — how an AI records training it was told about. All or
+ * nothing: one invalid set and nothing is logged, so a retry cannot duplicate the valid ones.
+ */
+export const SessionLogInput = z.strictObject({
+  workoutId: Id.nullable().default(null),
+  dayId: Id.nullable().default(null),
+  notes: z.string().max(4000).nullable().default(null),
+  sets: z.array(LogSetInput).min(1).max(200),
+})
+export type SessionLogInput = z.output<typeof SessionLogInput>
+
 export const SessionQuery = PaginationQuery.extend({
   workoutId: Id.optional(),
   since: Timestamp.optional(),

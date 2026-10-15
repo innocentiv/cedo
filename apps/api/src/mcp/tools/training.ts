@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import {
-  LogSetInput,
+  SessionLogInput,
   WorkoutCreate,
   WorkoutPlanInput,
   formatWeight,
@@ -200,30 +200,16 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     {
       title: 'Log a training session',
       description:
-        'Record a whole session in ONE call: starts it, logs every set, and finishes it. Use this ' +
-        'rather than logging set by set. Weights are in GRAMS. Give `workoutId` and `dayId` to tie ' +
-        'it to a plan, or omit both for ad-hoc training.',
-      inputSchema: z.object({
-        workoutId: z.uuid().nullable().default(null),
-        dayId: z.uuid().nullable().default(null),
-        notes: z.string().max(4000).nullable().default(null),
-        sets: z.array(LogSetInput).min(1).max(200),
-      }),
+        'Record a whole, finished session in ONE call. All or nothing: if any set is invalid, ' +
+        'nothing is logged, so fix it and retry. Weights are in GRAMS. Give `workoutId` and ' +
+        '`dayId` to tie it to a plan (then `entryId` may name the plan entry a set fulfils), or ' +
+        'omit both for ad-hoc training.',
+      inputSchema: SessionLogInput,
       annotations: WRITE,
     },
-    async ({ workoutId, dayId, notes, sets }) => {
-      const session = await SessionService.start(caller, { workoutId, dayId })
-      for (const set of sets) {
-        // Sequential on purpose: each set is validated against what the caller may see, and a
-        // failure part-way leaves the session with what was logged rather than nothing.
-        // oxlint-disable-next-line no-await-in-loop
-        await SessionService.logSet(caller, session.id, set)
-      }
-      await SessionService.update(caller, session.id, {
-        endedAt: new Date().toISOString(),
-        notes,
-      })
-      return text(`Logged session ${session.id} with ${sets.length} set(s).`)
+    async (input) => {
+      const session = await SessionService.logWhole(caller, input)
+      return text(`Logged session ${session.id} with ${session.logs.length} set(s).`)
     },
   )
 }

@@ -229,6 +229,56 @@ describe('training review', () => {
   })
 })
 
+describe('logging a whole session', () => {
+  /**
+   * All or nothing. It used to start the session, log set by set, and finish — so a bad set part
+   * way through left a session that was never finished, and the AI's natural retry logged the
+   * good sets a second time.
+   */
+  test('one invalid set logs nothing at all', async () => {
+    const bob = await h.as('bob')
+    const secret = expectContract(
+      Exercise,
+      (
+        await bob.wire('/exercises', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Bob Only',
+            muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+          }),
+        })
+      ).body,
+    )
+    const mine = expectContract(
+      Exercise,
+      (
+        await alice.wire('/exercises', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Squat',
+            muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+          }),
+        })
+      ).body,
+    )
+
+    const pat = await mintPat(alice)
+    const result = await callTool(pat, 'session_log', {
+      sets: [
+        { exerciseId: mine.id, setIndex: 0, weightG: 100_000, reps: 5 },
+        { exerciseId: secret.id, setIndex: 1, weightG: 100_000, reps: 5 },
+      ],
+    })
+    expect(JSON.stringify(result.body)).toContain('No such exercise')
+
+    const sessions = expectContract(
+      z.object({ items: z.array(z.unknown()) }),
+      (await alice.wire('/sessions')).body,
+    )
+    expect(sessions.items).toHaveLength(0)
+  })
+})
+
 describe('editing a plan', () => {
   /**
    * The documented AI flow: fetch the editable JSON, change it, save it back. The round trip must

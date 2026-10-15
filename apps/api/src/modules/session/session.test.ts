@@ -184,6 +184,59 @@ describe('logging sets', () => {
     expect(res.status).toBe(409)
   })
 
+  /**
+   * An entry id is what progression reads, so a log may only claim an entry of the plan the
+   * session is FOR. Visibility alone let a set logged in Monday's session for plan A count toward
+   * plan B's progression.
+   */
+  test("cannot log against an entry of a different plan than the session's", async () => {
+    const exerciseId = await anExercise(alice)
+    const planA = await aPlannedWorkout(alice, exerciseId)
+    const planB = await aPlannedWorkout(alice, exerciseId)
+    const session = expectContract(
+      WorkoutSession,
+      (await startSession(alice, { workoutId: planA.id, dayId: planA.days[0]?.id })).body,
+    )
+
+    const res = await alice.wire(`/sessions/${session.id}/logs`, {
+      method: 'POST',
+      body: JSON.stringify({
+        exerciseId,
+        entryId: planB.days[0]?.entries[0]?.id,
+        setIndex: 0,
+        reps: 5,
+      }),
+    })
+    expect(res.status).toBe(404)
+  })
+
+  test('an ad-hoc session has no plan entries to log against', async () => {
+    const exerciseId = await anExercise(alice)
+    const plan = await aPlannedWorkout(alice, exerciseId)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+
+    const res = await alice.wire(`/sessions/${session.id}/logs`, {
+      method: 'POST',
+      body: JSON.stringify({
+        exerciseId,
+        entryId: plan.days[0]?.entries[0]?.id,
+        setIndex: 0,
+        reps: 5,
+      }),
+    })
+    expect(res.status).toBe(422)
+  })
+
+  test('a session cannot end before it started', async () => {
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const before = new Date(Date.parse(session.startedAt) - 60_000).toISOString()
+    const res = await alice.wire(`/sessions/${session.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ endedAt: before }),
+    })
+    expect(res.status).toBe(422)
+  })
+
   test('cannot log an exercise the caller cannot see', async () => {
     const secret = await anExercise(bob, 'Bob Secret')
     const session = expectContract(WorkoutSession, (await startSession(alice)).body)
