@@ -34,6 +34,26 @@ export const invalid = (
   details: ApiError['error']['details'] = null,
 ): DomainError => new DomainError('validation_failed', message, details)
 
+/**
+ * 23001 is what ON DELETE RESTRICT raises; 23503 is NO ACTION, or a dangling insert. Matching only
+ * the "foreign key" one, 23503, left the actual RESTRICT refusal a 500.
+ */
+const STILL_REFERENCED = new Set(['23001', '23503'])
+
+const sqlState = (e: unknown) =>
+  typeof e === 'object' && e !== null && 'code' in e ? e.code : null
+
+/**
+ * A delete Postgres refused because another row still references this one. Drizzle wraps driver
+ * errors, so the SQLSTATE may sit on the error or on its `cause`.
+ */
+export function isStillReferenced(error: unknown): boolean {
+  const cause = typeof error === 'object' && error !== null && 'cause' in error ? error.cause : null
+  return [sqlState(error), sqlState(cause)].some(
+    (code) => typeof code === 'string' && STILL_REFERENCED.has(code),
+  )
+}
+
 export function toApiError(error: DomainError): { status: number; body: ApiError } {
   return {
     status: HTTP_STATUS_BY_ERROR_CODE[error.code],

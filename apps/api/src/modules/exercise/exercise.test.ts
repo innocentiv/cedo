@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { ApiError, Exercise, GroupMembership, Media, page } from '@cedo/contract'
+import {
+  ApiError,
+  Exercise,
+  GroupMembership,
+  Media,
+  Workout,
+  WorkoutSession,
+  page,
+} from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
@@ -149,6 +157,53 @@ describe('access control', () => {
     ] as const) {
       expect((await h.wire(path, init)).status).toBe(401)
     }
+  })
+})
+
+describe('delete', () => {
+  test('an unused exercise is deleted', async () => {
+    const exercise = await created(alice)
+    expect((await alice.wire(`/exercises/${exercise.id}`, { method: 'DELETE' })).status).toBe(200)
+    expect((await alice.wire(`/exercises/${exercise.id}`)).status).toBe(404)
+  })
+
+  /**
+   * Plans and logged history reference exercises with ON DELETE RESTRICT, so deleting one in use
+   * must be refused — as a 409 the caller can act on, not the 500 a raw foreign-key violation was.
+   * The message names nothing: the referencing plans and logs may belong to people the caller
+   * cannot see.
+   */
+  test('one that logged history still uses is refused with 409, and survives', async () => {
+    const exercise = await created(alice)
+    const session = expectContract(
+      WorkoutSession,
+      (await alice.wire('/sessions', { method: 'POST', body: '{}' })).body,
+    )
+    await alice.wire(`/sessions/${session.id}/logs`, {
+      method: 'POST',
+      body: JSON.stringify({ exerciseId: exercise.id, setIndex: 0, reps: 5 }),
+    })
+
+    const res = await alice.wire(`/exercises/${exercise.id}`, { method: 'DELETE' })
+    expect(res.status).toBe(409)
+    expect(expectContract(ApiError, res.body).error.code).toBe('conflict')
+    expect((await alice.wire(`/exercises/${exercise.id}`)).status).toBe(200)
+  })
+
+  test('as is one a plan still uses', async () => {
+    const exercise = await created(alice)
+    const workout = expectContract(
+      Workout,
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'P' }) })).body,
+    )
+    await alice.wire(`/workouts/${workout.id}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        days: [{ name: 'D', entries: [{ exerciseId: exercise.id, sets: [{ targetReps: 5 }] }] }],
+      }),
+    })
+
+    expect((await alice.wire(`/exercises/${exercise.id}`, { method: 'DELETE' })).status).toBe(409)
   })
 })
 

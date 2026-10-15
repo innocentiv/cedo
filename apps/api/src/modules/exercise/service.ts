@@ -9,7 +9,7 @@ import {
   exercises,
   media,
 } from '../../db/schema.ts'
-import { notFound } from '../../lib/error.ts'
+import { conflict, isStillReferenced, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydrate } from './mapper.ts'
 import { encodeCursor } from '../../lib/keyset.ts'
@@ -188,11 +188,26 @@ export async function update(caller: Caller, id: string, patch: ExerciseUpdate):
   return await get(caller, id)
 }
 
+/**
+ * Plans and logged history reference exercises ON DELETE RESTRICT, so an exercise in use cannot go.
+ * The database is the check — a count beforehand would race a concurrent log — and its refusal is
+ * a 409, not a 500. The message names nothing: what references it may belong to people the caller
+ * cannot see.
+ */
 export async function remove(caller: Caller, id: string): Promise<void> {
   const deleted = await db
     .delete(exercises)
     .where(and(editable(exercises, caller), eq(exercises.id, id)))
     .returning({ id: exercises.id })
+    .catch((error: unknown) => {
+      if (isStillReferenced(error)) {
+        throw conflict(
+          'That exercise is used by a plan or by logged history, so it cannot be deleted. ' +
+            'Remove it from the plans that use it; logged history keeps it for good.',
+        )
+      }
+      throw error
+    })
   if (deleted.length === 0) throw notFound('exercise')
 }
 
