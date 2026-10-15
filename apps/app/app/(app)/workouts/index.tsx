@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useRouter } from 'expo-router'
-import type { WorkoutScope } from '@cedo/contract'
+import type { OwnableScope } from '@cedo/contract'
 import {
   Button,
   Chips,
@@ -15,7 +15,7 @@ import {
 import { useCreateWorkout, useWorkouts } from '../../../src/api/queries.ts'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 
-const SCOPES: readonly { value: WorkoutScope; label: string }[] = [
+const SCOPES: readonly { value: OwnableScope; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'mine', label: 'Mine' },
   { value: 'favourites', label: 'Pinned' },
@@ -23,7 +23,7 @@ const SCOPES: readonly { value: WorkoutScope; label: string }[] = [
 
 export default function WorkoutList(): React.JSX.Element {
   const router = useRouter()
-  const [scope, setScope] = useState<WorkoutScope>('all')
+  const [scope, setScope] = useState<OwnableScope>('all')
   const [name, setName] = useState('')
   const workouts = useWorkouts({ scope, limit: 50 })
   const create = useCreateWorkout()

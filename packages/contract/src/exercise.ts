@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { Media } from './media.ts'
 import { MuscleSlug } from './muscle.ts'
-import { Id, NonEmptyString, PaginationQuery, Timestamp, patchOf } from './primitives.ts'
+import { OwnableQueryFields, ownableFields, withGroupRule } from './ownable.ts'
+import { Id, NonEmptyString, patchOf } from './primitives.ts'
 
 /** How much of a movement's load a given muscle carries, as a percentage of the total. */
 export const MuscleLoad = z.object({
@@ -119,33 +120,14 @@ export const Exercise = z.object({
   ...exerciseFields,
   /** Resolved media, not just ids — the UI renders without a second request. */
   media: z.array(Media),
-  ownerGroupId: Id,
-  createdBy: Id,
-  /** Computed per caller: whether they may edit it, and whether they have pinned it. */
-  canEdit: z.boolean(),
-  isFavourite: z.boolean(),
-  createdAt: Timestamp,
-  updatedAt: Timestamp,
+  ...ownableFields,
 })
 export type Exercise = z.output<typeof Exercise>
 
-export const EXERCISE_SCOPES = ['all', 'mine', 'favourites', 'group'] as const
-export const ExerciseScope = z.enum(EXERCISE_SCOPES)
-export type ExerciseScope = z.output<typeof ExerciseScope>
-
-/**
- * `scope: 'group'` requires `groupId`. Modelled as two fields rather than a `group:<uuid>` string,
- * because a stringly-typed union cannot be validated or shown to an AI as a JSON Schema.
- */
-export const ExerciseQuery = PaginationQuery.extend({
-  scope: ExerciseScope.default('all'),
-  groupId: Id.optional(),
-  q: z.string().trim().max(100).optional(),
-  muscle: MuscleSlug.optional(),
-}).refine((v) => v.scope !== 'group' || v.groupId !== undefined, {
-  path: ['groupId'],
-  message: "groupId is required when scope is 'group'",
-})
+/** The ownable list query, plus the muscle an exercise loads. */
+export const ExerciseQuery = withGroupRule(
+  OwnableQueryFields.extend({ muscle: MuscleSlug.optional() }),
+)
 export type ExerciseQuery = z.output<typeof ExerciseQuery>
 
 /** Moving a resource between groups, and copying one so it can be edited independently. */

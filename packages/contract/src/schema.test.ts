@@ -5,7 +5,7 @@ import { ExerciseCreate, ExerciseQuery, ExerciseUpdate } from './exercise.ts'
 import { MUSCLES, MUSCLE_SLUGS, MuscleSlug } from './muscle.ts'
 import { PaginationQuery } from './primitives.ts'
 import { RegisterInput } from './user.ts'
-import { WorkoutPlanInput, WorkoutUpdate } from './workout.ts'
+import { WorkoutPlanInput, WorkoutQuery, WorkoutUpdate } from './workout.ts'
 
 const validMuscles = [
   { muscle: 'pectoralis_major', loadPct: 70 },
@@ -142,12 +142,13 @@ describe('query schemas coerce, because query strings are always strings', () =>
     expect(PaginationQuery.safeParse({ limit: '0' }).success).toBe(false)
   })
 
-  test("scope 'group' requires a groupId", () => {
-    expect(ExerciseQuery.safeParse({ scope: 'group' }).success).toBe(false)
-    expect(ExerciseQuery.safeParse({ scope: 'group', groupId: crypto.randomUUID() }).success).toBe(
-      true,
-    )
-    expect(ExerciseQuery.safeParse({ scope: 'mine' }).success).toBe(true)
+  test.each([
+    ['exercises', ExerciseQuery],
+    ['workouts', WorkoutQuery],
+  ] as const)("scope 'group' requires a groupId, for %s", (_, query) => {
+    expect(query.safeParse({ scope: 'group' }).success).toBe(false)
+    expect(query.safeParse({ scope: 'group', groupId: crypto.randomUUID() }).success).toBe(true)
+    expect(query.safeParse({ scope: 'mine' }).success).toBe(true)
   })
 })
 

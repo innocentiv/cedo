@@ -2,14 +2,8 @@ import { z } from 'zod'
 import { Exercise } from './exercise.ts'
 import { Rpe, TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 import { Progression, SetTarget } from './progression.ts'
-import {
-  Id,
-  NonEmptyString,
-  OrderIndex,
-  PaginationQuery,
-  Timestamp,
-  patchOf,
-} from './primitives.ts'
+import { OwnableQuery, ownableFields } from './ownable.ts'
+import { Id, NonEmptyString, OrderIndex, patchOf } from './primitives.ts'
 
 /**
  * A workout is a sequence of days; a day is a sequence of entries; an entry is one exercise with
@@ -150,12 +144,7 @@ export const WorkoutSummary = z.object({
   name: z.string(),
   notes: z.string().nullable(),
   dayCount: z.int().nonnegative(),
-  ownerGroupId: Id,
-  createdBy: Id,
-  canEdit: z.boolean(),
-  isFavourite: z.boolean(),
-  createdAt: Timestamp,
-  updatedAt: Timestamp,
+  ...ownableFields,
 })
 export type WorkoutSummary = z.output<typeof WorkoutSummary>
 
@@ -196,16 +185,6 @@ export function planInputFrom(workout: Workout, { keepIds = true } = {}): Workou
   }
 }
 
-export const WORKOUT_SCOPES = ['all', 'mine', 'favourites', 'group'] as const
-export const WorkoutScope = z.enum(WORKOUT_SCOPES)
-export type WorkoutScope = z.output<typeof WorkoutScope>
-
-export const WorkoutQuery = PaginationQuery.extend({
-  scope: WorkoutScope.default('all'),
-  groupId: Id.optional(),
-  q: z.string().trim().max(100).optional(),
-}).refine((v) => v.scope !== 'group' || v.groupId !== undefined, {
-  path: ['groupId'],
-  message: "groupId is required when scope is 'group'",
-})
+/** The ownable list query; a workout has no filters of its own. */
+export const WorkoutQuery = OwnableQuery
 export type WorkoutQuery = z.output<typeof WorkoutQuery>

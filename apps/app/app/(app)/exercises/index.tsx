@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useRouter } from 'expo-router'
 import { MUSCLES } from '@cedo/contract'
-import type { ExerciseScope } from '@cedo/contract'
+import type { OwnableScope } from '@cedo/contract'
 import {
   Empty,
   Input,
@@ -15,7 +15,7 @@ import {
 import { Chips } from '../../../src/ui/chips.tsx'
 import { useExercises } from '../../../src/api/queries.ts'
 
-const SCOPES: readonly { value: ExerciseScope; label: string }[] = [
+const SCOPES: readonly { value: OwnableScope; label: string }[] = [
   { value: 'all', label: 'All' },
   { value: 'mine', label: 'Mine' },
   { value: 'favourites', label: 'Pinned' },
@@ -25,7 +25,7 @@ const muscleName = (slug: string): string => MUSCLES.find((m) => m.slug === slug
 
 export default function ExerciseList(): React.JSX.Element {
   const router = useRouter()
-  const [scope, setScope] = useState<ExerciseScope>('all')
+  const [scope, setScope] = useState<OwnableScope>('all')
   const [search, setSearch] = useState('')
 
   const query = { scope, limit: 50, ...(search.trim() === '' ? {} : { q: search.trim() }) }
