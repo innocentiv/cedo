@@ -1,8 +1,5 @@
 import { beforeEach, expect, test } from 'bun:test'
-import { and, eq } from 'drizzle-orm'
-import { db } from '../../db/client.ts'
 import { seedLibrary } from '../../db/seed.ts'
-import { groupMembers, workoutDays } from '../../db/schema.ts'
 import { Exercise, GroupMembership, Workout, page } from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
@@ -12,16 +9,9 @@ import * as SessionService from '../session/service.ts'
 import { trainingReview } from './service.ts'
 
 /**
- * Regression: losing access to a group did not take back the NAMES it had shown you.
- *
- * Membership is not permanent — any editor may remove another member — so an exercise or workout
- * that was legitimately visible when a set was logged can be unreachable by the time anything reads
- * that log back. Three reads named one anyway: the session list joined `workouts` with no
- * predicate, `stalled` joined `exercises` with none, and `dayBalance` fetched the workout name
- * through a bare correlated subquery. Each was verified to leak before the fix.
- *
- * The rule, as everywhere else: a name you cannot read, you are not shown.
- * See docs/03-domain-model.md.
+ * Visibility regressions specific to the review and to transfer. That losing a group takes back
+ * every name it showed — the session list, `stalled`, `dayBalance` and every other read path — is
+ * proven exhaustively by `test/membership-lost.test.ts`.
  */
 
 let h: TestApi
@@ -83,82 +73,6 @@ async function sharedGroupWithAlice(): Promise<Shared> {
 
   return { groupId, workoutId, exerciseId }
 }
-
-/** Three finished sessions, which is the minimum `stalled` considers. */
-async function logThreeSessions(shared: Shared): Promise<void> {
-  const caller = await resolveCaller(`Bearer ${alice.token}`)
-  if (caller === null) throw new Error('alice could not be resolved')
-
-  const [day] = await db
-    .select({ id: workoutDays.id })
-    .from(workoutDays)
-    .where(eq(workoutDays.workoutId, shared.workoutId))
-    .limit(1)
-
-  for (let i = 0; i < 3; i += 1) {
-    const session = await SessionService.start(caller, {
-      workoutId: shared.workoutId,
-      dayId: day?.id ?? null,
-    })
-    await SessionService.logSet(caller, session.id, {
-      exerciseId: shared.exerciseId,
-      entryId: null,
-      setIndex: 0,
-      weightG: 60_000,
-      reps: 5,
-      rpe: null,
-      durationS: null,
-      distanceMm: null,
-      isWarmup: false,
-    })
-    await SessionService.update(caller, session.id, { endedAt: new Date().toISOString() })
-  }
-}
-
-test('losing a group hides the names it used to show', async () => {
-  const shared = await sharedGroupWithAlice()
-  await logThreeSessions(shared)
-
-  await db
-    .delete(groupMembers)
-    .where(and(eq(groupMembers.groupId, shared.groupId), eq(groupMembers.userId, alice.userId)))
-
-  const after = await resolveCaller(`Bearer ${alice.token}`)
-  if (after === null) throw new Error('alice could not be resolved')
-  expect(after.groupIds).not.toContain(shared.groupId)
-
-  // The direct reads already refused; these are the ones that did not.
-  expect((await alice.wire(`/workouts/${shared.workoutId}`)).status).toBe(404)
-  expect((await alice.wire(`/exercises/${shared.exerciseId}`)).status).toBe(404)
-
-  // Her own sessions remain hers — but say nothing about what she can no longer open.
-  const sessions = await listSessions(after, { limit: 10 })
-  expect(sessions.items).not.toHaveLength(0)
-  expect(sessions.items.map((s) => s.workoutName)).toEqual([null, null, null])
-  expect(sessions.items.map((s) => s.dayName)).toEqual([null, null, null])
-
-  // And the review, which is read by an AI over MCP, names neither.
-  const review = await trainingReview(after, 4)
-  expect(review.stalled.map((s) => s.exercise)).not.toContain('Bobs Secret Lift')
-  expect(review.dayBalance.map((d) => d.workout)).not.toContain('Bobs Cutting Block')
-  expect(JSON.stringify(review)).not.toContain('Bobs')
-})
-
-test('while she is still a member, the same reads DO name them', async () => {
-  // The counterpart, so the fix above cannot be "return null always" and still pass.
-  const shared = await sharedGroupWithAlice()
-  await logThreeSessions(shared)
-
-  const caller = await resolveCaller(`Bearer ${alice.token}`)
-  if (caller === null) throw new Error('alice could not be resolved')
-
-  const sessions = await listSessions(caller, { limit: 10 })
-  expect(sessions.items[0]?.workoutName).toBe('Bobs Cutting Block')
-  expect(sessions.items[0]?.dayName).toBe('Leg Day')
-
-  const review = await trainingReview(caller, 4)
-  expect(review.dayBalance.map((d) => d.workout)).toContain('Bobs Cutting Block')
-})
 
 /**
  * Regression: `transfer` reported on a workout's CONTENTS before checking the caller could edit it.
