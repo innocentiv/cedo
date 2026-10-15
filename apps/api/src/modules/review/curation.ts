@@ -2,7 +2,8 @@ import { asc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { DEFAULT_GROUP_SLUG, MUSCLES } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { exerciseMedia, exerciseMuscles, exercises, groups } from '../../db/schema.ts'
+import { groups } from '../../db/schema.ts'
+import { visibleExerciseMedia, visibleExerciseMuscles, visibleExercises } from '../../db/visible.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
@@ -40,7 +41,10 @@ export interface LibraryAudit {
 export async function libraryAudit(caller: Caller, groupId: string): Promise<LibraryAudit> {
   if (!caller.groupIds.includes(groupId)) throw notFound('group')
 
-  const { rows, duplicates, byMuscle, withMedia, muscleCountById } = await loadAudit(groupId)
+  const { rows, duplicates, byMuscle, withMedia, muscleCountById } = await loadAudit(
+    caller,
+    groupId,
+  )
 
   return {
     groupId,
@@ -66,18 +70,22 @@ export async function libraryAudit(caller: Caller, groupId: string): Promise<Lib
   }
 }
 
-/** The reads, split by concern so neither half is a wall. */
-async function loadAudit(groupId: string) {
+/**
+ * The reads, split by concern so neither half is a wall. Each is the visible relation narrowed to
+ * the one group — the audited group is a subset of what the caller can read, never a way around it.
+ */
+async function loadAudit(caller: Caller, groupId: string) {
   const [rows, duplicates, counts] = await Promise.all([
-    loadExercises(groupId),
-    findNearDuplicates(groupId),
-    loadCompleteness(groupId),
+    loadExercises(caller, groupId),
+    findNearDuplicates(caller, groupId),
+    loadCompleteness(caller, groupId),
   ])
   return { rows, duplicates, ...counts }
 }
 
-async function loadExercises(groupId: string) {
-  const rows = await db
+async function loadExercises(caller: Caller, groupId: string) {
+  const exercises = visibleExercises(caller)
+  return await db
     .select({
       id: exercises.id,
       name: exercises.name,
@@ -86,8 +94,6 @@ async function loadExercises(groupId: string) {
     .from(exercises)
     .where(eq(exercises.ownerGroupId, groupId))
     .orderBy(asc(exercises.name))
-
-  return rows
 }
 
 /**
@@ -104,11 +110,11 @@ async function loadExercises(groupId: string) {
 const AUDIT_SCAN_LIMIT = 2000
 const MATCHES_PER_EXERCISE = 5
 
-async function findNearDuplicates(groupId: string) {
+async function findNearDuplicates(caller: Caller, groupId: string) {
   const rows = await db.execute<{ a: string; b: string; similarity: number; scanned: number }>(sql`
     with candidates as (
       select id, name, owner_group_id
-        from ${exercises}
+        from ${visibleExercises(caller, 'pool')}
        where owner_group_id = ${groupId}
        order by name
        limit ${AUDIT_SCAN_LIMIT}
@@ -118,7 +124,7 @@ async function findNearDuplicates(groupId: string) {
       from candidates a
       cross join lateral (
         select b.name
-          from ${exercises} b
+          from ${visibleExercises(caller, 'b')}
          where b.owner_group_id = a.owner_group_id
            and b.id > a.id
            and b.name % a.name
@@ -141,38 +147,41 @@ const DuplicateRows = z.array(
   }),
 )
 
-/** Coverage per muscle, which exercises carry media, and how many muscles each is attributed. */
-async function loadCompleteness(groupId: string) {
+/**
+ * Coverage per muscle, which exercises carry media, and how many muscles each is attributed. A
+ * muscle or media link carries its exercise's owner, so each reads its own relation with no join
+ * back to the exercise.
+ */
+async function loadCompleteness(caller: Caller, groupId: string) {
+  const muscles = visibleExerciseMuscles(caller)
   const coverage = await db
     .select({
-      muscle: exerciseMuscles.muscleSlug,
-      count: sql<number>`count(distinct ${exercises.id})`.mapWith(Number),
+      muscle: muscles.muscleSlug,
+      count: sql<number>`count(distinct ${muscles.exerciseId})`.mapWith(Number),
     })
-    .from(exerciseMuscles)
-    .innerJoin(exercises, eq(exercises.id, exerciseMuscles.exerciseId))
-    .where(eq(exercises.ownerGroupId, groupId))
-    .groupBy(exerciseMuscles.muscleSlug)
+    .from(muscles)
+    .where(eq(muscles.ownerGroupId, groupId))
+    .groupBy(muscles.muscleSlug)
   const byMuscle = new Map(coverage.map((c) => [c.muscle, c.count]))
 
+  const attached = visibleExerciseMedia(caller)
   const withMedia = new Set(
     (
       await db
-        .select({ exerciseId: exerciseMedia.exerciseId })
-        .from(exerciseMedia)
-        .innerJoin(exercises, eq(exercises.id, exerciseMedia.exerciseId))
-        .where(eq(exercises.ownerGroupId, groupId))
+        .select({ exerciseId: attached.exerciseId })
+        .from(attached)
+        .where(eq(attached.ownerGroupId, groupId))
     ).map((m) => m.exerciseId),
   )
 
   const muscleCounts = await db
     .select({
-      exerciseId: exerciseMuscles.exerciseId,
+      exerciseId: muscles.exerciseId,
       count: sql<number>`count(*)`.mapWith(Number),
     })
-    .from(exerciseMuscles)
-    .innerJoin(exercises, eq(exercises.id, exerciseMuscles.exerciseId))
-    .where(eq(exercises.ownerGroupId, groupId))
-    .groupBy(exerciseMuscles.exerciseId)
+    .from(muscles)
+    .where(eq(muscles.ownerGroupId, groupId))
+    .groupBy(muscles.exerciseId)
   const muscleCountById = new Map(muscleCounts.map((m) => [m.exerciseId, m.count]))
 
   return { byMuscle, withMedia, muscleCountById }

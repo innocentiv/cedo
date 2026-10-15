@@ -1,15 +1,13 @@
 import { and, asc, desc, eq, gte, lt, sql } from 'drizzle-orm'
 import { gToKg } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { visible } from '../../db/ownable.ts'
+import { setLogs, workoutSessions } from '../../db/schema.ts'
 import {
-  exerciseMuscles,
-  exercises,
-  setLogs,
-  workoutDays,
-  workoutSessions,
-  workouts,
-} from '../../db/schema.ts'
+  visibleExerciseMuscles,
+  visibleExercises,
+  visibleWorkoutDays,
+  visibleWorkouts,
+} from '../../db/visible.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { adherenceOf } from './adherence.ts'
 
@@ -81,28 +79,30 @@ export async function trainingReview(caller: Caller, weeks: number): Promise<Tra
 }
 
 async function dayBalance(caller: Caller, since: Date): Promise<TrainingReview['dayBalance']> {
+  const days = visibleWorkoutDays(caller)
+  const workouts = visibleWorkouts(caller)
   const rows = await db
     .select({
-      day: workoutDays.name,
+      day: days.name,
       workout: workouts.name,
       sessions: sql<number>`count(*)`.mapWith(Number),
     })
     .from(workoutSessions)
-    .innerJoin(workoutDays, eq(workoutDays.id, workoutSessions.dayId))
     /**
-     * Joined rather than fetched by correlated subquery, so `visible()` applies to it. The subquery
-     * this replaces read `select name from workouts where id = …` with no ACL at all, and named a
-     * workout the caller had lost access to. Inner, so a day whose workout is unreachable drops out
-     * entirely — you cannot balance days you cannot see.
+     * INNER joins onto the visible relations, so a day whose workout is unreachable drops out
+     * entirely — you cannot balance days you cannot see. A correlated subquery for the workout's
+     * name (`select name from workouts where id = …`) is how this once named a workout the caller
+     * had lost access to; there is no raw table left to write one against.
      */
-    .innerJoin(workouts, and(eq(workouts.id, workoutDays.workoutId), visible(workouts, caller)))
+    .innerJoin(days, eq(days.id, workoutSessions.dayId))
+    .innerJoin(workouts, eq(workouts.id, days.workoutId))
     .where(and(eq(workoutSessions.userId, caller.userId), gte(workoutSessions.startedAt, since)))
     /**
      * By ID, not by name. Two days can share a name across two plans, and two plans can share a
      * name outright — duplicating one is the documented way to get an editable copy. Grouping on
      * the text merges them into one row whose session count is the sum of both.
      */
-    .groupBy(workoutDays.id, workoutDays.name, workouts.name)
+    .groupBy(days.id, days.name, workouts.name)
     .orderBy(desc(sql`count(*)`))
 
   return rows.map((r) => ({ day: r.day, workout: r.workout, sessions: r.sessions }))
@@ -114,6 +114,15 @@ async function dayBalance(caller: Caller, since: Date): Promise<TrainingReview['
  * rather than a number with no context.
  */
 async function volumeBetween(caller: Caller, from: Date, to: Date) {
+  /**
+   * The third branch of this review, held to the same rule as `stalled` and `dayBalance`. Weaker
+   * than those — it reveals a muscle slug, not a name — but it reads the CURRENT `load_pct` of an
+   * exercise the caller may have lost access to, so their volume would shift to reflect an edit
+   * they cannot see. The muscles carry their exercise's owner, so their relation alone is the
+   * gate. Leaving one of three inconsistent is how the next session concludes the rule does not
+   * apply here.
+   */
+  const exerciseMuscles = visibleExerciseMuscles(caller)
   return await db
     .select({
       muscle: exerciseMuscles.muscleSlug,
@@ -132,20 +141,11 @@ async function volumeBetween(caller: Caller, from: Date, to: Date) {
     .from(setLogs)
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
     .innerJoin(exerciseMuscles, eq(exerciseMuscles.exerciseId, setLogs.exerciseId))
-    .innerJoin(exercises, eq(exercises.id, setLogs.exerciseId))
     .where(
       and(
         eq(workoutSessions.userId, caller.userId),
         eq(setLogs.isWarmup, false),
         gte(workoutSessions.startedAt, from),
-        /**
-         * The third branch of this review, held to the same rule as `stalled` and `dayBalance`.
-         * Weaker than those — it reveals a muscle slug, not a name — but it reads the CURRENT
-         * `load_pct` of an exercise the caller may have lost access to, so their volume shifts to
-         * reflect an edit they cannot see. Leaving one of three inconsistent is how the next
-         * session concludes the rule does not apply here.
-         */
-        visible(exercises, caller),
         // `lt`, not raw sql: a JS Date interpolated into a template serialises via toString
         // ("Sun Aug 23 2026 ...") which Postgres cannot parse in a timestamp comparison.
         lt(workoutSessions.startedAt, to),
@@ -194,6 +194,7 @@ const numberOrNull = (value: string | null) => (value === null ? null : Number(v
  * actually happened.
  */
 async function stalled(caller: Caller, since: Date): Promise<TrainingReview['stalled']> {
+  const exercises = visibleExercises(caller)
   const rows = await db
     .select({
       exercise: exercises.name,
@@ -213,19 +214,18 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
     })
     .from(setLogs)
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
+    /**
+     * INNER, onto the visible relation. Own logs are not enough: an exercise can stop being visible
+     * after it was logged, when a shared group loses the caller as a member. Omitted rather than
+     * redacted, matching `progression/service.ts` — there is nothing useful to say about a
+     * movement whose name the caller cannot read, and this output goes to an AI over MCP.
+     */
     .innerJoin(exercises, eq(exercises.id, setLogs.exerciseId))
     .where(
       and(
         eq(workoutSessions.userId, caller.userId),
         eq(setLogs.isWarmup, false),
         gte(workoutSessions.startedAt, since),
-        /**
-         * Own logs are not enough: an exercise can stop being visible after it was logged, when a
-         * shared group loses the caller as a member. Omitted rather than redacted, matching
-         * `progression/service.ts` — there is nothing useful to say about a movement whose name the
-         * caller cannot read, and this output goes to an AI over MCP.
-         */
-        visible(exercises, caller),
       ),
     )
     /**
