@@ -1,5 +1,10 @@
 # Throwaway Postgres for integration and performance tests. Separate from docker-compose.yml so a
 # test run can never touch development or production data. No volume: state is disposable by design.
+#
+# Its own project name. Sharing the default one (the directory, `cedo`) made each file report the
+# other's container as an "orphan" on every `bun run db:up`, and suggest `--remove-orphans` — which,
+# run against this file, removes the DEVELOPMENT database container.
+name: cedo-test
 services:
   test-db:
     image: postgres:18-alpine

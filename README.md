@@ -118,6 +118,7 @@ bun run shot /today    # render a UI route, screenshot to .artifacts/, print con
 | Symptom | Cause |
 | --- | --- |
 | `No Postgres is listening on localhost:55433` | `bun run db:up` |
+| `port 55433 is already allocated` on `db:up` | a test database from before the test stack had its own project name: `docker rm -f cedo-test-db-1`, once |
 | `ENOTFOUND db` | `DATABASE_URL` in `.env` says `db`; for local dev it must say `localhost` |
 | `bun run e2e` fails everything after minutes | it was backgrounded; the WebView needs the foreground |
 | `0 files were searched` | a script's glob is wrong, not an empty suite |
