@@ -17,7 +17,8 @@ is designed to prevent.
    UI all derive from them. Never redeclare a shape.
 4. **Business logic lives in `service.ts`.** Route handlers and MCP tools are ≤5 lines and both call
    the same service function. No logic in controllers. The statements that change owned rows, and
-   the guards that must share their transaction, sit beside it in the module's `write*.ts`.
+   the guards that must share their transaction, sit beside it in the module's `write*.ts`. What
+   every ownable does identically is `modules/ownable/`, configured per kind in `lifecycle.ts`.
 5. **Owned tables are read only through their visible relations (`db/visible.ts`) — joins
    included.** LEFT JOIN a relation to null a name, INNER JOIN it to drop the row; writes in
    `write*.ts` carry `editable()` on every statement. Reading your own row does not entitle you to a

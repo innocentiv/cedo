@@ -110,8 +110,9 @@ Commit the generated SQL. Never edit an applied migration.
 ## 3. The service
 
 `apps/api/src/modules/widget/service.ts`. **All logic lives here** — it is the only thing MCP tools
-may call. Reads go through the visible relations; the statements that change rows go in
-`modules/widget/write.ts`, the one file of the module allowed to import the raw tables.
+may call. It builds on the shared ownable lifecycle (step 5) for list, get, favourite, transfer and
+delete, and adds what is the widget's own. Its own reads go through the visible relations; its own
+writes — create, update, children — go in `modules/widget/write.ts`.
 
 ```ts
 // READ — service.ts, through the relation. LEFT JOIN one to null a name; INNER JOIN to drop the row.
@@ -174,15 +175,35 @@ export const widgetRoutes = new Elysia({ prefix: '/widgets', tags: ['widgets'] }
 Mount it in `app.ts`. Never throw a value that is not a `DomainError` — everything leaves through the
 single `onError`.
 
-## 5. Favourites, duplicate, transfer
+## 5. The lifecycle: list, get, favourites, transfer, delete
 
-There is no generic implementation of these yet: follow `modules/exercise/` (flat) or
-`modules/workout/` (with children), writes in `write.ts`.
+Declare the widget as an ownable in `apps/api/src/modules/widget/lifecycle.ts` — the one file
+besides `write*.ts` allowed to name the raw tables, because transfer and delete write to them:
 
-- `duplicate` copies the row and its children into a group the caller can **edit**, defaulting to
-  their personal group. Immutable children (media) are *shared*, not copied.
-- `transfer` requires editor rights on **both** sides.
-- `setFavourite` checks **visibility**, not editability — you may pin what you can see.
+```ts
+export const widgetLifecycle = ownableLifecycle({
+  noun: 'widget',
+  table: widgets,
+  favourites: widgetFavourites,
+  view: (caller) => {
+    const visible = visibleWidgets(caller)
+    return { from: visible, row: visible._.selectedFields, id: visible.id,
+             name: visible.name, ownerGroupId: visible.ownerGroupId }
+  },
+  // Optional: listConditions (its own filters), beforeTransfer (its own rule), inUse (409 text).
+})
+```
+
+The service then calls `widgetLifecycle.list/get/setFavourite/transfer/remove` and maps
+`{ row, isFavourite }` to the contract, taking the six shared fields from `ownableFieldsOf`. Scope,
+search escaping, keyset paging, the favourite visibility check, editor rights on **both** sides of
+a transfer and the 404 for hidden rows all come with it — see `modules/ownable/service.ts`. The
+contract side is the same: build the list query with `withGroupRule(OwnableQueryFields.extend(…))`
+and spread `ownableFields` into the response.
+
+`duplicate` is the widget's own — it copies children — and copies into a group the caller can
+**edit**, defaulting to their personal group (`assertEditorOf`). Immutable children (media) are
+*shared*, not copied.
 
 ## 6. Tests
 
@@ -249,11 +270,13 @@ An entity nobody measured is an entity that is fast until someone has a thousand
 [ ] favouriteTable()
 [ ] a visible relation per table; added to the lint importNames and to raw-sql.test.ts OWNED
 [ ] migration generated and committed
+[ ] lifecycle.ts declaring it; the service builds on it
 [ ] service reads through the relations; write.ts carries editable() on every statement
 [ ] a case per new GET route / read-only MCP tool in test/membership-lost.test.ts
+[ ] an entry in KINDS in modules/ownable/ownable.test.ts
 [ ] children loaded in a fixed number of queries
 [ ] routes <=5 lines, mounted in app.ts
-[ ] duplicate / transfer / favourite
+[ ] duplicate
 [ ] tests: isolation, expectContract via wire, 401
 [ ] MCP tool
 [ ] client method + query keys + hooks, THEN the screen

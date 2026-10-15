@@ -32,7 +32,9 @@ ownable() -> { id, owner_group_id, created_by, name, created_at, updated_at }
 
 Spread into each entity table. Columns are physically repeated; **no supertable**. A create is one
 INSERT, a read needs no join, and `visible()` / `editable()` are still written exactly once as
-generics over the trait. See [adr/0003](adr/0003-ownable-columns.md).
+generics over the trait. So is the lifecycle every ownable shares — list with its scopes, search and
+keyset, get, favourite, transfer, delete — in `modules/ownable/`, which each kind configures in its
+own `lifecycle.ts`. See [adr/0003](adr/0003-ownable-columns.md).
 
 ### Children carry their owner
 
@@ -80,7 +82,8 @@ db.update(exercisesTable)
 ```
 
 **A read of an owned table that does not go through its visible relation is a data leak.** It is
-enforced, not remembered: lint refuses importing the raw tables outside `db/`, `write*.ts` and tests;
+enforced, not remembered: lint refuses importing the raw tables outside `db/`, `write*.ts`,
+`lifecycle.ts` and tests;
 the Drizzle client has no `db.query`; and `raw-sql.test.ts` fails on an owned table named inside an
 `sql` template. Not-found and not-permitted both return 404 — a 403 would confirm the resource
 exists.

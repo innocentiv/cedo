@@ -14,6 +14,7 @@ though it were written at once.
   | ---------------- | ------------------------------------------------------------- | ------------------ |
   | `index.ts`       | An Elysia instance: routes, schema bindings, `.guard({ auth: true })` | Any business logic |
   | `service.ts`     | All business logic. Functions taking `(caller, input)`; reads through visible relations | Any HTTP concept; a raw owned table |
+  | `lifecycle.ts`   | The module's kind declared to the shared ownable lifecycle (`modules/ownable/`) | Anything but that declaration |
   | `write*.ts`      | The statements that change owned rows, and the guards that must share their transaction | A statement on an owned table without `editable()` |
   | `<name>.test.ts` | Unit + integration tests, colocated                           | —                  |
 
@@ -55,7 +56,7 @@ db.update(exercisesTable)
 
 **A read of an owned table that does not go through its visible relation is a data leak between
 users.** Treat it as a security defect, not a style issue. Lint refuses the raw-table import outside
-`db/`, `write*.ts` and tests, and `raw-sql.test.ts` refuses an owned table named in an `sql`
+`db/`, `write*.ts`, `lifecycle.ts` and tests, and `raw-sql.test.ts` refuses an owned table named in an `sql`
 template; `review/diagnostics.ts` (instance-wide counts for a curator) is the one named exemption.
 Every module's test file must still contain a cross-user isolation test, and
 `test/membership-lost.test.ts` needs a case for every new GET route or read-only MCP tool. See
