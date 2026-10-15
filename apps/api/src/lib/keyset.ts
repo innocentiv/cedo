@@ -12,7 +12,9 @@ import { z } from 'zod'
 export const encodeCursor = (name: string, id: string) =>
   Buffer.from(JSON.stringify([name, id])).toString('base64url')
 
-const Cursor = z.tuple([z.string(), z.string()])
+// The id is a uuid, checked here: a well-formed cursor with any other id reached the uuid cast as a
+// 500 instead of meaning "start over".
+const Cursor = z.tuple([z.string(), z.uuid()])
 
 /** A cursor is client input, so it is parsed, not trusted. A malformed one means "start over". */
 export function decodeCursor(cursor: string | undefined): { name: string; id: string } | null {

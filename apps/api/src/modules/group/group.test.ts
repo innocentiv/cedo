@@ -190,6 +190,23 @@ describe('membership', () => {
     expect((await add()).status).toBe(409)
   })
 
+  /** Two editors adding the same person at once: one wins, the other is told — never a 500. */
+  test('adding the same member twice AT ONCE is still one success and one conflict', async () => {
+    const squad = expectContract(GroupMembership, (await createGroup(alice, 'Squad')).body)
+    const add = () =>
+      alice.wire(`/groups/${squad.id}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ username: 'bob', role: 'reader' }),
+      })
+    for (let round = 0; round < 5; round += 1) {
+      await alice.wire(`/groups/${squad.id}/members/${bob.userId}`, { method: 'DELETE' })
+      const statuses = (await Promise.all([add(), add()]))
+        .map((r) => r.status)
+        .toSorted((a, b) => a - b)
+      expect(statuses).toEqual([200, 409])
+    }
+  })
+
   test('a personal group cannot take members', async () => {
     const res = await alice.wire(`/groups/${alice.personalGroupId}/members`, {
       method: 'POST',

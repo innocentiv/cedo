@@ -165,18 +165,14 @@ export async function addMember(
     .limit(1)
   if (user === undefined) throw notFound('user')
 
-  const [existing] = await db
-    .select()
-    .from(groupMembers)
-    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, user.id)))
-    .limit(1)
-  if (existing !== undefined) throw conflict('Already a member')
-
+  // The primary key is the check. A SELECT first was a check-then-act: two concurrent adds both
+  // passed it, and the loser hit the key as a 500.
   const [added] = await db
     .insert(groupMembers)
     .values({ groupId, userId: user.id, role: input.role })
+    .onConflictDoNothing()
     .returning()
-  if (added === undefined) throw new Error('Could not add the member')
+  if (added === undefined) throw conflict('Already a member')
 
   return {
     user: {

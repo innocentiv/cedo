@@ -454,4 +454,13 @@ describe('listing', () => {
     const res = await alice.wire('/exercises?cursor=not-a-real-cursor')
     expect(res.status).toBe(200)
   })
+
+  /** Well-formed JSON in the right shape, with an id that is not a uuid: it reached the cast. */
+  test('a cursor whose id is not a uuid is ignored too, on both keyset lists', async () => {
+    await created(alice)
+    const cursor = Buffer.from(JSON.stringify(['Bench', 'not-a-uuid'])).toString('base64url')
+    for (const list of ['/exercises', '/workouts']) {
+      expect((await alice.wire(`${list}?cursor=${cursor}`)).status).toBe(200)
+    }
+  })
 })
