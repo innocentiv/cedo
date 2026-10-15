@@ -81,6 +81,50 @@ describe('sharing a workout does not share its exercises', () => {
     ).toBe(alice.personalGroupId)
   })
 
+  /**
+   * Every user reads the starter library, so a plan built from it can go to any group. The check
+   * used to require each exercise to be OWNED by the target group, which refused the most ordinary
+   * share there is — "here is my programme" — for every plan built from seeded exercises.
+   */
+  test('a plan built from the shared library can be shared — every member already reads it', async () => {
+    const { seedLibrary } = await import('../../db/seed.ts')
+    await seedLibrary(h.groupId, h.systemUserId)
+    const squat = expectContract(
+      z.object({ items: z.array(Exercise) }),
+      (await alice.wire('/exercises?q=Back%20Squat&limit=1')).body,
+    ).items[0]
+    if (squat === undefined) throw new Error('the library has no Back Squat')
+
+    const workout = expectContract(
+      Workout,
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Legs' }) }))
+        .body,
+    )
+    await alice.wire(`/workouts/${workout.id}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        days: [{ name: 'D', entries: [{ exerciseId: squat.id, sets: [{ targetReps: 5 }] }] }],
+      }),
+    })
+    const squad = expectContract(
+      GroupMembership,
+      (await alice.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Squad' }) }))
+        .body,
+    )
+    await alice.wire(`/groups/${squad.id}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ username: 'bob', role: 'reader' }),
+    })
+
+    const res = await alice.wire(`/workouts/${workout.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: squad.id }),
+    })
+    expect(res.status).toBe(200)
+    const asBob = expectContract(Workout, (await bob.wire(`/workouts/${workout.id}`)).body)
+    expect(asBob.days[0]?.entries[0]?.exercise?.name).toBe(squat.name)
+  })
+
   test('it succeeds once the exercise is shared too', async () => {
     const { secret, workout, squad } = await sharedWorkoutUsingAPrivateExercise()
 

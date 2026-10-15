@@ -1,7 +1,8 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, exists, ne, notExists, sql } from 'drizzle-orm'
+import { alias } from 'drizzle-orm/pg-core'
 import { db } from '../../db/client.ts'
 import { visible } from '../../db/ownable.ts'
-import { exercises, workoutDays, workoutEntries } from '../../db/schema.ts'
+import { exercises, groupMembers, workoutDays, workoutEntries } from '../../db/schema.ts'
 import { conflict } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
@@ -19,24 +20,58 @@ export async function assertExercisesVisibleToGroup(
   workoutId: string,
   toGroupId: string,
 ): Promise<void> {
-  const referenced = await db
-    .selectDistinct({
-      id: exercises.id,
-      name: exercises.name,
-      ownerGroupId: exercises.ownerGroupId,
-    })
+  const unreachable = await db
+    .selectDistinct({ id: exercises.id, name: exercises.name })
     .from(workoutEntries)
     .innerJoin(workoutDays, eq(workoutDays.id, workoutEntries.dayId))
     .innerJoin(exercises, eq(exercises.id, workoutEntries.exerciseId))
-    .where(and(eq(workoutDays.workoutId, workoutId), visible(exercises, caller)))
+    .where(
+      and(
+        eq(workoutDays.workoutId, workoutId),
+        visible(exercises, caller),
+        hiddenFromSomeMemberOf(toGroupId),
+      ),
+    )
 
-  const unreachable = referenced.filter((e) => e.ownerGroupId !== toGroupId)
-  // An exercise already in the target group is fine; so is one in a group the target can also see.
-  // Groups do not nest, so "visible to the target group" means "owned by it".
   if (unreachable.length > 0) {
     const names = unreachable.map((e) => `"${e.name}"`).join(', ')
     throw conflict(
       `That group cannot see ${names}. Share or duplicate ${unreachable.length === 1 ? 'it' : 'them'} into the group first.`,
     )
   }
+}
+
+/**
+ * True for an exercise some member of `groupId` cannot read. It may travel with a plan only when
+ * EVERY member already reads it: it is in that group, or in a group all of them belong to — the
+ * starter library, which everyone reads, being the everyday case. Requiring the target group to OWN
+ * each exercise refused every plan built from the library.
+ *
+ * "Some member lacks a membership in the exercise's group", correlated on the outer `exercises`
+ * row, so the check stays one query however many exercises the plan uses.
+ */
+function hiddenFromSomeMemberOf(groupId: string) {
+  const target = alias(groupMembers, 'target')
+  const owner = alias(groupMembers, 'owner')
+  return and(
+    ne(exercises.ownerGroupId, groupId),
+    exists(
+      db
+        .select({ one: sql`1` })
+        .from(target)
+        .where(
+          and(
+            eq(target.groupId, groupId),
+            notExists(
+              db
+                .select({ one: sql`1` })
+                .from(owner)
+                .where(
+                  and(eq(owner.groupId, exercises.ownerGroupId), eq(owner.userId, target.userId)),
+                ),
+            ),
+          ),
+        ),
+    ),
+  )
 }
