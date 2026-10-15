@@ -152,7 +152,11 @@ async function hydrateExerciseRows(ids: string[], caller: Caller) {
       and(eq(exerciseFavourites.userId, caller.userId), inArray(exerciseFavourites.targetId, ids)),
     )
 
-  const hydrated = await hydrateExercises(rows, new Set(pinned.map((p) => p.targetId)), caller)
+  const pinnedIds = new Set(pinned.map((p) => p.targetId))
+  const hydrated = await hydrateExercises(
+    caller,
+    rows.map((row) => ({ row, isFavourite: pinnedIds.has(row.id) })),
+  )
   return new Map(hydrated.map((e) => [e.id, e]))
 }
 

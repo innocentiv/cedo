@@ -130,6 +130,8 @@ export const editable = (table: OwnedTable, ctx: AccessContext) =>
  * Favourites are per entity kind so each keeps a real foreign key, and the rows disappear with
  * their target rather than becoming orphans. Defined once; called per ownable table.
  */
+export type FavouriteTable = ReturnType<typeof favouriteTable<string>>
+
 export const favouriteTable = <TName extends string>(name: TName, target: OwnableTable) =>
   pgTable(
     name,

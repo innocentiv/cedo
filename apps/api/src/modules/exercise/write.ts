@@ -2,21 +2,18 @@ import { and, eq, inArray, sql } from 'drizzle-orm'
 import type { ExerciseCreate, ExerciseUpdate } from '@cedo/contract'
 import { type Transaction, db } from '../../db/client.ts'
 import { type OwnedRow, assertEditorOf, editable } from '../../db/ownable.ts'
-import {
-  exerciseFavourites,
-  exerciseMedia,
-  exerciseMuscles,
-  exercises,
-  media,
-} from '../../db/schema.ts'
-import { conflict, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
+import { exerciseMedia, exerciseMuscles, exercises, media } from '../../db/schema.ts'
+import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
 /**
- * Every statement that changes an exercise, and the guards that must run in the same transaction.
+ * An exercise's own writes — create and update, with its muscles and media — and the guards that
+ * must run in the same transaction. Transfer, delete and favourites are the shared lifecycle
+ * (`lifecycle.ts`).
+ *
  * A write file may import the raw tables — a subquery cannot be an UPDATE target — and in exchange
  * every statement here on an owned table carries `editable()`. Every other read goes through the
- * visible relations, in `service.ts` and `query.ts`. See docs/adr/0019-visible-relations.md.
+ * visible relations. See docs/adr/0019-visible-relations.md.
  */
 
 async function replaceMuscles(
@@ -140,64 +137,4 @@ export async function updateExercise(
     if (patch.muscles !== undefined) await replaceMuscles(tx, caller, existing, patch.muscles)
     if (patch.mediaIds !== undefined) await replaceMedia(tx, caller, existing, patch.mediaIds)
   })
-}
-
-/**
- * Plans and logged history reference exercises ON DELETE RESTRICT, so an exercise in use cannot go.
- * The database is the check — a count beforehand would race a concurrent log — and its refusal is
- * a 409, not a 500. The message names nothing: what references it may belong to people the caller
- * cannot see.
- */
-export async function deleteExercise(caller: Caller, id: string): Promise<void> {
-  const deleted = await db
-    .delete(exercises)
-    .where(and(editable(exercises, caller), eq(exercises.id, id)))
-    .returning({ id: exercises.id })
-    .catch((error: unknown) => {
-      if (isForeignKeyRefusal(error)) {
-        throw conflict(
-          'That exercise is used by a plan or by logged history, so it cannot be deleted. ' +
-            'Remove it from the plans that use it; logged history keeps it for good.',
-        )
-      }
-      throw error
-    })
-  if (deleted.length === 0) throw notFound('exercise')
-}
-
-/**
- * Requires editor rights on BOTH sides: you cannot push something into a group, or out of one. Its
- * muscles and media follow by the cascading owner key.
- */
-export async function transferExercise(
-  caller: Caller,
-  id: string,
-  toGroupId: string,
-): Promise<void> {
-  assertEditorOf(caller, toGroupId)
-
-  const moved = await db
-    .update(exercises)
-    .set({ ownerGroupId: toGroupId, updatedAt: sql`now()` })
-    .where(and(editable(exercises, caller), eq(exercises.id, id)))
-    .returning({ id: exercises.id })
-  if (moved.length === 0) throw notFound('exercise')
-}
-
-/** Pins or unpins. Whether the caller may see the exercise is the service's check, made first. */
-export async function writeFavourite(
-  caller: Caller,
-  id: string,
-  favourite: boolean,
-): Promise<void> {
-  if (favourite) {
-    await db
-      .insert(exerciseFavourites)
-      .values({ userId: caller.userId, targetId: id })
-      .onConflictDoNothing()
-    return
-  }
-  await db
-    .delete(exerciseFavourites)
-    .where(and(eq(exerciseFavourites.userId, caller.userId), eq(exerciseFavourites.targetId, id)))
 }

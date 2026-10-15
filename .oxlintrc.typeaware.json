@@ -63,6 +63,7 @@
       "files": [
         "apps/api/src/db/**",
         "apps/api/src/modules/*/write*.ts",
+        "apps/api/src/modules/*/lifecycle.ts",
         "apps/api/src/test/**",
         "**/*.test.ts"
       ],

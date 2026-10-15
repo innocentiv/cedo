@@ -5,6 +5,7 @@ import { groupBy } from '../../lib/keyset.ts'
 import { media } from '../../db/schema.ts'
 import { type ExerciseRow, visibleExerciseMedia, visibleExerciseMuscles } from '../../db/visible.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { ownableFieldsOf } from '../ownable/service.ts'
 
 export type { ExerciseRow }
 type MediaRow = typeof media.$inferSelect
@@ -70,12 +71,7 @@ function toExercise(row: ExerciseRow, attachments: Attachments): Exercise {
     muscles,
     mediaIds: attached.map((m) => m.row.id),
     media: attached.map((m) => toMedia(m.row)),
-    ownerGroupId: row.ownerGroupId,
-    createdBy: row.createdBy,
-    canEdit: caller.editorGroupIds.includes(row.ownerGroupId),
-    isFavourite,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    ...ownableFieldsOf(row, isFavourite, caller),
   }
 }
 
@@ -89,12 +85,11 @@ function toExercise(row: ExerciseRow, attachments: Attachments): Exercise {
  * See docs/adr/0018-n1-detection.md.
  */
 export async function hydrate(
-  rows: ExerciseRow[],
-  favouriteIds: ReadonlySet<string>,
   caller: Caller,
+  listed: readonly { readonly row: ExerciseRow; readonly isFavourite: boolean }[],
 ): Promise<Exercise[]> {
-  if (rows.length === 0) return []
-  const ids = rows.map((r) => r.id)
+  if (listed.length === 0) return []
+  const ids = listed.map((l) => l.row.id)
 
   const muscles = visibleExerciseMuscles(caller)
   const muscleRows = await db.select().from(muscles).where(inArray(muscles.exerciseId, ids))
@@ -117,11 +112,11 @@ export async function hydrate(
     (m): AttachedMedia => ({ sortIndex: m.sortIndex, row: m.media }),
   )
 
-  return rows.map((row) =>
+  return listed.map(({ row, isFavourite }) =>
     toExercise(row, {
       muscles: musclesByExercise.get(row.id) ?? [],
       media: (mediaByExercise.get(row.id) ?? []).toSorted((a, b) => a.sortIndex - b.sortIndex),
-      isFavourite: favouriteIds.has(row.id),
+      isFavourite,
       caller,
     }),
   )
