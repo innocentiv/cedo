@@ -191,6 +191,51 @@ test(
 )
 
 test(
+  'the plan editor knows an exercise that is not in the first page of the library',
+  async () => {
+    await withApp('editor-beyond-first-page', async (page) => {
+      await register(page, unique('lib'))
+
+      // 45 seeded + 60 of these puts "Zz Hold" well past the first 100 by name, where the editor
+      // used to look exercises up. Created through the API from the page, with its own session.
+      const created = await page.evaluate(`(async () => {
+        const token = localStorage.getItem('cedo.session')
+        const post = (body) => fetch('/api/exercises', {
+          method: 'POST',
+          headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        for (let i = 0; i < 60; i++) {
+          await post({ name: 'Filler ' + String(i).padStart(2, '0'), muscles: [{ muscle: 'quadriceps', loadPct: 100 }] })
+        }
+        const hold = await post({ name: 'Zz Hold', tracking: 'duration', muscles: [{ muscle: 'rectus_abdominis', loadPct: 100 }] })
+        return hold.status
+      })()`)
+      expect(created).toBe(200)
+
+      await page.goto('/workouts')
+      await page.waitFor('workouts-screen')
+      await page.fill('workout-name', 'Core')
+      await page.click('[data-testid="create-workout"]')
+      await page.waitFor('plan-edit-screen')
+      await page.click('[data-testid="add-day"]')
+      await page.click('[data-testid="add-entry-0"]')
+      await page.waitFor('exercise-picker')
+      await page.fill('picker-search', 'Zz Hold')
+      const picked = await page.waitForSelector('[data-testid^="picker-row-"]')
+      await page.click(`[data-testid="${picked}"]`)
+      await page.waitFor('plan-entry-0-0')
+
+      expect(await page.text('plan-entry-0-0')).toContain('Zz Hold')
+      // A duration exercise: Seconds, not weight and reps.
+      expect(await page.exists('plan-entry-0-0-duration')).toBe(true)
+      expect(await page.exists('plan-entry-0-0-weight')).toBe(false)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
   'emptying a field and typing a new number does not keep a digit of the old one',
   async () => {
     await withApp('retype-a-field', async (page) => {

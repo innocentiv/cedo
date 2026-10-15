@@ -22,25 +22,38 @@ import {
   toPlanInput,
 } from '../../../../src/lib/plan-draft.ts'
 import { ExercisePicker } from '../../../../src/lib/exercise-picker.tsx'
-import { useExercises, useReplacePlan, useWorkout } from '../../../../src/api/queries.ts'
+import type { Exercise } from '@cedo/contract'
+import { useReplacePlan, useWorkout } from '../../../../src/api/queries.ts'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
 
 export default function EditPlan(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>()
   const goBack = useGoBack('/workouts')
   const workout = useWorkout(id ?? '')
-  const library = useExercises({ scope: 'all', limit: 100 })
   const replace = useReplacePlan(id ?? '')
   const { submit, busy, error } = useSubmit()
 
   const [days, setDays] = useState<DayDraft[] | null>(null)
   const [picking, setPicking] = useState<number | null>(null)
+  const [picked, setPicked] = useState<ReadonlyMap<string, Exercise>>(new Map())
 
   const draft = days ?? (workout.data === undefined ? [] : draftFrom(workout.data))
-  const byId = useMemo(
-    () => new Map((library.data?.items ?? []).map((e) => [e.id, e])),
-    [library.data],
-  )
+  /**
+   * Every exercise the draft can reference: the ones the plan already resolves, plus any picked
+   * while editing. It used to be the first 100 of the library — the contract's page limit — so past
+   * that, or for anything found by search, an entry showed as "Exercise" with weight-and-reps
+   * inputs, and a plank lost its Seconds field.
+   */
+  const byId = useMemo(() => {
+    const known = new Map<string, Exercise>()
+    for (const day of workout.data?.days ?? []) {
+      for (const entry of day.entries) {
+        if (entry.exercise !== null) known.set(entry.exerciseId, entry.exercise)
+      }
+    }
+    for (const [exerciseId, exercise] of picked) known.set(exerciseId, exercise)
+    return known
+  }, [workout.data, picked])
 
   const save = () => {
     void submit(async () => {
@@ -65,6 +78,7 @@ export default function EditPlan(): React.JSX.Element {
           setPicking(null)
         }}
         onPick={(exercise) => {
+          setPicked(new Map(picked).set(exercise.id, exercise))
           const day = draft[picking]
           if (day !== undefined) {
             setDays(

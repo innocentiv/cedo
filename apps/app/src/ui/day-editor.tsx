@@ -61,7 +61,7 @@ export function DayEditor({
           <EntryEditor
             key={`entry-${index}-${entryIndex}`}
             entry={entry}
-            exerciseName={library.get(entry.exerciseId)?.name ?? 'Exercise'}
+            exerciseName={library.get(entry.exerciseId)?.name ?? 'Unavailable exercise'}
             tracking={library.get(entry.exerciseId)?.tracking ?? 'weight_reps'}
             testID={`plan-entry-${index}-${entryIndex}`}
             onChange={(next) => {
