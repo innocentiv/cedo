@@ -54,7 +54,7 @@
   ],
   "overrides": [
     {
-      "files": ["**/seed-data/**"],
+      "files": ["**/seed-data/**", "**/test/perf/hot-paths.ts"],
       "rules": {
         "max-lines": "off"
       }

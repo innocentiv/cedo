@@ -84,6 +84,19 @@ export const HOT_PATHS: readonly HotPath[] = [
       await exerciseService.list(fixtures.large.caller, { scope: 'all', limit: PAGE[size] }),
   },
   {
+    name: 'GET /exercises?scope=favourites',
+    why:
+      'The pinned list: the favourites join narrows 10,000 visible exercises to the few the caller ' +
+      'pinned. It must find them through the favourites, not by walking the library to look.',
+    dimension: 'page size (5 vs 50)',
+    maxQueries: 3,
+    budgetMs: 60,
+    noSeqScan: ['exercises', 'exercise_favourites'],
+    indexes: ['exercise_favourites_user_id_target_id_pk'],
+    run: async (fixtures, size) =>
+      await exerciseService.list(fixtures.large.caller, { scope: 'favourites', limit: PAGE[size] }),
+  },
+  {
     name: 'GET /exercises?q= (search)',
     why:
       'Substring search over 10,000 exercises. Postgres picks between the trigram index (a rare ' +

@@ -49,12 +49,14 @@ export async function seedPerf(): Promise<PerfFixtures> {
   await seedSharedLibrary(sharedGroupId, systemUserId)
   await seedBackgroundWorkouts(sharedGroupId, systemUserId)
   await seedMedia(sharedGroupId, systemUserId)
-  await seedFavourites(sharedGroupId)
   await seedTokens()
   await seedBackgroundSessions(sharedGroupId)
 
   const small = await seedProfile('small', sharedGroupId)
   const large = await seedProfile('large', sharedGroupId)
+  // After the profiles, so the users the hot paths run as have pins too: an empty favourites
+  // join is solved for free and proves nothing.
+  await seedFavourites(sharedGroupId)
 
   // Without fresh statistics the planner works from defaults and chooses plans nobody in
   // production would get, which would make every assertion below meaningless.

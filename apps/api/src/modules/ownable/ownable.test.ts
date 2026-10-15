@@ -1,4 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
+import { getTableColumns, getTableName, is } from 'drizzle-orm'
+import { PgTable } from 'drizzle-orm/pg-core'
 import type { z } from 'zod'
 import { Exercise, GroupMembership, Workout, WorkoutSummary, page } from '@cedo/contract'
 import type { ExerciseRow, WorkoutRow } from '../../db/visible.ts'
@@ -6,6 +8,7 @@ import type { exerciseLifecycle } from '../exercise/lifecycle.ts'
 import * as ExerciseService from '../exercise/service.ts'
 import * as WorkoutService from '../workout/service.ts'
 import type { workoutLifecycle } from '../workout/lifecycle.ts'
+import * as schema from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
@@ -37,6 +40,8 @@ interface Item {
 }
 
 interface Kind {
+  /** The ownable table behind it — the completeness check below matches on it. */
+  readonly table: string
   readonly path: '/exercises' | '/workouts'
   readonly body: (name: string) => Record<string, unknown>
   readonly one: z.ZodType<Item>
@@ -50,6 +55,7 @@ interface Kind {
 
 const KINDS: readonly Kind[] = [
   {
+    table: 'exercises',
     path: '/exercises',
     body: (name) => ({ name, muscles: [{ muscle: 'quadriceps', loadPct: 100 }] }),
     one: Exercise,
@@ -57,6 +63,7 @@ const KINDS: readonly Kind[] = [
     listDirectly: async (caller, query) => await ExerciseService.list(caller, query),
   },
   {
+    table: 'workouts',
     path: '/workouts',
     body: (name) => ({ name }),
     one: Workout,
@@ -64,6 +71,22 @@ const KINDS: readonly Kind[] = [
     listDirectly: async (caller, query) => await WorkoutService.list(caller, query),
   },
 ]
+
+/**
+ * Every table built with `ownable()` is a kind here. A new ownable without an entry would quietly
+ * get none of the guarantees below, so its absence fails instead.
+ */
+test('every ownable table has a kind in this suite', () => {
+  const ownableTables: string[] = Object.values(schema)
+    .filter((value) => is(value, PgTable))
+    .filter((table) => {
+      const columns = Object.keys(getTableColumns(table))
+      return ['ownerGroupId', 'createdBy', 'name', 'updatedAt'].every((c) => columns.includes(c))
+    })
+    .map((table) => getTableName(table))
+
+  expect(ownableTables.toSorted()).toEqual(KINDS.map((k) => k.table).toSorted())
+})
 
 describe.each(KINDS)('$path', (kind) => {
   const create = async (user: TestUser, name = 'Thing'): Promise<Item> =>

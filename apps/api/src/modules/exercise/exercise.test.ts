@@ -263,6 +263,16 @@ describe('duplicate and transfer', () => {
 })
 
 describe('listing', () => {
+  /** The library is an exercise's own: every account reads it, and `mine` must still exclude it. */
+  test('scope=mine excludes the shared library', async () => {
+    const { seedLibrary } = await import('../../db/seed.ts')
+    await seedLibrary(h.groupId, h.systemUserId)
+    await created(alice, { name: 'My Own Lift' })
+
+    const mine = expectContract(Page, (await alice.wire('/exercises?scope=mine&limit=100')).body)
+    expect(mine.items.map((e) => e.name)).toEqual(['My Own Lift'])
+  })
+
   test('filters by muscle', async () => {
     await created(alice, { name: 'Chest Thing' })
     await created(alice, {
