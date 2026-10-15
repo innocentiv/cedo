@@ -309,11 +309,11 @@ describe.each(KINDS)('$path', (kind) => {
 
 /**
  * Compile-time: a lifecycle hands back the kind's own row type. A favourites table typed by a plain
- * `string` name collapses every selected field to `never` — which assigns to anything, so only an
- * exact type equality catches it. Remove the `alias()` in `ownable/service.ts` and this stops
- * compiling.
+ * `string` name collapses every selected field to `never` — which assigns to anything, so a plain
+ * annotation would not notice. `Equal` is mutual assignability, boxed so `never` is not vacuously
+ * equal to everything; it is enforced by `tsc`, not at runtime. Remove the `alias()` in
+ * `ownable/service.ts` and this stops compiling.
  */
-/** Mutual assignability, boxed so `never` is not vacuously equal to everything. */
 type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
 type RowOf<TLifecycle extends { get: (...args: never[]) => Promise<{ row: unknown }> }> = Awaited<
   ReturnType<TLifecycle['get']>

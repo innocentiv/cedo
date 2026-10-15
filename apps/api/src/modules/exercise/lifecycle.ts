@@ -3,7 +3,7 @@ import type { ExerciseQuery } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { exerciseFavourites, exercises } from '../../db/schema.ts'
 import { visibleExerciseMuscles, visibleExercises } from '../../db/visible.ts'
-import { ownableLifecycle } from '../ownable/service.ts'
+import { ownableLifecycle, relationOf } from '../ownable/service.ts'
 
 /**
  * How an exercise is an ownable: its relation, its tables, and the two things it does differently
@@ -15,17 +15,8 @@ export const exerciseLifecycle = ownableLifecycle({
   noun: 'exercise',
   table: exercises,
   favourites: exerciseFavourites,
-  view: (caller) => {
-    const visible = visibleExercises(caller)
-    return {
-      from: visible,
-      row: visible._.selectedFields,
-      id: visible.id,
-      name: visible.name,
-      ownerGroupId: visible.ownerGroupId,
-    }
-  },
-  listConditions: (caller, query: ExerciseQuery, view) => {
+  relation: (caller) => relationOf(visibleExercises(caller)),
+  listConditions: (caller, query: ExerciseQuery, relation) => {
     if (query.muscle === undefined) return []
     const muscles = visibleExerciseMuscles(caller)
     return [
@@ -33,7 +24,7 @@ export const exerciseLifecycle = ownableLifecycle({
         db
           .select({ one: sql`1` })
           .from(muscles)
-          .where(and(eq(muscles.exerciseId, view.id), eq(muscles.muscleSlug, query.muscle))),
+          .where(and(eq(muscles.exerciseId, relation.id), eq(muscles.muscleSlug, query.muscle))),
       ),
     ]
   },

@@ -1,6 +1,6 @@
 import { workoutFavourites, workouts } from '../../db/schema.ts'
 import { visibleWorkouts } from '../../db/visible.ts'
-import { ownableLifecycle } from '../ownable/service.ts'
+import { ownableLifecycle, relationOf } from '../ownable/service.ts'
 import { assertWorkoutCanTravel } from './transfer.ts'
 
 /**
@@ -13,15 +13,6 @@ export const workoutLifecycle = ownableLifecycle({
   noun: 'workout',
   table: workouts,
   favourites: workoutFavourites,
-  view: (caller) => {
-    const visible = visibleWorkouts(caller)
-    return {
-      from: visible,
-      row: visible._.selectedFields,
-      id: visible.id,
-      name: visible.name,
-      ownerGroupId: visible.ownerGroupId,
-    }
-  },
+  relation: (caller) => relationOf(visibleWorkouts(caller)),
   beforeTransfer: assertWorkoutCanTravel,
 })

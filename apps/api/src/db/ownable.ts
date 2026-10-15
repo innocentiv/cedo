@@ -126,12 +126,13 @@ export function assertEditorOf(ctx: AccessContext, groupId: string): void {
 export const editable = (table: OwnedTable, ctx: AccessContext) =>
   inArray(table.ownerGroupId, [...ctx.editorGroupIds])
 
+/** Any kind's favourites table, as the shared ownable lifecycle takes it. */
+export type FavouriteTable = ReturnType<typeof favouriteTable<string>>
+
 /**
  * Favourites are per entity kind so each keeps a real foreign key, and the rows disappear with
  * their target rather than becoming orphans. Defined once; called per ownable table.
  */
-export type FavouriteTable = ReturnType<typeof favouriteTable<string>>
-
 export const favouriteTable = <TName extends string>(name: TName, target: OwnableTable) =>
   pgTable(
     name,

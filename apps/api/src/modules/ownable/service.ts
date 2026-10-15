@@ -22,7 +22,7 @@ type TextColumn = AnyPgColumn<{ data: string; notNull: true }>
  * A kind's visible relation, with the columns this module reads by name handed over explicitly.
  * Everything else about the row is `row`, which comes back typed as the kind's own row.
  */
-export interface OwnableView<TFields extends SelectedFieldsFlat> {
+export interface OwnableRelation<TFields extends SelectedFieldsFlat> {
   readonly from: Subquery
   readonly row: TFields
   readonly id: TextColumn
@@ -30,17 +30,35 @@ export interface OwnableView<TFields extends SelectedFieldsFlat> {
   readonly ownerGroupId: TextColumn
 }
 
+/**
+ * A kind's visible relation as this module reads it. `_.selectedFields` is the relation's columns,
+ * already qualified by its alias, so `row` comes back typed as the kind's own row.
+ */
+export const relationOf = <TFields extends SelectedFieldsFlat>(
+  visible: Subquery<string, TFields> & {
+    readonly id: TextColumn
+    readonly name: TextColumn
+    readonly ownerGroupId: TextColumn
+  },
+): OwnableRelation<TFields> => ({
+  from: visible,
+  row: visible._.selectedFields,
+  id: visible.id,
+  name: visible.name,
+  ownerGroupId: visible.ownerGroupId,
+})
+
 export interface OwnableKind<
   TFields extends SelectedFieldsFlat,
   TQuery extends OwnableQuery,
 > extends OwnableWrites {
-  readonly view: (caller: Caller) => OwnableView<TFields>
+  readonly relation: (caller: Caller) => OwnableRelation<TFields>
   readonly favourites: FavouriteTable
   /** A kind's own list filters, on top of scope, search and the cursor. */
   readonly listConditions?: (
     caller: Caller,
     query: TQuery,
-    view: OwnableView<TFields>,
+    relation: OwnableRelation<TFields>,
   ) => (SQL | undefined)[]
 }
 
@@ -48,11 +66,11 @@ export interface OwnableKind<
 function scopeOf(
   query: OwnableQuery,
   caller: Caller,
-  view: OwnableView<SelectedFieldsFlat>,
+  relation: OwnableRelation<SelectedFieldsFlat>,
 ): SQL[] {
   switch (query.scope) {
     case 'mine':
-      return [eq(view.ownerGroupId, caller.personalGroupId)]
+      return [eq(relation.ownerGroupId, caller.personalGroupId)]
     case 'group':
       /**
        * Thrown, not defaulted. `?? ''` fed an empty string to a uuid column, which Postgres rejects
@@ -63,7 +81,7 @@ function scopeOf(
        * confirm it exists — the relation holds none of its rows.
        */
       if (query.groupId === undefined) throw invalid("groupId is required when scope is 'group'")
-      return [eq(view.ownerGroupId, query.groupId)]
+      return [eq(relation.ownerGroupId, query.groupId)]
     case 'all':
     case 'favourites':
       return []
@@ -81,19 +99,23 @@ function withFavourite<TFields extends SelectedFieldsFlat, TQuery extends Ownabl
   kind: OwnableKind<TFields, TQuery>,
   caller: Caller,
 ) {
-  const view = kind.view(caller)
+  const relation = kind.relation(caller)
+  // Aliased so the join has a literal name; see above, and the type test in ownable.test.ts.
   const favourite = alias(kind.favourites, 'favourite')
   const rows = db
     .select({
-      row: view.row,
+      row: relation.row,
       favourite: favourite.targetId,
       // Re-selected by name: inside this module `row` is opaque, and the cursor needs both.
-      keyName: view.name,
-      keyId: view.id,
+      keyName: relation.name,
+      keyId: relation.id,
     })
-    .from(view.from)
-    .leftJoin(favourite, and(eq(favourite.targetId, view.id), eq(favourite.userId, caller.userId)))
-  return { view, favourite, rows }
+    .from(relation.from)
+    .leftJoin(
+      favourite,
+      and(eq(favourite.targetId, relation.id), eq(favourite.userId, caller.userId)),
+    )
+  return { relation, favourite, rows }
 }
 
 /** One page, by keyset on (name, id): one row beyond the limit answers "is there more?". */
@@ -102,24 +124,27 @@ async function listPage<TFields extends SelectedFieldsFlat, TQuery extends Ownab
   caller: Caller,
   query: TQuery,
 ) {
-  const { view, favourite, rows: select } = withFavourite(kind, caller)
+  const { relation, favourite, rows: select } = withFavourite(kind, caller)
   const after = decodeCursor(query.cursor)
 
   const conditions: (SQL | undefined)[] = [
-    ...scopeOf(query, caller, view),
+    ...scopeOf(query, caller, relation),
     query.scope === 'favourites' ? isNotNull(favourite.targetId) : undefined,
     query.q === undefined || query.q === ''
       ? undefined
-      : ilike(view.name, `%${escapeLikePattern(query.q)}%`),
+      : ilike(relation.name, `%${escapeLikePattern(query.q)}%`),
     after === null
       ? undefined
-      : or(gt(view.name, after.name), and(eq(view.name, after.name), gt(view.id, after.id))),
-    ...(kind.listConditions?.(caller, query, view) ?? []),
+      : or(
+          gt(relation.name, after.name),
+          and(eq(relation.name, after.name), gt(relation.id, after.id)),
+        ),
+    ...(kind.listConditions?.(caller, query, relation) ?? []),
   ]
 
   const rows = await select
     .where(and(...conditions))
-    .orderBy(asc(view.name), asc(view.id))
+    .orderBy(asc(relation.name), asc(relation.id))
     .limit(query.limit + 1)
 
   const items = rows.slice(0, query.limit)
@@ -139,21 +164,25 @@ async function getOne<TFields extends SelectedFieldsFlat, TQuery extends Ownable
   caller: Caller,
   id: string,
 ) {
-  const { view, rows } = withFavourite(kind, caller)
-  const [found] = await rows.where(eq(view.id, id)).limit(1)
+  const { relation, rows } = withFavourite(kind, caller)
+  const [found] = await rows.where(eq(relation.id, id)).limit(1)
   if (found === undefined) throw notFound(kind.noun)
   return { row: found.row, isFavourite: found.favourite !== null }
 }
 
 /** Visibility, not editability — you may pin anything you can see. */
-async function pin<TFields extends SelectedFieldsFlat, TQuery extends OwnableQuery>(
+async function markFavourite<TFields extends SelectedFieldsFlat, TQuery extends OwnableQuery>(
   kind: OwnableKind<TFields, TQuery>,
   caller: Caller,
   id: string,
   favourite: boolean,
 ): Promise<void> {
-  const view = kind.view(caller)
-  const [found] = await db.select({ id: view.id }).from(view.from).where(eq(view.id, id)).limit(1)
+  const relation = kind.relation(caller)
+  const [found] = await db
+    .select({ id: relation.id })
+    .from(relation.from)
+    .where(eq(relation.id, id))
+    .limit(1)
   if (found === undefined) throw notFound(kind.noun)
   await writeFavourite(kind.favourites, caller, id, favourite)
 }
@@ -166,7 +195,7 @@ export function ownableLifecycle<TFields extends SelectedFieldsFlat, TQuery exte
     list: async (caller: Caller, query: TQuery) => await listPage(kind, caller, query),
     get: async (caller: Caller, id: string) => await getOne(kind, caller, id),
     setFavourite: async (caller: Caller, id: string, favourite: boolean) => {
-      await pin(kind, caller, id, favourite)
+      await markFavourite(kind, caller, id, favourite)
     },
     transfer: async (caller: Caller, id: string, toGroupId: string) => {
       await transferOwnable(kind, caller, id, toGroupId)

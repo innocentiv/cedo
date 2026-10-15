@@ -8,8 +8,8 @@ import { insertExercise, updateExercise } from './write.ts'
 
 /**
  * Listing, reading, pinning, transfer and delete are the shared ownable lifecycle
- * (`lifecycle.ts`); what is an exercise's own is its muscles and media — hydrated here — and its
- * create and update, in `write.ts`.
+ * (`lifecycle.ts`); what is an exercise's own is its muscles and media — hydrated by `mapper.ts`
+ * — and its create and update, in `write.ts`.
  */
 
 export async function list(caller: Caller, query: ExerciseQuery): Promise<Page<Exercise>> {
