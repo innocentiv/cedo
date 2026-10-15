@@ -12,7 +12,7 @@ import {
 import { db } from '../../db/client.ts'
 import { editable, visible } from '../../db/ownable.ts'
 import { exercises, workoutDays, workoutFavourites, workouts } from '../../db/schema.ts'
-import { notFound } from '../../lib/error.ts'
+import { conflict, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydratePlan, toSummary } from './mapper.ts'
 import { writePlan } from './plan.ts'
@@ -190,17 +190,45 @@ async function assertExercisesVisible(caller: Caller, plan: WorkoutPlanInput): P
   if (missing.length > 0) throw notFound(`exercise ${missing[0]}`)
 }
 
-/** Deep copy: the plan comes with it, since a workout without its days is not a workout. */
+/**
+ * Deep copy: the plan comes with it, since a workout without its days is not a workout.
+ *
+ * One transaction, and refused before it opens if the caller cannot see every exercise — a copy
+ * may not reference what its owner cannot read. The first version created the workout, then failed
+ * on its plan, and left an empty copy behind on every retry. The refusal counts the hidden
+ * exercises and names none of them.
+ */
 export async function duplicate(caller: Caller, id: string, toGroupId?: string): Promise<Workout> {
   const target = toGroupId ?? caller.personalGroupId
   if (!caller.editorGroupIds.includes(target)) throw notFound('group')
 
   const source = await get(caller, id)
+  const hidden = source.days.flatMap((d) => d.entries).filter((e) => e.exercise === null).length
+  if (hidden > 0) {
+    throw conflict(
+      `${hidden} exercise${hidden === 1 ? ' in this plan is' : 's in this plan are'} no longer ` +
+        'visible to you, so it cannot be copied. Ask its owner to share them, or copy the plan without them.',
+    )
+  }
 
-  const copy = await create(caller, { name: source.name, notes: source.notes }, target)
-  if (source.days.length === 0) return copy
+  const plan = planInputFrom(source, { keepIds: false })
+  await assertExercisesVisible(caller, plan)
+  const copyId = await db.transaction(async (tx) => {
+    const [created] = await tx
+      .insert(workouts)
+      .values({
+        ownerGroupId: target,
+        createdBy: caller.userId,
+        name: source.name,
+        notes: source.notes,
+      })
+      .returning({ id: workouts.id })
+    if (created === undefined) throw new Error('Could not create the workout')
+    if (plan.days.length > 0) await writePlan(tx, created.id, plan)
+    return created.id
+  })
 
-  return await replacePlan(caller, copy.id, planInputFrom(source, { keepIds: false }))
+  return await get(caller, copyId)
 }
 
 export async function transfer(caller: Caller, id: string, toGroupId: string): Promise<Workout> {

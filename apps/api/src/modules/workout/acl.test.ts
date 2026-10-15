@@ -174,6 +174,37 @@ describe('sharing a workout does not share its exercises', () => {
     expect(plan.days[0]?.entries[0]?.sets[0]?.target.weightG).toBe(100_000)
   })
 
+  /**
+   * A copy cannot reference an exercise its owner cannot see, so duplicating such a plan must be
+   * refused — and refused BEFORE anything is written. It used to create the copy first and then
+   * fail on its plan, leaving an empty "Plan" in Bob's group on every retry.
+   */
+  test('duplicating a plan with a hidden exercise is refused, and leaves nothing behind', async () => {
+    const { secret, workout, squad } = await sharedWorkoutUsingAPrivateExercise()
+    await alice.wire(`/exercises/${secret.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: squad.id }),
+    })
+    await alice.wire(`/workouts/${workout.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: squad.id }),
+    })
+    await alice.wire(`/exercises/${secret.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: alice.personalGroupId }),
+    })
+
+    const res = await bob.wire(`/workouts/${workout.id}/duplicate`, { method: 'POST', body: '{}' })
+    expect(res.status).toBe(409)
+    expect(JSON.stringify(res.body)).not.toContain('Alice Secret Movement')
+
+    const mine = expectContract(
+      z.object({ items: z.array(z.object({ id: z.uuid() })) }),
+      (await bob.wire('/workouts?scope=mine')).body,
+    )
+    expect(mine.items).toHaveLength(0)
+  })
+
   test('progression never names an exercise the caller cannot see', async () => {
     const { secret, workout, squad } = await sharedWorkoutUsingAPrivateExercise()
     await alice.wire(`/exercises/${secret.id}/transfer`, {
