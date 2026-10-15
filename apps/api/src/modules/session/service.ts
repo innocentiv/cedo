@@ -8,15 +8,13 @@ import type {
   WorkoutSession,
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { visible } from '../../db/ownable.ts'
+import { setLogs, workoutSessions } from '../../db/schema.ts'
 import {
-  exercises,
-  setLogs,
-  workoutDays,
-  workoutEntries,
-  workoutSessions,
-  workouts,
-} from '../../db/schema.ts'
+  visibleExercises,
+  visibleWorkoutDays,
+  visibleWorkoutEntries,
+  visibleWorkouts,
+} from '../../db/visible.ts'
 import { conflict, invalid, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
@@ -77,19 +75,21 @@ async function assertStartable(caller: Caller, input: SessionStart): Promise<voi
   }
 
   if (input.workoutId !== null) {
+    const workouts = visibleWorkouts(caller)
     const [found] = await db
       .select({ id: workouts.id })
       .from(workouts)
-      .where(and(visible(workouts, caller), eq(workouts.id, input.workoutId)))
+      .where(eq(workouts.id, input.workoutId))
       .limit(1)
     if (found === undefined) throw notFound('workout')
   }
 
   if (input.dayId !== null && input.workoutId !== null) {
+    const days = visibleWorkoutDays(caller)
     const [day] = await db
-      .select({ id: workoutDays.id })
-      .from(workoutDays)
-      .where(and(eq(workoutDays.id, input.dayId), eq(workoutDays.workoutId, input.workoutId)))
+      .select({ id: days.id })
+      .from(days)
+      .where(and(eq(days.id, input.dayId), eq(days.workoutId, input.workoutId)))
       .limit(1)
     if (day === undefined) throw notFound('day')
   }
@@ -250,10 +250,11 @@ async function assertLoggable(
   sets: readonly LogSetInput[],
 ): Promise<void> {
   const exerciseIds = [...new Set(sets.map((s) => s.exerciseId))]
+  const exercises = visibleExercises(caller)
   const seen = await db
     .select({ id: exercises.id })
     .from(exercises)
-    .where(and(visible(exercises, caller), inArray(exercises.id, exerciseIds)))
+    .where(inArray(exercises.id, exerciseIds))
   const visibleIds = new Set(seen.map((e) => e.id))
   const hidden = exerciseIds.find((id) => !visibleIds.has(id))
   if (hidden !== undefined) throw notFound('exercise')
@@ -262,18 +263,13 @@ async function assertLoggable(
   if (entryIds.length === 0) return
   if (workoutId === null) throw invalid('An ad-hoc session has no plan entries to log against')
 
+  const visibleEntries = visibleWorkoutEntries(caller)
+  const days = visibleWorkoutDays(caller)
   const entries = await db
-    .select({ id: workoutEntries.id, exerciseId: workoutEntries.exerciseId })
-    .from(workoutEntries)
-    .innerJoin(workoutDays, eq(workoutDays.id, workoutEntries.dayId))
-    .innerJoin(workouts, eq(workouts.id, workoutDays.workoutId))
-    .where(
-      and(
-        visible(workouts, caller),
-        eq(workouts.id, workoutId),
-        inArray(workoutEntries.id, entryIds),
-      ),
-    )
+    .select({ id: visibleEntries.id, exerciseId: visibleEntries.exerciseId })
+    .from(visibleEntries)
+    .innerJoin(days, eq(days.id, visibleEntries.dayId))
+    .where(and(eq(days.workoutId, workoutId), inArray(visibleEntries.id, entryIds)))
   const exerciseOf = new Map(entries.map((e) => [e.id, e.exerciseId]))
   for (const set of sets) {
     if (set.entryId === null) continue

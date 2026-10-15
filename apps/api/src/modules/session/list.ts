@@ -1,8 +1,8 @@
 import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import type { Page, SessionQuery, WorkoutSessionSummary } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { visible } from '../../db/ownable.ts'
-import { setLogs, workoutDays, workoutSessions, workouts } from '../../db/schema.ts'
+import { setLogs, workoutSessions } from '../../db/schema.ts'
+import { visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { afterCursor, cursorMicros, decodeCursor, encodeCursor } from './cursor.ts'
 import { ownedBy, type SessionRow } from './service.ts'
@@ -33,29 +33,28 @@ async function page(caller: Caller, query: SessionQuery) {
   const after = decodeCursor(query.cursor)
   if (after !== null) conditions.push(afterCursor(after))
 
+  const workouts = visibleWorkouts(caller)
+  const days = visibleWorkoutDays(caller)
   return await db
     .select({
       session: workoutSessions,
       workoutName: workouts.name,
-      dayName: workoutDays.name,
+      dayName: days.name,
       micros: cursorMicros,
     })
     .from(workoutSessions)
     /**
-     * `visible()` is in the JOIN condition, not the WHERE: the session is the caller's own and must
-     * always be listed, but the workout it points at may have become unreachable since — a shared
-     * group they were removed from still leaves their sessions behind, referencing it. Gating the
-     * join yields `workoutName: null` instead of dropping the session or naming something they can
-     * no longer open. `WorkoutSessionSummary` already types both names as nullable.
+     * LEFT joins onto the visible relations: the session is the caller's own and must always be
+     * listed, but the workout it points at may have become unreachable since — a shared group they
+     * were removed from still leaves their sessions behind, referencing it. The left join yields
+     * `workoutName: null` instead of dropping the session or naming something they can no longer
+     * open. `WorkoutSessionSummary` already types both names as nullable.
      *
-     * The day inherits the workout's visibility by joining through it, because that is the actual
-     * rule — a day is readable exactly when its workout is. See docs/03-domain-model.md.
+     * A day carries its workout's owner, so it is readable exactly when its workout is, with no
+     * join through the workout. See docs/03-domain-model.md.
      */
-    .leftJoin(workouts, and(eq(workouts.id, workoutSessions.workoutId), visible(workouts, caller)))
-    .leftJoin(
-      workoutDays,
-      and(eq(workoutDays.id, workoutSessions.dayId), eq(workoutDays.workoutId, workouts.id)),
-    )
+    .leftJoin(workouts, eq(workouts.id, workoutSessions.workoutId))
+    .leftJoin(days, eq(days.id, workoutSessions.dayId))
     .where(and(...conditions))
     .orderBy(desc(workoutSessions.startedAt), desc(workoutSessions.id))
     .limit(query.limit + 1)

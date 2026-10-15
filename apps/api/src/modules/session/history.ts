@@ -1,8 +1,8 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import type { ExerciseHistory, ExerciseHistoryQuery, TrackingMode } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { visible } from '../../db/ownable.ts'
-import { exercises, setLogs, workoutSessions } from '../../db/schema.ts'
+import { setLogs, workoutSessions } from '../../db/schema.ts'
+import { visibleExercises } from '../../db/visible.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
@@ -12,10 +12,11 @@ import type { Caller } from '../../plugins/auth.ts'
  * later without a schema change. See docs/03-domain-model.md.
  */
 async function visibleTracking(caller: Caller, exerciseId: string): Promise<TrackingMode> {
+  const exercises = visibleExercises(caller)
   const [exercise] = await db
     .select({ tracking: exercises.tracking })
     .from(exercises)
-    .where(and(visible(exercises, caller), eq(exercises.id, exerciseId)))
+    .where(eq(exercises.id, exerciseId))
     .limit(1)
   if (exercise === undefined) throw notFound('exercise')
   return exercise.tracking
