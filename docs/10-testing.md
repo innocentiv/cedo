@@ -40,7 +40,8 @@ Elysia lifecycle: validation, the auth macro, the error handler. No socket, no p
 Two things are mandatory in every module:
 
 - **Cross-user and cross-group ACL isolation.** A user must get `404`, never `403`, for something
-  they cannot see — `403` confirms it exists.
+  they cannot see — `403` confirms it exists. For an ownable kind, its entry in the shared
+  ownable suite (below) is that proof; its own test file adds isolation only for what is its own.
 - **`expectContract(Schema, res.body)` on every response**, read through `wire`, not through Treaty.
   Treaty revives ISO date strings into `Date` objects on the client; the real frontend uses plain
   `fetch` plus Zod and sees strings. Asserting against the revived value would drift the contract
@@ -56,11 +57,11 @@ new is not covered. See `docs/adr/0019-visible-relations.md`.
   whether it named the group's things while the caller was a member, so "shows nothing afterwards"
   cannot pass because it never showed anything.
 - **`modules/ownable/ownable.test.ts`** — what every ownable must do identically (access, scopes,
-  search escaping, keyset paging, favourites, transfer, duplicate), run once per kind in `KINDS`. A
-  new ownable adds one entry; the per-kind test files keep only what is the kind's own.
+  search escaping, keyset paging, favourites, transfer, duplicate), run once per kind in `KINDS`. It
+  reads every `ownable()` table off the schema and fails when one has no entry; the per-kind test
+  files keep only what is the kind's own.
 - **`db/raw-sql.test.ts`** — scans every `sql` template outside `db/`, `write*.ts`, `lifecycle.ts`,
-  tests and the
-  diagnostics exemption, and fails on the name of an owned table. It is the hole lint cannot see: a
+  tests and the diagnostics exemption, and fails on the name of an owned table. It is the hole lint cannot see: a
   correlated subquery against a raw table needs no import.
 
 ### The database

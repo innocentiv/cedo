@@ -50,6 +50,9 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
 - **Edit existing files with the `Edit` tool, not `sed`/`python` string replacement.** A string
   replacement that does not match is a *silent no-op*; `Edit` errors. This cost roughly ten silent
   failures in one session — several only surfaced later, as an unused import.
+- **Gate on `bun run check`'s own exit code.** `bun run check | tail && git commit` commits a red
+  gate: the `&&` sees the pipeline's status, which is `tail`'s. Capture the output to a file and
+  test `$?`, or run it unpiped.
 - **Format once, before `bun run check` — not after every write.** `oxfmt` rewrites the text your
   next edit is trying to match. `oxlint` and `tsc` do not care about formatting, so there is no
   feedback lost. Markdown is excluded from `oxfmt` entirely for the same reason.

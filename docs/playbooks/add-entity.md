@@ -141,18 +141,15 @@ Nested data is where N+1 appears. Never query per row:
 const childRows = await db.select().from(widgetParts).where(inArray(widgetParts.widgetId, ids))
 ```
 
-See `modules/exercise/mapper.ts`. Split the module into `service` / `mapper` / `query` once it grows
-past ~250 lines — the linter will tell you, and it is a real signal.
+See `modules/exercise/mapper.ts`. Split the module into `service` / `mapper` once it grows past ~250
+lines — the linter will tell you, and it is a real signal.
 
 ### Cursor pagination
 
-Use `encodeCursor` / `decodeCursor` from `apps/api/src/lib/keyset.ts` — keyset on `(name, id)`,
-JSON-encoded, parsed with Zod because a cursor is client input — and write only the scope filter,
-as `modules/exercise/query.ts` does. Do not copy the helpers: they were copied once, and drifted.
-Never `OFFSET` — it drifts under concurrent inserts.
-
-Escape search terms with `escapeLikePattern` from the same file before they reach `ilike`, or `%`,
-`_` and `\` in user input act as wildcards and defeat the index.
+An ownable's list gets it from the shared lifecycle: keyset on `(name, id)`, scope, and search
+escaped with `escapeLikePattern`, so `%`, `_` and `\` in user input never act as wildcards. Its own
+filters go in `listConditions`, as the exercise muscle filter does. Never `OFFSET` — it drifts under
+concurrent inserts.
 
 A keyset on a timestamp must keep the column's full microsecond precision in the cursor — see
 `modules/session/cursor.ts` for why a JS `Date` cannot carry it.
@@ -209,8 +206,10 @@ and spread `ownableFields` into the response.
 
 `apps/api/src/modules/widget/widget.test.ts`. Mandatory coverage:
 
-1. **Cross-user isolation.** One user cannot see, patch or delete another's. Assert that hidden and
-   nonexistent return an **identical status and body**.
+1. **Cross-user isolation.** One user cannot see, patch or delete another's, and hidden and
+   nonexistent return an **identical status and body**. For an ownable, add the widget to `KINDS` in
+   `modules/ownable/ownable.test.ts` — the suite proves this, and fails until you do; test here only
+   what is the widget's own.
 2. **`expectContract` on every response**, using `wire`, not `api`. Eden Treaty revives ISO dates
    into `Date`; the real client uses `fetch` + Zod and sees strings.
 3. **Every route rejects an anonymous request with 401** — including one with a malformed body, to

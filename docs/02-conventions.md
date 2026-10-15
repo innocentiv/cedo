@@ -58,8 +58,9 @@ db.update(exercisesTable)
 users.** Treat it as a security defect, not a style issue. Lint refuses the raw-table import outside
 `db/`, `write*.ts`, `lifecycle.ts` and tests, and `raw-sql.test.ts` refuses an owned table named in an `sql`
 template; `review/diagnostics.ts` (instance-wide counts for a curator) is the one named exemption.
-Every module's test file must still contain a cross-user isolation test, and
-`test/membership-lost.test.ts` needs a case for every new GET route or read-only MCP tool. See
+Every module must prove cross-user isolation — in its own test file, or, for an ownable kind, by
+its entry in `KINDS` in `modules/ownable/ownable.test.ts` — and `test/membership-lost.test.ts`
+needs a case for every new GET route or read-only MCP tool. See
 [adr/0019](adr/0019-visible-relations.md).
 
 Not-found and not-permitted both return **404**, never 403 — a 403 confirms the resource exists and
