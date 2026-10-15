@@ -12,7 +12,9 @@ AI can already reach.
 
 ## 2. Register it
 
-In `apps/api/src/mcp/tools/{library,training,diagnostics}.ts`:
+In `apps/api/src/mcp/tools/{library,training,diagnostics}.ts` — whichever task it serves. A new file
+for a new area must also be registered in `apps/api/src/mcp/index.ts`, beside
+`registerLibraryTools`, or none of its tools load.
 
 ```ts
 server.registerTool(
@@ -23,7 +25,8 @@ server.registerTool(
     inputSchema: ExerciseCreate,          // the contract schema, never a new shape
     annotations: { readOnlyHint: false, openWorldHint: false },
   },
-  async (input) => text(format(await ExerciseService.create(caller, input))),
+  // `text` and the formatters (`exerciseDetail`, `workoutDetail`, …) live in apps/api/src/mcp/format.ts
+  async (input) => text(exerciseDetail(await ExerciseService.create(caller, input))),
 )
 ```
 

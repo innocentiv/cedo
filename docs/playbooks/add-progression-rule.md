@@ -24,8 +24,9 @@ so the new rule appears in the UI without touching a screen.
 fail the build until the new case is handled. That is deliberate: it is impossible to add a rule and
 forget the maths.
 
-This one function is used by the API, the `progression_suggest` MCP tool and the logging screen's
-hint, so an AI's advice and the UI's suggestion can never disagree.
+This one function is called by the API's progression service, whose answer the
+`workout_progression` MCP tool and the logging screen's hint both render, so an AI's advice and the
+UI's suggestion can never disagree.
 
 ## 3. Write the truth table first
 
@@ -37,8 +38,9 @@ sessions only, warmup sets excluded, and an empty history returning the current 
 
 ## 4. Give the editor its defaults
 
-`progressionOf` in `apps/app/src/ui/entry-editor.tsx` maps a chosen kind to a starting rule. Add the
-case; the exhaustive switch will tell you if you forget.
+`progressionOf` in `apps/app/src/ui/progression-field.tsx` maps a chosen kind to a starting rule.
+Add the case; the exhaustive switch will tell you if you forget. The same file renders the rule's
+fields, so a kind with a new parameter gets its input there too.
 
 ## 5. Check nothing else needed changing
 

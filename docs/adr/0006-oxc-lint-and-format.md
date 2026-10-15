@@ -79,6 +79,7 @@ test, `describe` blocks are legitimately long, and sequential awaits in a test a
 | Location | Rule | Why |
 | --- | --- | --- |
 | `apps/api/src/db/seed.ts` | `no-await-in-loop` | The library is seeded sequentially on purpose. Parallelising ~45 transactions would exhaust the small connection pool a self-hosted box runs with, for no benefit in a one-off script. |
+| `apps/api/src/modules/media/index.ts` (upload) | `typescript/no-deprecated` | The deprecation on `Request.formData()` is Node-specific advice to add a busboy dependency. Bun parses multipart natively, and adding a parser contradicts the dependency principle. |
 | `packages/contract/src/primitives.ts` (`patchOf`) | `no-unsafe-type-assertion` | `Object.fromEntries` cannot produce a mapped type. The alternative — hand-writing each PATCH schema — is how an `.optional()` on a defaulted field reintroduces the reset-on-patch bug. `schema.test.ts` pins the runtime shape. |
 
 Note that `oxlint-disable-next-line` targets the **immediately** following line. Put the

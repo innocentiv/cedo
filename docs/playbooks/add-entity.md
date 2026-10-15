@@ -12,8 +12,10 @@ Substitute `widget` / `widgets` throughout.
 Follow every step below.
 
 **Not ownable** — reference data (`muscles`), immutable content (`media`), or personal records
-(`workout_sessions`, which belong to a `user_id` directly and are never shared). Skip steps 2, 5
-and 6.
+(`workout_sessions`, which belong to a `user_id` directly and are never shared). Still do every step,
+except: build the table in step 2 **without** `...ownable()`, skip step 5 entirely, and in step 6
+replace the cross-group test with the isolation that fits — per user for a personal record, as
+`workout_sessions` does with `ownedBy(caller)`.
 
 If you are unsure, ask. Retrofitting ownership is a migration plus an ACL audit.
 
@@ -132,11 +134,16 @@ past ~250 lines — the linter will tell you, and it is a real signal.
 
 ### Cursor pagination
 
-Copy `modules/exercise/query.ts`: keyset on `(name, id)`, JSON-encoded, parsed with Zod because a
-cursor is client input. Never `OFFSET` — it drifts under concurrent inserts.
+Use `encodeCursor` / `decodeCursor` from `apps/api/src/lib/keyset.ts` — keyset on `(name, id)`,
+JSON-encoded, parsed with Zod because a cursor is client input — and write only the scope filter,
+as `modules/exercise/query.ts` does. Do not copy the helpers: they were copied once, and drifted.
+Never `OFFSET` — it drifts under concurrent inserts.
 
-Escape `%`, `_` and `\` in any search term before it reaches `ilike`, or user input acts as
-wildcards and defeats the index.
+Escape search terms with `escapeLikePattern` from the same file before they reach `ilike`, or `%`,
+`_` and `\` in user input act as wildcards and defeat the index.
+
+A keyset on a timestamp must keep the column's full microsecond precision in the cursor — see
+`modules/session/cursor.ts` for why a JS `Date` cannot carry it.
 
 ## 4. The routes
 
@@ -183,8 +190,10 @@ often it reproduces and loop enough rounds that a false pass is unlikely.
 
 ## 7. The MCP tool
 
-`apps/api/src/mcp/tools/widget.ts` — wraps the same service function, ≤5 lines. See
-`docs/07-mcp.md`.
+Add it to the existing tool file whose task it serves — `apps/api/src/mcp/tools/library.ts`,
+`training.ts` or `diagnostics.ts` — wrapping the same service function, ≤5 lines. A genuinely new
+area gets a new file, and its `register…Tools(server, caller)` must be called from
+`apps/api/src/mcp/index.ts`, or the tools never load. See `docs/playbooks/add-mcp-tool.md`.
 
 ## 8. The client, the hooks, and the screen
 

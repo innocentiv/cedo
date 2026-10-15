@@ -150,8 +150,9 @@ Every tool carries `readOnlyHint` so a client can gate writes.
 
 1. If it needs data the API cannot already produce, add a **service** function first — never put the
    logic in the tool.
-2. Register it in `mcp/tools/<area>.ts` with a contract schema, an annotation, and a description
-   written for a model: say when to use it, and what NOT to do.
+2. Register it in `mcp/tools/library.ts`, `training.ts` or `diagnostics.ts` with a contract schema,
+   an annotation, and a description written for a model: say when to use it, and what NOT to do. A
+   new file must also be wired into `mcp/index.ts`, or its tools never load.
 3. Format the output for reading (`mcp/format.ts`), not for machines.
 4. Add a case to `mcp/mcp.test.ts`, which drives real JSON-RPC over HTTP rather than calling the
    handler directly — auth, framing and schema publication are exactly what a direct call skips.

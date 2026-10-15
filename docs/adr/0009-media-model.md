@@ -45,10 +45,13 @@ image for every viewer.
 
 ## Consequences
 
-- Media are **not** ownable and carry no ACL. An id is an opaque uuid, so any authenticated caller
-  holding one may fetch it. _Attaching_ media to an exercise is what checks visibility; serving does
-  not. Guessing a uuid is not a realistic attack, and making blobs ownable would mean a permissions
-  join on every image request.
+- Media are **not** ownable and carry no ACL. An id is an opaque uuid and is the capability:
+  `/media/:id/blob` and `/media/:id/thumb` are served **unauthenticated**, so anyone holding the id
+  can fetch the bytes. _Attaching_ media to an exercise is what checks visibility; serving does not.
+  Guessing a uuid is not a realistic attack, and an `<img src>` cannot send a bearer token — behind
+  the auth guard, every uploaded image rendered broken. (This bullet originally said "any
+  authenticated caller"; serving was made unauthenticated after M9, for that reason. See
+  `apps/api/src/modules/media/index.ts`.)
 - Deleting media is not implemented. Blobs are shared by content, so a delete would need reference
   counting; nothing yet creates enough of them for that to matter.
 - `metadata()` only reads the header, so a file with a valid header and corrupt pixels passes that

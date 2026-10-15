@@ -63,7 +63,7 @@ export type SetTarget = z.output<typeof SetTarget>
 
 /**
  * What `nextTarget` proposes for one workout entry, alongside what it proposes to change from.
- * Returned by `GET /workouts/:id/progression` and by the `progression_suggest` MCP tool — the AI's
+ * Returned by `GET /workouts/:id/progression` and by the `workout_progression` MCP tool — the AI's
  * entry point for "evaluate my progression and set next week's numbers".
  */
 export const ProgressionSuggestion = z.object({
@@ -104,8 +104,9 @@ export interface ProgressionInput {
 }
 
 /**
- * Compute the next prescription. Pure, total, and deterministic — the single implementation used
- * by the API, the `progression_suggest` MCP tool and the logging screen.
+ * Compute the next prescription. Pure, total, and deterministic — the single implementation, called
+ * by the API's progression service, whose answer the `workout_progression` MCP tool and the logging
+ * screen both render.
  *
  * It ADVANCES OR HOLDS, never decreases. Deloading is a judgement call needing context this
  * function does not have (illness, a bad week, form breakdown), so it stays with the user or the

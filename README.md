@@ -65,7 +65,7 @@ Three you might touch:
 | Variable | When |
 | --- | --- |
 | `CEDO_ADMIN_USERNAME` | To curate the **shared** exercise library. Register the account first, then set this and restart — the account is promoted on the next seed. |
-| `PORT` | The API port, if 3000 is taken. |
+| `PORT` | The API port, if 3000 is taken. Also set `CEDO_DEV_API_ORIGIN=http://127.0.0.1:<port>` in the shell running `bun run dev`, or the web app's dev proxy keeps calling :3000 and every request fails. |
 | `POSTGRES_PORT` | The database port, if 55432 is taken. Change `DATABASE_URL` to match. |
 
 One thing worth knowing, because it looks like a mistake: `.env` has `DATABASE_URL` pointing at
@@ -89,7 +89,7 @@ development data.
 ### The commands you will actually use
 
 ```bash
-bun run check          # format, lint, typecheck, doc links, 308 tests — the gate
+bun run check          # format, lint, typecheck, doc links, ~350 tests — the gate
 bun run test:changed   # inner loop: only tests touched by your diff
 bun run shot /today    # render a UI route, screenshot to .artifacts/, print console errors
 ```

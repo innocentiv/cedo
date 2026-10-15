@@ -12,8 +12,8 @@ though it were written at once.
 
   | File             | Contains                                                      | Must not contain   |
   | ---------------- | ------------------------------------------------------------- | ------------------ |
-  | `index.ts`       | An Elysia instance: routes, schema bindings, `{ auth: true }` | Any business logic |
-  | `service.ts`     | All business logic. Pure-ish functions taking `(ctx, input)`  | Any HTTP concept   |
+  | `index.ts`       | An Elysia instance: routes, schema bindings, `.guard({ auth: true })` | Any business logic |
+  | `service.ts`     | All business logic. Functions taking `(caller, input)`        | Any HTTP concept   |
   | `<name>.test.ts` | Unit + integration tests, colocated                           | —                  |
 
 - **Never create a `utils.ts`.** Name the file after what it does (`password.ts`, `token.ts`).
@@ -25,13 +25,13 @@ function:
 
 ```ts
 // modules/exercise/index.ts
-.post('/exercises', ({ body, ctx }) => ExerciseService.create(ctx, body),
-      { auth: true, body: ExerciseCreate, response: Exercise })
+.post('/', ({ caller, body }) => ExerciseService.create(caller, body),
+      { body: ExerciseCreate, response: Exercise })
 
-// mcp/tools/exercise.ts
+// mcp/tools/library.ts
 server.registerTool('exercise_create',
-  { description: 'Create an exercise', inputSchema: ExerciseCreate },
-  async (input) => textResult(await ExerciseService.create(ctx, input)))
+  { title: 'Create an exercise', description: '…', inputSchema: ExerciseCreate, annotations: WRITE },
+  async (input) => text(exerciseDetail(await ExerciseService.create(caller, input))))
 ```
 
 If a rule exists in only one of those two paths, it is a bug. Put it in the service.

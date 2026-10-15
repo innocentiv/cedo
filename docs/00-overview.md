@@ -47,7 +47,7 @@ them without being asked:
   sharing machinery unchanged; see `docs/playbooks/add-entity.md`.
 - **Imperial units.** Everything is stored metric. Conversion is isolated to one file so display-
   level imperial support is additive.
-- **IAM / SSO.** Auth is username and password. The `AuthProvider` seam and the
-  `users.auth_provider` / `users.external_id` columns exist so OIDC can be added without a schema
-  redesign.
+- **IAM / SSO.** Auth is username and password. The `users.auth_provider` / `users.external_id`
+  columns (and the unique index on the latter) exist so OIDC can be added without a schema redesign.
+  There is no `AuthProvider` interface in code yet; it is the shape the first OIDC change will add.
 - **CDN, cache layer, horizontal scaling.** One database, one API process, one static file server.

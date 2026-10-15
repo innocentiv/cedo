@@ -6,11 +6,11 @@ to a service. Nothing else lives in a route file.
 ```
 src/
   app.ts              composition root: the error handler, /health, and every module
-  index.ts            entrypoint: migrate, then listen
+  index.ts            entrypoint: migrate, seed the library, then listen
   env.ts              Zod-validated environment; refuses to boot if invalid
   plugins/auth.ts     the `auth` macro — resolves the caller in ONE query
   plugins/openapi.ts  spec generation from Zod
-  lib/                error, password, token
+  lib/                error, password, token, keyset (cursors, LIKE escaping), media, storage/
   modules/<name>/     index.ts (routes) + service.ts (logic) + <name>.test.ts
 ```
 
@@ -100,6 +100,10 @@ One envelope, produced by a single `onError` handler. Handlers never build an er
 | Duplicate, or a rule that forbids the change | `conflict` | 409 |
 | Anything unhandled | `internal` | 500 |
 
+`ERROR_CODES` also reserves `payload_too_large` (413), `unsupported_media_type` (415) and
+`rate_limited` (429). No service throws them yet; they are in the union so a client's exhaustive
+switch does not break the day one is.
+
 Services throw the typed helpers in `lib/error.ts` (`notFound`, `conflict`, `unauthenticated`,
 `invalid`). There is deliberately no `forbidden`.
 
@@ -164,7 +168,9 @@ reports that it is slow and there is no shell to log into. See `docs/10-testing.
 
 ## Pagination and scope
 
-List endpoints take `PaginationQuery` (`cursor`, `limit` ≤ 100) plus a `scope`:
+List endpoints take `PaginationQuery` (`cursor`, `limit` ≤ 100). The ownable lists — exercises and
+workouts — also take a `scope`; sessions are personal, so `GET /sessions` filters by `workoutId` and
+`since` instead:
 
 | Scope | Means |
 | --- | --- |

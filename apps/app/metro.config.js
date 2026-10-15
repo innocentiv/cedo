@@ -11,7 +11,7 @@ const { getDefaultConfig } = require('expo/metro-config')
  *
  * Proxying here rather than pointing the app at `http://localhost:3000` keeps development the same
  * shape as production: same relative path, same single origin, and no CORS anywhere in the project.
- * See docs/09-deployment.md and docs/adr/0005 (three containers, one published port).
+ * See docs/09-deployment.md and "Deployment shape" in docs/01-architecture.md.
  */
 const API_ORIGIN = process.env.CEDO_DEV_API_ORIGIN ?? 'http://127.0.0.1:3000'
 

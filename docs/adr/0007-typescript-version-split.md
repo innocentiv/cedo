@@ -13,7 +13,8 @@ expected in TypeScript 7.1. This was confirmed with the user rather than discove
 ## Decision
 
 - `packages/contract` and `apps/api` use **TypeScript 7.0.2** and get full type-aware linting.
-- `apps/app` pins **`typescript@~6.0.3`** and gets oxlint's non-type-aware rules only.
+- `apps/app` pins **`typescript@6.0.3`** exactly (Expo's template says `~6.0.3`; `bunfig.toml`
+  installs exact versions everywhere) and gets oxlint's non-type-aware rules only.
 - The root solution `tsconfig.json` deliberately does **not** reference `apps/app`.
 
 ## Why

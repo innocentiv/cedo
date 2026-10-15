@@ -10,7 +10,9 @@ suite becomes slow, flaky, or quietly stops proving anything.
 | T3 UI | `apps/app/e2e/*.e2e.ts` | Does every route render without exploding? | seconds |
 | T4 performance | `apps/api/src/test/perf/*.perf.ts` | Will this survive real data on cheap hardware? | minutes |
 
-T1–T3 run in `bun run check`. **T4 does not** — it needs its own database at production volume.
+T1 and T2 run in `bun run check`. **T3 and T4 do not**: `bun run e2e` builds the web bundle and
+drives a real WebView, and `bun run perf` needs its own database at production volume. Run `e2e`
+after any change under `apps/app`, and `perf` before a release or after touching a query or index.
 
 ## The rule that shapes all of it
 
@@ -30,7 +32,9 @@ boundary is a test, not a convention.
 
 ## T2 — API integration
 
-One `*.test.ts` next to each `service.ts`, driven through `treaty(app)` so requests traverse the real
+One `*.test.ts` next to each `service.ts` (a service whose only entry point is another module's
+route — `progression`, reached through `GET /workouts/:id/progression` — is tested there), driven
+through `treaty(app)` so requests traverse the real
 Elysia lifecycle: validation, the auth macro, the error handler. No socket, no port.
 
 Two things are mandatory in every module:

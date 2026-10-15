@@ -31,8 +31,8 @@ const HISTORY_DEPTH = 10
 /**
  * Evaluates every entry in a workout against its logged history.
  *
- * The maths is `nextTarget` from `@cedo/contract` — the SAME pure function the logging screen and
- * the `progression_suggest` MCP tool use, so an AI's advice and the UI's hint can never disagree.
+ * The maths is `nextTarget` from `@cedo/contract`, and this is its one caller: the logging screen's
+ * hint and the `workout_progression` MCP tool both render this answer, so they can never disagree.
  * See docs/adr/0012-progression-rules.md.
  *
  * Deliberately batched: one query for the entries, one for their prescribed sets, one for the

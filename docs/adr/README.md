@@ -18,7 +18,9 @@ that says so and links back.
 | [0017](0017-webview-for-ui-verification.md) | `Bun.WebView` for UI verification; no component tests | Accepted |
 | [0018](0018-n1-detection.md) | N+1 detected by query-count invariant, not a threshold | Accepted |
 
-ADRs for the remaining decisions land with the milestone that implements them.
+The numbering has gaps: decisions that were planned an ADR (such as 0005, the three-container
+deployment shape) are recorded in the relevant doc instead — `docs/01-architecture.md` for that
+one. Do not reference an ADR number that is not in this table.
 
 This table is **checked mechanically** by `bun run docs:links`: an ADR file that is not listed here
 fails the build. It drifted once already — three ADRs existed and none of them appeared above —

@@ -178,6 +178,7 @@ against a realistic data volume — see [adr/0018](adr/0018-n1-detection.md).
 | `pats_token_hash_idx` (unique) | MCP auth |
 | `group_members_user_idx` | building the caller's group list, on every request |
 | `users_username_idx` (unique) | sign-in |
+| `groups_slug_idx` (unique) | finding the seeded `cedo` library group by slug, and slug uniqueness |
 | `users_external_idx` (unique, partial) | the IAM seam; only rows that have an `external_id` |
 | **`exercises_owner_name_idx`** on `(owner_group_id, name, id)` | `scope=mine` and `scope=group`, where the owner is a single equality: the whole list query in one index walk |
 | **`exercises_name_id_idx`** on `(name, id)` | `scope=all`, where the owner is an `IN` list and only the keyset columns can be walked in order |

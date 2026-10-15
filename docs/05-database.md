@@ -42,11 +42,18 @@ export const exercises = pgTable(
     description: text('description').notNull().default(''),
   },
   (t) => [
-    index('exercises_owner_idx').on(t.ownerGroupId),
+    // owner_group_id needs no index of its own: it is the left prefix of this one.
+    index('exercises_owner_name_idx').on(t.ownerGroupId, t.name, t.id),
+    index('exercises_name_id_idx').on(t.name, t.id),
     index('exercises_name_trgm_idx').using('gin', sql`${t.name} gin_trgm_ops`),
   ],
 )
 ```
+
+Each index here exists for a query the perf suite measured — see `docs/03-domain-model.md` for why
+there is deliberately no bare `owner_group_id` index. A `.desc()` column must be
+`.desc().nullsFirst()`, because Drizzle's `.desc()` builds `DESC NULLS LAST` while `ORDER BY … DESC`
+means `NULLS FIRST`, and the planner then sorts instead of walking the index.
 
 Rules:
 

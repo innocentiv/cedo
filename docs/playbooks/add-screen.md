@@ -36,8 +36,7 @@ screen never writes that ternary itself.
 ## 4. Look at it
 
 ```bash
-bun run build:app
-bun run shot /your/route
+bun run shot /your/route            # rebuilds the web bundle first, so it shows your change
 bun run shot /your/route --tablet
 ```
 

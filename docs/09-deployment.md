@@ -29,8 +29,15 @@ open http://localhost:8080                 # register, and you have a library
 
 That is the whole install. Migrations and seeding run inside the API container before it binds, so a
 container that is accepting traffic is one whose schema is current and whose library is present.
-Both are idempotent, so this is also the upgrade path: `docker compose pull && docker compose up -d`
-delivers new library entries without anyone running a command.
+Both are idempotent, so this is also the upgrade path:
+
+```bash
+git pull && docker compose up --build -d
+```
+
+`docker compose pull` alone does **nothing** for this app: the `api` and `web` services are built
+from source (`build:` in `docker-compose.yml`, no published `image:`), so only the Postgres image
+would be pulled. Rebuilding is what delivers new code, migrations and library entries.
 
 ## Why one origin
 
@@ -40,7 +47,8 @@ static export. Three things follow, and all of them matter for software handed t
 - **No CORS anywhere.** Not a dependency, not a config block, no preflight on any mutation.
 - **No API URL is baked into the build.** The app calls the relative path `/api`, so the same image
   works on any host at any port. Nothing about your NAS is compiled into it.
-- **One port to open.** The API and the database are on the compose network only.
+- **One port to open.** The API is on the compose network only, and the database is published
+  solely on the host's loopback interface (for local tooling), never on the network.
 
 Native builds have no such proxy and must be told where the server is, with
 `EXPO_PUBLIC_API_URL`. That has to be **dot access** in the source — see `docs/08-frontend.md`.
@@ -74,6 +82,7 @@ readable message rather than throwing something obscure on the first request.
 | `POSTGRES_PASSWORD` | Required. Compose refuses to start without it. |
 | `POSTGRES_USER`, `POSTGRES_DB` | Default to `cedo`. |
 | `WEB_PORT` | Host port. Default 8080. |
+| `POSTGRES_PORT`, `POSTGRES_BIND` | Where Postgres is published on the host: `127.0.0.1:55432` by default, so only the machine itself can reach it. The containers never use this mapping. Set `POSTGRES_BIND=0.0.0.0` only to reach the database from another machine, deliberately. |
 | `CEDO_ADMIN_USERNAME` | Promoted to curator of the shared library on every seed run. Register the account first, then restart. Leave unset for a personal instance. |
 
 `DATABASE_URL` is **composed inside `docker-compose.yml`**, not read from `.env`. The host inside the
@@ -127,8 +136,9 @@ Add it as a **Custom App** from this `docker-compose.yml`, or run it from a data
 notes specific to that box:
 
 - Point the two volumes at datasets you already snapshot, rather than anonymous docker volumes.
-- The default `POSTGRES_PORT` mapping in `docker-compose.yml` exists for local development. Delete
-  that block on a shared machine; nothing outside the compose network needs the database.
+- The `POSTGRES_PORT` mapping in `docker-compose.yml` exists for local development and is bound to
+  loopback (`POSTGRES_BIND=127.0.0.1`), so it is not reachable from the network as shipped. Leave
+  `POSTGRES_BIND` alone; nothing outside the compose network needs the database.
 
 ## Checking a deployment
 

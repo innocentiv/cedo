@@ -23,13 +23,13 @@ export const Exercise = z.object({ id: Id, ...exerciseFields, canEdit: z.boolean
 ```
 
 ```ts
-// 1. HTTP route — apps/api/src/modules/exercise/index.ts
-.post('/exercises', ({ body, ctx }) => ExerciseService.create(ctx, body),
-      { auth: true, body: ExerciseCreate, response: Exercise })
+// 1. HTTP route — apps/api/src/modules/exercise/index.ts (under `.guard({ auth: true })`)
+.post('/', ({ caller, body }) => ExerciseService.create(caller, body),
+      { body: ExerciseCreate, response: Exercise })
 
-// 2. MCP tool — apps/api/src/mcp/tools/exercise.ts
+// 2. MCP tool — apps/api/src/mcp/tools/library.ts
 server.registerTool('exercise_create',
-  { description: 'Create an exercise', inputSchema: ExerciseCreate }, ...)
+  { title: 'Create an exercise', description: '…', inputSchema: ExerciseCreate, annotations: WRITE }, ...)
 
 // 3. UI client — apps/app/src/api/client.ts
 create: (body: ExerciseCreate) => POST('/exercises', Exercise, body)

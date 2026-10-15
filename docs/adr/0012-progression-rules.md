@@ -16,9 +16,9 @@ assumed.
 Four rule kinds, stored as a Zod discriminated union in a JSONB column on `workout_entries`:
 `none`, `linear`, `double`, `linear_duration`.
 
-**`nextTarget()` is a pure function in `packages/contract`.** One implementation, called by the API,
-by the `progression_suggest` MCP tool, and by the logging screen. It is impossible for them to
-disagree.
+**`nextTarget()` is a pure function in `packages/contract`.** One implementation, called only by the
+API's progression service, whose answer both the `workout_progression` MCP tool and the logging
+screen's hint render. It is impossible for them to disagree.
 
 ### Double progression advances at the entry level
 
@@ -37,8 +37,8 @@ and forces the UI to show a different target per set.
 
 ### It advances or holds. It never decreases.
 
-There is no automatic deload. A stall is surfaced in the UI ("held 3 sessions") and left to the user
-or the AI, acting through `workout_update_plan`.
+There is no automatic deload. A stall is surfaced by `training_review` over MCP (the UI does not show
+it yet) and left to the user or the AI, acting through `workout_save_plan`.
 
 Rejected: automatic deload after N consecutive failures. Classic novice-linear behaviour, but it
 needs a failure definition that survives skipped sessions, a floor weight, and a deload percentage —

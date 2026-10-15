@@ -8,8 +8,9 @@ two-pane layout. It depends on **`@cedo/contract` and nothing else** from this r
 This is the rule the whole frontend is organised around, and the reason the test suite can be as
 small as it is.
 
-> A screen **may**: call `api.*`, render UI primitives, hold form state, and call pure helpers from
-> `@cedo/contract` (`formatWeight`, `nextTarget`, `thumbnailUrl`).
+> A screen **may**: call the hooks in `src/api/queries.ts` (never `api.*` or `fetch` directly),
+> render UI primitives, hold form state, and call pure helpers from `@cedo/contract`
+> (`formatEffort`, `formatWeight`, `nextSetIndex`, `planInputFrom`).
 >
 > A screen **may not**: perform unit arithmetic, sum muscle loads, decide progressions, hand-format
 > measurements, or branch on domain rules. If a screen needs a rule, the rule belongs in the
@@ -89,8 +90,8 @@ Two constraints found by building it:
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |
 | `Loaded` | failed / not-yet / here, around any query. A screen never writes that ternary |
 | `ErrorBoundary` | the last line of defence |
-| `color`, `space`, `radius`, `type`, `CONTENT_MAX_WIDTH` | the only source of visual values |
-| `useLayout()` | the only layout branch: `'phone' | 'tablet'` |
+| `color`, `space`, `radius`, `type`, `CONTENT_MAX_WIDTH`, `CONTROL_HEIGHT` | the only source of visual values |
+| `useLayout()`, `TABLET_MIN_WIDTH` | the only layout branch: `'phone' | 'tablet'`, and where it switches |
 
 Four composites are here rather than in a screen, because each is used from more than one and each
 would otherwise be copied: `MusclePicker`, `SetLogger`, `EntryEditor`, `DayEditor`. They are still
