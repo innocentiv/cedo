@@ -5,6 +5,7 @@ import {
   type SessionAttempts,
   type SetAttempt,
   type SetTarget,
+  type TrackingMode,
   nextTarget,
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
@@ -72,6 +73,7 @@ async function loadForWorkout(caller: Caller, workoutId: string) {
       id: workoutEntries.id,
       exerciseId: workoutEntries.exerciseId,
       exerciseName: exercises.name,
+      tracking: exercises.tracking,
       progression: workoutEntries.progression,
     })
     .from(workoutEntries)
@@ -150,6 +152,7 @@ interface EntryContext {
   readonly id: string
   readonly exerciseId: string
   readonly exerciseName: string
+  readonly tracking: TrackingMode
   readonly progression: Progression
 }
 
@@ -174,6 +177,7 @@ function suggestForEntry(
     entryId: entry.id,
     exerciseId: entry.exerciseId,
     exerciseName: entry.exerciseName,
+    tracking: entry.tracking,
     rule: entry.progression,
     current,
     suggested,

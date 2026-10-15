@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
-import type { ExerciseHistory, ExerciseHistoryQuery } from '@cedo/contract'
+import type { ExerciseHistory, ExerciseHistoryQuery, TrackingMode } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { visible } from '../../db/ownable.ts'
 import { exercises, setLogs, workoutSessions } from '../../db/schema.ts'
@@ -11,13 +11,14 @@ import type { Caller } from '../../plugins/auth.ts'
  * `set_logs_exercise_time_idx` plus the join — this is the shape a progress chart will consume
  * later without a schema change. See docs/03-domain-model.md.
  */
-async function assertVisible(caller: Caller, exerciseId: string): Promise<void> {
+async function visibleTracking(caller: Caller, exerciseId: string): Promise<TrackingMode> {
   const [exercise] = await db
-    .select({ id: exercises.id })
+    .select({ tracking: exercises.tracking })
     .from(exercises)
     .where(and(visible(exercises, caller), eq(exercises.id, exerciseId)))
     .limit(1)
   if (exercise === undefined) throw notFound('exercise')
+  return exercise.tracking
 }
 
 export async function history(
@@ -25,7 +26,7 @@ export async function history(
   exerciseId: string,
   query: ExerciseHistoryQuery,
 ): Promise<ExerciseHistory> {
-  await assertVisible(caller, exerciseId)
+  const tracking = await visibleTracking(caller, exerciseId)
 
   const conditions = [eq(setLogs.exerciseId, exerciseId), eq(workoutSessions.userId, caller.userId)]
   if (query.since !== undefined)
@@ -65,7 +66,7 @@ export async function history(
     .where(eq(setLogs.exerciseId, exerciseId))
     .orderBy(desc(workoutSessions.startedAt), asc(setLogs.setIndex))
 
-  return { exerciseId, sessions: groupIntoSessions(rows) }
+  return { exerciseId, tracking, sessions: groupIntoSessions(rows) }
 }
 
 type HistoryRow = {

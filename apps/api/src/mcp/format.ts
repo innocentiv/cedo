@@ -112,8 +112,8 @@ export function suggestionLines(suggestions: readonly ProgressionSuggestion[]): 
 
   return suggestions
     .map((s) => {
-      const from = describeTarget(s.current)
-      const to = describeTarget(s.suggested)
+      const from = describeTarget(s.current, s.tracking)
+      const to = describeTarget(s.suggested, s.tracking)
       const basis = `${s.sessionsConsidered} session${s.sessionsConsidered === 1 ? '' : 's'} of history`
       return s.changed
         ? `${s.exerciseName}: ${from} -> ${to}  (${s.rule.kind}, from ${basis})`
@@ -122,8 +122,8 @@ export function suggestionLines(suggestions: readonly ProgressionSuggestion[]): 
     .join('\n')
 }
 
-function describeTarget(target: ProgressionSuggestion['current']): string {
-  const effort = formatEffort(target)
+function describeTarget(target: ProgressionSuggestion['current'], tracking: TrackingMode): string {
+  const effort = formatEffort(target, tracking)
   return effort === '—' ? 'no target set' : effort
 }
 
@@ -143,7 +143,9 @@ export function historyLines(history: ExerciseHistory): string {
   if (history.sessions.length === 0) return 'No sessions logged for this exercise.'
   return history.sessions
     .map((s) => {
-      const sets = s.sets.map((set) => `${set.isWarmup ? 'w' : ''}${formatEffort(set)}`).join(', ')
+      const sets = s.sets
+        .map((set) => `${set.isWarmup ? 'w' : ''}${formatEffort(set, history.tracking)}`)
+        .join(', ')
       return `${s.performedAt.slice(0, 10)}: ${sets}`
     })
     .join('\n')

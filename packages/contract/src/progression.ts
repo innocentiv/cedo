@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { TrackingMode } from './exercise.ts'
 import { Rpe, TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 
 /**
@@ -70,6 +71,8 @@ export const ProgressionSuggestion = z.object({
   entryId: z.uuid(),
   exerciseId: z.uuid(),
   exerciseName: z.string(),
+  /** So a reader renders targets in the exercise's terms — `formatEffort(target, tracking)`. */
+  tracking: TrackingMode,
   rule: Progression,
   current: SetTarget,
   suggested: SetTarget,

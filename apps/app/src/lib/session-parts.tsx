@@ -22,12 +22,9 @@ export const targetOf = (entry: WorkoutEntry): SetTarget | null =>
  * `nextTarget` itself lives in the contract and is computed by the API — this only renders the
  * result, so the hint on this screen and the answer the MCP tool gives can never disagree.
  */
-export function hintFor(
-  suggestion: ProgressionSuggestion | undefined,
-  tracking: TrackingMode | undefined,
-): string | null {
+export function hintFor(suggestion: ProgressionSuggestion | undefined): string | null {
   if (suggestion === undefined || !suggestion.changed) return null
-  return `Next time: ${formatEffort(suggestion.suggested, tracking)}`
+  return `Next time: ${formatEffort(suggestion.suggested, suggestion.tracking)}`
 }
 
 /**
@@ -165,7 +162,7 @@ export function PlannedDay({
             exerciseName={entry.exercise?.name ?? 'Unavailable exercise'}
             tracking={entry.exercise?.tracking ?? 'weight_reps'}
             target={targetOf(entry)}
-            suggestion={hintFor(suggestions.get(entry.id), entry.exercise?.tracking)}
+            suggestion={hintFor(suggestions.get(entry.id))}
             done={done}
             busy={busy}
             testID={`log-entry-${entry.index}`}

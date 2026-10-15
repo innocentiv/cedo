@@ -227,6 +227,28 @@ describe('training review', () => {
     const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
     expect(history).toContain('5 × 100 kg')
   })
+
+  /** The AI reads a weighted pull-up as the app shows it — added load, not a 20 kg lift. */
+  test('history describes a bodyweight movement in its own terms', async () => {
+    const pat = await mintPat(alice)
+    const created = textOf(
+      (
+        await callTool(pat, 'exercise_create', {
+          name: 'Weighted Pull-up',
+          tracking: 'bodyweight_reps',
+          muscles: [{ muscle: 'latissimus_dorsi', loadPct: 100 }],
+        })
+      ).body,
+    )
+    const exerciseId = created.match(/\(([0-9a-f-]{36})\)/u)?.[1]
+    if (exerciseId === undefined) throw new Error('could not read the new exercise id')
+    await callTool(pat, 'session_log', {
+      sets: [{ exerciseId, setIndex: 0, weightG: 20_000, reps: 6 }],
+    })
+
+    const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
+    expect(history).toContain('6 × bodyweight +20 kg')
+  })
 })
 
 describe('logging a whole session', () => {

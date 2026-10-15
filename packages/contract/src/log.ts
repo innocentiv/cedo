@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { LoggedDistanceMm, LoggedDurationS, LoggedReps, LoggedWeightG, Rpe } from './measurement.ts'
+import { TrackingMode } from './exercise.ts'
 import { Id, PaginationQuery, Timestamp } from './primitives.ts'
 
 /**
@@ -124,6 +125,8 @@ export type ExerciseHistoryEntry = z.output<typeof ExerciseHistoryEntry>
 /** Most recent session first. */
 export const ExerciseHistory = z.object({
   exerciseId: Id,
+  /** So a reader renders the sets in the exercise's terms — `formatEffort(set, tracking)`. */
+  tracking: TrackingMode,
   sessions: z.array(ExerciseHistoryEntry),
 })
 export type ExerciseHistory = z.output<typeof ExerciseHistory>
