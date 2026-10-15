@@ -10,16 +10,15 @@ import {
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupBy } from '../../lib/keyset.ts'
-import { visible } from '../../db/ownable.ts'
+import { setLogs, workoutSessions } from '../../db/schema.ts'
 import {
-  exercises,
-  setLogs,
-  workoutDays,
-  workoutEntries,
-  workoutSessions,
-  workoutSets,
-  workouts,
-} from '../../db/schema.ts'
+  type WorkoutSetRow,
+  visibleExercises,
+  visibleWorkoutDays,
+  visibleWorkoutEntries,
+  visibleWorkoutSets,
+  visibleWorkouts,
+} from '../../db/visible.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
@@ -61,40 +60,45 @@ export async function suggestForWorkout(
 
 /** The three reads. Batched deliberately — a per-entry history query would be an N+1. */
 async function loadForWorkout(caller: Caller, workoutId: string) {
+  const workouts = visibleWorkouts(caller)
   const [workout] = await db
     .select({ id: workouts.id })
     .from(workouts)
-    .where(and(visible(workouts, caller), eq(workouts.id, workoutId)))
+    .where(eq(workouts.id, workoutId))
     .limit(1)
   if (workout === undefined) throw notFound('workout')
 
+  const visibleEntries = visibleWorkoutEntries(caller)
+  const days = visibleWorkoutDays(caller)
+  const exercises = visibleExercises(caller)
   const entries = await db
     .select({
-      id: workoutEntries.id,
-      exerciseId: workoutEntries.exerciseId,
+      id: visibleEntries.id,
+      exerciseId: visibleEntries.exerciseId,
       exerciseName: exercises.name,
       tracking: exercises.tracking,
-      progression: workoutEntries.progression,
+      progression: visibleEntries.progression,
     })
-    .from(workoutEntries)
-    .innerJoin(workoutDays, eq(workoutDays.id, workoutEntries.dayId))
-    .innerJoin(exercises, eq(exercises.id, workoutEntries.exerciseId))
+    .from(visibleEntries)
+    .innerJoin(days, eq(days.id, visibleEntries.dayId))
     /**
-     * `visible()` here too: without it a suggestion returns the name and prescribed load of an
-     * exercise the caller cannot see. Entries whose exercise is hidden simply do not appear —
-     * there is nothing useful to advise about a movement you cannot read.
+     * An INNER join onto the visible exercises: without it a suggestion returns the name and
+     * prescribed load of an exercise the caller cannot see. Entries whose exercise is hidden simply
+     * do not appear — there is nothing useful to advise about a movement you cannot read.
      */
-    .where(and(eq(workoutDays.workoutId, workoutId), visible(exercises, caller)))
-    .orderBy(asc(workoutDays.index), asc(workoutEntries.index))
+    .innerJoin(exercises, eq(exercises.id, visibleEntries.exerciseId))
+    .where(eq(days.workoutId, workoutId))
+    .orderBy(asc(days.index), asc(visibleEntries.index))
   if (entries.length === 0) return null
 
   const entryIds = entries.map((e) => e.id)
 
+  const sets = visibleWorkoutSets(caller)
   const prescribed = await db
     .select()
-    .from(workoutSets)
-    .where(inArray(workoutSets.entryId, entryIds))
-    .orderBy(asc(workoutSets.index))
+    .from(sets)
+    .where(inArray(sets.entryId, entryIds))
+    .orderBy(asc(sets.index))
 
   return { entries, prescribed, logs: await loadLogs(caller, entryIds) }
 }
@@ -159,7 +163,7 @@ interface EntryContext {
 /** Pure apart from its inputs: all the maths is `nextTarget` from the contract. */
 function suggestForEntry(
   entry: EntryContext,
-  prescribed: readonly (typeof workoutSets.$inferSelect)[],
+  prescribed: readonly WorkoutSetRow[],
   logs: readonly LoggedSet[],
 ): ProgressionSuggestion {
   const working = prescribed.filter((s) => !s.isWarmup)
@@ -190,7 +194,7 @@ function suggestForEntry(
  * The prescription for an entry is the FIRST working set: one weight per entry, sets never diverge.
  * See docs/adr/0012-progression-rules.md.
  */
-function targetOf(set: typeof workoutSets.$inferSelect | undefined): SetTarget {
+function targetOf(set: WorkoutSetRow | undefined): SetTarget {
   return {
     reps: set?.targetReps ?? null,
     weightG: set?.targetWeightG ?? null,
