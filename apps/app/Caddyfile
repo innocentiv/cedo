@@ -9,6 +9,15 @@
 		reverse_proxy api:3000
 	}
 
+	# Content-hashed bundle chunks: served as files, or a real 404 — never the SPA fallback. Expo SDK
+	# 58 splits the web build into per-route chunks loaded on navigation, so a tab left open across a
+	# deploy asks for chunks the new image no longer has. Falling through to index.html answered that
+	# with 200 and HTML, under the year-long immutable header below, and the app died on a parse error.
+	handle /_expo/static/* {
+		root * /srv
+		file_server
+	}
+
 	handle {
 		root * /srv
 		# The web build is `output: "single"` — one index.html — so a real asset is tried first and
@@ -24,8 +33,15 @@
 	# not end in `.html`. Only `/` was getting the no-cache header, so a browser holding a stale
 	# `/today.html` asked for a content-hashed bundle that the new image no longer contains, and the
 	# app failed to boot on exactly the route the user had left it on.
+	# Only on success: a chunk that is gone answers 404, and a 404 marked immutable for a year would
+	# be cached as the answer for that URL.
 	@immutable path /_expo/static/*
-	header @immutable Cache-Control "public, max-age=31536000, immutable"
+	header @immutable {
+		Cache-Control "public, max-age=31536000, immutable"
+		match {
+			status 2xx
+		}
+	}
 	@document not path /_expo/static/*
 	header @document Cache-Control "no-cache"
 

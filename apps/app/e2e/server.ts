@@ -80,6 +80,11 @@ export function serveExport(distDir: string, apiUrl: string, port = 0): StaticSe
 
       const asset = file(join(distDir, url.pathname))
       if (url.pathname !== '/' && (await asset.exists())) return new Response(asset)
+      // A missing bundle chunk is a 404, never the app shell — as in the Caddyfile. Answering it
+      // with index.html turned a stale chunk into a parse error instead of a visible failure.
+      if (url.pathname.startsWith('/_expo/static/')) {
+        return new Response('Not found', { status: 404 })
+      }
 
       const html = await resolveHtml(distDir, url.pathname)
       if (html === null) return new Response('Not found', { status: 404 })
