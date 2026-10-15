@@ -45,7 +45,11 @@ function useRestoreSession(set: {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      const stored = await readToken()
+      // A keychain that throws (native) must not strand the app on the boot spinner forever.
+      const stored = await readToken().catch((error: unknown) => {
+        console.error(error)
+        return null
+      })
       if (cancelled) return
       if (stored === null) {
         setStatus('signed-out')

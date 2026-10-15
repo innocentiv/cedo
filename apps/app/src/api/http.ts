@@ -110,7 +110,8 @@ export async function request<S extends z.ZodType>(
   options: RequestOptions = {},
 ): Promise<z.output<S>> {
   const headers: Record<string, string> = {}
-  if (bearer !== null) headers['authorization'] = `Bearer ${bearer}`
+  const sent = bearer
+  if (sent !== null) headers['authorization'] = `Bearer ${sent}`
   if (options.body !== undefined) headers['content-type'] = 'application/json'
 
   const body = options.form ?? (options.body === undefined ? null : JSON.stringify(options.body))
@@ -123,8 +124,12 @@ export async function request<S extends z.ZodType>(
   if (!response.ok) {
     const failure = await toApiError(response, path)
     // Only when we actually sent a credential: a 401 from the login route means "wrong password",
-    // which the form must show rather than the shell reacting to.
-    if (failure.code === 'unauthenticated' && bearer !== null) onUnauthenticated?.()
+    // which the form must show rather than the shell reacting to. And only when it is still the
+    // credential in use — a late 401 for the previous user's token, landing after a sign-in,
+    // otherwise signed the new user straight out.
+    if (failure.code === 'unauthenticated' && sent !== null && sent === bearer) {
+      onUnauthenticated?.()
+    }
     throw failure
   }
 
