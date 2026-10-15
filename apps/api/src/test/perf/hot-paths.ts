@@ -45,6 +45,12 @@ export interface HotPath {
    * term is. Pinning one of them would assert a planner choice, not a property of the schema.
    */
   readonly indexes: readonly string[]
+  /**
+   * Tables a paginated path must read in index order, never read-then-sort. Using the index is not
+   * enough: an index whose order does not match the ORDER BY is still "used" to find the rows, and
+   * then every matching row is sorted to return one page. See `expectNoSortOver`.
+   */
+  readonly ordered?: readonly string[]
   readonly run: (fixtures: PerfFixtures, size: Size) => Promise<unknown>
 }
 
@@ -73,6 +79,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     budgetMs: 60,
     noSeqScan: ['exercises', 'exercise_media', 'media'],
     indexes: ['exercises_name_id_idx'],
+    ordered: ['exercises'],
     run: async (fixtures, size) =>
       await exerciseService.list(fixtures.large.caller, { scope: 'all', limit: PAGE[size] }),
   },
@@ -117,6 +124,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     budgetMs: 60,
     noSeqScan: ['workouts', 'workout_days'],
     indexes: ['workouts_name_id_idx', 'workout_days_workout_idx'],
+    ordered: ['workouts'],
     run: async (fixtures, size) =>
       await workoutService.list(fixtures.large.caller, { scope: 'all', limit: PAGE[size] }),
   },
@@ -154,6 +162,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     budgetMs: 60,
     noSeqScan: ['workout_sessions', 'set_logs'],
     indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
+    ordered: ['workout_sessions'],
     run: async (fixtures, size) => await listSessions(fixtures.large.caller, { limit: PAGE[size] }),
   },
   {
@@ -165,6 +174,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     budgetMs: 60,
     noSeqScan: ['workout_sessions', 'set_logs'],
     indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
+    ordered: ['workout_sessions'],
     run: async (fixtures, size) => {
       const caller = fixtures.large.caller
       const first = await listSessions(caller, { limit: PAGE[size] })

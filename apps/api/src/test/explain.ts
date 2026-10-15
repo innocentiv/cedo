@@ -149,6 +149,24 @@ export function expectNoSeqScan(plan: QueryPlan, table: string): void {
   ).toEqual([])
 }
 
+/**
+ * The index must deliver `table`'s rows already in ORDER BY order, so `LIMIT` stops the walk at the
+ * page size. A Sort above a scan of the table means every matching row was read and sorted to
+ * return one page — and the index is still "used", so `expectIndexUsed` passes. That is how
+ * `workout_sessions_user_time_idx` shipped: built `DESC NULLS LAST` under an `ORDER BY … DESC`
+ * (which means NULLS FIRST), it never served the order it was added for.
+ */
+export function expectNoSortOver(plan: QueryPlan, table: string): void {
+  const scansTable = (node: PlanNode) => walk(node).some((n) => n.relation === table)
+  const offending = walk(plan.root).filter(
+    (n) => (n.nodeType === 'Sort' || n.nodeType === 'Incremental Sort') && scansTable(n),
+  )
+  expect(
+    offending,
+    `"${table}" is sorted after reading instead of walked in index order:\n${planSummary(plan)}`,
+  ).toEqual([])
+}
+
 export function expectIndexUsed(plan: QueryPlan, index: string): void {
   const used = walk(plan.root).some((n) => n.indexName === index)
   expect(used, `Index "${index}" was not used:\n${planSummary(plan)}`).toBe(true)

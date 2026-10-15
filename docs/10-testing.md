@@ -99,7 +99,7 @@ So T4 runs against its own database (`cedo_test_perf`, selected by `CEDO_PERF=1`
 set logs, 10,000 shared exercises, 1,000 plans and 5,000 sessions. It is seeded once and reused; the
 integration harness never touches it.
 
-### The three assertion classes, in order of what they are worth
+### The assertion classes, in order of what they are worth
 
 **1. Query count is identical at two volumes.** This is the N+1 detector and it is structural — it
 holds or it does not, on any machine. Each hot path declares the one dimension that would grow an
@@ -115,6 +115,14 @@ from the code it is guarding.
 
 **3. The slowest statement is under a budget.** Weakest of the three, because it is machine
 dependent. The budgets are ceilings that catch a dropped index, not targets.
+
+**4. A paginated path reads in index order, without a Sort.** `ordered` names the tables a list must
+walk in `ORDER BY` order so `LIMIT` stops at the page size. An index whose order does not match the
+query is still *used* — to find the rows — and then every matching row is sorted to return one page,
+so assertion 2 passes over exactly the cost the index was added to remove.
+
+A reused perf database is **migrated** on every run, so a migration that changes an index is
+measured against the new schema, not the one the database was seeded with.
 
 ### What the planner is allowed to decide
 
@@ -141,7 +149,11 @@ case is never exercised and looks like dead weight.
   and 48, and made it constant as the library grows.
 - `GET /sessions` sorted every session a user owns on every page. Its index was `(user_id,
   started_at desc)` while the keyset cursor is a row comparison on `(started_at, id)` — the comment
-  in the service claimed the two matched, and they did not. Adding `id` to the index fixed it.
+  in the service claimed the two matched, and they did not. Adding `id` to the index was believed
+  to fix it, and **did not**: Drizzle's `.desc()` builds `DESC NULLS LAST`, the query's `DESC`
+  means `NULLS FIRST`, and the planner used the index to find the rows and then sorted all of them
+  anyway. Nothing failed, because "the index is used" was true. That is why assertion 4 exists, and
+  why the index is now `.desc().nullsFirst()`.
 - Both the media and favourites tables were empty in the first version of the seed, so their joins
   read `Seq Scan on media (rows=0)` — which looks like a pass and measures nothing.
 - `exercise_muscles_muscle_idx` appeared to be dead: zero scans across every guarded path, which

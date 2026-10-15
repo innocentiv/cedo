@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import { HOT_PATHS, type Measurement, measure } from './hot-paths.ts'
 import { perfFixtures } from './harness.ts'
-import { expectIndexUsed, expectNoSeqScan, explain, planSummary } from '../explain.ts'
+import {
+  expectIndexUsed,
+  expectNoSeqScan,
+  expectNoSortOver,
+  explain,
+  planSummary,
+} from '../explain.ts'
 import { withQueryCount } from '../../db/client.ts'
 import * as exerciseService from '../../modules/exercise/service.ts'
 
@@ -9,7 +15,7 @@ import * as exerciseService from '../../modules/exercise/service.ts'
  * The performance gate. Run with `bun run perf`, never with `bun test` — it needs its own
  * database at production volume. See docs/10-testing.md.
  *
- * Three kinds of assertion, in decreasing order of how much they are worth:
+ * Four kinds of assertion, in decreasing order of how much they are worth:
  *
  *  1. The query count is IDENTICAL at two volumes. This is a structural property: it holds or it
  *     does not, on any machine, and it is what actually catches an N+1.
@@ -18,6 +24,8 @@ import * as exerciseService from '../../modules/exercise/service.ts'
  *     test on 500 rows.
  *  3. The slowest statement is under a budget. Weakest of the three — it is machine dependent, so
  *     the budgets are ceilings that catch a dropped index, not targets.
+ *  4. A paginated path reads its table in index order, with no Sort above it. An index whose order
+ *     does not match the ORDER BY passes (2) while still reading and sorting every matching row.
  */
 
 const fixtures = await perfFixtures()
@@ -76,6 +84,14 @@ for (const path of HOT_PATHS) {
             `No statement used "${index}":\n${m.plans.map(planSummary).join('\n\n')}`,
           ).toBe(true)
         }
+      })
+    }
+
+    const ordered = path.ordered ?? []
+    if (ordered.length > 0) {
+      test(`reads ${ordered.join(', ')} in index order, without sorting`, () => {
+        const m = measurementFor(path.name)
+        for (const plan of m.plans) for (const table of ordered) expectNoSortOver(plan, table)
       })
     }
 

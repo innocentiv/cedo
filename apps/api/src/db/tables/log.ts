@@ -42,8 +42,18 @@ export const workoutSessions = pgTable(
      * (started_at, id) descending: without the third column Postgres can use the index to find the
      * rows but not to order them, so it read every session the user owns and sorted them on every
      * page. See docs/10-testing.md.
+     *
+     * `.nullsFirst()` is load-bearing although neither column can be null. Drizzle's `.desc()`
+     * emits DESC NULLS LAST, while SQL's `ORDER BY … DESC` means NULLS FIRST; the planner does not
+     * reconcile the two from a NOT NULL constraint, so the index found the rows and then a Sort
+     * re-read all of them — the exact problem the `id` column was added to fix. The perf suite's
+     * `ordered` assertion now fails on it.
      */
-    index('workout_sessions_user_time_idx').on(t.userId, t.startedAt.desc(), t.id.desc()),
+    index('workout_sessions_user_time_idx').on(
+      t.userId,
+      t.startedAt.desc().nullsFirst(),
+      t.id.desc().nullsFirst(),
+    ),
     index('workout_sessions_workout_idx').on(t.workoutId),
   ],
 )
@@ -74,8 +84,11 @@ export const setLogs = pgTable(
     /**
      * Per-exercise history, and the series a progress chart will read later without a schema
      * change. The largest table in the system by an order of magnitude.
+     *
+     * `.nullsFirst()` so a plain `orderBy(desc(setLogs.loggedAt))` can walk it — see
+     * workout_sessions_user_time_idx for how a NULLS mismatch silently becomes a sort.
      */
-    index('set_logs_exercise_time_idx').on(t.exerciseId, t.loggedAt.desc()),
+    index('set_logs_exercise_time_idx').on(t.exerciseId, t.loggedAt.desc().nullsFirst()),
     index('set_logs_session_idx').on(t.sessionId),
     index('set_logs_entry_idx').on(t.entryId),
     check('set_logs_rpe_ck', sql`${t.rpe} is null or ${t.rpe} between 1 and 10`),
