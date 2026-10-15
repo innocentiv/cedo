@@ -146,8 +146,8 @@ The three rules worth knowing before you type anything:
    not even a type. Enforced by lint.
 2. **Business logic lives in `service.ts`.** Route handlers and MCP tools are ≤5 lines and both call
    the same function.
-3. **Every query against an ownable table applies `visible()` or `editable()`** — including joins.
-   Omitting it is a data leak.
+3. **Owned tables are read only through their visible relations** (`db/visible.ts`) — joins
+   included — and written only in a module's `write*.ts`, with `editable()`. Lint enforces it.
 
 ## Status
 

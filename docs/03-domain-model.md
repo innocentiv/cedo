@@ -31,8 +31,20 @@ ownable() -> { id, owner_group_id, created_by, name, created_at, updated_at }
 ```
 
 Spread into each entity table. Columns are physically repeated; **no supertable**. A create is one
-INSERT, a read needs no join, and `visible()` / `editable()` / transfer / duplicate are still
-written exactly once as generics over the trait. See [adr/0003](adr/0003-ownable-columns.md).
+INSERT, a read needs no join, and `visible()` / `editable()` are still written exactly once as
+generics over the trait. See [adr/0003](adr/0003-ownable-columns.md).
+
+### Children carry their owner
+
+A **child** of an ownable — `workout_days`, `workout_entries`, `workout_sets`, `exercise_muscles`,
+`exercise_media` — has its own `owner_group_id` (`childOwner()`), bound to its parent's by a composite
+foreign key `(parent_id, owner_group_id) → parent(id, owner_group_id)` with `ON UPDATE CASCADE ON
+DELETE CASCADE` (`ownerKey()`, against the parent's `ownerTarget()` unique). It is never written on its
+own: a transfer is one UPDATE on the parent, and Postgres carries the owner down. A child row
+claiming an owner its parent does not have is refused by the database.
+
+So a child's visibility is its own. Nothing reads a day "because its workout was checked earlier".
+See [adr/0019](adr/0019-visible-relations.md).
 
 `created_by` is **provenance only** and is never consulted for permissions — the owning group
 decides those.
@@ -52,47 +64,55 @@ member — it is a number, not an identity.
 
 ### The ACL invariant
 
+Reads go through **visible relations** (`db/visible.ts`): per owned table, the rows a caller may
+read, as a subquery to select from or join. Writes live in a module's `write*.ts` and carry
+`editable()` on every statement.
+
 ```ts
-db.select()
-  .from(exercises)
-  .where(and(visible(exercises, ctx), eq(exercises.id, id)))
-db.update(exercises)
+// read — the relation, never the raw table
+const exercises = visibleExercises(caller)
+db.select().from(exercises).where(eq(exercises.id, id))
+
+// write — in modules/exercise/write.ts
+db.update(exercisesTable)
   .set(patch)
-  .where(and(editable(exercises, ctx), eq(exercises.id, id)))
+  .where(and(editable(exercisesTable, caller), eq(exercisesTable.id, id)))
 ```
 
-**A query on an ownable table that omits `visible()` or `editable()` is a data leak.** Every module's
-test file must prove cross-user isolation. Not-found and not-permitted both return 404 — a 403 would
-confirm the resource exists.
+**A read of an owned table that does not go through its visible relation is a data leak.** It is
+enforced, not remembered: lint refuses importing the raw tables outside `db/`, `write*.ts` and tests;
+the Drizzle client has no `db.query`; and `raw-sql.test.ts` fails on an owned table named inside an
+`sql` template. Not-found and not-permitted both return 404 — a 403 would confirm the resource
+exists.
 
 ### It applies to JOINS, not just the row you asked for
 
-This is the part that keeps being missed, and it has now had to be fixed in five places. **Reading
+This is the part that was missed five times, until the predicate became a relation. **Reading
 your own row does not entitle you to a name joined onto it.**
 
 Visibility is not permanent. Any editor may remove another member, so an exercise or workout that
 was legitimately visible when a set was logged can be unreachable by the time anything reads that log
 back. Personal data — sessions, set logs — is yours forever; **the names hanging off it are not.**
 
-So a query that starts from something personal and joins to an ownable table still needs the
-predicate, and there are two shapes depending on whether the row should survive:
+So a query that starts from something personal and joins to an owned table joins its **visible
+relation**, and the join kind is the one decision left, depending on whether the row should survive:
 
 | The joined name is | Do this | Because |
 | --- | --- | --- |
-| decoration on a row that must still appear | `visible()` in the **JOIN condition**, left join | the row stays, the name becomes `null` |
-| the subject of the row itself | `visible()` in the **WHERE** | the row drops out; there is nothing to say |
+| decoration on a row that must still appear | **LEFT JOIN** the relation | the row stays, the name becomes `null` |
+| the subject of the row itself | **INNER JOIN** the relation, or select from it | the row drops out; there is nothing to say |
 
 The first is `GET /sessions` (your session, someone else's workout name) and `WorkoutEntry.exercise`.
 The second is `progression`, `stalled` and `dayBalance` — advice about a movement you cannot read is
 not advice.
 
-Two traps worth naming. A child inherits its parent's visibility rather than having its own, so a
-`workout_days` name is gated by joining through its workout. And a correlated subquery
-(`(select name from workouts where id = …)`) is a join that no predicate is watching — `dayBalance`
-leaked exactly that way. Prefer a real join, where `visible()` has somewhere to go.
+The trap that used to sit beside this — a correlated subquery (`(select name from workouts where id =
+…)`) is a join no predicate is watching, and `dayBalance` leaked exactly that way — has nothing raw
+left to reach: `raw-sql.test.ts` fails on it.
 
-`review/visibility.test.ts` holds the reproduction, and the counterpart test that fails if the fix
-degenerates into "always return null".
+`test/membership-lost.test.ts` proves the rule on every GET route and read-only MCP tool, and fails
+when a new one has no case. Each case also states that it DID name the thing while the caller was a
+member, so the rule cannot degenerate into "always return null".
 
 ## Entities
 

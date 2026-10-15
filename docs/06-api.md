@@ -134,7 +134,8 @@ round-trip shape with ids; days and entries sent back with their id are updated 
 what the plan no longer holds is deleted. The ids are a hint, never trusted: one that is not part of
 *this* workout is a new row, and an entry whose exercise changed is a new entry, so a plan can
 neither take over another workout's rows nor inherit another exercise's history. The write is a
-constant number of statements whatever the plan's size — `writePlan` in `modules/workout/plan.ts`.
+constant number of statements whatever the plan's size — `writePlan` in
+`modules/workout/write-plan.ts`.
 
 Three things the replace checks before touching anything:
 
@@ -201,11 +202,13 @@ the tests build an app per test, that made `createApp()` silently non-reusable.
 ## Adding a module
 
 1. Add the schemas to `packages/contract`.
-2. `modules/<name>/service.ts` — all the logic, taking `(caller, input)`. Apply `visible()` or
-   `editable()` on every query against an ownable table.
+2. `modules/<name>/service.ts` — all the logic, taking `(caller, input)`. Read owned tables only
+   through their visible relations (`db/visible.ts`); put the statements that change them in
+   `modules/<name>/write.ts`, each carrying `editable()`. See `docs/02-conventions.md`.
 3. `modules/<name>/index.ts` — routes binding the schemas, each delegating in one line.
 4. `.use(...)` it in `app.ts`.
 5. `modules/<name>/<name>.test.ts` — including a cross-user isolation test, and `expectContract` on
-   every response.
+   every response. A new GET route needs a case in `test/membership-lost.test.ts`, which fails
+   until it has one.
 6. An MCP tool wrapping the same service function (`docs/07-mcp.md`).
 7. `bun run check`.

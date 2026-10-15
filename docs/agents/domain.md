@@ -4,17 +4,17 @@ How the engineering skills should consume this repo's domain documentation when 
 
 ## Before exploring, read these
 
-- **[`docs/03-domain-model.md`](../03-domain-model.md)**: the domain vocabulary — tables, relations, the `ownable()` columns, `visible()` / `editable()`, base units. Until a `GLOSSARY.md` exists, this is the glossary.
-- **`GLOSSARY.md`** at the repo root, if it exists.
+- **[`GLOSSARY.md`](../../GLOSSARY.md)** at the repo root: the domain's terms (owning group, ownable, child, visible relation).
+- **[`docs/03-domain-model.md`](../03-domain-model.md)**: the tables, relations and invariants behind those terms — the `ownable()` columns, visible relations, base units.
 - **[`docs/adr/`](../adr/README.md)**: read ADRs that touch the area you're about to work in.
 
-If `GLOSSARY.md` doesn't exist, **proceed silently**. Don't flag its absence; don't suggest creating it upfront. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) creates it lazily when terms actually get resolved. When it does, it must agree with `docs/03-domain-model.md` — the two must never define the same term differently. If a resolved term changes the model, update `docs/03-domain-model.md` too.
+`GLOSSARY.md` and `docs/03-domain-model.md` must never define the same term differently. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) adds a term when one is resolved; if a resolved term changes the model, update `docs/03-domain-model.md` in the same change.
 
 ## File structure
 
 ```
 /
-├── GLOSSARY.md                 ← created lazily
+├── GLOSSARY.md                 ← the domain's terms
 ├── docs/
 │   ├── 03-domain-model.md      ← tables, relations, invariants
 │   └── adr/

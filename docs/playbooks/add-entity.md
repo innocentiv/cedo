@@ -89,6 +89,15 @@ export const widgetFavourites = favouriteTable('widget_favourites', widgets)
   seq-scan and sort every visible row on every page. An index on `owner_group_id` alone is
   redundant — it is this one's left prefix.
 - **Enums come from the contract**: `pgEnum('widget_kind', WIDGET_KINDS)`. Never retype values.
+- **A child table carries its owner.** Give the parent `ownerTarget('widgets_id_owner_uq', t)`, then
+  spread `...childOwner()` into each child and bind it with
+  `ownerKey('widget_parts_widget_fk', [t.widgetId, t.ownerGroupId], widgets)` instead of a plain
+  `.references()`. A transfer then cascades the owner down, and the child has a visibility of its
+  own. See `docs/03-domain-model.md`.
+- **Add a visible relation per table** to `apps/api/src/db/visible.ts` — `visibleWidgets`,
+  `visibleWidgetParts` — and add the tables to the `importNames` of `no-restricted-imports` in
+  `.oxlintrc.typeaware.json` and to `OWNED` in `apps/api/src/db/raw-sql.test.ts`. Until then nothing
+  stops a read from going around them.
 - Export from `db/schema.ts`, then:
 
 ```bash
@@ -101,13 +110,15 @@ Commit the generated SQL. Never edit an applied migration.
 ## 3. The service
 
 `apps/api/src/modules/widget/service.ts`. **All logic lives here** — it is the only thing MCP tools
-may call.
+may call. Reads go through the visible relations; the statements that change rows go in
+`modules/widget/write.ts`, the one file of the module allowed to import the raw tables.
 
 ```ts
-// READ — always visible()
-.where(and(visible(widgets, caller), eq(widgets.id, id)))
+// READ — service.ts, through the relation. LEFT JOIN one to null a name; INNER JOIN to drop the row.
+const widgets = visibleWidgets(caller)
+const [row] = await db.select().from(widgets).where(eq(widgets.id, id)).limit(1)
 
-// WRITE — always editable(), on the STATEMENT ITSELF
+// WRITE — write.ts, editable() on the STATEMENT ITSELF
 const written = await tx.update(widgets)
   .set(patch)
   .where(and(editable(widgets, caller), eq(widgets.id, id)))
@@ -165,7 +176,8 @@ single `onError`.
 
 ## 5. Favourites, duplicate, transfer
 
-These come free from the trait; just expose them.
+There is no generic implementation of these yet: follow `modules/exercise/` (flat) or
+`modules/workout/` (with children), writes in `write.ts`.
 
 - `duplicate` copies the row and its children into a group the caller can **edit**, defaulting to
   their personal group. Immutable children (media) are *shared*, not copied.
@@ -233,9 +245,12 @@ An entity nobody measured is an entity that is fast until someone has a thousand
 ```
 [ ] contract schemas + invariant tests
 [ ] table with ...ownable() and the (owner_group_id, name, id) index
+[ ] children: ownerTarget() on the parent, childOwner() + ownerKey() on each child
 [ ] favouriteTable()
+[ ] a visible relation per table; added to the lint importNames and to raw-sql.test.ts OWNED
 [ ] migration generated and committed
-[ ] service: visible() on reads, editable() on the write statement itself
+[ ] service reads through the relations; write.ts carries editable() on every statement
+[ ] a case per new GET route / read-only MCP tool in test/membership-lost.test.ts
 [ ] children loaded in a fixed number of queries
 [ ] routes <=5 lines, mounted in app.ts
 [ ] duplicate / transfer / favourite

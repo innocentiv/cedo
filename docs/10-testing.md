@@ -47,6 +47,18 @@ Two things are mandatory in every module:
   toward accepting `Date`, which would then break the actual client. See
   `docs/adr/0015-no-eden-treaty.md`.
 
+Two suites guard the ACL across every module at once, and both fail rather than skip when something
+new is not covered. See `docs/adr/0019-visible-relations.md`.
+
+- **`test/membership-lost.test.ts`** — a member is removed through the real route, then every GET
+  route and every read-only MCP tool is read as them. It enumerates the routes off the app and the
+  tools off `tools/list`, so a new read path without a case fails it. Each case also declares
+  whether it named the group's things while the caller was a member, so "shows nothing afterwards"
+  cannot pass because it never showed anything.
+- **`db/raw-sql.test.ts`** — scans every `sql` template outside `db/`, `write*.ts`, tests and the
+  diagnostics exemption, and fails on the name of an owned table. It is the hole lint cannot see: a
+  correlated subquery against a raw table needs no import.
+
 ### The database
 
 `docker-compose.test.yml` runs a throwaway Postgres with `fsync=off` and a tmpfs volume. Under

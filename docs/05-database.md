@@ -70,18 +70,31 @@ Rules:
 ## Querying
 
 ```ts
-// READ — always visible()
-db.select()
-  .from(exercises)
-  .where(and(visible(exercises, ctx), eq(exercises.id, id)))
+// READ — always through the visible relation (db/visible.ts)
+const exercises = visibleExercises(caller)
+db.select().from(exercises).where(eq(exercises.id, id))
 
-// WRITE — always editable()
-db.update(exercises)
+// WRITE — in the module's write*.ts, always editable() on the statement
+db.update(exercisesTable)
   .set(patch)
-  .where(and(editable(exercises, ctx), eq(exercises.id, id)))
+  .where(and(editable(exercisesTable, caller), eq(exercisesTable.id, id)))
 ```
 
-Omitting the predicate is a data leak, not a style issue. See `docs/02-conventions.md`.
+A read around the relation is a data leak, not a style issue. See `docs/02-conventions.md` and
+[adr/0019](adr/0019-visible-relations.md).
+
+**The client is built without `{ schema }`.** That disables Drizzle's relational `db.query.*` API on
+purpose: it reaches any table by name, with no import for lint to see. Use the query builder.
+
+**A relation must stay flattenable.** Postgres pulls `(select * from t where owner_group_id in (…))`
+up into the outer query, which is what keeps every index usable through it. A LIMIT, OFFSET,
+DISTINCT or ORDER BY inside a relation is an optimisation fence, and `bun run perf` reports the
+resulting `Seq Scan`. (Drizzle silently drops `.offset(0)`, so it is not even a usable fence to test
+with.)
+
+**A child table carries its owner.** Spread `childOwner()` into it and bind it with `ownerKey()` to
+the parent's `ownerTarget()` — the composite key replaces the plain `parent_id` reference. See
+`docs/03-domain-model.md`.
 
 ## Migrations
 

@@ -13,7 +13,8 @@ though it were written at once.
   | File             | Contains                                                      | Must not contain   |
   | ---------------- | ------------------------------------------------------------- | ------------------ |
   | `index.ts`       | An Elysia instance: routes, schema bindings, `.guard({ auth: true })` | Any business logic |
-  | `service.ts`     | All business logic. Functions taking `(caller, input)`        | Any HTTP concept   |
+  | `service.ts`     | All business logic. Functions taking `(caller, input)`; reads through visible relations | Any HTTP concept; a raw owned table |
+  | `write*.ts`      | The statements that change owned rows, each with `editable()` | Any read not gated by `editable()` |
   | `<name>.test.ts` | Unit + integration tests, colocated                           | —                  |
 
 - **Never create a `utils.ts`.** Name the file after what it does (`password.ts`, `token.ts`).
@@ -38,23 +39,27 @@ If a rule exists in only one of those two paths, it is a bug. Put it in the serv
 
 ## The ACL invariant
 
-Every ownable table (anything built with `ownable()`) is readable only through its owning group.
+Every owned table — an ownable (built with `ownable()`) or one of its children (`childOwner()`) — is
+readable only through its owning group.
 
 ```ts
-// reading — ALWAYS
-db.select()
-  .from(exercises)
-  .where(and(visible(exercises, ctx), eq(exercises.id, id)))
+// reading — service.ts, through the visible relation
+const exercises = visibleExercises(caller)
+db.select().from(exercises).where(eq(exercises.id, id))
 
-// writing — ALWAYS
-db.update(exercises)
+// writing — write.ts, with editable() on the statement itself
+db.update(exercisesTable)
   .set(patch)
-  .where(and(editable(exercises, ctx), eq(exercises.id, id)))
+  .where(and(editable(exercisesTable, caller), eq(exercisesTable.id, id)))
 ```
 
-**A query on an ownable table that omits `visible()` or `editable()` is a data leak between users.**
-Treat it as a security defect, not a style issue. Every module's test file must contain a
-cross-user isolation test proving it.
+**A read of an owned table that does not go through its visible relation is a data leak between
+users.** Treat it as a security defect, not a style issue. Lint refuses the raw-table import outside
+`db/`, `write*.ts` and tests, and `raw-sql.test.ts` refuses an owned table named in an `sql`
+template; `review/diagnostics.ts` (instance-wide counts for a curator) is the one named exemption.
+Every module's test file must still contain a cross-user isolation test, and
+`test/membership-lost.test.ts` needs a case for every new GET route or read-only MCP tool. See
+[adr/0019](adr/0019-visible-relations.md).
 
 Not-found and not-permitted both return **404**, never 403 — a 403 confirms the resource exists and
 leaks its existence to a stranger.

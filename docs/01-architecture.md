@@ -63,7 +63,7 @@ Elysia (apps/api container)
    |  route handler .......... <=5 lines: validate, call the service, return
    v
 Service  (modules/<name>/service.ts)  <-- ALL business logic lives here
-   |
+   |       reads through db/visible.ts; writes through modules/<name>/write*.ts
    v
 Drizzle -> Postgres
 ```

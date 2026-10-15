@@ -16,11 +16,14 @@ is designed to prevent.
 3. **Schemas are authored once, in Zod, in `packages/contract`.** The DB, HTTP routes, MCP tools and
    UI all derive from them. Never redeclare a shape.
 4. **Business logic lives in `service.ts`.** Route handlers and MCP tools are ≤5 lines and both call
-   the same service function. No logic in controllers.
-5. **Every query against an ownable table must apply `visible()` or `editable()` — including
-   JOINS.** Reading your own row does not entitle you to a name joined onto it, and visibility is
-   not permanent: a member can be removed from a group after logging against its workouts. This has
-   had to be fixed five times. See `docs/03-domain-model.md`.
+   the same service function. No logic in controllers. The statements that change owned rows sit
+   beside it in the module's `write*.ts`.
+5. **Owned tables are read only through their visible relations (`db/visible.ts`) — joins
+   included.** LEFT JOIN a relation to null a name, INNER JOIN it to drop the row; writes in
+   `write*.ts` carry `editable()` on every statement. Reading your own row does not entitle you to a
+   name joined onto it, and visibility is not permanent: a member can be removed from a group after
+   logging against its workouts. Lint, `raw-sql.test.ts` and `test/membership-lost.test.ts` enforce
+   it. See `docs/adr/0019-visible-relations.md`.
 6. **All measurements are stored as integers in base units** (`weight_g`, `distance_mm`,
    `duration_s`). Conversion happens only in `packages/contract/src/units.ts`.
 7. **All behaviour is tested on the backend.** UI code stays trivially thin and holds no domain
@@ -81,7 +84,8 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   `DESC NULLS LAST`, which an `ORDER BY … DESC` cannot walk (use `.desc().nullsFirst()`); Drizzle
   skips `mapWith` for SQL NULL, so it stays `null`, never `NaN`; a JS `Date` inside raw `sql`
   bypasses the column encoder and fails in the driver; `ON DELETE RESTRICT` raises SQLSTATE
-  **23001**, not the 23503 everyone guesses.
+  **23001**, not the 23503 everyone guesses; Drizzle drops `.offset(0)` as falsy, so it is no
+  optimisation fence (use `.limit(n)` to watch a perf guard fail).
 - **`page.fill` cannot catch an input bug.** It selects the field and inserts the whole string in
   one event, so it never passes through a half-typed "62." or an emptied field. Type key by key
   (`page.type`, `page.press`). And assert on `innerText` lines, not `textContent` substrings:
