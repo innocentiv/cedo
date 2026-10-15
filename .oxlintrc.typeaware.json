@@ -18,7 +18,28 @@
     "typescript/no-unnecessary-condition": "error",
     "typescript/prefer-nullish-coalescing": "error",
     "typescript/return-await": ["error", "always"],
-    "typescript/prefer-readonly-parameter-types": "off"
+    "typescript/prefer-readonly-parameter-types": "off",
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+            "importNames": [
+              "exercises",
+              "exerciseMuscles",
+              "exerciseMedia",
+              "workouts",
+              "workoutDays",
+              "workoutEntries",
+              "workoutSets"
+            ],
+            "allowTypeImports": true,
+            "message": "Read owned tables through db/visible.ts (visibleExercises(caller), …). Writes belong in the module's write*.ts. See docs/adr/0019-visible-relations.md."
+          }
+        ]
+      }
+    ]
   },
   "ignorePatterns": [
     "node_modules",
@@ -36,6 +57,17 @@
       "files": ["**/seed-data/**"],
       "rules": {
         "max-lines": "off"
+      }
+    },
+    {
+      "files": [
+        "apps/api/src/db/**",
+        "apps/api/src/modules/*/write*.ts",
+        "apps/api/src/test/**",
+        "**/*.test.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
       }
     }
   ]

@@ -2,7 +2,6 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { drizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { env } from '../env.ts'
-import * as schema from './schema.ts'
 
 /**
  * Per-call query recording, which is what makes N+1 detectable as an invariant rather than a
@@ -42,8 +41,12 @@ export const sql = postgres(env.DATABASE_URL, {
   },
 })
 
+/**
+ * Deliberately WITHOUT `{ schema }`. Passing it enables Drizzle's relational `db.query.*` API, which
+ * reaches every table by name with no import — around both the visible relations and the lint rule
+ * that guards them. See docs/adr/0019-visible-relations.md.
+ */
 export const db = drizzle(sql, {
-  schema,
   logger: {
     logQuery(query, params) {
       recorder.getStore()?.statements.push({ sql: query, params })

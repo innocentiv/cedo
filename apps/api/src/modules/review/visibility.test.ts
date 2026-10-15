@@ -2,7 +2,7 @@ import { beforeEach, expect, test } from 'bun:test'
 import { and, eq } from 'drizzle-orm'
 import { db } from '../../db/client.ts'
 import { seedLibrary } from '../../db/seed.ts'
-import { groupMembers } from '../../db/schema.ts'
+import { groupMembers, workoutDays } from '../../db/schema.ts'
 import { Exercise, GroupMembership, Workout, page } from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
@@ -89,16 +89,16 @@ async function logThreeSessions(shared: Shared): Promise<void> {
   const caller = await resolveCaller(`Bearer ${alice.token}`)
   if (caller === null) throw new Error('alice could not be resolved')
 
-  const day = (
-    await db.query.workoutDays.findFirst({
-      where: (d, { eq: is }) => is(d.workoutId, shared.workoutId),
-    })
-  )?.id
+  const [day] = await db
+    .select({ id: workoutDays.id })
+    .from(workoutDays)
+    .where(eq(workoutDays.workoutId, shared.workoutId))
+    .limit(1)
 
   for (let i = 0; i < 3; i += 1) {
     const session = await SessionService.start(caller, {
       workoutId: shared.workoutId,
-      dayId: day ?? null,
+      dayId: day?.id ?? null,
     })
     await SessionService.logSet(caller, session.id, {
       exerciseId: shared.exerciseId,
