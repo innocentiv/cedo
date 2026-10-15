@@ -133,7 +133,7 @@ export function PlannedDay({
   readonly logs: readonly SetLog[]
   readonly suggestions: ReadonlyMap<string, ProgressionSuggestion>
   readonly busy: boolean
-  readonly onLog: (entry: WorkoutEntry, done: number, values: LoggedValues) => void
+  readonly onLog: (entry: WorkoutEntry, values: LoggedValues) => void
 }): React.JSX.Element {
   return (
     <Stack gap="md">
@@ -152,7 +152,7 @@ export function PlannedDay({
             busy={busy}
             testID={`log-entry-${entry.index}`}
             onLog={(values) => {
-              onLog(entry, done, values)
+              onLog(entry, values)
             }}
           />
         )

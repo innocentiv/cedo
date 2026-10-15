@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useLocalSearchParams } from 'expo-router'
 import { useGoBack } from '../../../../src/lib/use-go-back.ts'
-import type { Exercise } from '@cedo/contract'
+import { type Exercise, type SetLog, type WorkoutEntry, nextSetIndex } from '@cedo/contract'
 import { ErrorNotice, type LoggedValues, Screen, Spinner, Text } from '../../../../src/ui/index.ts'
 import { AdHoc, LoggedSets, PlannedDay, SessionFooter } from '../../../../src/lib/session-parts.tsx'
 import {
@@ -23,8 +23,9 @@ import { useSubmit } from '../../../../src/lib/use-submit.ts'
 function useRecordSet(
   logSet: ReturnType<typeof useLogSet>,
   submit: ReturnType<typeof useSubmit>['submit'],
+  logs: readonly SetLog[],
 ) {
-  return (
+  const record = (
     exerciseId: string,
     entryId: string | null,
     setIndex: number,
@@ -43,6 +44,18 @@ function useRecordSet(
         isWarmup: false,
       })
     })
+  }
+
+  // Each series is numbered by `nextSetIndex`, never by counting — see its comment.
+  return {
+    adHoc: (exercise: Exercise, values: LoggedValues) => {
+      const series = logs.filter((l) => l.exerciseId === exercise.id)
+      record(exercise.id, null, nextSetIndex(series), values)
+    },
+    planned: (entry: WorkoutEntry, values: LoggedValues) => {
+      const series = logs.filter((l) => l.entryId === entry.id)
+      record(entry.exerciseId, entry.id, nextSetIndex(series), values)
+    },
   }
 }
 
@@ -89,13 +102,8 @@ export default function LiveSession(): React.JSX.Element {
   const removeLog = useRemoveLog(id)
   const finish = useUpdateSession(id)
   const { submit, busy, error } = useSubmit()
-  const record = useRecordSet(logSet, submit)
+  const record = useRecordSet(logSet, submit, session.data?.logs ?? [])
 
-  /**
-   * The one write this screen makes. Planned and ad-hoc sets differ only in whether they name a
-   * prescribed entry — `entry_id` is nullable for exactly that reason — so they share a path rather
-   * than each keeping their own copy of the payload.
-   */
   const day = useMemo(
     () => workout.data?.days.find((d) => d.id === session.data?.dayId),
     [workout.data, session.data],
@@ -113,6 +121,21 @@ export default function LiveSession(): React.JSX.Element {
     )
   }
   if (session.isPending) return <Spinner testID="session-loading" />
+
+  /**
+   * A planned session waits for its plan. Rendering on "no day found" alone showed the ad-hoc
+   * logger while the plan was still loading — "No plan behind this one" — and, if it failed to
+   * load, logged sets with no plan entry and never said why.
+   */
+  const planned = session.data.workoutId !== null && session.data.dayId !== null
+  if (planned && workout.error !== null) {
+    return (
+      <Screen testID="session-screen">
+        <ErrorNotice message={workout.error.message} />
+      </Screen>
+    )
+  }
+  if (planned && workout.isPending) return <Spinner testID="session-loading" />
 
   if (picking) {
     return <ExercisePicker onCancel={stopPicking} onPick={choose} />
@@ -151,14 +174,7 @@ export default function LiveSession(): React.JSX.Element {
         <AdHoc
           chosen={chosen}
           onAdd={startPicking}
-          onLog={(exercise, values) => {
-            record(
-              exercise.id,
-              null,
-              logs.filter((l) => l.exerciseId === exercise.id).length,
-              values,
-            )
-          }}
+          onLog={record.adHoc}
           logs={logs}
           busy={logSet.isPending}
         />
@@ -168,9 +184,7 @@ export default function LiveSession(): React.JSX.Element {
           logs={logs}
           suggestions={suggestions}
           busy={logSet.isPending}
-          onLog={(entry, done, values) => {
-            record(entry.exerciseId, entry.id, done, values)
-          }}
+          onLog={record.planned}
         />
       )}
 

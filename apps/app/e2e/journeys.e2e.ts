@@ -191,6 +191,41 @@ test(
 )
 
 test(
+  'undoing a set in the middle and logging again does not reuse its number',
+  async () => {
+    await withApp('undo-then-log', async (page) => {
+      await register(page, unique('undo'))
+      await openNewPlan(page)
+      await saveAndStart(page)
+
+      const log = async () => {
+        await page.fill('log-entry-0-weight', '60')
+        await page.click('[data-testid="log-entry-0-log"]')
+        await Bun.sleep(300)
+      }
+      await log()
+      await log()
+      await log()
+
+      // Undo "Set 2" — the second row — then log once more.
+      const rows = await page.evaluate(
+        `[...document.querySelectorAll('[data-testid^="logged-set-"]')].map((e) => e.dataset.testid)`,
+      )
+      const second = Array.isArray(rows) ? rows[1] : undefined
+      if (typeof second !== 'string') throw new Error('expected three logged rows')
+      await page.click(`[data-testid="${second}"]`)
+      await Bun.sleep(300)
+      await log()
+
+      // A count would have numbered the new set 3, beside the existing Set 3.
+      const sets = (await loggedLines(page)).filter((line) => line.startsWith('Set '))
+      expect(sets).toEqual(['Set 1', 'Set 3', 'Set 4'])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
   'the plan editor knows an exercise that is not in the first page of the library',
   async () => {
     await withApp('editor-beyond-first-page', async (page) => {

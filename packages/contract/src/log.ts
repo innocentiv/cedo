@@ -86,6 +86,14 @@ export const SessionLogInput = z.strictObject({
 })
 export type SessionLogInput = z.output<typeof SessionLogInput>
 
+/**
+ * The index the next set of a series should take: one past the highest logged, not a count of the
+ * logs. Counting reused an index after an undo — log sets 1-3, undo set 2, log again, and there
+ * were two "Set 3" and no "Set 2" — because a count does not know which one was removed.
+ */
+export const nextSetIndex = (logs: readonly { readonly setIndex: number }[]): number =>
+  logs.reduce((next, log) => Math.max(next, log.setIndex + 1), 0)
+
 export const SessionQuery = PaginationQuery.extend({
   workoutId: Id.optional(),
   since: Timestamp.optional(),
