@@ -93,7 +93,13 @@ async function identify(tx: Transaction, caller: Caller, workoutId: string) {
     .select({ id: workoutEntries.id, exerciseId: workoutEntries.exerciseId })
     .from(workoutEntries)
     .innerJoin(workoutDays, eq(workoutDays.id, workoutEntries.dayId))
-    .where(and(editable(workoutEntries, caller), eq(workoutDays.workoutId, workoutId)))
+    .where(
+      and(
+        editable(workoutEntries, caller),
+        editable(workoutDays, caller),
+        eq(workoutDays.workoutId, workoutId),
+      ),
+    )
 
   const dayIds = new Set(days.map((d) => d.id))
   const exerciseOf = new Map(entries.map((e) => [e.id, e.exerciseId]))
