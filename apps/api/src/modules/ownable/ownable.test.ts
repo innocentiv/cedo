@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import type { z } from 'zod'
 import { Exercise, GroupMembership, Workout, WorkoutSummary, page } from '@cedo/contract'
+import type { ExerciseRow, WorkoutRow } from '../../db/visible.ts'
+import type { exerciseLifecycle } from '../exercise/lifecycle.ts'
 import * as ExerciseService from '../exercise/service.ts'
 import * as WorkoutService from '../workout/service.ts'
+import type { workoutLifecycle } from '../workout/lifecycle.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
@@ -302,4 +305,22 @@ describe.each(KINDS)('$path', (kind) => {
       expect(refused.status).toBe(404)
     })
   })
+})
+
+/**
+ * Compile-time: a lifecycle hands back the kind's own row type. A favourites table typed by a plain
+ * `string` name collapses every selected field to `never` — which assigns to anything, so only an
+ * exact type equality catches it. Remove the `alias()` in `ownable/service.ts` and this stops
+ * compiling.
+ */
+/** Mutual assignability, boxed so `never` is not vacuously equal to everything. */
+type Equal<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+type RowOf<TLifecycle extends { get: (...args: never[]) => Promise<{ row: unknown }> }> = Awaited<
+  ReturnType<TLifecycle['get']>
+>['row']
+
+test("a lifecycle's rows are typed as its kind's", () => {
+  const exerciseRow: Equal<RowOf<typeof exerciseLifecycle>, ExerciseRow> = true
+  const workoutRow: Equal<RowOf<typeof workoutLifecycle>, WorkoutRow> = true
+  expect([exerciseRow, workoutRow]).toEqual([true, true])
 })

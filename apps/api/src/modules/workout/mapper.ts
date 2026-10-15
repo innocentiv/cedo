@@ -14,6 +14,7 @@ import {
 } from '../../db/visible.ts'
 import { hydrate as hydrateExercises } from '../exercise/mapper.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { ownableFieldsOf } from '../ownable/service.ts'
 
 /**
  * A plan is three levels deep — days, entries, sets — with a full exercise on every entry. Loading
@@ -171,12 +172,7 @@ export function toSummary(
     name: row.name,
     notes: row.notes,
     dayCount,
-    ownerGroupId: row.ownerGroupId,
-    createdBy: row.createdBy,
-    canEdit: caller.editorGroupIds.includes(row.ownerGroupId),
-    isFavourite,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
+    ...ownableFieldsOf(row, isFavourite, caller),
   }
 }
 

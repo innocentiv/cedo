@@ -2,18 +2,20 @@ import { and, eq, sql } from 'drizzle-orm'
 import type { WorkoutCreate, WorkoutPlanInput, WorkoutUpdate } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { assertEditorOf, editable } from '../../db/ownable.ts'
-import { workoutFavourites, workouts } from '../../db/schema.ts'
+import { workouts } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { assertExercisesCanTravel, assertWorkoutCanTravel } from './transfer.ts'
+import { assertExercisesCanTravel } from './transfer.ts'
 import { writePlan } from './write-plan.ts'
 
 /**
- * Every statement that changes a workout, and the guards that must run in the same transaction —
- * the plan diff itself is `write-plan.ts`. A write file may import the raw tables — a subquery
- * cannot be an UPDATE target — and in exchange every statement here on an owned table carries
- * `editable()`. The transfer rule it applies is a read, through the visible relations, in
- * `transfer.ts`. See docs/adr/0019-visible-relations.md.
+ * A workout's own writes — create, update, the plan save and the copy — and the guards that must
+ * run in the same transaction; the plan diff itself is `write-plan.ts`. Transfer, delete and
+ * favourites are the shared lifecycle (`lifecycle.ts`).
+ *
+ * A write file may import the raw tables — a subquery cannot be an UPDATE target — and in exchange
+ * every statement here on an owned table carries `editable()`. The travel rule it applies is a
+ * read, through the visible relations, in `transfer.ts`. See docs/adr/0019-visible-relations.md.
  */
 
 /** Returns the new workout's id. */
@@ -49,14 +51,6 @@ export async function updateWorkout(
     .where(and(editable(workouts, caller), eq(workouts.id, id)))
     .returning({ id: workouts.id })
   if (written.length === 0) throw notFound('workout')
-}
-
-export async function deleteWorkout(caller: Caller, id: string): Promise<void> {
-  const deleted = await db
-    .delete(workouts)
-    .where(and(editable(workouts, caller), eq(workouts.id, id)))
-    .returning({ id: workouts.id })
-  if (deleted.length === 0) throw notFound('workout')
 }
 
 /**
@@ -134,56 +128,4 @@ export async function insertCopy(
     if (plan.days.length > 0) await writePlan(tx, caller, created, plan)
     return created.id
   })
-}
-
-/** Its days, entries and sets follow by the cascading owner key. */
-export async function transferWorkout(
-  caller: Caller,
-  id: string,
-  toGroupId: string,
-): Promise<void> {
-  assertEditorOf(caller, toGroupId)
-
-  /**
-   * Establish that the caller may edit THIS workout before saying anything about its contents.
-   *
-   * `assertWorkoutCanTravel` throws a 409 naming the exercises that would be left behind,
-   * which is helpful to an owner and an oracle to anyone else: running it first let a stranger
-   * transfer-probe any id and learn both that the workout exists and what it prescribes, while
-   * `GET /workouts/:id` correctly answered 404. The write below carries `editable()` too — this is
-   * about WHICH error comes back, and 404 has to win.
-   */
-  const [own] = await db
-    .select({ id: workouts.id })
-    .from(workouts)
-    .where(and(editable(workouts, caller), eq(workouts.id, id)))
-    .limit(1)
-  if (own === undefined) throw notFound('workout')
-
-  await assertWorkoutCanTravel(caller, id, toGroupId)
-
-  const moved = await db
-    .update(workouts)
-    .set({ ownerGroupId: toGroupId, updatedAt: sql`now()` })
-    .where(and(editable(workouts, caller), eq(workouts.id, id)))
-    .returning({ id: workouts.id })
-  if (moved.length === 0) throw notFound('workout')
-}
-
-/** Pins or unpins. Whether the caller may see the workout is the service's check, made first. */
-export async function writeFavourite(
-  caller: Caller,
-  id: string,
-  favourite: boolean,
-): Promise<void> {
-  if (favourite) {
-    await db
-      .insert(workoutFavourites)
-      .values({ userId: caller.userId, targetId: id })
-      .onConflictDoNothing()
-    return
-  }
-  await db
-    .delete(workoutFavourites)
-    .where(and(eq(workoutFavourites.userId, caller.userId), eq(workoutFavourites.targetId, id)))
 }

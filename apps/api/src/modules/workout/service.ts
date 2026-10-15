@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray } from 'drizzle-orm'
+import { count, inArray } from 'drizzle-orm'
 import {
   type Page,
   type Workout,
@@ -11,21 +11,12 @@ import {
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { assertEditorOf } from '../../db/ownable.ts'
-import { visibleExercises, visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
+import { visibleExercises, visibleWorkoutDays } from '../../db/visible.ts'
 import { conflict, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydratePlan, toSummary } from './mapper.ts'
-import { encodeCursor } from '../../lib/keyset.ts'
-import { listConditions, withFavourite } from './query.ts'
-import {
-  deleteWorkout,
-  insertCopy,
-  insertWorkout,
-  savePlan,
-  transferWorkout,
-  updateWorkout,
-  writeFavourite,
-} from './write.ts'
+import { workoutLifecycle } from './lifecycle.ts'
+import { insertCopy, insertWorkout, savePlan, updateWorkout } from './write.ts'
 
 /** Day counts for many workouts in one grouped query, not one per workout. */
 async function dayCounts(caller: Caller, workoutIds: string[]): Promise<Map<string, number>> {
@@ -40,40 +31,23 @@ async function dayCounts(caller: Caller, workoutIds: string[]): Promise<Map<stri
 }
 
 export async function list(caller: Caller, query: WorkoutQuery): Promise<Page<WorkoutSummary>> {
-  const { visible, rows: select } = withFavourite(caller)
-  const rows = await select
-    .where(and(...listConditions(caller, query, visible)))
-    .orderBy(asc(visible.name), asc(visible.id))
-    .limit(query.limit + 1)
-
-  const hasMore = rows.length > query.limit
-  const items = rows.slice(0, query.limit)
-  const last = items.at(-1)?.workouts
+  const page = await workoutLifecycle.list(caller, query)
   const dayCount = await dayCounts(
     caller,
-    items.map((r) => r.workouts.id),
+    page.items.map((i) => i.row.id),
   )
-
   return {
-    items: items.map((r) =>
-      toSummary(
-        r.workouts,
-        dayCount.get(r.workouts.id) ?? 0,
-        r.workout_favourites !== null,
-        caller,
-      ),
+    items: page.items.map((i) =>
+      toSummary(i.row, dayCount.get(i.row.id) ?? 0, i.isFavourite, caller),
     ),
-    nextCursor: hasMore && last !== undefined ? encodeCursor(last.name, last.id) : null,
+    nextCursor: page.nextCursor,
   }
 }
 
 async function summaryOf(caller: Caller, id: string): Promise<WorkoutSummary> {
-  const { visible, rows: select } = withFavourite(caller)
-  const [row] = await select.where(eq(visible.id, id)).limit(1)
-  if (row === undefined) throw notFound('workout')
-
+  const { row, isFavourite } = await workoutLifecycle.get(caller, id)
   const days = await dayCounts(caller, [id])
-  return toSummary(row.workouts, days.get(id) ?? 0, row.workout_favourites !== null, caller)
+  return toSummary(row, days.get(id) ?? 0, isFavourite, caller)
 }
 
 export async function get(caller: Caller, id: string): Promise<Workout> {
@@ -99,7 +73,7 @@ export async function update(caller: Caller, id: string, patch: WorkoutUpdate): 
 }
 
 export async function remove(caller: Caller, id: string): Promise<void> {
-  await deleteWorkout(caller, id)
+  await workoutLifecycle.remove(caller, id)
 }
 
 export async function replacePlan(
@@ -155,19 +129,10 @@ export async function duplicate(caller: Caller, id: string, toGroupId?: string):
 }
 
 export async function transfer(caller: Caller, id: string, toGroupId: string): Promise<Workout> {
-  await transferWorkout(caller, id, toGroupId)
+  await workoutLifecycle.transfer(caller, id, toGroupId)
   return await get(caller, id)
 }
 
-/** Visibility, not editability — you may pin anything you can see. */
 export async function setFavourite(caller: Caller, id: string, favourite: boolean): Promise<void> {
-  const visible = visibleWorkouts(caller)
-  const [found] = await db
-    .select({ id: visible.id })
-    .from(visible)
-    .where(eq(visible.id, id))
-    .limit(1)
-  if (found === undefined) throw notFound('workout')
-
-  await writeFavourite(caller, id, favourite)
+  await workoutLifecycle.setFavourite(caller, id, favourite)
 }
