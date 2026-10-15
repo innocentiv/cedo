@@ -4,7 +4,7 @@ import { db } from '../../db/client.ts'
 import { visible } from '../../db/ownable.ts'
 import { setLogs, workoutDays, workoutSessions, workouts } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { decodeCursor, encodeCursor } from './cursor.ts'
+import { afterCursor, cursorMicros, decodeCursor, encodeCursor } from './cursor.ts'
 import { ownedBy, type SessionRow } from './service.ts'
 
 /**
@@ -25,20 +25,21 @@ async function page(caller: Caller, query: SessionQuery) {
    * Keyset on (started_at, id) descending, which is exactly workout_sessions_user_time_idx —
    * including the id column, so the index serves the ordering and the walk stops at the page size.
    *
-   * The id tiebreaker is load-bearing. A bare `started_at <` cursor built from an ISO string is
-   * truncated to milliseconds while the column holds microseconds, so page 2 silently skipped every
-   * session inside the truncated millisecond — and two sessions in the same millisecond (easy
-   * through MCP `session_log`) lost one permanently.
+   * The id tiebreaker orders sessions with an identical `started_at`; it does NOT rescue a cursor
+   * that has lost precision. A millisecond cursor sits below every session in its own millisecond,
+   * so they were all skipped regardless of id. The cursor is exact to the microsecond — see
+   * `cursor.ts`.
    */
   const after = decodeCursor(query.cursor)
-  if (after !== null) {
-    conditions.push(
-      sql`(${workoutSessions.startedAt}, ${workoutSessions.id}) < (${after.startedAt}, ${after.id})`,
-    )
-  }
+  if (after !== null) conditions.push(afterCursor(after))
 
   return await db
-    .select({ session: workoutSessions, workoutName: workouts.name, dayName: workoutDays.name })
+    .select({
+      session: workoutSessions,
+      workoutName: workouts.name,
+      dayName: workoutDays.name,
+      micros: cursorMicros,
+    })
     .from(workoutSessions)
     /**
      * `visible()` is in the JOIN condition, not the WHERE: the session is the caller's own and must
@@ -68,12 +69,16 @@ export async function list(
 
   const hasMore = rows.length > query.limit
   const items = rows.slice(0, query.limit)
+  const last = items.at(-1)
 
   const totalBySession = await totalsFor(items.map((r) => r.session.id))
 
   return {
     items: items.map((r) => toSummary(r, totalBySession.get(r.session.id))),
-    nextCursor: hasMore ? encodeCursor(items.at(-1)?.session) : null,
+    nextCursor:
+      hasMore && last !== undefined
+        ? encodeCursor({ micros: last.micros, id: last.session.id })
+        : null,
   }
 }
 

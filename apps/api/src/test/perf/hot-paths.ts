@@ -157,6 +157,24 @@ export const HOT_PATHS: readonly HotPath[] = [
     run: async (fixtures, size) => await listSessions(fixtures.large.caller, { limit: PAGE[size] }),
   },
   {
+    name: 'GET /sessions (next page)',
+    why: 'Scrolling history. The cursor must seek into the index, not re-sort everything before it.',
+    dimension: 'page size (5 vs 50)',
+    // Page one to obtain a real cursor, then the page under test: two queries each.
+    maxQueries: 4,
+    budgetMs: 60,
+    noSeqScan: ['workout_sessions', 'set_logs'],
+    indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
+    run: async (fixtures, size) => {
+      const caller = fixtures.large.caller
+      const first = await listSessions(caller, { limit: PAGE[size] })
+      return await listSessions(caller, {
+        limit: PAGE[size],
+        cursor: first.nextCursor ?? undefined,
+      })
+    },
+  },
+  {
     name: 'GET /sessions/:id',
     why: 'Read back during a live workout. Must not issue one query per logged set.',
     dimension: 'logged sets (9 vs 60)',

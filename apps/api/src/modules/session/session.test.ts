@@ -10,7 +10,10 @@ import {
   kgToG,
   page,
 } from '@cedo/contract'
+import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
+import { db } from '../../db/client.ts'
+import { workoutSessions } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
@@ -274,6 +277,53 @@ describe('the session list', () => {
 
     const listed = expectContract(Page, (await alice.wire('/sessions')).body)
     expect(listed.items.map((s) => s.id)).toEqual([second.id, first.id])
+  })
+
+  /**
+   * Walks every page with `limit=1`. The four start times share ONE millisecond and differ only in
+   * microseconds, which is what a burst of MCP `session_log` calls produces. A cursor that loses the
+   * microseconds skips sessions; one that hands Postgres a JS Date fails on page two outright.
+   */
+  test('pages through every session exactly once, even within one millisecond', async () => {
+    const ids: string[] = []
+    for (let i = 0; i < 4; i++) {
+      ids.push(expectContract(WorkoutSession, (await startSession(alice)).body).id)
+    }
+    const micros = ['.123456', '.123200', '.123999', '.123000']
+    for (const [i, id] of ids.entries()) {
+      await db
+        .update(workoutSessions)
+        .set({ startedAt: sql`${`2026-03-01 10:00:00${micros[i]}+00`}::timestamptz` })
+        .where(eq(workoutSessions.id, id))
+    }
+
+    const seen: string[] = []
+    let cursor: string | null = null
+    do {
+      const query: string = cursor === null ? '' : `&cursor=${encodeURIComponent(cursor)}`
+      const res = await alice.wire(`/sessions?limit=1${query}`)
+      expect(res.status).toBe(200)
+      const listed = expectContract(Page, res.body)
+      seen.push(...listed.items.map((s) => s.id))
+      cursor = listed.nextCursor
+    } while (cursor !== null && seen.length <= ids.length)
+
+    // Newest first: .123999, .123456, .123200, .123000.
+    expect(seen).toEqual([ids[2]!, ids[0]!, ids[1]!, ids[3]!])
+  })
+
+  test('a tampered cursor starts over instead of failing', async () => {
+    await startSession(alice)
+    for (const junk of [
+      Buffer.from(JSON.stringify(['not-a-number', 'not-a-uuid'])).toString('base64url'),
+      Buffer.from(JSON.stringify(['1', 'not-a-uuid'])).toString('base64url'),
+      Buffer.from(JSON.stringify([1.5, crypto.randomUUID()])).toString('base64url'),
+      'garbage',
+    ]) {
+      const res = await alice.wire(`/sessions?cursor=${junk}`)
+      expect(res.status).toBe(200)
+      expect(expectContract(Page, res.body).items).toHaveLength(1)
+    }
   })
 })
 
