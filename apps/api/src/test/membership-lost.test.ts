@@ -6,6 +6,8 @@ import {
   PersonalAccessTokenCreated,
   Workout,
   WorkoutSession,
+  WorkoutSessionSummary,
+  page,
 } from '@cedo/contract'
 import { createApp } from '../app.ts'
 import { expectContract } from './contract.ts'
@@ -135,6 +137,7 @@ async function buildWorld(): Promise<World> {
 // ---------------------------------------------------------------------------------------------
 
 const http = async (path: string): Promise<string> => JSON.stringify((await alice.wire(path)).body)
+const httpAllowed = async (path: string): Promise<boolean> => (await alice.wire(path)).status < 300
 
 const ToolCall = z.object({
   result: z
@@ -148,6 +151,7 @@ const ToolCall = z.object({
           }),
         )
         .optional(),
+      isError: z.boolean().optional(),
     })
     .optional(),
   error: z.object({ message: z.string() }).optional(),
@@ -172,14 +176,24 @@ async function rpc(pat: string, method: string, params: unknown) {
 
 const tool = async (w: World, name: string, args: Record<string, unknown> = {}) =>
   JSON.stringify(await rpc(w.alicesPat, 'tools/call', { name, arguments: args }))
+const toolAllowed = async (w: World, name: string, args: Record<string, unknown>) => {
+  const reply = await rpc(w.alicesPat, 'tools/call', { name, arguments: args })
+  return reply.result !== undefined && reply.result.isError !== true
+}
 
 /**
- * One read path, possibly several reads of it. `named` is whether it names Bob's things while
- * Alice is still a member — the control that keeps the "after" assertion from being vacuous.
+ * One read path, possibly several reads of it.
+ *
+ * - `named`: whether it names Bob's things while Alice is still a member — the control that keeps
+ *   the "names nothing after" assertion from being vacuous.
+ * - `allowed`: for a read of something that was only ever visible through the group, whether Alice
+ *   may make it at all. It must be allowed before and refused after: a route whose payload carries
+ *   ids rather than names would otherwise pass the sentinel check while still answering.
  */
 interface Case {
   readonly named: boolean
   readonly read: (w: World) => Promise<string>
+  readonly allowed?: (w: World) => Promise<boolean>
 }
 
 const all = async (reads: Promise<string>[]): Promise<string> =>
@@ -193,9 +207,10 @@ const ROUTES: Record<string, Case> = {
   'GET /tokens/': { named: false, read: async () => await http('/tokens') },
   'GET /groups/': { named: true, read: async () => await http('/groups') },
   'GET /groups/:id/members': {
-    // Bob's username, not his group's name — but the route must still close once she is out.
+    // Bob's username, not his group's name.
     named: false,
     read: async (w) => await http(`/groups/${w.crewId}/members`),
+    allowed: async (w) => await httpAllowed(`/groups/${w.crewId}/members`),
   },
   'GET /exercises/': {
     named: true,
@@ -211,11 +226,13 @@ const ROUTES: Record<string, Case> = {
   'GET /exercises/:id': {
     named: true,
     read: async (w) => await http(`/exercises/${w.bobsExerciseId}`),
+    allowed: async (w) => await httpAllowed(`/exercises/${w.bobsExerciseId}`),
   },
   'GET /exercises/:id/history': {
-    // Logs carry ids, not names; the route must still close.
+    // Logs carry ids, not names.
     named: false,
     read: async (w) => await http(`/exercises/${w.bobsExerciseId}/history`),
+    allowed: async (w) => await httpAllowed(`/exercises/${w.bobsExerciseId}/history`),
   },
   'GET /workouts/': {
     named: true,
@@ -231,6 +248,7 @@ const ROUTES: Record<string, Case> = {
     named: true,
     read: async (w) =>
       await all([http(`/workouts/${w.bobsWorkoutId}`), http(`/workouts/${w.alicesWorkoutId}`)]),
+    allowed: async (w) => await httpAllowed(`/workouts/${w.bobsWorkoutId}`),
   },
   'GET /workouts/:id/progression': {
     named: true,
@@ -239,9 +257,11 @@ const ROUTES: Record<string, Case> = {
         http(`/workouts/${w.bobsWorkoutId}/progression`),
         http(`/workouts/${w.alicesWorkoutId}/progression`),
       ]),
+    allowed: async (w) => await httpAllowed(`/workouts/${w.bobsWorkoutId}/progression`),
   },
   'GET /sessions/': { named: true, read: async () => await http('/sessions') },
   'GET /sessions/:id': {
+    // Her own session stays hers; it holds ids, not names.
     named: false,
     read: async (w) => await http(`/sessions/${w.alicesSessionId}`),
   },
@@ -272,15 +292,19 @@ const TOOLS: Record<string, Case> = {
   exercise_get: {
     named: true,
     read: async (w) => await tool(w, 'exercise_get', { exerciseId: w.bobsExerciseId }),
+    allowed: async (w) => await toolAllowed(w, 'exercise_get', { exerciseId: w.bobsExerciseId }),
   },
   exercise_history: {
-    // Dates and efforts, no name; the tool must still refuse once she is out.
+    // Dates and efforts, no name.
     named: false,
     read: async (w) => await tool(w, 'exercise_history', { exerciseId: w.bobsExerciseId }),
+    allowed: async (w) =>
+      await toolAllowed(w, 'exercise_history', { exerciseId: w.bobsExerciseId }),
   },
   library_audit: {
     named: true,
     read: async (w) => await tool(w, 'library_audit', { groupId: w.crewId }),
+    allowed: async (w) => await toolAllowed(w, 'library_audit', { groupId: w.crewId }),
   },
   training_review: {
     named: true,
@@ -294,6 +318,7 @@ const TOOLS: Record<string, Case> = {
         tool(w, 'workout_get', { workoutId: w.bobsWorkoutId }),
         tool(w, 'workout_get', { workoutId: w.alicesWorkoutId }),
       ]),
+    allowed: async (w) => await toolAllowed(w, 'workout_get', { workoutId: w.bobsWorkoutId }),
   },
   workout_get_editable: {
     named: true,
@@ -302,6 +327,8 @@ const TOOLS: Record<string, Case> = {
         tool(w, 'workout_get_editable', { workoutId: w.bobsWorkoutId }),
         tool(w, 'workout_get_editable', { workoutId: w.alicesWorkoutId }),
       ]),
+    allowed: async (w) =>
+      await toolAllowed(w, 'workout_get_editable', { workoutId: w.bobsWorkoutId }),
   },
   workout_progression: {
     named: true,
@@ -310,6 +337,8 @@ const TOOLS: Record<string, Case> = {
         tool(w, 'workout_progression', { workoutId: w.bobsWorkoutId }),
         tool(w, 'workout_progression', { workoutId: w.alicesWorkoutId }),
       ]),
+    allowed: async (w) =>
+      await toolAllowed(w, 'workout_progression', { workoutId: w.bobsWorkoutId }),
   },
   // Curator-only.
   platform_status: { named: false, read: async (w) => await tool(w, 'platform_status') },
@@ -331,6 +360,9 @@ test('every read-only MCP tool has a case, and every case is a read-only tool', 
   const listed = (await rpc(w.alicesPat, 'tools/list', {})).result?.tools ?? []
   const reads = listed.filter((t) => t.annotations?.readOnlyHint === true).map((t) => t.name)
 
+  // Coverage keys off the annotation, so a tool that omits it would drop out of this suite unseen.
+  const unannotated = listed.filter((t) => typeof t.annotations?.readOnlyHint !== 'boolean')
+  expect(unannotated.map((t) => t.name)).toEqual([])
   expect(reads.length).toBeGreaterThan(0)
   expect(reads.filter((r) => !(r in TOOLS))).toEqual([])
   expect(Object.keys(TOOLS).filter((t) => !reads.includes(t))).toEqual([])
@@ -349,6 +381,13 @@ test('losing a group takes back every name it showed, on every read path', async
     .map(([name]) => name)
   // Each of these must actually show Bob's things first, or "shows nothing after" proves nothing.
   expect(silentWhileMember).toEqual([])
+  const gated = cases.filter(([, c]) => c.allowed !== undefined)
+  const allowedBefore = await Promise.all(gated.map(async ([, c]) => await c.allowed?.(w)))
+  expect(gated.filter((_, i) => allowedBefore[i] !== true).map(([name]) => name)).toEqual([])
+  const sessionsBefore = expectContract(
+    page(WorkoutSessionSummary),
+    (await alice.wire('/sessions')).body,
+  )
 
   const removed = await bob.wire(`/groups/${w.crewId}/members/${alice.userId}`, {
     method: 'DELETE',
@@ -361,4 +400,19 @@ test('losing a group takes back every name it showed, on every read path', async
     return body.includes(SENTINEL) ? [`${name}: ${body.slice(0, 300)}`] : []
   })
   expect(leaks).toEqual([])
+
+  // Refused outright, not merely answered without names.
+  const allowedAfter = await Promise.all(gated.map(async ([, c]) => await c.allowed?.(w)))
+  expect(gated.filter((_, i) => allowedAfter[i] !== false).map(([name]) => name)).toEqual([])
+
+  // Her own sessions are hers forever: every one still listed, the lost names null — a LEFT join
+  // onto the relation, not an INNER one that would drop them. See docs/03-domain-model.md.
+  const sessionsAfter = expectContract(
+    page(WorkoutSessionSummary),
+    (await alice.wire('/sessions')).body,
+  )
+  expect(sessionsAfter.items.map((s) => s.id)).toEqual(sessionsBefore.items.map((s) => s.id))
+  expect(sessionsAfter.items.map((s) => [s.workoutName, s.dayName])).toEqual(
+    sessionsAfter.items.map(() => [null, null]),
+  )
 })
