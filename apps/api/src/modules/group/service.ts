@@ -1,4 +1,4 @@
-import { and, count, eq, inArray } from 'drizzle-orm'
+import { and, count, eq, inArray, or } from 'drizzle-orm'
 import type {
   Group,
   GroupAddMember,
@@ -94,9 +94,17 @@ export async function create(caller: Caller, input: GroupCreate): Promise<GroupM
   })
 }
 
-/** Membership is visible only to members — hence the `groupIds` check rather than a bare lookup. */
+/**
+ * Membership is visible only to members — hence the `groupIds` check rather than a bare lookup —
+ * and in full only to EDITORS. A reader sees who runs the group, and themselves.
+ *
+ * Every account is a reader of the starter library, so "any member sees every member" let any user
+ * list every account on the instance through it. The same rule is right for a coach's group: the
+ * athletes see the coach, not each other. Where everyone edits, everyone sees everyone.
+ */
 export async function members(caller: Caller, groupId: string): Promise<GroupMember[]> {
   if (!caller.groupIds.includes(groupId)) throw notFound('group')
+  const seesEveryone = caller.editorGroupIds.includes(groupId)
 
   // Columns projected explicitly. `select({ user: users })` would pull password_hash across the
   // wire on every membership listing, one careless spread away from a response body.
@@ -111,7 +119,14 @@ export async function members(caller: Caller, groupId: string): Promise<GroupMem
     })
     .from(groupMembers)
     .innerJoin(users, eq(users.id, groupMembers.userId))
-    .where(eq(groupMembers.groupId, groupId))
+    .where(
+      and(
+        eq(groupMembers.groupId, groupId),
+        seesEveryone
+          ? undefined
+          : or(eq(groupMembers.role, 'editor'), eq(groupMembers.userId, caller.userId)),
+      ),
+    )
 
   return rows.map((r) => ({
     user: {

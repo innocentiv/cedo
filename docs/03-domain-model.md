@@ -45,6 +45,11 @@ there is exactly one ACL code path rather than two.
 The seeded `cedo` group (`kind: 'shared'`) carries the starter library; every user joins it as a
 `reader`. A group member is an `editor` or a `reader`; only editors may write.
 
+**Who can see a group's members:** an editor sees all of them; a reader sees the editors and
+themselves. Because everyone reads the library, "any member sees every member" made `GET
+/groups/:id/members` a list of every account on the instance. `memberCount` is still shown to every
+member — it is a number, not an identity.
+
 ### The ACL invariant
 
 ```ts

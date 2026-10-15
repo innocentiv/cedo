@@ -111,6 +111,49 @@ describe('access control', () => {
     expect(expectContract(z.array(GroupMember), res.body)).toHaveLength(2)
   })
 
+  /**
+   * A reader sees who RUNS the group, and themselves — not the other readers. Every account is a
+   * reader of the starter library, so "any member sees every member" let any user list every
+   * account on the instance through it.
+   */
+  test('a reader sees the editors and themselves, never the other readers', async () => {
+    const squad = expectContract(GroupMembership, (await createGroup(alice, 'Squad')).body)
+    const carol = await h.as('carol')
+    for (const username of ['bob', 'carol']) {
+      await alice.wire(`/groups/${squad.id}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ username, role: 'reader' }),
+      })
+    }
+
+    const asBob = expectContract(
+      z.array(GroupMember),
+      (await bob.wire(`/groups/${squad.id}/members`)).body,
+    )
+    expect(asBob.map((m) => m.user.username).toSorted()).toEqual(['alice', 'bob'])
+
+    // An editor still sees everyone.
+    const asAlice = expectContract(
+      z.array(GroupMember),
+      (await alice.wire(`/groups/${squad.id}/members`)).body,
+    )
+    expect(asAlice).toHaveLength(3)
+    expect(carol.userId).toBeString()
+  })
+
+  test('nobody can list the accounts on the instance through the starter library', async () => {
+    const library = expectContract(z.array(GroupMembership), (await bob.wire('/groups')).body).find(
+      (g) => g.id === h.groupId,
+    )
+    expect(library?.role).toBe('reader')
+
+    const listed = expectContract(
+      z.array(GroupMember),
+      (await bob.wire(`/groups/${h.groupId}/members`)).body,
+    )
+    expect(listed.map((m) => m.user.username)).not.toContain('alice')
+  })
+
   test('a nonexistent group is indistinguishable from one you cannot see', async () => {
     const squad = expectContract(GroupMembership, (await createGroup(alice, 'Squad')).body)
     const hidden = await bob.wire(`/groups/${squad.id}/members`)
