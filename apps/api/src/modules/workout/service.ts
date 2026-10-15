@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, count, eq, inArray } from 'drizzle-orm'
 import {
   type Page,
   type Workout,
@@ -10,174 +10,118 @@ import {
   planInputFrom,
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { editable, visible } from '../../db/ownable.ts'
-import { exercises, workoutDays, workoutFavourites, workouts } from '../../db/schema.ts'
+import { workoutFavourites } from '../../db/schema.ts'
+import { visibleExercises, visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
 import { conflict, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydratePlan, toSummary } from './mapper.ts'
-import { writePlan } from './plan.ts'
 import { encodeCursor } from '../../lib/keyset.ts'
 import { listConditions } from './query.ts'
-import { assertExercisesCanTravel, assertWorkoutCanTravel } from './transfer.ts'
+import {
+  assertCanWriteTo,
+  deleteWorkout,
+  insertCopy,
+  insertWorkout,
+  savePlan,
+  transferWorkout,
+  updateWorkout,
+} from './write.ts'
 
-export async function list(caller: Caller, query: WorkoutQuery): Promise<Page<WorkoutSummary>> {
-  const rows = await db
-    .select({ workout: workouts, favourite: workoutFavourites.targetId })
-    .from(workouts)
+/** The caller's workouts with their own favourite flag, which every read returns. */
+function withFavourite(caller: Caller) {
+  const visible = visibleWorkouts(caller)
+  const rows = db
+    .select()
+    .from(visible)
     .leftJoin(
       workoutFavourites,
-      and(eq(workoutFavourites.targetId, workouts.id), eq(workoutFavourites.userId, caller.userId)),
+      and(eq(workoutFavourites.targetId, visible.id), eq(workoutFavourites.userId, caller.userId)),
     )
-    .where(and(...listConditions(caller, query)))
-    .orderBy(asc(workouts.name), asc(workouts.id))
+  return { visible, rows }
+}
+
+/** Day counts for many workouts in one grouped query, not one per workout. */
+async function dayCounts(caller: Caller, workoutIds: string[]): Promise<Map<string, number>> {
+  if (workoutIds.length === 0) return new Map()
+  const days = visibleWorkoutDays(caller)
+  const counts = await db
+    .select({ workoutId: days.workoutId, days: count() })
+    .from(days)
+    .where(inArray(days.workoutId, workoutIds))
+    .groupBy(days.workoutId)
+  return new Map(counts.map((c) => [c.workoutId, c.days]))
+}
+
+export async function list(caller: Caller, query: WorkoutQuery): Promise<Page<WorkoutSummary>> {
+  const { visible, rows: select } = withFavourite(caller)
+  const rows = await select
+    .where(and(...listConditions(caller, query, visible)))
+    .orderBy(asc(visible.name), asc(visible.id))
     .limit(query.limit + 1)
 
   const hasMore = rows.length > query.limit
   const items = rows.slice(0, query.limit)
-  const last = items.at(-1)
-
-  // Day counts for the whole page in one grouped query, not one per workout.
-  const counts =
-    items.length === 0
-      ? []
-      : await db
-          .select({ workoutId: workoutDays.workoutId, days: count() })
-          .from(workoutDays)
-          .where(
-            inArray(
-              workoutDays.workoutId,
-              items.map((r) => r.workout.id),
-            ),
-          )
-          .groupBy(workoutDays.workoutId)
-  const dayCount = new Map(counts.map((c) => [c.workoutId, c.days]))
+  const last = items.at(-1)?.workouts
+  const dayCount = await dayCounts(
+    caller,
+    items.map((r) => r.workouts.id),
+  )
 
   return {
     items: items.map((r) =>
-      toSummary(r.workout, dayCount.get(r.workout.id) ?? 0, r.favourite !== null, caller),
+      toSummary(
+        r.workouts,
+        dayCount.get(r.workouts.id) ?? 0,
+        r.workout_favourites !== null,
+        caller,
+      ),
     ),
-    nextCursor:
-      hasMore && last !== undefined ? encodeCursor(last.workout.name, last.workout.id) : null,
+    nextCursor: hasMore && last !== undefined ? encodeCursor(last.name, last.id) : null,
   }
 }
 
 async function summaryOf(caller: Caller, id: string): Promise<WorkoutSummary> {
-  const rows = await db
-    .select({ workout: workouts, favourite: workoutFavourites.targetId })
-    .from(workouts)
-    .leftJoin(
-      workoutFavourites,
-      and(eq(workoutFavourites.targetId, workouts.id), eq(workoutFavourites.userId, caller.userId)),
-    )
-    .where(and(visible(workouts, caller), eq(workouts.id, id)))
-    .limit(1)
-
-  const row = rows[0]
+  const { visible, rows: select } = withFavourite(caller)
+  const [row] = await select.where(eq(visible.id, id)).limit(1)
   if (row === undefined) throw notFound('workout')
 
-  const [days] = await db
-    .select({ days: count() })
-    .from(workoutDays)
-    .where(eq(workoutDays.workoutId, id))
-
-  return toSummary(row.workout, days?.days ?? 0, row.favourite !== null, caller)
+  const days = await dayCounts(caller, [id])
+  return toSummary(row.workouts, days.get(id) ?? 0, row.workout_favourites !== null, caller)
 }
 
 export async function get(caller: Caller, id: string): Promise<Workout> {
   const summary = await summaryOf(caller, id)
-  return { ...summary, days: await hydratePlan(id, caller) }
+  return { ...summary, days: await hydratePlan(caller, id) }
 }
+
+// ---------------------------------------------------------------------------------------------
+// Writes — the statements live in write.ts; each answers with the workout as now read back.
+// ---------------------------------------------------------------------------------------------
 
 export async function create(
   caller: Caller,
   input: WorkoutCreate,
   ownerGroupId = caller.personalGroupId,
 ): Promise<Workout> {
-  if (!caller.editorGroupIds.includes(ownerGroupId)) throw notFound('group')
-
-  const [created] = await db
-    .insert(workouts)
-    .values({ ownerGroupId, createdBy: caller.userId, name: input.name, notes: input.notes })
-    .returning({ id: workouts.id })
-  if (created === undefined) throw new Error('Could not create the workout')
-
-  return await get(caller, created.id)
+  return await get(caller, await insertWorkout(caller, input, ownerGroupId))
 }
 
 export async function update(caller: Caller, id: string, patch: WorkoutUpdate): Promise<Workout> {
-  const columns = {
-    ...(patch.name !== undefined && { name: patch.name }),
-    ...(patch.notes !== undefined && { notes: patch.notes }),
-  }
-
-  // `editable()` on the statement itself, not merely on a guard SELECT. See docs/02-conventions.md.
-  const written = await db
-    .update(workouts)
-    .set({ ...columns, updatedAt: sql`now()` })
-    .where(and(editable(workouts, caller), eq(workouts.id, id)))
-    .returning({ id: workouts.id })
-  if (written.length === 0) throw notFound('workout')
-
+  await updateWorkout(caller, id, patch)
   return await get(caller, id)
 }
 
 export async function remove(caller: Caller, id: string): Promise<void> {
-  const deleted = await db
-    .delete(workouts)
-    .where(and(editable(workouts, caller), eq(workouts.id, id)))
-    .returning({ id: workouts.id })
-  if (deleted.length === 0) throw notFound('workout')
+  await deleteWorkout(caller, id)
 }
 
-/**
- * Replaces the ENTIRE plan in one transaction.
- *
- * Granular CRUD over days, entries and sets would need reorder endpoints, index-collision handling
- * and partial-failure states. A transactional replace is one endpoint, one MCP tool, atomic
- * reordering — and it matches how the editor actually works. Indices come from array position, so
- * the client never sends one. See docs/06-api.md.
- */
 export async function replacePlan(
   caller: Caller,
   id: string,
   plan: WorkoutPlanInput,
 ): Promise<Workout> {
   await assertExercisesVisible(caller, plan)
-
-  await db.transaction(async (tx) => {
-    /**
-     * The permission check is INSIDE the transaction and takes a row lock.
-     *
-     * Checked outside it, this was a check-then-act on the endpoint that rewrites the most data: a
-     * co-editor transferring the workout away — or an admin removing the caller's membership —
-     * between the guard and the delete left the entire plan replaced by someone who no longer had
-     * rights to it. `for('update')` holds the row until this commits. See docs/02-conventions.md.
-     */
-    const [own] = await tx
-      .select({ ownerGroupId: workouts.ownerGroupId })
-      .from(workouts)
-      .where(and(editable(workouts, caller), eq(workouts.id, id)))
-      .limit(1)
-      .for('update')
-    if (own === undefined) throw notFound('workout')
-
-    // Saving is the third way an exercise reaches a group, after transfer and duplicate, and is
-    // held to their rule: in a shared group, a private exercise would be an "Unavailable exercise"
-    // row for every other member. Against the owner read under the lock, so a concurrent transfer
-    // cannot move the target between the check and the write.
-    await assertExercisesCanTravel(
-      caller,
-      plan.days.flatMap((d) => d.entries.map((e) => e.exerciseId)),
-      own.ownerGroupId,
-    )
-
-    await writePlan(tx, { id, ownerGroupId: own.ownerGroupId }, plan)
-    await tx
-      .update(workouts)
-      .set({ updatedAt: sql`now()` })
-      .where(eq(workouts.id, id))
-  })
-
+  await savePlan(caller, id, plan)
   return await get(caller, id)
 }
 
@@ -190,10 +134,8 @@ async function assertExercisesVisible(caller: Caller, plan: WorkoutPlanInput): P
   const ids = [...new Set(plan.days.flatMap((d) => d.entries.map((e) => e.exerciseId)))]
   if (ids.length === 0) return
 
-  const found = await db
-    .select({ id: exercises.id })
-    .from(exercises)
-    .where(and(visible(exercises, caller), inArray(exercises.id, ids)))
+  const visible = visibleExercises(caller)
+  const found = await db.select({ id: visible.id }).from(visible).where(inArray(visible.id, ids))
 
   const known = new Set(found.map((e) => e.id))
   const missing = ids.filter((exerciseId) => !known.has(exerciseId))
@@ -203,14 +145,12 @@ async function assertExercisesVisible(caller: Caller, plan: WorkoutPlanInput): P
 /**
  * Deep copy: the plan comes with it, since a workout without its days is not a workout.
  *
- * One transaction, and refused before it opens if the caller cannot see every exercise — a copy
- * may not reference what its owner cannot read. The first version created the workout, then failed
- * on its plan, and left an empty copy behind on every retry. The refusal counts the hidden
- * exercises and names none of them.
+ * Refused before anything is written if the caller cannot see every exercise — a copy may not
+ * reference what its owner cannot read. The refusal counts the hidden exercises and names none.
  */
 export async function duplicate(caller: Caller, id: string, toGroupId?: string): Promise<Workout> {
   const target = toGroupId ?? caller.personalGroupId
-  if (!caller.editorGroupIds.includes(target)) throw notFound('group')
+  assertCanWriteTo(caller, target)
 
   const source = await get(caller, id)
   const hidden = source.days.flatMap((d) => d.entries).filter((e) => e.exercise === null).length
@@ -221,69 +161,24 @@ export async function duplicate(caller: Caller, id: string, toGroupId?: string):
     )
   }
 
-  // `get` already resolved every exercise through `visible()` — the count above IS the visibility
-  // check. What remains is whether they may live in the TARGET group, by the transfer rule.
-  const plan = planInputFrom(source, { keepIds: false })
-  await assertExercisesCanTravel(
-    caller,
-    plan.days.flatMap((d) => d.entries.map((e) => e.exerciseId)),
-    target,
-  )
-  const copyId = await db.transaction(async (tx) => {
-    const [created] = await tx
-      .insert(workouts)
-      .values({
-        ownerGroupId: target,
-        createdBy: caller.userId,
-        name: source.name,
-        notes: source.notes,
-      })
-      .returning({ id: workouts.id, ownerGroupId: workouts.ownerGroupId })
-    if (created === undefined) throw new Error('Could not create the workout')
-    if (plan.days.length > 0) await writePlan(tx, created, plan)
-    return created.id
-  })
-
+  // `get` already resolved every exercise through the visible relation — the count above IS the
+  // visibility check. Whether they may live in the TARGET group is the transfer rule, in insertCopy.
+  const copyId = await insertCopy(caller, source, planInputFrom(source, { keepIds: false }), target)
   return await get(caller, copyId)
 }
 
 export async function transfer(caller: Caller, id: string, toGroupId: string): Promise<Workout> {
-  if (!caller.editorGroupIds.includes(toGroupId)) throw notFound('group')
-
-  /**
-   * Establish that the caller may edit THIS workout before saying anything about its contents.
-   *
-   * `assertWorkoutCanTravel` throws a 409 naming the exercises that would be left behind,
-   * which is helpful to an owner and an oracle to anyone else: running it first let a stranger
-   * transfer-probe any id and learn both that the workout exists and what it prescribes, while
-   * `GET /workouts/:id` correctly answered 404. The write below carries `editable()` too — this is
-   * about WHICH error comes back, and 404 has to win.
-   */
-  const [own] = await db
-    .select({ id: workouts.id })
-    .from(workouts)
-    .where(and(editable(workouts, caller), eq(workouts.id, id)))
-    .limit(1)
-  if (own === undefined) throw notFound('workout')
-
-  await assertWorkoutCanTravel(caller, id, toGroupId)
-
-  const moved = await db
-    .update(workouts)
-    .set({ ownerGroupId: toGroupId, updatedAt: sql`now()` })
-    .where(and(editable(workouts, caller), eq(workouts.id, id)))
-    .returning({ id: workouts.id })
-  if (moved.length === 0) throw notFound('workout')
-
+  await transferWorkout(caller, id, toGroupId)
   return await get(caller, id)
 }
 
 /** Visibility, not editability — you may pin anything you can see. */
 export async function setFavourite(caller: Caller, id: string, favourite: boolean): Promise<void> {
+  const visible = visibleWorkouts(caller)
   const [found] = await db
-    .select({ id: workouts.id })
-    .from(workouts)
-    .where(and(visible(workouts, caller), eq(workouts.id, id)))
+    .select({ id: visible.id })
+    .from(visible)
+    .where(eq(visible.id, id))
     .limit(1)
   if (found === undefined) throw notFound('workout')
 

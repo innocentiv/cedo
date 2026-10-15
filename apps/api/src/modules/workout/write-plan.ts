@@ -1,7 +1,10 @@
-import { and, eq, inArray, notInArray, sql, type SQL } from 'drizzle-orm'
+import { and, eq, inArray, notInArray, sql } from 'drizzle-orm'
 import { type Transaction } from '../../db/client.ts'
 import type { WorkoutPlanInput } from '@cedo/contract'
+import { editable } from '../../db/ownable.ts'
 import { workoutDays, workoutEntries, workoutSets } from '../../db/schema.ts'
+import type { Caller } from '../../plugins/auth.ts'
+import { valuesOf } from '../../lib/values.ts'
 
 type DayInput = WorkoutPlanInput['days'][number]
 type EntryInput = DayInput['entries'][number]
@@ -14,7 +17,9 @@ export interface PlanOwner {
 
 /**
  * Writes a whole plan over whatever the workout holds now, KEEPING every day and entry whose id is
- * sent back. Runs inside `replacePlan`'s transaction, after its row lock.
+ * sent back. Runs inside the caller's transaction, after its row lock on the workout — and every
+ * statement carries `editable()` besides, so the lock is not all that stands between a mistaken
+ * call and another group's plan. See docs/adr/0019-visible-relations.md.
  *
  * Identity is the point. `workout_sessions.day_id` and `set_logs.entry_id` are ON DELETE SET NULL,
  * so the first version — delete everything, insert everything — severed all logged history from
@@ -34,11 +39,12 @@ export interface PlanOwner {
  */
 export async function writePlan(
   tx: Transaction,
+  caller: Caller,
   workout: PlanOwner,
   plan: WorkoutPlanInput,
 ): Promise<void> {
   const workoutId = workout.id
-  const { keptDay, keptEntry, existingEntryIds } = await identify(tx, workoutId)
+  const { keptDay, keptEntry, existingEntryIds } = await identify(tx, caller, workoutId)
   const keptEntryIds = plan.days.flatMap((d) => d.entries.flatMap((e) => keptEntry(e) ?? []))
 
   // 1. Entries the plan no longer holds. Their logs keep the history and lose the link.
@@ -47,6 +53,7 @@ export async function writePlan(
       .delete(workoutEntries)
       .where(
         and(
+          editable(workoutEntries, caller),
           inArray(workoutEntries.id, existingEntryIds),
           keptEntryIds.length > 0 ? notInArray(workoutEntries.id, keptEntryIds) : undefined,
         ),
@@ -54,39 +61,45 @@ export async function writePlan(
   }
 
   // 2. Park everything kept at a negative index, clear of every final position.
-  await park(tx, workoutId, keptEntryIds)
+  await park(tx, caller, workoutId, keptEntryIds)
 
   // 3. Days: kept ones renamed and moved into place, new ones inserted.
-  const dayIds = await placeDays(tx, workout, plan, keptDay)
+  const dayIds = await placeDays(tx, caller, workout, plan, keptDay)
 
   // 4. Entries: kept ones moved into their day and position — possibly a different day — and new
   //    ones inserted.
-  const entryIds = await placeEntries(tx, workout, plan, dayIds, keptEntry)
+  const entryIds = await placeEntries(tx, caller, workout, plan, dayIds, keptEntry)
 
   // 5. Days the plan no longer holds. Only now: before step 4, a kept entry could still have been
   //    inside one, and the cascade would have taken it.
   await tx
     .delete(workoutDays)
-    .where(and(eq(workoutDays.workoutId, workoutId), notInArray(workoutDays.id, dayIds)))
+    .where(
+      and(
+        editable(workoutDays, caller),
+        eq(workoutDays.workoutId, workoutId),
+        notInArray(workoutDays.id, dayIds),
+      ),
+    )
 
   // 6. Sets carry no identity anything refers to, so they are simply rewritten.
-  await writeSets(tx, workout, plan, entryIds, keptEntryIds)
+  await writeSets(tx, caller, workout, plan, entryIds, keptEntryIds)
 }
 
 /**
  * What this workout holds now, as the two predicates that decide what a plan may keep: a day by
  * id, and an entry by id AND unchanged exercise.
  */
-async function identify(tx: Transaction, workoutId: string) {
+async function identify(tx: Transaction, caller: Caller, workoutId: string) {
   const days = await tx
     .select({ id: workoutDays.id })
     .from(workoutDays)
-    .where(eq(workoutDays.workoutId, workoutId))
+    .where(and(editable(workoutDays, caller), eq(workoutDays.workoutId, workoutId)))
   const entries = await tx
     .select({ id: workoutEntries.id, exerciseId: workoutEntries.exerciseId })
     .from(workoutEntries)
     .innerJoin(workoutDays, eq(workoutDays.id, workoutEntries.dayId))
-    .where(eq(workoutDays.workoutId, workoutId))
+    .where(and(editable(workoutEntries, caller), eq(workoutDays.workoutId, workoutId)))
 
   const dayIds = new Set(days.map((d) => d.id))
   const exerciseOf = new Map(entries.map((e) => [e.id, e.exerciseId]))
@@ -100,28 +113,36 @@ async function identify(tx: Transaction, workoutId: string) {
   }
 }
 
-async function park(tx: Transaction, workoutId: string, keptEntryIds: string[]): Promise<void> {
+async function park(
+  tx: Transaction,
+  caller: Caller,
+  workoutId: string,
+  keptEntryIds: string[],
+): Promise<void> {
   await tx
     .update(workoutDays)
     .set({ index: sql`-1 - ${workoutDays.index}` })
-    .where(eq(workoutDays.workoutId, workoutId))
+    .where(and(editable(workoutDays, caller), eq(workoutDays.workoutId, workoutId)))
   if (keptEntryIds.length > 0) {
     await tx
       .update(workoutEntries)
       .set({ index: sql`-1 - ${workoutEntries.index}` })
-      .where(inArray(workoutEntries.id, keptEntryIds))
+      .where(and(editable(workoutEntries, caller), inArray(workoutEntries.id, keptEntryIds)))
   }
 }
 
 async function writeSets(
   tx: Transaction,
+  caller: Caller,
   workout: PlanOwner,
   plan: WorkoutPlanInput,
   entryIds: readonly (readonly string[])[],
   keptEntryIds: string[],
 ): Promise<void> {
   if (keptEntryIds.length > 0) {
-    await tx.delete(workoutSets).where(inArray(workoutSets.entryId, keptEntryIds))
+    await tx
+      .delete(workoutSets)
+      .where(and(editable(workoutSets, caller), inArray(workoutSets.entryId, keptEntryIds)))
   }
   const values = plan.days.flatMap((day, d) =>
     day.entries.flatMap((entry, e) =>
@@ -134,6 +155,7 @@ async function writeSets(
 /** Returns each day's id by position. */
 async function placeDays(
   tx: Transaction,
+  caller: Caller,
   workout: PlanOwner,
   plan: WorkoutPlanInput,
   keptDay: (day: DayInput) => string | undefined,
@@ -149,11 +171,13 @@ async function placeDays(
     kept.length === 0
       ? []
       : await tx.execute<{ id: string; index: number }>(sql`
-          update workout_days as d
+          update workout_days
              set index = v.index::smallint, name = v.name
             from (values ${valuesOf(kept.map((k) => [k.id, k.index, k.name]))}) as v(id, index, name)
-           where d.id = v.id::uuid and d.workout_id = ${workoutId}
-       returning d.id, d.index`)
+           where workout_days.id = v.id::uuid
+             and workout_days.workout_id = ${workoutId}
+             and ${editable(workoutDays, caller)}
+       returning workout_days.id, workout_days.index`)
   for (const row of moved) ids[row.index] = row.id
 
   const fresh = plan.days.flatMap((day, index) =>
@@ -175,13 +199,14 @@ async function placeDays(
 /** Returns each entry's id by `[day][position]`. */
 async function placeEntries(
   tx: Transaction,
+  caller: Caller,
   workout: PlanOwner,
   plan: WorkoutPlanInput,
   dayIds: readonly string[],
   keptEntry: (entry: EntryInput) => string | undefined,
 ): Promise<string[][]> {
   const ids = plan.days.map((day) => day.entries.map((entry) => keptEntry(entry)))
-  await moveKeptEntries(tx, plan, dayIds, keptEntry)
+  await moveKeptEntries(tx, caller, plan, dayIds, keptEntry)
 
   const fresh = plan.days.flatMap((day, d) =>
     day.entries.flatMap((entry, index) =>
@@ -218,6 +243,7 @@ async function placeEntries(
 /** Every kept entry, into its final day and position in ONE statement. */
 async function moveKeptEntries(
   tx: Transaction,
+  caller: Caller,
   plan: WorkoutPlanInput,
   dayIds: readonly string[],
   keptEntry: (entry: EntryInput) => string | undefined,
@@ -240,32 +266,16 @@ async function moveKeptEntries(
   )
   if (kept.length > 0) {
     await tx.execute(sql`
-      update workout_entries as e
+      update workout_entries
          set day_id = v.day_id::uuid,
              index = v.index::smallint,
              superset_group = v.superset_group::char(1),
              rest_seconds = v.rest_seconds::integer,
              progression = v.progression::jsonb
         from (values ${valuesOf(kept)}) as v(id, day_id, index, superset_group, rest_seconds, progression)
-       where e.id = v.id::uuid`)
+       where workout_entries.id = v.id::uuid
+         and ${editable(workoutEntries, caller)}`)
   }
-}
-
-/**
- * `(…), (…)` for a VALUES list. Every cell is a bound parameter — Postgres types them as text, so
- * each column is cast where it is used.
- */
-function valuesOf(rows: readonly (readonly (string | number | null)[])[]): SQL {
-  return sql.join(
-    rows.map(
-      (row) =>
-        sql`(${sql.join(
-          row.map((cell) => sql`${cell === null ? null : String(cell)}`),
-          sql`, `,
-        )})`,
-    ),
-    sql`, `,
-  )
 }
 
 /** Flattens one entry's prescribed sets. `index` is array position, as at every other level. */

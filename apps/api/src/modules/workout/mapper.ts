@@ -2,19 +2,18 @@ import { and, asc, eq, inArray } from 'drizzle-orm'
 import type { Workout, WorkoutDay, WorkoutSummary } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupBy } from '../../lib/keyset.ts'
+import { exerciseFavourites } from '../../db/schema.ts'
 import {
-  exerciseFavourites,
-  exercises,
-  workoutDays,
-  workoutEntries,
-  workoutSets,
-} from '../../db/schema.ts'
-import type { workouts } from '../../db/schema.ts'
-import { visible } from '../../db/ownable.ts'
+  type WorkoutEntryRow,
+  type WorkoutRow,
+  type WorkoutSetRow,
+  visibleExercises,
+  visibleWorkoutDays,
+  visibleWorkoutEntries,
+  visibleWorkoutSets,
+} from '../../db/visible.ts'
 import { hydrate as hydrateExercises } from '../exercise/mapper.ts'
 import type { Caller } from '../../plugins/auth.ts'
-
-export type WorkoutRow = typeof workouts.$inferSelect
 
 /**
  * A plan is three levels deep — days, entries, sets — with a full exercise on every entry. Loading
@@ -28,9 +27,12 @@ export type WorkoutRow = typeof workouts.$inferSelect
  *
  * Seven queries for a workout with one day or with fourteen. `n1.test.ts` asserts exactly that.
  * See docs/adr/0018-n1-detection.md.
+ *
+ * Every level reads through its visible relation, so this needs no prior check on the workout to be
+ * safe: a plan the caller cannot read has no days to return.
  */
-export async function hydratePlan(workoutId: string, caller: Caller): Promise<WorkoutDay[]> {
-  const loaded = await loadPlan(workoutId, caller)
+export async function hydratePlan(caller: Caller, workoutId: string): Promise<WorkoutDay[]> {
+  const loaded = await loadPlan(caller, workoutId)
   if (loaded === null) return []
   const { days, entries, sets, exerciseById } = loaded
 
@@ -48,38 +50,41 @@ export async function hydratePlan(workoutId: string, caller: Caller): Promise<Wo
 }
 
 /** The four reads. Separated so the assembly above stays readable. */
-async function loadPlan(workoutId: string, caller: Caller) {
+async function loadPlan(caller: Caller, workoutId: string) {
+  const visibleDays = visibleWorkoutDays(caller)
   const days = await db
     .select()
-    .from(workoutDays)
-    .where(eq(workoutDays.workoutId, workoutId))
-    .orderBy(asc(workoutDays.index))
+    .from(visibleDays)
+    .where(eq(visibleDays.workoutId, workoutId))
+    .orderBy(asc(visibleDays.index))
   if (days.length === 0) return null
 
+  const visibleEntries = visibleWorkoutEntries(caller)
   const entries = await db
     .select()
-    .from(workoutEntries)
+    .from(visibleEntries)
     .where(
       inArray(
-        workoutEntries.dayId,
+        visibleEntries.dayId,
         days.map((d) => d.id),
       ),
     )
-    .orderBy(asc(workoutEntries.index))
+    .orderBy(asc(visibleEntries.index))
 
+  const visibleSets = visibleWorkoutSets(caller)
   const sets =
     entries.length === 0
       ? []
       : await db
           .select()
-          .from(workoutSets)
+          .from(visibleSets)
           .where(
             inArray(
-              workoutSets.entryId,
+              visibleSets.entryId,
               entries.map((e) => e.id),
             ),
           )
-          .orderBy(asc(workoutSets.index))
+          .orderBy(asc(visibleSets.index))
 
   /**
    * Exercises are fetched once for the DISTINCT ids, then shared between entries. The same
@@ -91,8 +96,8 @@ async function loadPlan(workoutId: string, caller: Caller) {
   return { days, entries, sets, exerciseById }
 }
 
-type EntryRow = typeof workoutEntries.$inferSelect
-type SetRow = typeof workoutSets.$inferSelect
+type EntryRow = WorkoutEntryRow
+type SetRow = WorkoutSetRow
 type ExerciseById = Map<string, Awaited<ReturnType<typeof hydrateExercises>>[number]>
 
 /**
@@ -131,14 +136,12 @@ async function hydrateExerciseRows(ids: string[], caller: Caller) {
     return new Map<string, Awaited<ReturnType<typeof hydrateExercises>>[number]>()
 
   /**
-   * `visible()` is NOT optional here. Without it a workout shared with a group hands every member
-   * the full record — name, description, instructions, media — of exercises they cannot otherwise
-   * see, which is invariant 5 in CLAUDE.md. Anything filtered out is redacted by the caller.
+   * Through the visible relation, never by id alone. A workout shared with a group would otherwise
+   * hand every member the full record — name, description, instructions, media — of exercises
+   * they cannot see, which is invariant 5 in CLAUDE.md. Anything absent is redacted by the caller.
    */
-  const rows = await db
-    .select()
-    .from(exercises)
-    .where(and(visible(exercises, caller), inArray(exercises.id, ids)))
+  const visible = visibleExercises(caller)
+  const rows = await db.select().from(visible).where(inArray(visible.id, ids))
 
   // Fetched rather than assumed: passing an empty set would report `isFavourite: false` for an
   // exercise the caller has actually pinned.

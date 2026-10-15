@@ -1,8 +1,8 @@
 import { and, eq, inArray } from 'drizzle-orm'
 import { DEFAULT_GROUP_SLUG } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { visible } from '../../db/ownable.ts'
-import { exercises, groups, workoutDays, workoutEntries } from '../../db/schema.ts'
+import { groups } from '../../db/schema.ts'
+import { visibleExercises, visibleWorkoutDays, visibleWorkoutEntries } from '../../db/visible.ts'
 import { conflict } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
@@ -29,14 +29,12 @@ export async function assertExercisesCanTravel(
   if (toGroupId === caller.personalGroupId || exerciseIds.length === 0) return
 
   const ids = [...new Set(exerciseIds)]
+  const visible = visibleExercises(caller)
   const seen = await db
-    .select({ name: exercises.name, ownerGroupId: exercises.ownerGroupId, library: groups.id })
-    .from(exercises)
-    .leftJoin(
-      groups,
-      and(eq(groups.id, exercises.ownerGroupId), eq(groups.slug, DEFAULT_GROUP_SLUG)),
-    )
-    .where(and(inArray(exercises.id, ids), visible(exercises, caller)))
+    .select({ name: visible.name, ownerGroupId: visible.ownerGroupId, library: groups.id })
+    .from(visible)
+    .leftJoin(groups, and(eq(groups.id, visible.ownerGroupId), eq(groups.slug, DEFAULT_GROUP_SLUG)))
+    .where(inArray(visible.id, ids))
 
   /**
    * Only what the caller can see is named. One hidden from them is counted, never named — and it
@@ -68,11 +66,13 @@ export async function assertWorkoutCanTravel(
   workoutId: string,
   toGroupId: string,
 ): Promise<void> {
+  const entries = visibleWorkoutEntries(caller)
+  const days = visibleWorkoutDays(caller)
   const referenced = await db
-    .selectDistinct({ id: workoutEntries.exerciseId })
-    .from(workoutEntries)
-    .innerJoin(workoutDays, eq(workoutDays.id, workoutEntries.dayId))
-    .where(eq(workoutDays.workoutId, workoutId))
+    .selectDistinct({ id: entries.exerciseId })
+    .from(entries)
+    .innerJoin(days, eq(days.id, entries.dayId))
+    .where(eq(days.workoutId, workoutId))
   await assertExercisesCanTravel(
     caller,
     referenced.map((r) => r.id),

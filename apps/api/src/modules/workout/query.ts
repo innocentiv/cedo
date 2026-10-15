@@ -1,49 +1,49 @@
-import { and, eq, gt, ilike, or, sql } from 'drizzle-orm'
+import { type SQL, and, eq, gt, ilike, or, sql } from 'drizzle-orm'
 import type { WorkoutQuery } from '@cedo/contract'
-import { visible } from '../../db/ownable.ts'
-import { workoutFavourites, workouts } from '../../db/schema.ts'
+import { workoutFavourites } from '../../db/schema.ts'
+import type { visibleWorkouts } from '../../db/visible.ts'
 import { invalid, unreachable } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
 import { decodeCursor, escapeLikePattern } from '../../lib/keyset.ts'
 
-function scopeFilter(query: WorkoutQuery, caller: Caller) {
+type Visible = ReturnType<typeof visibleWorkouts<'workouts'>>
+
+/** Narrows the visible relation; visibility itself is the relation, never a condition here. */
+function scopeFilter(query: WorkoutQuery, caller: Caller, visible: Visible): (SQL | undefined)[] {
   switch (query.scope) {
     case 'mine':
-      return eq(workouts.ownerGroupId, caller.personalGroupId)
+      return [eq(visible.ownerGroupId, caller.personalGroupId)]
     case 'group':
       // Thrown rather than defaulted: an empty string fed to a uuid column is a database error.
+      // A group the caller cannot reach yields an empty page, not a hint that it exists.
       if (query.groupId === undefined) throw invalid("groupId is required when scope is 'group'")
-      // Intersected with `visible` so an unreachable group yields an empty page, not a hint.
-      return and(visible(workouts, caller), eq(workouts.ownerGroupId, query.groupId))
+      return [eq(visible.ownerGroupId, query.groupId)]
     case 'favourites':
     case 'all':
-      return visible(workouts, caller)
+      return []
     default:
       return unreachable(query.scope)
   }
 }
 
-export function listConditions(caller: Caller, query: WorkoutQuery) {
+export function listConditions(caller: Caller, query: WorkoutQuery, visible: Visible) {
   const after = decodeCursor(query.cursor)
-  const conditions = [scopeFilter(query, caller)]
+  const conditions = scopeFilter(query, caller, visible)
 
   if (query.q !== undefined && query.q !== '') {
-    conditions.push(ilike(workouts.name, `%${escapeLikePattern(query.q)}%`))
+    conditions.push(ilike(visible.name, `%${escapeLikePattern(query.q)}%`))
   }
 
   if (after !== null) {
     conditions.push(
-      or(
-        gt(workouts.name, after.name),
-        and(eq(workouts.name, after.name), gt(workouts.id, after.id)),
-      ),
+      or(gt(visible.name, after.name), and(eq(visible.name, after.name), gt(visible.id, after.id))),
     )
   }
 
   if (query.scope === 'favourites') {
     conditions.push(
-      sql`exists (select 1 from ${workoutFavourites} where ${workoutFavourites.targetId} = ${workouts.id} and ${workoutFavourites.userId} = ${caller.userId})`,
+      sql`exists (select 1 from ${workoutFavourites} where ${workoutFavourites.targetId} = ${visible.id} and ${workoutFavourites.userId} = ${caller.userId})`,
     )
   }
 
