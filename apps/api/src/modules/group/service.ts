@@ -52,7 +52,7 @@ export async function list(caller: Caller): Promise<GroupMembership[]> {
     .where(eq(groupMembers.userId, caller.userId))
 
   const counts = await db
-    .select({ groupId: groupMembers.groupId, members: count() })
+    .select({ groupId: groupMembers.groupId, role: groupMembers.role, members: count() })
     .from(groupMembers)
     .where(
       inArray(
@@ -60,8 +60,19 @@ export async function list(caller: Caller): Promise<GroupMembership[]> {
         rows.map((r) => r.group.id),
       ),
     )
-    .groupBy(groupMembers.groupId)
-  const memberCount = new Map(counts.map((c) => [c.groupId, c.members]))
+    .groupBy(groupMembers.groupId, groupMembers.role)
+  const countOf = (groupId: string, role: 'editor' | 'reader') =>
+    counts.find((c) => c.groupId === groupId && c.role === role)?.members ?? 0
+
+  /**
+   * The count a member may see matches the list they may see (`members` below): everyone for an
+   * editor; the editors and themselves for a reader. The full count on the starter library, which
+   * every account reads, was the number of accounts on the instance.
+   */
+  const memberCount = (groupId: string, role: 'editor' | 'reader') =>
+    role === 'editor'
+      ? countOf(groupId, 'editor') + countOf(groupId, 'reader')
+      : countOf(groupId, 'editor') + 1
 
   return rows.map((r) => {
     const group = toGroup(r.group)
@@ -73,7 +84,7 @@ export async function list(caller: Caller): Promise<GroupMembership[]> {
       kind: group.kind,
       createdAt: group.createdAt,
       role: r.role,
-      memberCount: memberCount.get(r.group.id) ?? 0,
+      memberCount: memberCount(r.group.id, r.role),
     }
   })
 }

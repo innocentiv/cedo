@@ -1,35 +1,48 @@
-import { and, eq, exists, ne, notExists, sql } from 'drizzle-orm'
-import { alias } from 'drizzle-orm/pg-core'
+import { and, eq, inArray, ne, notInArray } from 'drizzle-orm'
+import { DEFAULT_GROUP_SLUG } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { visible } from '../../db/ownable.ts'
-import { exercises, groupMembers, workoutDays, workoutEntries } from '../../db/schema.ts'
+import { exercises, groups, workoutDays, workoutEntries } from '../../db/schema.ts'
 import { conflict } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
 /**
- * Moving a workout into a group requires every exercise it references to be visible THERE.
+ * A plan placed in a group — moved there, or copied there — may only use exercises every member
+ * of that group can read, NOW AND LATER.
  *
- * Otherwise sharing a plan silently shares the private exercises it uses — the group's members can
- * read a workout, and reading a workout means reading its exercises. Refusing at transfer time
- * keeps the exercise ACL honest and gives the sharer something actionable: share or duplicate the
- * exercise into the group first. The read path redacts as a second line of defence, because
- * visibility can also change after the fact. See docs/03-domain-model.md.
+ * Otherwise sharing a plan silently shares the private exercises it uses, or hands members a plan
+ * of "Unavailable exercise" rows. Refusing gives the sharer something actionable: share or
+ * duplicate the exercise into the group first. The read path redacts as a second line of defence,
+ * because visibility can still change after the fact. See docs/03-domain-model.md.
+ *
+ * The rule, and why it is not "every current member can read it": membership changes. Judged on
+ * the members at the moment of transfer, a group holding only its creator accepted anything, and
+ * everyone added afterwards got the unavailable rows. So an exercise may travel when it is owned by
+ * the target group itself, or by the starter library, which every account joins at registration.
+ * Into the caller's PERSONAL group, which nobody else will ever join, seeing it is enough.
  */
-export async function assertExercisesVisibleToGroup(
+export async function assertExercisesCanTravel(
   caller: Caller,
-  workoutId: string,
+  exerciseIds: readonly string[],
   toGroupId: string,
 ): Promise<void> {
+  if (toGroupId === caller.personalGroupId || exerciseIds.length === 0) return
+
+  const library = db
+    .select({ id: groups.id })
+    .from(groups)
+    .where(eq(groups.slug, DEFAULT_GROUP_SLUG))
   const unreachable = await db
-    .selectDistinct({ id: exercises.id, name: exercises.name })
-    .from(workoutEntries)
-    .innerJoin(workoutDays, eq(workoutDays.id, workoutEntries.dayId))
-    .innerJoin(exercises, eq(exercises.id, workoutEntries.exerciseId))
+    .select({ name: exercises.name })
+    .from(exercises)
     .where(
       and(
-        eq(workoutDays.workoutId, workoutId),
+        inArray(exercises.id, [...new Set(exerciseIds)]),
+        // Only what the caller can see is named. An exercise hidden from them is the caller's
+        // problem to report without naming — see `duplicate`.
         visible(exercises, caller),
-        hiddenFromSomeMemberOf(toGroupId),
+        ne(exercises.ownerGroupId, toGroupId),
+        notInArray(exercises.ownerGroupId, library),
       ),
     )
 
@@ -41,37 +54,20 @@ export async function assertExercisesVisibleToGroup(
   }
 }
 
-/**
- * True for an exercise some member of `groupId` cannot read. It may travel with a plan only when
- * EVERY member already reads it: it is in that group, or in a group all of them belong to — the
- * starter library, which everyone reads, being the everyday case. Requiring the target group to OWN
- * each exercise refused every plan built from the library.
- *
- * "Some member lacks a membership in the exercise's group", correlated on the outer `exercises`
- * row, so the check stays one query however many exercises the plan uses.
- */
-function hiddenFromSomeMemberOf(groupId: string) {
-  const target = alias(groupMembers, 'target')
-  const owner = alias(groupMembers, 'owner')
-  return and(
-    ne(exercises.ownerGroupId, groupId),
-    exists(
-      db
-        .select({ one: sql`1` })
-        .from(target)
-        .where(
-          and(
-            eq(target.groupId, groupId),
-            notExists(
-              db
-                .select({ one: sql`1` })
-                .from(owner)
-                .where(
-                  and(eq(owner.groupId, exercises.ownerGroupId), eq(owner.userId, target.userId)),
-                ),
-            ),
-          ),
-        ),
-    ),
+/** The transfer form: the exercises are whatever the stored plan references. */
+export async function assertWorkoutCanTravel(
+  caller: Caller,
+  workoutId: string,
+  toGroupId: string,
+): Promise<void> {
+  const referenced = await db
+    .selectDistinct({ id: workoutEntries.exerciseId })
+    .from(workoutEntries)
+    .innerJoin(workoutDays, eq(workoutDays.id, workoutEntries.dayId))
+    .where(eq(workoutDays.workoutId, workoutId))
+  await assertExercisesCanTravel(
+    caller,
+    referenced.map((r) => r.id),
+    toGroupId,
   )
 }

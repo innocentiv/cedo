@@ -51,9 +51,10 @@ export const exercises = pgTable(
 ```
 
 Each index here exists for a query the perf suite measured — see `docs/03-domain-model.md` for why
-there is deliberately no bare `owner_group_id` index. A `.desc()` column must be
-`.desc().nullsFirst()`, because Drizzle's `.desc()` builds `DESC NULLS LAST` while `ORDER BY … DESC`
-means `NULLS FIRST`, and the planner then sorts instead of walking the index.
+there is deliberately no bare `owner_group_id` index. A `.desc()` column that a query ORDERS BY must
+be `.desc().nullsFirst()`, because Drizzle's `.desc()` builds `DESC NULLS LAST` while `ORDER BY …
+DESC` means `NULLS FIRST`, and the planner then sorts instead of walking the index. Do not rebuild one
+nothing orders by: on a large table the rebuild blocks writes during the upgrade, for no gain.
 
 Rules:
 

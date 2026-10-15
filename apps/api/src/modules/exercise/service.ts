@@ -9,7 +9,7 @@ import {
   exercises,
   media,
 } from '../../db/schema.ts'
-import { conflict, isStillReferenced, notFound } from '../../lib/error.ts'
+import { conflict, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydrate } from './mapper.ts'
 import { encodeCursor } from '../../lib/keyset.ts'
@@ -200,7 +200,7 @@ export async function remove(caller: Caller, id: string): Promise<void> {
     .where(and(editable(exercises, caller), eq(exercises.id, id)))
     .returning({ id: exercises.id })
     .catch((error: unknown) => {
-      if (isStillReferenced(error)) {
+      if (isForeignKeyRefusal(error)) {
         throw conflict(
           'That exercise is used by a plan or by logged history, so it cannot be deleted. ' +
             'Remove it from the plans that use it; logged history keeps it for good.',

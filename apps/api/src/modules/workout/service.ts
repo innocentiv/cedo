@@ -18,7 +18,7 @@ import { hydratePlan, toSummary } from './mapper.ts'
 import { writePlan } from './plan.ts'
 import { encodeCursor } from '../../lib/keyset.ts'
 import { listConditions } from './query.ts'
-import { assertExercisesVisibleToGroup } from './transfer.ts'
+import { assertExercisesCanTravel, assertWorkoutCanTravel } from './transfer.ts'
 
 export async function list(caller: Caller, query: WorkoutQuery): Promise<Page<WorkoutSummary>> {
   const rows = await db
@@ -211,8 +211,14 @@ export async function duplicate(caller: Caller, id: string, toGroupId?: string):
     )
   }
 
+  // `get` already resolved every exercise through `visible()` — the count above IS the visibility
+  // check. What remains is whether they may live in the TARGET group, by the transfer rule.
   const plan = planInputFrom(source, { keepIds: false })
-  await assertExercisesVisible(caller, plan)
+  await assertExercisesCanTravel(
+    caller,
+    plan.days.flatMap((d) => d.entries.map((e) => e.exerciseId)),
+    target,
+  )
   const copyId = await db.transaction(async (tx) => {
     const [created] = await tx
       .insert(workouts)
@@ -237,7 +243,7 @@ export async function transfer(caller: Caller, id: string, toGroupId: string): P
   /**
    * Establish that the caller may edit THIS workout before saying anything about its contents.
    *
-   * `assertExercisesVisibleToGroup` throws a 409 naming the exercises that would be left behind,
+   * `assertWorkoutCanTravel` throws a 409 naming the exercises that would be left behind,
    * which is helpful to an owner and an oracle to anyone else: running it first let a stranger
    * transfer-probe any id and learn both that the workout exists and what it prescribes, while
    * `GET /workouts/:id` correctly answered 404. The write below carries `editable()` too — this is
@@ -250,7 +256,7 @@ export async function transfer(caller: Caller, id: string, toGroupId: string): P
     .limit(1)
   if (own === undefined) throw notFound('workout')
 
-  await assertExercisesVisibleToGroup(caller, id, toGroupId)
+  await assertWorkoutCanTravel(caller, id, toGroupId)
 
   const moved = await db
     .update(workouts)

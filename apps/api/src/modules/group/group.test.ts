@@ -152,6 +152,9 @@ describe('access control', () => {
       (await bob.wire(`/groups/${h.groupId}/members`)).body,
     )
     expect(listed.map((m) => m.user.username)).not.toContain('alice')
+
+    // Nor how many there are: the count matches the list the reader may see.
+    expect(library?.memberCount).toBe(listed.length)
   })
 
   test('a nonexistent group is indistinguishable from one you cannot see', async () => {

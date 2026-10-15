@@ -17,7 +17,7 @@ import {
   workoutSessions,
   workouts,
 } from '../../db/schema.ts'
-import { conflict, invalid, notFound } from '../../lib/error.ts'
+import { conflict, invalid, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
 /**
@@ -116,7 +116,10 @@ export async function logWhole(caller: Caller, input: SessionLogInput): Promise<
       })
       .returning({ id: workoutSessions.id })
     if (created === undefined) throw new Error('Could not record the session')
-    await tx.insert(setLogs).values(input.sets.map((set) => ({ sessionId: created.id, ...set })))
+    await tx
+      .insert(setLogs)
+      .values(input.sets.map((set) => ({ sessionId: created.id, ...set })))
+      .catch(rethrowMissingEntry)
     return created.id
   })
 
@@ -147,7 +150,16 @@ export async function update(
 ): Promise<WorkoutSession> {
   const columns = {
     ...(patch.endedAt !== undefined && {
-      endedAt: patch.endedAt === null ? null : new Date(patch.endedAt),
+      /**
+       * Never before the start, clamped in SQL against the row's own `started_at`. The app finishes
+       * with the PHONE's clock while `started_at` is the database's, so rejecting an earlier end
+       * refused any session shorter than the skew — and a refusal is not what anyone wants here.
+       * An ISO string, never a JS Date: raw `sql` bypasses the column encoder.
+       */
+      endedAt:
+        patch.endedAt === null
+          ? null
+          : sql<Date>`greatest(${patch.endedAt}::timestamptz, ${workoutSessions.startedAt})`,
     }),
     ...(patch.notes !== undefined && { notes: patch.notes }),
   }
@@ -158,13 +170,6 @@ export async function update(
    * this only because they always touch `updated_at`; `workout_sessions` has no such column.
    */
   if (Object.keys(columns).length === 0) return await get(caller, id)
-
-  if (columns.endedAt instanceof Date) {
-    const current = await get(caller, id)
-    if (columns.endedAt.getTime() < Date.parse(current.startedAt)) {
-      throw invalid('A session cannot end before it started')
-    }
-  }
 
   const written = await db
     .update(workoutSessions)
@@ -200,15 +205,28 @@ export async function logSet(
       .from(workoutSessions)
       .where(eq(workoutSessions.id, sessionId))
       .for('update')
-    if (locked?.endedAt !== null) throw conflict('That session has already been finished')
+    // Gone since the ownership read (`undefined`) is a 404, not "already finished".
+    if (locked === undefined) throw notFound('session')
+    if (locked.endedAt !== null) throw conflict('That session has already been finished')
 
     const [created] = await tx
       .insert(setLogs)
       .values({ sessionId, ...input })
       .returning()
+      .catch(rethrowMissingEntry)
     if (created === undefined) throw new Error('Could not record the set')
     return toLog(created)
   })
+}
+
+/**
+ * A plan save can delete an entry between `assertLoggable` and the insert — validation reads, it
+ * does not lock. The foreign key then refuses the insert; that is the same "No such entry" the
+ * check would have given a moment later, not a 500. The transaction rolls back either way.
+ */
+function rethrowMissingEntry(error: unknown): never {
+  if (isForeignKeyRefusal(error)) throw notFound('entry')
+  throw error
 }
 
 /**

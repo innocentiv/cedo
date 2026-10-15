@@ -163,7 +163,7 @@ test('while she is still a member, the same reads DO name them', async () => {
 /**
  * Regression: `transfer` reported on a workout's CONTENTS before checking the caller could edit it.
  *
- * `assertExercisesVisibleToGroup` throws a 409 naming the exercises that would be stranded — useful
+ * `assertWorkoutCanTravel` throws a 409 naming the exercises that would be stranded — useful
  * to an owner, an oracle to anyone else. Running it first turned the endpoint into a probe: a
  * stranger could confirm a private workout existed and learn what it prescribed, while
  * `GET /workouts/:id` correctly answered 404 for the same id.

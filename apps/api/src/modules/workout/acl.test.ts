@@ -125,6 +125,34 @@ describe('sharing a workout does not share its exercises', () => {
     expect(asBob.days[0]?.entries[0]?.exercise?.name).toBe(squat.name)
   })
 
+  /**
+   * The rule must hold for FUTURE members. Judged against the members at the moment of transfer, a
+   * group with only its creator passed, and everyone added afterwards saw "Unavailable exercise".
+   */
+  test('refused even into a group whose only member can see it — members join later', async () => {
+    const { workout } = await sharedWorkoutUsingAPrivateExercise()
+    const solo = expectContract(
+      GroupMembership,
+      (await alice.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Solo' }) }))
+        .body,
+    )
+    const res = await alice.wire(`/workouts/${workout.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: solo.id }),
+    })
+    expect(res.status).toBe(409)
+  })
+
+  test('duplicating INTO a shared group is held to the same rule as transferring', async () => {
+    const { workout, squad } = await sharedWorkoutUsingAPrivateExercise()
+    const res = await alice.wire(`/workouts/${workout.id}/duplicate`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: squad.id }),
+    })
+    expect(res.status).toBe(409)
+    expect(JSON.stringify(res.body)).toContain('Alice Secret Movement')
+  })
+
   test('it succeeds once the exercise is shared too', async () => {
     const { secret, workout, squad } = await sharedWorkoutUsingAPrivateExercise()
 

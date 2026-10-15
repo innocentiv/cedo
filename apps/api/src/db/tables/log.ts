@@ -85,10 +85,11 @@ export const setLogs = pgTable(
      * Per-exercise history, and the series a progress chart will read later without a schema
      * change. The largest table in the system by an order of magnitude.
      *
-     * `.nullsFirst()` so a plain `orderBy(desc(setLogs.loggedAt))` can walk it — see
+     * No query orders by `logged_at DESC` yet. The one that does must either add `.nullsFirst()`
+     * here (a rebuild of the largest table) or order `desc nulls last` — see
      * workout_sessions_user_time_idx for how a NULLS mismatch silently becomes a sort.
      */
-    index('set_logs_exercise_time_idx').on(t.exerciseId, t.loggedAt.desc().nullsFirst()),
+    index('set_logs_exercise_time_idx').on(t.exerciseId, t.loggedAt.desc()),
     index('set_logs_session_idx').on(t.sessionId),
     index('set_logs_entry_idx').on(t.entryId),
     check('set_logs_rpe_ck', sql`${t.rpe} is null or ${t.rpe} between 1 and 10`),

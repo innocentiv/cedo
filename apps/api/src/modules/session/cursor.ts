@@ -12,7 +12,9 @@ import { workoutSessions } from '../../db/schema.ts'
  * 500. So Postgres renders the microseconds as an integer string, and reads them back with integer
  * interval arithmetic: no float, no Date, no timezone.
  */
-const CursorShape = z.tuple([z.string().regex(/^\d{1,19}$/u), z.uuid()])
+// At most 16 digits: microseconds until the year 2286. Nineteen passed the shape and then overflowed
+// `bigint`, or the timestamp built from it, as a 500 rather than meaning "start over".
+const CursorShape = z.tuple([z.string().regex(/^\d{1,16}$/u), z.uuid()])
 
 /** Selected alongside each row so the last one on a page can become the cursor. */
 export const cursorMicros = sql<string>`(extract(epoch from ${workoutSessions.startedAt}) * 1000000)::bigint::text`

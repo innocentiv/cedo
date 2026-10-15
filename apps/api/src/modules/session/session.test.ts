@@ -227,14 +227,20 @@ describe('logging sets', () => {
     expect(res.status).toBe(422)
   })
 
-  test('a session cannot end before it started', async () => {
+  /**
+   * Clamped, not refused: the app finishes with the phone's clock, the start is the database's,
+   * and a phone running behind must still be able to finish a short session.
+   */
+  test('a session cannot end before it started — an earlier end is clamped to the start', async () => {
     const session = expectContract(WorkoutSession, (await startSession(alice)).body)
     const before = new Date(Date.parse(session.startedAt) - 60_000).toISOString()
     const res = await alice.wire(`/sessions/${session.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ endedAt: before }),
     })
-    expect(res.status).toBe(422)
+    expect(res.status).toBe(200)
+    const finished = expectContract(WorkoutSession, res.body)
+    expect(finished.endedAt).toBe(finished.startedAt)
   })
 
   test('cannot log an exercise the caller cannot see', async () => {
@@ -371,6 +377,12 @@ describe('the session list', () => {
       Buffer.from(JSON.stringify(['not-a-number', 'not-a-uuid'])).toString('base64url'),
       Buffer.from(JSON.stringify(['1', 'not-a-uuid'])).toString('base64url'),
       Buffer.from(JSON.stringify([1.5, crypto.randomUUID()])).toString('base64url'),
+      Buffer.from(JSON.stringify(['9999999999999999999', crypto.randomUUID()])).toString(
+        'base64url',
+      ),
+      Buffer.from(JSON.stringify(['9223372036854775807', crypto.randomUUID()])).toString(
+        'base64url',
+      ),
       'garbage',
     ]) {
       const res = await alice.wire(`/sessions?cursor=${junk}`)
