@@ -37,7 +37,7 @@ Verified during M0 by planting deliberate defects — `no-floating-promises` and
 ## Consequences
 
 - `oxlint-tsgolint` **requires TypeScript 7.0+**, which forces [0007](0007-typescript-version-split.md).
-- `oxfmt` is pre-1.0 (0.64.0). Formatting is the lowest-risk component to replace and its output is
+- `oxfmt` is pre-1.0 (0.73.0 at the time of writing; see the root `package.json`). Formatting is the lowest-risk component to replace and its output is
   Prettier-compatible, so the exit path is a one-line script change.
 - Warnings are configured to fail (`--deny-warnings`) so no ambient noise accumulates.
 
