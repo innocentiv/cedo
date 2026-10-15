@@ -23,7 +23,10 @@ export interface OwnableWrites {
    * what may travel. Its refusal is only ever heard by someone allowed to edit the row.
    */
   readonly beforeTransfer?: (caller: Caller, id: string, toGroupId: string) => Promise<void>
-  /** Said when the database refuses a delete because something still references the row. */
+  /**
+   * For a kind something else may reference ON DELETE RESTRICT: what to say when the database
+   * refuses its delete. A kind with no such reference declares none, and a refusal stays a 500.
+   */
   readonly inUse?: string
 }
 
@@ -73,9 +76,7 @@ export async function deleteOwnable(
     .where(and(editable(kind.table, caller), eq(kind.table.id, id)))
     .returning({ id: kind.table.id })
     .catch((error: unknown) => {
-      if (isForeignKeyRefusal(error)) {
-        throw conflict(kind.inUse ?? `That ${kind.noun} is still in use, so it cannot be deleted.`)
-      }
+      if (kind.inUse !== undefined && isForeignKeyRefusal(error)) throw conflict(kind.inUse)
       throw error
     })
   if (deleted.length === 0) throw notFound(kind.noun)
