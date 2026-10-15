@@ -6,7 +6,6 @@
     "scheme": "cedo",
     "orientation": "default",
     "userInterfaceStyle": "dark",
-    "newArchEnabled": true,
     "plugins": ["expo-router", "expo-secure-store"],
     "web": {
       "bundler": "metro",
@@ -14,9 +13,6 @@
     },
     "ios": {
       "supportsTablet": true
-    },
-    "android": {
-      "edgeToEdgeEnabled": true
     },
     "experiments": {
       "typedRoutes": false
