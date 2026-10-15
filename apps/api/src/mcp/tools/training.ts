@@ -1,6 +1,12 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
-import { LogSetInput, WorkoutCreate, WorkoutPlanInput, formatWeight } from '@cedo/contract'
+import {
+  LogSetInput,
+  WorkoutCreate,
+  WorkoutPlanInput,
+  formatWeight,
+  planInputFrom,
+} from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import * as SessionService from '../../modules/session/service.ts'
@@ -84,32 +90,13 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       title: 'Get a plan as editable JSON',
       description:
         'The same plan in exactly the shape `workout_save_plan` expects. Fetch this, modify it, ' +
-        'and send it back — that round trip is why this returns JSON rather than an outline.',
+        'and send it back — that round trip is why this returns JSON rather than an outline. ' +
+        'Keep each day and entry `id` you are not replacing: logged history and progression ' +
+        'stay attached to them.',
       inputSchema: z.object({ workoutId: z.uuid() }),
       annotations: READ,
     },
-    async ({ workoutId }) => {
-      const workout = await WorkoutService.get(caller, workoutId)
-      return json({
-        days: workout.days.map((day) => ({
-          name: day.name,
-          entries: day.entries.map((entry) => ({
-            exerciseId: entry.exerciseId,
-            supersetGroup: entry.supersetGroup,
-            restSeconds: entry.restSeconds,
-            progression: entry.progression,
-            sets: entry.sets.map((set) => ({
-              targetReps: set.target.reps,
-              targetWeightG: set.target.weightG,
-              targetRpe: set.target.rpe,
-              targetDurationS: set.target.durationS,
-              targetDistanceMm: set.target.distanceMm,
-              isWarmup: set.isWarmup,
-            })),
-          })),
-        })),
-      })
-    },
+    async ({ workoutId }) => json(planInputFrom(await WorkoutService.get(caller, workoutId))),
   )
 
   server.registerTool(
@@ -133,7 +120,10 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       description:
         'Replace the ENTIRE plan atomically — days, entries and sets. Send the complete plan, not ' +
         'a patch: anything omitted is removed. Order comes from array position; never send an ' +
-        'index. Every entry needs at least one non-warm-up set. Weights are in GRAMS.',
+        'index. Every entry needs at least one non-warm-up set. Weights are in GRAMS. Send back ' +
+        'the `id` of each day and entry you keep (from `workout_get_editable`): that keeps its ' +
+        'logged history and progression. An entry with no id, or whose exercise you changed, ' +
+        'starts with no history.',
       inputSchema: WorkoutPlanInput.safeExtend({ workoutId: z.uuid() }),
       annotations: WRITE,
     },

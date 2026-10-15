@@ -1,12 +1,13 @@
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
-import type {
-  Page,
-  Workout,
-  WorkoutCreate,
-  WorkoutPlanInput,
-  WorkoutQuery,
-  WorkoutSummary,
-  WorkoutUpdate,
+import {
+  type Page,
+  type Workout,
+  type WorkoutCreate,
+  type WorkoutPlanInput,
+  type WorkoutQuery,
+  type WorkoutSummary,
+  type WorkoutUpdate,
+  planInputFrom,
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { editable, visible } from '../../db/ownable.ts'
@@ -14,7 +15,7 @@ import { exercises, workoutDays, workoutFavourites, workouts } from '../../db/sc
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydratePlan, toSummary } from './mapper.ts'
-import { insertPlan } from './plan.ts'
+import { writePlan } from './plan.ts'
 import { encodeCursor } from '../../lib/keyset.ts'
 import { listConditions } from './query.ts'
 import { assertExercisesVisibleToGroup } from './transfer.ts'
@@ -160,9 +161,7 @@ export async function replacePlan(
       .for('update')
     if (own === undefined) throw notFound('workout')
 
-    // Days cascade to entries, which cascade to sets.
-    await tx.delete(workoutDays).where(eq(workoutDays.workoutId, id))
-    await insertPlan(tx, id, plan)
+    await writePlan(tx, id, plan)
     await tx
       .update(workouts)
       .set({ updatedAt: sql`now()` })
@@ -201,25 +200,7 @@ export async function duplicate(caller: Caller, id: string, toGroupId?: string):
   const copy = await create(caller, { name: source.name, notes: source.notes }, target)
   if (source.days.length === 0) return copy
 
-  return await replacePlan(caller, copy.id, {
-    days: source.days.map((day) => ({
-      name: day.name,
-      entries: day.entries.map((entry) => ({
-        exerciseId: entry.exerciseId,
-        supersetGroup: entry.supersetGroup,
-        restSeconds: entry.restSeconds,
-        progression: entry.progression,
-        sets: entry.sets.map((set) => ({
-          targetReps: set.target.reps,
-          targetWeightG: set.target.weightG,
-          targetRpe: set.target.rpe,
-          targetDurationS: set.target.durationS,
-          targetDistanceMm: set.target.distanceMm,
-          isWarmup: set.isWarmup,
-        })),
-      })),
-    })),
-  })
+  return await replacePlan(caller, copy.id, planInputFrom(source, { keepIds: false }))
 }
 
 export async function transfer(caller: Caller, id: string, toGroupId: string): Promise<Workout> {

@@ -39,6 +39,12 @@ export type WorkoutSetInput = z.output<typeof WorkoutSetInput>
 
 export const WorkoutEntryInput = z
   .strictObject({
+    /**
+     * The entry being kept, when the plan is a round trip of an existing one. Optional, and never
+     * trusted: an id that is not an entry of THIS workout, or whose exercise changed, becomes a new
+     * entry. See `id` on `WorkoutDayInput` for why it matters.
+     */
+    id: Id.optional(),
     exerciseId: Id,
     supersetGroup: SupersetGroup.default(null),
     restSeconds: z.int().nonnegative().max(3600).nullable().default(null),
@@ -52,15 +58,41 @@ export const WorkoutEntryInput = z
 export type WorkoutEntryInput = z.output<typeof WorkoutEntryInput>
 
 export const WorkoutDayInput = z.strictObject({
+  /**
+   * The day being kept. Logged history hangs off day and entry ids — a session names its day, and
+   * progression reads the logs of an entry — so a save that sends them back keeps that history
+   * attached through renames, retargets and reorders. Omitted means a new day. Optional, and never
+   * trusted: an id that is not a day of THIS workout is treated as omitted.
+   */
+  id: Id.optional(),
   name: NonEmptyString.max(80),
   entries: z.array(WorkoutEntryInput).max(40),
 })
 export type WorkoutDayInput = z.output<typeof WorkoutDayInput>
 
 /** `PUT /workouts/:id/plan` replaces the entire plan in one transaction. See docs/06-api.md. */
-export const WorkoutPlanInput = z.strictObject({
-  days: z.array(WorkoutDayInput).min(1).max(14),
-})
+export const WorkoutPlanInput = z
+  .strictObject({
+    days: z.array(WorkoutDayInput).min(1).max(14),
+  })
+  .superRefine((plan, ctx) => {
+    const days = plan.days.flatMap((d) => (d.id === undefined ? [] : [d.id]))
+    const entries = plan.days.flatMap((d) =>
+      d.entries.flatMap((e) => (e.id === undefined ? [] : [e.id])),
+    )
+    for (const [path, ids] of [
+      ['days', days],
+      ['entries', entries],
+    ] as const) {
+      if (new Set(ids).size !== ids.length) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [path],
+          message: `Each of the ${path} may appear once`,
+        })
+      }
+    }
+  })
 export type WorkoutPlanInput = z.output<typeof WorkoutPlanInput>
 
 export const WorkoutSet = z.object({
@@ -131,6 +163,38 @@ export const Workout = WorkoutSummary.extend({
   days: z.array(WorkoutDay),
 })
 export type Workout = z.output<typeof Workout>
+
+/**
+ * A saved plan, in exactly the shape `PUT /workouts/:id/plan` takes — ids included, so sending it
+ * back keeps every day and entry, and the history attached to them. `keepIds: false` is for a copy
+ * into a different workout, where nothing is being kept.
+ *
+ * The one place this mapping lives. The plan editor, the MCP `workout_get_editable` tool and
+ * `duplicate` each had their own copy, none of which carried ids.
+ */
+export function planInputFrom(workout: Workout, { keepIds = true } = {}): WorkoutPlanInput {
+  return {
+    days: workout.days.map((day) => ({
+      ...(keepIds && { id: day.id }),
+      name: day.name,
+      entries: day.entries.map((entry) => ({
+        ...(keepIds && { id: entry.id }),
+        exerciseId: entry.exerciseId,
+        supersetGroup: entry.supersetGroup,
+        restSeconds: entry.restSeconds,
+        progression: entry.progression,
+        sets: entry.sets.map((set) => ({
+          targetReps: set.target.reps,
+          targetWeightG: set.target.weightG,
+          targetRpe: set.target.rpe,
+          targetDurationS: set.target.durationS,
+          targetDistanceMm: set.target.distanceMm,
+          isWarmup: set.isWarmup,
+        })),
+      })),
+    })),
+  }
+}
 
 export const WORKOUT_SCOPES = ['all', 'mine', 'favourites', 'group'] as const
 export const WorkoutScope = z.enum(WORKOUT_SCOPES)

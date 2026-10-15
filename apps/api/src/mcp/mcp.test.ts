@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { z } from 'zod'
-import { PersonalAccessTokenCreated } from '@cedo/contract'
+import { Exercise, PersonalAccessTokenCreated, Workout, WorkoutPlanInput } from '@cedo/contract'
 import { createApp } from '../app.ts'
 import { seedLibrary } from '../db/seed.ts'
 import { expectContract } from '../test/contract.ts'
@@ -226,6 +226,61 @@ describe('training review', () => {
 
     const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
     expect(history).toContain('5×100 kg')
+  })
+})
+
+describe('editing a plan', () => {
+  /**
+   * The documented AI flow: fetch the editable JSON, change it, save it back. The round trip must
+   * carry ids, or every save through MCP severs the plan from its logged history.
+   */
+  test('get_editable → save_plan keeps every day and entry', async () => {
+    const workout = expectContract(
+      Workout,
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'PPL' }) }))
+        .body,
+    )
+    const exercise = expectContract(
+      Exercise,
+      (
+        await alice.wire('/exercises', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Row',
+            muscles: [{ muscle: 'latissimus_dorsi', loadPct: 100 }],
+          }),
+        })
+      ).body,
+    )
+    const before = expectContract(
+      Workout,
+      (
+        await alice.wire(`/workouts/${workout.id}/plan`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            days: [
+              { name: 'Pull', entries: [{ exerciseId: exercise.id, sets: [{ targetReps: 8 }] }] },
+            ],
+          }),
+        })
+      ).body,
+    )
+
+    const pat = await mintPat(alice)
+    const editable = WorkoutPlanInput.parse(
+      JSON.parse(
+        textOf((await callTool(pat, 'workout_get_editable', { workoutId: workout.id })).body),
+      ),
+    )
+    const day = editable.days[0]
+    if (day === undefined) throw new Error('no day')
+    day.name = 'Back'
+    await callTool(pat, 'workout_save_plan', { workoutId: workout.id, ...editable })
+
+    const after = expectContract(Workout, (await alice.wire(`/workouts/${workout.id}`)).body)
+    expect(after.days[0]?.name).toBe('Back')
+    expect(after.days[0]?.id).toBe(before.days[0]?.id)
+    expect(after.days[0]?.entries[0]?.id).toBe(before.days[0]?.entries[0]?.id)
   })
 })
 

@@ -5,7 +5,7 @@ import type {
   WorkoutEntryInput,
   WorkoutPlanInput,
 } from '@cedo/contract'
-import { NO_PROGRESSION, tracks } from '@cedo/contract'
+import { NO_PROGRESSION, planInputFrom, tracks } from '@cedo/contract'
 
 /**
  * The plan editor's working copy.
@@ -22,25 +22,11 @@ import { NO_PROGRESSION, tracks } from '@cedo/contract'
 export type DayDraft = WorkoutDayInput
 export type EntryDraft = WorkoutEntryInput
 
-export function draftFrom(workout: Workout): DayDraft[] {
-  return workout.days.map((day) => ({
-    name: day.name,
-    entries: day.entries.map((entry) => ({
-      exerciseId: entry.exerciseId,
-      supersetGroup: entry.supersetGroup,
-      restSeconds: entry.restSeconds,
-      progression: entry.progression,
-      sets: entry.sets.map((set) => ({
-        targetReps: set.target.reps,
-        targetWeightG: set.target.weightG,
-        targetRpe: set.target.rpe,
-        targetDurationS: set.target.durationS,
-        targetDistanceMm: set.target.distanceMm,
-        isWarmup: set.isWarmup,
-      })),
-    })),
-  }))
-}
+/**
+ * Carries every day's and entry's id, so saving keeps the logged history attached to them — see
+ * `planInputFrom`. A day or entry the editor adds has none, and becomes a new one on save.
+ */
+export const draftFrom = (workout: Workout): DayDraft[] => planInputFrom(workout).days
 
 export const toPlanInput = (days: readonly DayDraft[]): WorkoutPlanInput => ({ days: [...days] })
 

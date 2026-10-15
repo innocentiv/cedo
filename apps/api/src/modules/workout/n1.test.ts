@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { Exercise, Workout, WorkoutSession } from '@cedo/contract'
+import { Exercise, Workout, WorkoutSession, planInputFrom } from '@cedo/contract'
 import { withQueryCount } from '../../db/client.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
@@ -77,6 +77,26 @@ describe('reads do not N+1', () => {
     expect(largeCount.count).toBe(smallCount.count)
     // summary + day count + days + entries + sets + exercises + favourites + muscles + media
     expect(largeCount.count).toBeLessThanOrEqual(10)
+  })
+
+  /**
+   * A re-save that KEEPS every day and entry is the expensive shape — parked, moved, and its sets
+   * rewritten — so that is the one measured, at both sizes.
+   */
+  test('re-saving a plan costs the same for 1 day × 1 entry as for 6 days × 8 entries', async () => {
+    const ids = await exerciseIds(12)
+    const resave = async (workoutId: string) => {
+      const current = await WorkoutService.get(alice.caller, workoutId)
+      return await withQueryCount(() =>
+        WorkoutService.replacePlan(alice.caller, workoutId, planInputFrom(current)),
+      )
+    }
+
+    const small = await resave(await planned(1, 1, ids))
+    const large = await resave(await planned(6, 8, ids))
+
+    expect(large.result.days.flatMap((d) => d.entries)).toHaveLength(48)
+    expect(large.count).toBe(small.count)
   })
 
   test('listing workouts costs the same for 1 as for 20', async () => {

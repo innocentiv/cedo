@@ -121,14 +121,27 @@ it.
 duplicate and gap indices as a category. A client that sends `index` gets a 422 — the input schemas
 are strict.
 
+**Inputs may carry ids, and a save keeps what they name.** A replace is a replace of the plan's
+*content*, not of its identity. Logged history hangs off day and entry ids — a session names its
+day, progression reads the logs of an entry — through `ON DELETE SET NULL`, so the first version,
+which deleted and re-inserted everything, severed all history on every save: renaming a day reset
+every progression to zero sessions. Now `planInputFrom(workout)` (in the contract) produces the
+round-trip shape with ids; days and entries sent back with their id are updated in place, and only
+what the plan no longer holds is deleted. The ids are a hint, never trusted: one that is not part of
+*this* workout is a new row, and an entry whose exercise changed is a new entry, so a plan can
+neither take over another workout's rows nor inherit another exercise's history. The write is a
+constant number of statements whatever the plan's size — `writePlan` in `modules/workout/plan.ts`.
+
 Two things the replace checks before touching anything:
 
-- The caller must be able to **edit** the workout.
-- Every referenced exercise must be **visible** to them. Without that, a plan could reference a
-  hidden exercise and leak its name and description straight back through `GET /workouts/:id`.
+- Every referenced exercise must be **visible** to the caller. Without that, a plan could reference
+  a hidden exercise and leak its name and description straight back through `GET /workouts/:id`.
+  Checked before the transaction opens.
+- The caller must be able to **edit** the workout. Checked INSIDE the transaction, with a row lock
+  (`for update`) — checked outside it, a co-editor transferring the workout away between the check
+  and the write let someone who had just lost access replace the whole plan.
 
-Both happen before the transaction opens, so a rejected replace leaves the previous plan exactly as
-it was. A test asserts that.
+Either way a rejected replace leaves the previous plan exactly as it was. A test asserts that.
 
 ## The route list lives in the spec, not here
 

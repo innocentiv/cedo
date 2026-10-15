@@ -122,7 +122,9 @@ context; the same information as one line each is a tenth of that.
 - **Compact text** for anything the model reads.
 - **JSON only** for what it must round-trip back into another tool. That is why
   `workout_get` returns an outline and `workout_get_editable` returns JSON in exactly the shape
-  `workout_save_plan` expects.
+  `workout_save_plan` expects — produced by the contract's `planInputFrom`, ids included, so an AI
+  that edits a plan through this round trip keeps its logged history attached. See
+  `docs/06-api.md`.
 
 ### Schemas come from the contract
 

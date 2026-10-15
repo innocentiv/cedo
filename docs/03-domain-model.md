@@ -157,6 +157,11 @@ set_logs(id, session_id, entry_id?, exercise_id, set_index, is_warmup, weight_g,
 the same history. `exercise_id` is always set — that is what makes per-exercise history one indexed
 read, and what a progress chart will consume later without a schema change.
 
+They are `ON DELETE SET NULL`, which makes **day and entry identity load-bearing**: saving a plan
+must keep the ids of what it keeps, or the logs are cut loose from the plan and progression starts
+over. A plan save diffs against what is stored — see "Nested resources" in `docs/06-api.md`. Only a
+day or entry the plan no longer holds loses its link, and its logs stay in history by exercise.
+
 ## Index plan
 
 Each of these exists because a specific query needs it. `bun run perf` proves each is actually used
