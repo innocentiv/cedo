@@ -1,72 +1,54 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, eq } from 'drizzle-orm'
 import type { Exercise, ExerciseCreate, ExerciseQuery, ExerciseUpdate, Page } from '@cedo/contract'
-import { type Transaction, db } from '../../db/client.ts'
-import { editable, visible } from '../../db/ownable.ts'
-import {
-  exerciseFavourites,
-  exerciseMedia,
-  exerciseMuscles,
-  exercises,
-  media,
-} from '../../db/schema.ts'
-import { conflict, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
+import { db } from '../../db/client.ts'
+import { visibleExercises } from '../../db/visible.ts'
+import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydrate } from './mapper.ts'
 import { encodeCursor } from '../../lib/keyset.ts'
-import { listConditions } from './query.ts'
+import { listConditions, withFavourite } from './query.ts'
+import {
+  assertCanWriteTo,
+  deleteExercise,
+  insertExercise,
+  transferExercise,
+  updateExercise,
+  writeFavourite,
+} from './write.ts'
 
 export async function list(caller: Caller, query: ExerciseQuery): Promise<Page<Exercise>> {
+  const { visible, rows: select } = withFavourite(caller)
   // One row beyond the limit answers "is there more?" without a second count query.
-  const rows = await db
-    .select({ exercise: exercises, favourite: exerciseFavourites.targetId })
-    .from(exercises)
-    .leftJoin(
-      exerciseFavourites,
-      and(
-        eq(exerciseFavourites.targetId, exercises.id),
-        eq(exerciseFavourites.userId, caller.userId),
-      ),
-    )
-    .where(and(...listConditions(caller, query)))
-    .orderBy(asc(exercises.name), asc(exercises.id))
+  const rows = await select
+    .where(and(...listConditions(caller, query, visible)))
+    .orderBy(asc(visible.name), asc(visible.id))
     .limit(query.limit + 1)
 
   const hasMore = rows.length > query.limit
   const items = rows.slice(0, query.limit)
-  const last = items.at(-1)
-  const favouriteIds = new Set(items.filter((r) => r.favourite !== null).map((r) => r.exercise.id))
+  const last = items.at(-1)?.exercises
+  const favouriteIds = new Set(
+    items.filter((r) => r.exercise_favourites !== null).map((r) => r.exercises.id),
+  )
 
   return {
     items: await hydrate(
-      items.map((r) => r.exercise),
+      items.map((r) => r.exercises),
       favouriteIds,
       caller,
     ),
-    nextCursor:
-      hasMore && last !== undefined ? encodeCursor(last.exercise.name, last.exercise.id) : null,
+    nextCursor: hasMore && last !== undefined ? encodeCursor(last.name, last.id) : null,
   }
 }
 
 export async function get(caller: Caller, id: string): Promise<Exercise> {
-  const rows = await db
-    .select({ exercise: exercises, favourite: exerciseFavourites.targetId })
-    .from(exercises)
-    .leftJoin(
-      exerciseFavourites,
-      and(
-        eq(exerciseFavourites.targetId, exercises.id),
-        eq(exerciseFavourites.userId, caller.userId),
-      ),
-    )
-    .where(and(visible(exercises, caller), eq(exercises.id, id)))
-    .limit(1)
-
-  const row = rows[0]
+  const { visible, rows: select } = withFavourite(caller)
+  const [row] = await select.where(eq(visible.id, id)).limit(1)
   if (row === undefined) throw notFound('exercise')
 
   const [hydrated] = await hydrate(
-    [row.exercise],
-    new Set(row.favourite === null ? [] : [row.exercise.id]),
+    [row.exercises],
+    new Set(row.exercise_favourites === null ? [] : [row.exercises.id]),
     caller,
   )
   if (hydrated === undefined) throw notFound('exercise')
@@ -74,153 +56,24 @@ export async function get(caller: Caller, id: string): Promise<Exercise> {
 }
 
 // ---------------------------------------------------------------------------------------------
-// Writes
+// Writes — the statements live in write.ts; each answers with the exercise as now read back.
 // ---------------------------------------------------------------------------------------------
-
-/** Editors of the target group only. Not-an-editor and does-not-exist give the same answer. */
-function assertCanWriteTo(caller: Caller, groupId: string): void {
-  if (!caller.editorGroupIds.includes(groupId)) throw notFound('group')
-}
-
-/** The exercise a child row belongs to, and the owner it therefore carries. */
-interface Parent {
-  readonly id: string
-  readonly ownerGroupId: string
-}
-
-async function replaceMuscles(
-  tx: Transaction,
-  exercise: Parent,
-  muscles: ExerciseCreate['muscles'],
-): Promise<void> {
-  await tx.delete(exerciseMuscles).where(eq(exerciseMuscles.exerciseId, exercise.id))
-  await tx.insert(exerciseMuscles).values(
-    muscles.map((m) => ({
-      exerciseId: exercise.id,
-      ownerGroupId: exercise.ownerGroupId,
-      muscleSlug: m.muscle,
-      loadPct: m.loadPct,
-    })),
-  )
-}
-
-/**
- * Verifies EXISTENCE only — media are not ownable and carry no ACL, by design. An unknown id is a
- * 404 rather than a dangling reference. See docs/adr/0009-media-model.md.
- */
-async function replaceMedia(tx: Transaction, exercise: Parent, mediaIds: string[]): Promise<void> {
-  await tx.delete(exerciseMedia).where(eq(exerciseMedia.exerciseId, exercise.id))
-  if (mediaIds.length === 0) return
-
-  const found = await tx.select({ id: media.id }).from(media).where(inArray(media.id, mediaIds))
-  const known = new Set(found.map((m) => m.id))
-  const missing = mediaIds.filter((id) => !known.has(id))
-  if (missing.length > 0) throw notFound(`media ${missing[0]}`)
-
-  await tx.insert(exerciseMedia).values(
-    mediaIds.map((mediaId, sortIndex) => ({
-      exerciseId: exercise.id,
-      ownerGroupId: exercise.ownerGroupId,
-      mediaId,
-      sortIndex,
-    })),
-  )
-}
 
 export async function create(
   caller: Caller,
   input: ExerciseCreate,
   ownerGroupId = caller.personalGroupId,
 ): Promise<Exercise> {
-  assertCanWriteTo(caller, ownerGroupId)
-
-  const id = await db.transaction(async (tx) => {
-    const [created] = await tx
-      .insert(exercises)
-      .values({
-        ownerGroupId,
-        createdBy: caller.userId,
-        name: input.name,
-        tracking: input.tracking,
-        description: input.description,
-        instructions: input.instructions,
-        equipment: input.equipment,
-        isUnilateral: input.isUnilateral,
-      })
-      .returning({ id: exercises.id, ownerGroupId: exercises.ownerGroupId })
-    if (created === undefined) throw new Error('Could not create the exercise')
-
-    await replaceMuscles(tx, created, input.muscles)
-    await replaceMedia(tx, created, input.mediaIds)
-    return created.id
-  })
-
-  return await get(caller, id)
+  return await get(caller, await insertExercise(caller, input, ownerGroupId))
 }
 
 export async function update(caller: Caller, id: string, patch: ExerciseUpdate): Promise<Exercise> {
-  await db.transaction(async (tx) => {
-    /**
-     * `editable` is what makes this a 404 rather than an edit of someone else's exercise — and the
-     * row is LOCKED, not merely read.
-     *
-     * The transaction is READ COMMITTED, so an unlocked guard SELECT is a check-then-act: a
-     * co-editor calling `transfer` between this statement and the UPDATE below moves the exercise
-     * into a group the caller is not in, and the writes then land on a row they no longer have any
-     * rights to. `for('update')` holds it until this transaction commits. Invariant 5 asks for
-     * `editable()` on the write itself; here the writes are three statements against children, so
-     * the lock is what makes the guard binding on all of them. See docs/02-conventions.md.
-     */
-    const [existing] = await tx
-      .select({ id: exercises.id, ownerGroupId: exercises.ownerGroupId })
-      .from(exercises)
-      .where(and(editable(exercises, caller), eq(exercises.id, id)))
-      .limit(1)
-      .for('update')
-    if (existing === undefined) throw notFound('exercise')
-
-    const columns = {
-      ...(patch.name !== undefined && { name: patch.name }),
-      ...(patch.tracking !== undefined && { tracking: patch.tracking }),
-      ...(patch.description !== undefined && { description: patch.description }),
-      ...(patch.instructions !== undefined && { instructions: patch.instructions }),
-      ...(patch.equipment !== undefined && { equipment: patch.equipment }),
-      ...(patch.isUnilateral !== undefined && { isUnilateral: patch.isUnilateral }),
-    }
-    // Always touch the row so `updated_at` advances even for a media-only or muscle-only change.
-    await tx
-      .update(exercises)
-      .set({ ...columns, updatedAt: sql`now()` })
-      .where(eq(exercises.id, id))
-
-    if (patch.muscles !== undefined) await replaceMuscles(tx, existing, patch.muscles)
-    if (patch.mediaIds !== undefined) await replaceMedia(tx, existing, patch.mediaIds)
-  })
-
+  await updateExercise(caller, id, patch)
   return await get(caller, id)
 }
 
-/**
- * Plans and logged history reference exercises ON DELETE RESTRICT, so an exercise in use cannot go.
- * The database is the check — a count beforehand would race a concurrent log — and its refusal is
- * a 409, not a 500. The message names nothing: what references it may belong to people the caller
- * cannot see.
- */
 export async function remove(caller: Caller, id: string): Promise<void> {
-  const deleted = await db
-    .delete(exercises)
-    .where(and(editable(exercises, caller), eq(exercises.id, id)))
-    .returning({ id: exercises.id })
-    .catch((error: unknown) => {
-      if (isForeignKeyRefusal(error)) {
-        throw conflict(
-          'That exercise is used by a plan or by logged history, so it cannot be deleted. ' +
-            'Remove it from the plans that use it; logged history keeps it for good.',
-        )
-      }
-      throw error
-    })
-  if (deleted.length === 0) throw notFound('exercise')
+  await deleteExercise(caller, id)
 }
 
 /**
@@ -249,37 +102,20 @@ export async function duplicate(caller: Caller, id: string, toGroupId?: string):
   )
 }
 
-/** Requires editor rights on BOTH sides: you cannot push something into a group, or out of one. */
 export async function transfer(caller: Caller, id: string, toGroupId: string): Promise<Exercise> {
-  assertCanWriteTo(caller, toGroupId)
-
-  const moved = await db
-    .update(exercises)
-    .set({ ownerGroupId: toGroupId, updatedAt: sql`now()` })
-    .where(and(editable(exercises, caller), eq(exercises.id, id)))
-    .returning({ id: exercises.id })
-  if (moved.length === 0) throw notFound('exercise')
-
+  await transferExercise(caller, id, toGroupId)
   return await get(caller, id)
 }
 
 export async function setFavourite(caller: Caller, id: string, favourite: boolean): Promise<void> {
   // Only things the caller can SEE can be pinned — visibility, not editability.
+  const visible = visibleExercises(caller)
   const [found] = await db
-    .select({ id: exercises.id })
-    .from(exercises)
-    .where(and(visible(exercises, caller), eq(exercises.id, id)))
+    .select({ id: visible.id })
+    .from(visible)
+    .where(eq(visible.id, id))
     .limit(1)
   if (found === undefined) throw notFound('exercise')
 
-  if (favourite) {
-    await db
-      .insert(exerciseFavourites)
-      .values({ userId: caller.userId, targetId: id })
-      .onConflictDoNothing()
-    return
-  }
-  await db
-    .delete(exerciseFavourites)
-    .where(and(eq(exerciseFavourites.userId, caller.userId), eq(exerciseFavourites.targetId, id)))
+  await writeFavourite(caller, id, favourite)
 }

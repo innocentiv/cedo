@@ -2,11 +2,11 @@ import { eq, inArray } from 'drizzle-orm'
 import { type Exercise, type Media, videoEmbedUrl, videoThumbnailUrl } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupBy } from '../../lib/keyset.ts'
-import { exerciseMedia, exerciseMuscles, media } from '../../db/schema.ts'
-import type { exercises } from '../../db/schema.ts'
+import { media } from '../../db/schema.ts'
+import { type ExerciseRow, visibleExerciseMedia, visibleExerciseMuscles } from '../../db/visible.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
-export type ExerciseRow = typeof exercises.$inferSelect
+export type { ExerciseRow }
 type MediaRow = typeof media.$inferSelect
 type AttachedMedia = { sortIndex: number; row: MediaRow }
 
@@ -96,16 +96,15 @@ export async function hydrate(
   if (rows.length === 0) return []
   const ids = rows.map((r) => r.id)
 
-  const muscleRows = await db
-    .select()
-    .from(exerciseMuscles)
-    .where(inArray(exerciseMuscles.exerciseId, ids))
+  const muscles = visibleExerciseMuscles(caller)
+  const muscleRows = await db.select().from(muscles).where(inArray(muscles.exerciseId, ids))
 
+  const attached = visibleExerciseMedia(caller)
   const mediaRows = await db
-    .select({ exerciseId: exerciseMedia.exerciseId, sortIndex: exerciseMedia.sortIndex, media })
-    .from(exerciseMedia)
-    .innerJoin(media, eq(media.id, exerciseMedia.mediaId))
-    .where(inArray(exerciseMedia.exerciseId, ids))
+    .select({ exerciseId: attached.exerciseId, sortIndex: attached.sortIndex, media })
+    .from(attached)
+    .innerJoin(media, eq(media.id, attached.mediaId))
+    .where(inArray(attached.exerciseId, ids))
 
   const musclesByExercise = groupBy(
     muscleRows,
