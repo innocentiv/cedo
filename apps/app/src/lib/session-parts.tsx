@@ -3,10 +3,11 @@ import type {
   ProgressionSuggestion,
   SetLog,
   SetTarget,
+  TrackingMode,
   WorkoutDay,
   WorkoutEntry,
 } from '@cedo/contract'
-import { formatWeight } from '@cedo/contract'
+import { formatEffort } from '@cedo/contract'
 import { Button, Card, ListRow, type LoggedValues, SetLogger, Stack, Text } from '../ui/index.ts'
 
 /** The pieces the live session screen is assembled from, so the route itself stays control flow. */
@@ -21,11 +22,12 @@ export const targetOf = (entry: WorkoutEntry): SetTarget | null =>
  * `nextTarget` itself lives in the contract and is computed by the API — this only renders the
  * result, so the hint on this screen and the answer the MCP tool gives can never disagree.
  */
-export function hintFor(suggestion: ProgressionSuggestion | undefined): string | null {
+export function hintFor(
+  suggestion: ProgressionSuggestion | undefined,
+  tracking: TrackingMode | undefined,
+): string | null {
   if (suggestion === undefined || !suggestion.changed) return null
-  const { suggested } = suggestion
-  const load = suggested.weightG === null ? 'bodyweight' : formatWeight(suggested.weightG)
-  return `Next time: ${suggested.reps ?? '—'} × ${load}`
+  return `Next time: ${formatEffort(suggestion.suggested, tracking)}`
 }
 
 /** What has actually been done this session, and the only way to take a mistake back. */
@@ -49,9 +51,7 @@ export function LoggedSets({
           <ListRow
             key={log.id}
             title={`Set ${log.setIndex + 1}`}
-            subtitle={`${log.reps ?? '—'} × ${
-              log.weightG === null ? 'bodyweight' : formatWeight(log.weightG)
-            }`}
+            subtitle={formatEffort(log)}
             trailing={editable ? 'Undo' : undefined}
             onPress={
               editable
@@ -147,7 +147,7 @@ export function PlannedDay({
             exerciseName={entry.exercise?.name ?? 'Unavailable exercise'}
             tracking={entry.exercise?.tracking ?? 'weight_reps'}
             target={targetOf(entry)}
-            suggestion={hintFor(suggestions.get(entry.id))}
+            suggestion={hintFor(suggestions.get(entry.id), entry.exercise?.tracking)}
             done={done}
             busy={busy}
             testID={`log-entry-${entry.index}`}

@@ -2,9 +2,11 @@ import { useState } from 'react'
 import {
   type SetTarget,
   type TrackingMode,
-  formatWeight,
+  formatEffort,
   gToKg,
   kgToG,
+  mToMm,
+  mmToM,
   tracks,
 } from '@cedo/contract'
 import { Button } from './button.tsx'
@@ -57,7 +59,7 @@ export function SetLogger({
   const [distanceM, setDistanceM] = useState<number | null>(
     target?.distanceMm === null || target?.distanceMm === undefined
       ? null
-      : target.distanceMm / 1000,
+      : mmToM(target.distanceMm),
   )
 
   // From the contract, not restated here: the plan editor asks the same question and the two
@@ -81,9 +83,7 @@ export function SetLogger({
 
         {target === null ? null : (
           <Text variant="caption" tone="muted" testID={`${testID}-target`}>
-            {`Prescribed ${target.reps ?? '—'} × ${
-              target.weightG === null ? 'bodyweight' : formatWeight(target.weightG)
-            }`}
+            {`Prescribed ${formatEffort(target, tracking)}`}
           </Text>
         )}
 
@@ -149,7 +149,7 @@ export function SetLogger({
               weightG: weightKg === null ? null : kgToG(weightKg),
               reps,
               durationS,
-              distanceMm: distanceM === null ? null : Math.round(distanceM * 1000),
+              distanceMm: distanceM === null ? null : mToMm(distanceM),
             })
           }}
           busy={busy}

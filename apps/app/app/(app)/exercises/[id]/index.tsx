@@ -1,6 +1,6 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { MUSCLES, formatWeight } from '@cedo/contract'
-import type { ExerciseHistory } from '@cedo/contract'
+import { MUSCLES, formatEffort } from '@cedo/contract'
+import type { ExerciseHistory, TrackingMode } from '@cedo/contract'
 import {
   Button,
   Card,
@@ -31,8 +31,10 @@ const muscleName = (slug: string): string => MUSCLES.find((m) => m.slug === slug
  */
 function RecentHistory({
   query,
+  tracking,
 }: {
   readonly query: QueryLike<ExerciseHistory>
+  readonly tracking: TrackingMode
 }): React.JSX.Element {
   const router = useRouter()
   return (
@@ -52,14 +54,7 @@ function RecentHistory({
                 <ListRow
                   key={entry.sessionId}
                   title={new Date(entry.performedAt).toLocaleDateString()}
-                  subtitle={entry.sets
-                    .map(
-                      (set) =>
-                        `${set.reps ?? '—'}×${
-                          set.weightG === null ? 'bw' : formatWeight(set.weightG)
-                        }`,
-                    )
-                    .join('  ')}
+                  subtitle={entry.sets.map((set) => formatEffort(set, tracking)).join(', ')}
                   onPress={() => {
                     router.push(`/today/session/${entry.sessionId}`)
                   }}
@@ -176,7 +171,7 @@ export default function ExerciseDetail(): React.JSX.Element {
           </Stack>
         )}
 
-        <RecentHistory query={history} />
+        <RecentHistory query={history} tracking={data.tracking} />
       </Stack>
     </Screen>
   )

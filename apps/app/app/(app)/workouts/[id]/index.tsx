@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { formatWeight } from '@cedo/contract'
+import { formatEffort } from '@cedo/contract'
 import type { WorkoutDay, WorkoutEntry } from '@cedo/contract'
 import {
   Button,
@@ -19,8 +19,8 @@ function prescription(entry: WorkoutEntry): string {
   const working = entry.sets.filter((s) => !s.isWarmup)
   const first = working[0]
   if (first === undefined) return 'no working sets'
-  const load = first.target.weightG === null ? 'bodyweight' : formatWeight(first.target.weightG)
-  return `${working.length} × ${first.target.reps ?? '—'} @ ${load}`
+  const sets = `${working.length} set${working.length === 1 ? '' : 's'}`
+  return `${sets} · ${formatEffort(first.target, entry.exercise?.tracking)}`
 }
 
 export default function WorkoutDetail(): React.JSX.Element {

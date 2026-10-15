@@ -1,4 +1,4 @@
-import { type TrackingMode, gToKg, kgToG, tracks } from '@cedo/contract'
+import { type TrackingMode, gToKg, kgToG, mToMm, mmToM, tracks } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
@@ -196,9 +196,9 @@ function Targets({
       {tracks(tracking, 'distance') ? (
         <Field label="Metres">
           <NumberInput
-            value={first?.targetDistanceMm === null ? null : (first?.targetDistanceMm ?? 0) / 1000}
+            value={first?.targetDistanceMm === null ? null : mmToM(first?.targetDistanceMm ?? 0)}
             onChange={(m) => {
-              onChange({ targetDistanceMm: m === null ? null : Math.round(m * 1000) })
+              onChange({ targetDistanceMm: m === null ? null : mToMm(m) })
             }}
             decimals
             testID={`${testID}-distance`}

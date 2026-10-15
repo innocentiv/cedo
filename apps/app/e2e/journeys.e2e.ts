@@ -207,8 +207,8 @@ test(
       await page.click('[data-testid^="workout-row-"]')
       await page.waitFor('workout-detail-screen')
 
-      // "4 × 8 @ …", and not "14 × 8 @ …" — hence the digit boundary.
-      expect(await page.text('workout-detail-screen')).toMatch(/(?:^|\D)4 × \d/u)
+      // "4 sets · …", and not "14 sets · …" — hence the digit boundary.
+      expect(await page.text('workout-detail-screen')).toMatch(/(?:^|\D)4 sets · /u)
     })
   },
   E2E_TIMEOUT_MS,
