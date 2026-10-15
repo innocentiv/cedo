@@ -85,7 +85,7 @@ test(
  * Builds a one-day plan around a seeded bench press and opens it in the editor. From the shared
  * library, so no exercise has to be created first.
  */
-async function openNewPlan(page: Page): Promise<void> {
+async function openNewPlan(page: Page): Promise<string> {
   await page.goto('/workouts')
   await page.waitFor('workouts-screen')
   await page.fill('workout-name', 'Push Day')
@@ -101,6 +101,7 @@ async function openNewPlan(page: Page): Promise<void> {
   const picked = await page.waitForSelector('[data-testid^="picker-row-"]')
   await page.click(`[data-testid="${picked}"]`)
   await page.waitFor('plan-entry-0-0')
+  return picked.replace('picker-row-', '')
 }
 
 /** Saves the plan in the editor and starts its first day. */
@@ -185,6 +186,42 @@ test(
       const lines = await loggedLines(page)
       expect(lines.some((l) => l.endsWith('× 62.5 kg'))).toBe(true)
       expect(lines.some((l) => l.endsWith('× 70.5 kg'))).toBe(true)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
+  "a logged set shows in the exercise's history straight away, not 30 seconds later",
+  async () => {
+    await withApp('history-after-log', async (page) => {
+      await register(page, unique('hist'))
+      const exerciseId = await openNewPlan(page)
+      await page.click('[data-testid="save-plan"]')
+      await page.waitFor('workouts-screen')
+
+      // Seen once before logging, so the (empty) history is cached.
+      await page.goto(`/exercises/${exerciseId}`)
+      await page.waitFor('exercise-history')
+      expect(await page.text('exercise-history')).toContain('Nothing logged yet')
+
+      // Tabs, not `goto`: a navigation reloads the page and would empty the cache under test.
+      await page.click('[data-testid="nav-workouts"]')
+      await page.waitFor('workouts-screen')
+      await page.click('[data-testid^="workout-row-"]')
+      await page.waitFor('workout-detail-screen')
+      await page.click('[data-testid="start-day-0"]')
+      await page.waitFor('session-screen')
+      await page.fill('log-entry-0-weight', '60')
+      await page.click('[data-testid="log-entry-0-log"]')
+      await page.waitFor('session-logs')
+
+      // The tab keeps its stack, so this returns to the very detail screen seen above — still
+      // mounted, holding the history it fetched before the set existed.
+      await page.click('[data-testid="nav-exercises"]')
+      await page.waitFor('exercise-detail-screen')
+      await Bun.sleep(500)
+      expect(await page.text('exercise-history')).not.toContain('Nothing logged yet')
     })
   },
   E2E_TIMEOUT_MS,

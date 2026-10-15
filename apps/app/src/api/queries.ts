@@ -128,15 +128,28 @@ export function useTokens(): UseQueryResult<PersonalAccessToken[]> {
 function useResourceMutation<TInput, TResult>(
   resource: readonly string[],
   run: (input: TInput) => Promise<TResult>,
+  alsoAffects: readonly (readonly string[])[] = [],
 ): UseMutationResult<TResult, Error, TInput> {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: run,
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: resource })
+      await Promise.all(
+        [resource, ...alsoAffects].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      )
     },
   })
 }
+
+/**
+ * Reads computed from logged sets, which live under other resources' keys. Logging only
+ * invalidated `['sessions']`, so an exercise's history and the next progression hint stayed stale
+ * for the 30-second `staleTime` — showing "Nothing logged yet" right after a set was logged.
+ */
+const DERIVED_FROM_LOGS = [
+  ['exercises', 'history'],
+  ['workouts', 'progression'],
+] as const
 
 export const useCreateExercise = () =>
   useResourceMutation(
@@ -168,10 +181,12 @@ export const useCreateWorkout = () =>
     async (input: WorkoutCreate) => await api.workouts.create(input),
   )
 
+// Sessions name their day, and a save can rename it.
 export const useReplacePlan = (id: string) =>
   useResourceMutation(
     keys.workouts,
     async (input: WorkoutPlanInput) => await api.workouts.replacePlan(id, input),
+    [keys.sessions],
   )
 
 export const useDeleteWorkout = () =>
@@ -190,18 +205,21 @@ export const useUpdateSession = (id: string) =>
   useResourceMutation(
     keys.sessions,
     async (input: SessionUpdate) => await api.sessions.update(id, input),
+    DERIVED_FROM_LOGS,
   )
 
 export const useLogSet = (sessionId: string) =>
   useResourceMutation(
     keys.sessions,
     async (input: LogSetInput): Promise<SetLog> => await api.sessions.logSet(sessionId, input),
+    DERIVED_FROM_LOGS,
   )
 
 export const useRemoveLog = (sessionId: string) =>
   useResourceMutation(
     keys.sessions,
     async (logId: string) => await api.sessions.removeLog(sessionId, logId),
+    DERIVED_FROM_LOGS,
   )
 
 export const useCreateToken = () =>
