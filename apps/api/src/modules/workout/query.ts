@@ -1,13 +1,27 @@
 import { type SQL, and, eq, gt, ilike, or, sql } from 'drizzle-orm'
 import type { WorkoutQuery } from '@cedo/contract'
+import { db } from '../../db/client.ts'
 import { workoutFavourites } from '../../db/schema.ts'
-import type { visibleWorkouts } from '../../db/visible.ts'
+import { visibleWorkouts } from '../../db/visible.ts'
 import { invalid, unreachable } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
 import { decodeCursor, escapeLikePattern } from '../../lib/keyset.ts'
 
 type Visible = ReturnType<typeof visibleWorkouts<'workouts'>>
+
+/** The caller's workouts with their own favourite flag, which every read returns. */
+export function withFavourite(caller: Caller) {
+  const visible = visibleWorkouts(caller)
+  const rows = db
+    .select()
+    .from(visible)
+    .leftJoin(
+      workoutFavourites,
+      and(eq(workoutFavourites.targetId, visible.id), eq(workoutFavourites.userId, caller.userId)),
+    )
+  return { visible, rows }
+}
 
 /** Narrows the visible relation; visibility itself is the relation, never a condition here. */
 function scopeFilter(query: WorkoutQuery, caller: Caller, visible: Visible): (SQL | undefined)[] {

@@ -11,13 +11,12 @@ import {
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { assertEditorOf } from '../../db/ownable.ts'
-import { workoutFavourites } from '../../db/schema.ts'
 import { visibleExercises, visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
 import { conflict, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydratePlan, toSummary } from './mapper.ts'
 import { encodeCursor } from '../../lib/keyset.ts'
-import { listConditions } from './query.ts'
+import { listConditions, withFavourite } from './query.ts'
 import {
   deleteWorkout,
   insertCopy,
@@ -25,20 +24,8 @@ import {
   savePlan,
   transferWorkout,
   updateWorkout,
+  writeFavourite,
 } from './write.ts'
-
-/** The caller's workouts with their own favourite flag, which every read returns. */
-function withFavourite(caller: Caller) {
-  const visible = visibleWorkouts(caller)
-  const rows = db
-    .select()
-    .from(visible)
-    .leftJoin(
-      workoutFavourites,
-      and(eq(workoutFavourites.targetId, visible.id), eq(workoutFavourites.userId, caller.userId)),
-    )
-  return { visible, rows }
-}
 
 /** Day counts for many workouts in one grouped query, not one per workout. */
 async function dayCounts(caller: Caller, workoutIds: string[]): Promise<Map<string, number>> {
@@ -182,14 +169,5 @@ export async function setFavourite(caller: Caller, id: string, favourite: boolea
     .limit(1)
   if (found === undefined) throw notFound('workout')
 
-  if (favourite) {
-    await db
-      .insert(workoutFavourites)
-      .values({ userId: caller.userId, targetId: id })
-      .onConflictDoNothing()
-    return
-  }
-  await db
-    .delete(workoutFavourites)
-    .where(and(eq(workoutFavourites.userId, caller.userId), eq(workoutFavourites.targetId, id)))
+  await writeFavourite(caller, id, favourite)
 }

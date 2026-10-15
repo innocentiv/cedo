@@ -2,7 +2,7 @@ import { and, eq, sql } from 'drizzle-orm'
 import type { WorkoutCreate, WorkoutPlanInput, WorkoutUpdate } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { assertEditorOf, editable } from '../../db/ownable.ts'
-import { workouts } from '../../db/schema.ts'
+import { workoutFavourites, workouts } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { assertExercisesCanTravel, assertWorkoutCanTravel } from './transfer.ts'
@@ -167,4 +167,22 @@ export async function transferWorkout(
     .where(and(editable(workouts, caller), eq(workouts.id, id)))
     .returning({ id: workouts.id })
   if (moved.length === 0) throw notFound('workout')
+}
+
+/** Pins or unpins. Whether the caller may see the workout is the service's check, made first. */
+export async function writeFavourite(
+  caller: Caller,
+  id: string,
+  favourite: boolean,
+): Promise<void> {
+  if (favourite) {
+    await db
+      .insert(workoutFavourites)
+      .values({ userId: caller.userId, targetId: id })
+      .onConflictDoNothing()
+    return
+  }
+  await db
+    .delete(workoutFavourites)
+    .where(and(eq(workoutFavourites.userId, caller.userId), eq(workoutFavourites.targetId, id)))
 }
