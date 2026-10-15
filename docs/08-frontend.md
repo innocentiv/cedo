@@ -104,7 +104,11 @@ Dark only, deliberately: this is used in a gym, usually in poor light. A light t
 token map plus a `useColorScheme()` lookup, and no screen changes.
 
 `NumberInput` holds `number | null`, where null means empty — an empty numeric field is not zero,
-and zero reps is a meaningful log.
+and zero reps is a meaningful log. While focused it shows the text being typed rather than the
+number it parses to, and it accepts a comma as the decimal separator. Both are load-bearing: the
+first version rendered from the number, so a half-typed "62." collapsed to 62 and the next key
+logged 625 kg. An e2e journey types decimals key by key, because `fill` inserts a whole string in
+one event and never passes through the half-typed state.
 
 ## The API client
 

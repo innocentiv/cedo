@@ -136,6 +136,8 @@ export interface Page {
   readonly goto: (path: string) => Promise<void>
   readonly click: (selector: string) => Promise<void>
   readonly type: (text: string) => Promise<void>
+  /** One key, such as `Backspace` — for emptying a field the way a thumb does, not by select-all. */
+  readonly press: (key: string) => Promise<void>
   readonly fill: (testId: string, text: string) => Promise<void>
   readonly text: (testId: string) => Promise<string | null>
   readonly exists: (testId: string) => Promise<boolean>
@@ -230,6 +232,9 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
     },
     type: async (text) => {
       await view.type(text)
+    },
+    press: async (key) => {
+      await view.press(key)
     },
     fill: async (testId, text) => {
       await reveal(selector(testId))

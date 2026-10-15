@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { StyleSheet, TextInput } from 'react-native'
 import { CONTROL_HEIGHT, color, radius, space, type } from './tokens.ts'
 import { Stack } from './stack.tsx'
@@ -86,9 +87,27 @@ export interface NumberInputProps {
 }
 
 /**
- * Numbers are held as text while editing so a half-typed "12." does not collapse to 12 under the
- * cursor. The parse is the only arithmetic a screen is allowed to do, and it does not convert
- * units — that is `@cedo/contract`'s job. See docs/08-frontend.md.
+ * Keeps what was typed: digits, plus — with `decimals` — ONE separator, normalised to a point. A
+ * comma is the decimal key on an Italian, German or French keypad, and stripping it turned "62,5"
+ * into 625.
+ */
+function cleanNumber(text: string, decimals: boolean): string {
+  if (!decimals) return text.replaceAll(/\D/gu, '')
+  const [whole = '', ...rest] = text
+    .replaceAll(',', '.')
+    .replaceAll(/[^\d.]/gu, '')
+    .split('.')
+  return rest.length === 0 ? whole : `${whole}.${rest.join('')}`
+}
+
+/**
+ * While focused, the field shows the TEXT being typed, not the number it parses to. Rendering from
+ * the number made "62." collapse to "62" under the cursor, so typing 62.5 key by key logged 625 kg;
+ * and a parent that refuses an empty field (sets snap back to 1) put a digit back mid-edit, so
+ * backspace-then-4 made 14. On blur it shows the parent's value again, whatever that settled to.
+ *
+ * The parse is the only arithmetic a screen is allowed to do, and it does not convert units — that
+ * is `@cedo/contract`'s job. See docs/08-frontend.md.
  */
 export function NumberInput({
   value,
@@ -97,10 +116,18 @@ export function NumberInput({
   decimals = false,
   testID,
 }: NumberInputProps): React.JSX.Element {
+  const [editing, setEditing] = useState<string | null>(null)
+  const shown = value === null ? '' : String(value)
   return (
     <TextInput
       testID={testID}
-      value={value === null ? '' : String(value)}
+      value={editing ?? shown}
+      onFocus={() => {
+        setEditing(shown)
+      }}
+      onBlur={() => {
+        setEditing(null)
+      }}
       /**
        * Focusing a prefilled numeric field selects it, so typing REPLACES the prescribed value.
        * Without it, tapping a field showing "8" and typing 8 logs 88 — into permanent history,
@@ -108,8 +135,9 @@ export function NumberInput({
        */
       selectTextOnFocus
       onChangeText={(text) => {
-        const cleaned = decimals ? text.replaceAll(/[^\d.]/gu, '') : text.replaceAll(/\D/gu, '')
-        if (cleaned === '') {
+        const cleaned = cleanNumber(text, decimals)
+        setEditing(cleaned)
+        if (cleaned === '' || cleaned === '.') {
           onChange(null)
           return
         }

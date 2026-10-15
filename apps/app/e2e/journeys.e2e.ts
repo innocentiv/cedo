@@ -81,49 +81,134 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/**
+ * Builds a one-day plan around a seeded bench press and opens it in the editor. From the shared
+ * library, so no exercise has to be created first.
+ */
+async function openNewPlan(page: Page): Promise<void> {
+  await page.goto('/workouts')
+  await page.waitFor('workouts-screen')
+  await page.fill('workout-name', 'Push Day')
+  await page.click('[data-testid="create-workout"]')
+
+  await page.waitFor('plan-edit-screen')
+  await page.click('[data-testid="add-day"]')
+  await page.waitFor('plan-day-0')
+  await page.click('[data-testid="add-entry-0"]')
+
+  await page.waitFor('exercise-picker')
+  await page.fill('picker-search', 'Bench')
+  const picked = await page.waitForSelector('[data-testid^="picker-row-"]')
+  await page.click(`[data-testid="${picked}"]`)
+  await page.waitFor('plan-entry-0-0')
+}
+
+/** Saves the plan in the editor and starts its first day. */
+async function saveAndStart(page: Page): Promise<void> {
+  await page.click('[data-testid="save-plan"]')
+  // Saving returns to wherever the editor was opened from — the list, since a new plan goes
+  // straight into the editor. Open the plan itself to start a day.
+  await page.waitFor('workouts-screen')
+  await page.click('[data-testid^="workout-row-"]')
+  await page.waitFor('workout-detail-screen')
+  await page.click('[data-testid="start-day-0"]')
+  await page.waitFor('session-screen')
+}
+
+/**
+ * The rendered lines of every logged set, newest last. `innerText`, not `textContent`: the latter
+ * runs "Set 1" into "8 × 60 kg" as "Set 18 × 60 kg", and a `toContain('8 × 60 kg')` over that also
+ * passes for 88 reps — the very bug the assertion existed to catch.
+ */
+async function loggedLines(page: Page): Promise<string[]> {
+  const text = await page.evaluate(
+    `[...document.querySelectorAll('[data-testid^="logged-set-"]')].map((e) => e.innerText).join('\\n')`,
+  )
+  return typeof text === 'string' ? text.split('\n').map((line) => line.trim()) : []
+}
+
+/**
+ * Types one key at a time, the way a thumb does, into whatever has focus. Never re-click a field
+ * that is already focused to continue typing: the click moves the caret to where it landed.
+ */
+async function typeKeys(page: Page, keys: readonly string[]): Promise<void> {
+  for (const key of keys) {
+    if (key === 'Backspace') await page.press(key)
+    else await page.type(key)
+  }
+}
+
 test(
   'a plan can be built, started, and a set logged against it',
   async () => {
     await withApp('log-a-set', async (page) => {
       await register(page, unique('log'))
+      await openNewPlan(page)
+      await saveAndStart(page)
 
-      // A plan, from the seeded shared library so no exercise has to be created first.
-      await page.goto('/workouts')
-      await page.waitFor('workouts-screen')
-      await page.fill('workout-name', 'Push Day')
-      await page.click('[data-testid="create-workout"]')
-
-      await page.waitFor('plan-edit-screen')
-      await page.click('[data-testid="add-day"]')
-      await page.waitFor('plan-day-0')
-      await page.click('[data-testid="add-entry-0"]')
-
-      await page.waitFor('exercise-picker')
-      await page.fill('picker-search', 'Bench')
-      const picked = await page.waitForSelector('[data-testid^="picker-row-"]')
-      await page.click(`[data-testid="${picked}"]`)
-
-      await page.waitFor('plan-entry-0-0')
-      await page.click('[data-testid="save-plan"]')
-
-      // Saving returns to wherever the editor was opened from — the list, since a new plan goes
-      // straight into the editor. Open the plan itself to start a day.
-      await page.waitFor('workouts-screen')
-      await page.click('[data-testid^="workout-row-"]')
-      await page.waitFor('workout-detail-screen')
-      await page.click('[data-testid="start-day-0"]')
-
-      await page.waitFor('session-screen')
       await page.fill('log-entry-0-weight', '60')
       await page.fill('log-entry-0-reps', '8')
       await page.click('[data-testid="log-entry-0-log"]')
 
       await page.waitFor('session-logs')
-      // The prescribed value is REPLACED, not appended to: 8 reps, not 88.
-      expect(await page.text('session-logs')).toContain('8 × 60 kg')
+      // The prescribed value is REPLACED, not appended to: 8 reps, not 88. An exact line, because
+      // a substring match cannot tell the two apart.
+      expect(await loggedLines(page)).toContain('8 × 60 kg')
 
       await page.click('[data-testid="finish-session"]')
       await page.waitFor('workout-detail-screen')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
+  'a decimal weight typed key by key is logged exactly — with a point or a comma',
+  async () => {
+    await withApp('log-a-decimal', async (page) => {
+      await register(page, unique('dec'))
+      await openNewPlan(page)
+      await saveAndStart(page)
+
+      // `fill` would insert "62.5" in one event and never pass through the half-typed "62." that
+      // used to collapse to 62 under the cursor, turning the next "5" into 625 kg.
+      await page.fill('log-entry-0-weight', '6')
+      await typeKeys(page, ['2', '.', '5'])
+      await page.click('[data-testid="log-entry-0-log"]')
+      await page.waitFor('session-logs')
+
+      // A comma is the decimal separator on an Italian, German or French keypad.
+      await page.fill('log-entry-0-weight', '7')
+      await typeKeys(page, ['0', ',', '5'])
+      await page.click('[data-testid="log-entry-0-log"]')
+
+      const lines = await loggedLines(page)
+      expect(lines.some((l) => l.endsWith('× 62.5 kg'))).toBe(true)
+      expect(lines.some((l) => l.endsWith('× 70.5 kg'))).toBe(true)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
+  'emptying a field and typing a new number does not keep a digit of the old one',
+  async () => {
+    await withApp('retype-a-field', async (page) => {
+      await register(page, unique('retype'))
+      await openNewPlan(page)
+
+      // Sets cannot be fewer than one, and the editor used to snap an emptied field back to "1" —
+      // so backspace then "4" made 14 sets.
+      // A first tap selects the whole field; Backspace empties it, the second is a no-op.
+      await page.click('[data-testid="plan-entry-0-0-sets"]')
+      await typeKeys(page, ['Backspace', 'Backspace', '4'])
+      await page.click('[data-testid="save-plan"]')
+      await page.waitFor('workouts-screen')
+      await page.click('[data-testid^="workout-row-"]')
+      await page.waitFor('workout-detail-screen')
+
+      // "4 × 8 @ …", and not "14 × 8 @ …" — hence the digit boundary.
+      expect(await page.text('workout-detail-screen')).toMatch(/(?:^|\D)4 × \d/u)
     })
   },
   E2E_TIMEOUT_MS,
