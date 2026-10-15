@@ -95,10 +95,14 @@ async function assertStartable(caller: Caller, input: SessionStart): Promise<voi
   }
 }
 
+// One INSERT shares one `now()`, and `get` orders logs by `logged_at` then `set_index`, so equal
+// timestamps read back interleaved — squat 1, bench 1, squat 2. `logWhole` spaces them instead.
+const nowPlusMicros = (n: number) => sql<Date>`now() + ${n}::integer * interval '1 microsecond'`
+
 /**
  * A whole, finished session in ONE transaction — `session_log` over MCP. Everything is validated
  * before anything is written, so one bad set logs nothing and a retry cannot duplicate the rest.
- * The statement count does not grow with the number of sets.
+ * The statement count does not grow with the number of sets. Sets keep the order sent.
  */
 export async function logWhole(caller: Caller, input: SessionLogInput): Promise<WorkoutSession> {
   await assertStartable(caller, input)
@@ -112,13 +116,15 @@ export async function logWhole(caller: Caller, input: SessionLogInput): Promise<
         workoutId: input.workoutId,
         dayId: input.dayId,
         notes: input.notes,
-        endedAt: sql`now()`,
+        endedAt: nowPlusMicros(input.sets.length),
       })
       .returning({ id: workoutSessions.id })
     if (created === undefined) throw new Error('Could not record the session')
     await tx
       .insert(setLogs)
-      .values(input.sets.map((set) => ({ sessionId: created.id, ...set })))
+      .values(
+        input.sets.map((set, i) => ({ sessionId: created.id, ...set, loggedAt: nowPlusMicros(i) })),
+      )
       .catch(rethrowMissingEntry)
     return created.id
   })

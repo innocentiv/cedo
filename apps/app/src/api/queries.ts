@@ -134,9 +134,14 @@ function useResourceMutation<TInput, TResult>(
   return useMutation({
     mutationFn: run,
     onSuccess: async () => {
-      await Promise.all(
-        [resource, ...alsoAffects].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      )
+      /**
+       * Only the mutated resource is awaited — the next write reads it (the live session numbers
+       * the next set from the refreshed logs). Derived reads are marked stale at once and refetch
+       * in the background: awaiting them kept the Log button busy until progression had been
+       * recomputed, after every set.
+       */
+      for (const queryKey of alsoAffects) void queryClient.invalidateQueries({ queryKey })
+      await queryClient.invalidateQueries({ queryKey: resource })
     },
   })
 }
@@ -186,8 +191,11 @@ export const useReplacePlan = (id: string) =>
     [keys.sessions],
   )
 
+// Sessions name their workout, and lose that name when it is deleted.
 export const useDeleteWorkout = () =>
-  useResourceMutation(keys.workouts, async (id: string) => await api.workouts.remove(id))
+  useResourceMutation(keys.workouts, async (id: string) => await api.workouts.remove(id), [
+    keys.sessions,
+  ])
 
 export const useFavouriteWorkout = () =>
   useResourceMutation(

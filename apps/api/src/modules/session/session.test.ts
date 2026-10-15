@@ -3,6 +3,7 @@ import {
   Exercise,
   ExerciseHistory,
   ProgressionSuggestion,
+  SessionLogInput,
   SetLog,
   Workout,
   WorkoutSession,
@@ -16,6 +17,7 @@ import { db } from '../../db/client.ts'
 import { workoutSessions } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
+import * as SessionService from './service.ts'
 
 const Page = page(WorkoutSessionSummary)
 
@@ -272,6 +274,39 @@ describe('logging sets', () => {
     expect(
       expectContract(WorkoutSession, (await alice.wire(`/sessions/${session.id}`)).body).logs,
     ).toHaveLength(0)
+  })
+})
+
+/** `session_log` over MCP: a whole, finished session in one write. */
+describe('logging a whole session at once', () => {
+  /**
+   * One INSERT shares one `now()`, and a session's logs read back by `logged_at`, then `set_index`
+   * — so equal timestamps interleaved the exercises: squat 1, bench 1, squat 2, bench 2.
+   */
+  test('reads its sets back in the order they were sent, and ends after the last', async () => {
+    const squat = await anExercise(alice, 'Squat')
+    const bench = await anExercise(alice, 'Bench Press')
+    const logged = await SessionService.logWhole(
+      alice.caller,
+      SessionLogInput.parse({
+        sets: [
+          { exerciseId: squat, setIndex: 0, reps: 5 },
+          { exerciseId: squat, setIndex: 1, reps: 5 },
+          { exerciseId: bench, setIndex: 0, reps: 8 },
+          { exerciseId: bench, setIndex: 1, reps: 8 },
+        ],
+      }),
+    )
+
+    const read = expectContract(WorkoutSession, (await alice.wire(`/sessions/${logged.id}`)).body)
+    expect(read.logs.map((l) => [l.exerciseId, l.setIndex])).toEqual([
+      [squat, 0],
+      [squat, 1],
+      [bench, 0],
+      [bench, 1],
+    ])
+    const last = read.logs.at(-1)?.loggedAt
+    expect(Date.parse(read.endedAt ?? '')).toBeGreaterThanOrEqual(Date.parse(last ?? ''))
   })
 })
 

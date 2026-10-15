@@ -163,7 +163,7 @@ export default function LiveSession(): React.JSX.Element {
   if (live && planned && workout.data === undefined && workout.error === null) {
     return <Spinner testID="session-loading" />
   }
-  const planError = planned && workout.data === undefined ? workout.error : null
+  const planError = live && planned && workout.data === undefined ? workout.error : null
 
   if (picking) {
     return <ExercisePicker onCancel={stopPicking} onPick={choose} />

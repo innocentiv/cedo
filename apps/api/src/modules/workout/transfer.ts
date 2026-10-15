@@ -1,4 +1,4 @@
-import { and, eq, inArray, ne, notInArray } from 'drizzle-orm'
+import { and, eq, inArray } from 'drizzle-orm'
 import { DEFAULT_GROUP_SLUG } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { visible } from '../../db/ownable.ts'
@@ -28,24 +28,32 @@ export async function assertExercisesCanTravel(
 ): Promise<void> {
   if (toGroupId === caller.personalGroupId || exerciseIds.length === 0) return
 
-  const library = db
-    .select({ id: groups.id })
-    .from(groups)
-    .where(eq(groups.slug, DEFAULT_GROUP_SLUG))
-  const unreachable = await db
-    .select({ name: exercises.name })
+  const ids = [...new Set(exerciseIds)]
+  const seen = await db
+    .select({ name: exercises.name, ownerGroupId: exercises.ownerGroupId, library: groups.id })
     .from(exercises)
-    .where(
-      and(
-        inArray(exercises.id, [...new Set(exerciseIds)]),
-        // Only what the caller can see is named. An exercise hidden from them is the caller's
-        // problem to report without naming — see `duplicate`.
-        visible(exercises, caller),
-        ne(exercises.ownerGroupId, toGroupId),
-        notInArray(exercises.ownerGroupId, library),
-      ),
+    .leftJoin(
+      groups,
+      and(eq(groups.id, exercises.ownerGroupId), eq(groups.slug, DEFAULT_GROUP_SLUG)),
     )
+    .where(and(inArray(exercises.id, ids), visible(exercises, caller)))
 
+  /**
+   * Only what the caller can see is named. One hidden from them is counted, never named — and it
+   * is never allowed through: the caller is an editor of the target, so it cannot be owned there,
+   * and it cannot be in the library they read. Filtering it out of the check, as the first version
+   * did, let a transfer carry it into the group as an "Unavailable exercise" row for everyone.
+   */
+  const hidden = ids.length - seen.length
+  if (hidden > 0) {
+    throw conflict(
+      `${hidden} exercise${hidden === 1 ? ' in this plan is' : 's in this plan are'} not visible ` +
+        'to you, so the plan cannot be shared into that group. Ask its owner to share them, or ' +
+        'remove them from the plan.',
+    )
+  }
+
+  const unreachable = seen.filter((e) => e.ownerGroupId !== toGroupId && e.library === null)
   if (unreachable.length > 0) {
     const names = unreachable.map((e) => `"${e.name}"`).join(', ')
     throw conflict(

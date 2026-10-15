@@ -233,6 +233,50 @@ describe('sharing a workout does not share its exercises', () => {
     expect(mine.items).toHaveLength(0)
   })
 
+  /**
+   * The transfer form of the same rule. The check used to look only at exercises the CALLER could
+   * see, so one hidden from them was skipped rather than refused — and the plan moved into a group
+   * where it could only ever be an "Unavailable exercise" row.
+   */
+  test('transferring a plan with an exercise hidden from the caller is refused, unnamed', async () => {
+    const squad = expectContract(
+      GroupMembership,
+      (await alice.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Squad' }) }))
+        .body,
+    )
+    await alice.wire(`/groups/${squad.id}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ username: 'bob', role: 'editor' }),
+    })
+    const { secret, workout } = await sharedWorkoutUsingAPrivateExercise()
+    await alice.wire(`/exercises/${secret.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: squad.id }),
+    })
+    await alice.wire(`/workouts/${workout.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: squad.id }),
+    })
+    await alice.wire(`/exercises/${secret.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: alice.personalGroupId }),
+    })
+
+    const bobs = expectContract(
+      GroupMembership,
+      (await bob.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Bobs' }) })).body,
+    )
+    const res = await bob.wire(`/workouts/${workout.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: bobs.id }),
+    })
+    expect(res.status).toBe(409)
+    expect(JSON.stringify(res.body)).not.toContain('Alice Secret Movement')
+    expect(
+      expectContract(Workout, (await alice.wire(`/workouts/${workout.id}`)).body).ownerGroupId,
+    ).toBe(squad.id)
+  })
+
   test('progression never names an exercise the caller cannot see', async () => {
     const { secret, workout, squad } = await sharedWorkoutUsingAPrivateExercise()
     await alice.wire(`/exercises/${secret.id}/transfer`, {
