@@ -175,11 +175,17 @@ for one frame before bouncing them back.
 
 `app.json` sets `web.output: "single"` — one `index.html`, no server rendering.
 
-Since Expo SDK 58 the bundle is split per route (async routes are on by default for web): the shell
-loads three scripts and each screen's chunk arrives on first navigation. All are content-hashed
-under `/_expo/static/`, and a missing one must be a **404**, never the SPA fallback — both the
-Caddyfile and `e2e/server.ts` route that prefix to files only. A tab left open across a deploy
-then fails visibly on navigation instead of parsing `index.html` as JavaScript.
+**One bundle, deliberately.** Expo SDK 58 turns on async routes for web — a chunk per screen,
+fetched on first navigation — and `app.json` turns them off (`asyncRoutes: { web: false }` on the
+`expo-router` plugin). Each deploy replaces every chunk, so a tab left open across one broke on its
+next first visit to any screen; expo-router caches the failed lazy import, so the error boundary's
+"Try again" could never recover, and only a manual reload did. For an app behind a login on a home
+server, splitting buys little load time and costs that. With one bundle, navigation never fetches
+code.
+
+Build output (`/_expo/static/*`, `/assets/*`) is content-hashed: served as files with a year-long
+immutable header — only on a 2xx or 304 — and a missing file is a **404**, never the SPA fallback.
+The Caddyfile and `e2e/server.ts` do the same, and `e2e/harness.e2e.ts` pins it.
 
 `"static"` prerenders one HTML file per route, which cannot work for a route whose parameter is only
 known at request time. Opening `/exercises/<id>` directly — a shared link, or just reloading a detail

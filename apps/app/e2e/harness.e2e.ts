@@ -37,6 +37,26 @@ test(
 )
 
 test(
+  'missing build output is a 404, never the app shell — as in the Caddyfile',
+  async () => {
+    await withApp('harness-missing-build-output', async (page) => {
+      await page.goto('/login')
+      const statuses = await page.evaluate(`(async () => {
+        const status = async (path) => (await fetch(path)).status
+        return JSON.stringify([
+          await status('/_expo/static/js/web/gone-0000.js'),
+          await status('/assets/gone-0000.png'),
+          await status('/today'),
+        ])
+      })()`)
+      // A route still gets the app; a stale script or image does not.
+      expect(JSON.parse(String(statuses))).toEqual([404, 404, 200])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
   'a read that fails fails the run, though the screen only shows a notice',
   async () => {
     // A screen renders a failed query as an inline notice, and TanStack Query logs nothing, so the

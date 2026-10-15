@@ -47,6 +47,9 @@
     "oxlint-tsgolint": "7.0.2004",
     "typescript": "7.0.2"
   },
+  "overrides": {
+    "react-native-worklets": "0.13.0"
+  },
   "engines": {
     "bun": ">=1.4.0"
   }

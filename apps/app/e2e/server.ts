@@ -78,11 +78,14 @@ export function serveExport(distDir: string, apiUrl: string, port = 0): StaticSe
         })
       }
 
-      const asset = file(join(distDir, url.pathname))
-      if (url.pathname !== '/' && (await asset.exists())) return new Response(asset)
-      // A missing bundle chunk is a 404, never the app shell — as in the Caddyfile. Answering it
-      // with index.html turned a stale chunk into a parse error instead of a visible failure.
-      if (url.pathname.startsWith('/_expo/static/')) {
+      // Decoded, as Caddy's file_server matches it: a chunk or asset name with an encodable
+      // character would otherwise be found in production and missing here.
+      const pathname = decodeURIComponent(url.pathname)
+      const asset = file(join(distDir, pathname))
+      if (pathname !== '/' && (await asset.exists())) return new Response(asset)
+      // Missing build output is a 404, never the app shell — as in the Caddyfile. Answering it with
+      // index.html is a 200 of HTML where a script or image was expected.
+      if (pathname.startsWith('/_expo/static/') || pathname.startsWith('/assets/')) {
         return new Response('Not found', { status: 404 })
       }
 

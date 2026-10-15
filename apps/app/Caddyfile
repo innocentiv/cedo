@@ -3,46 +3,49 @@
 # See docs/09-deployment.md.
 :80 {
 	encode zstd gzip
+	root * /srv
 
 	handle /api/* {
 		uri strip_prefix /api
 		reverse_proxy api:3000
 	}
 
-	# Content-hashed bundle chunks: served as files, or a real 404 — never the SPA fallback. Expo SDK
-	# 58 splits the web build into per-route chunks loaded on navigation, so a tab left open across a
-	# deploy asks for chunks the new image no longer has. Falling through to index.html answered that
-	# with 200 and HTML, under the year-long immutable header below, and the app died on a parse error.
-	handle /_expo/static/* {
-		root * /srv
+	# Build output — the bundle under /_expo/static and the exported images and fonts under /assets
+	# — is content-hashed: served as files, or a real 404, never the SPA fallback. Answering a stale
+	# hash with index.html is a 200 of HTML where a script or an image was expected, which the
+	# browser fails on obscurely instead of visibly.
+	@build path /_expo/static/* /assets/*
+	handle @build {
 		file_server
 	}
 
 	handle {
-		root * /srv
-		# The web build is `output: "single"` — one index.html — so a real asset is tried first and
+		# The web build is `output: "single"` — one index.html — so a real file is tried first and
 		# everything else is the app. See apps/app/app.json and docs/08-frontend.md.
 		try_files {path} /index.html
 		file_server
 	}
 
-	# The bundle is content-hashed, so it can be cached forever; everything else must not be.
-	#
-	# Matched on what is NOT the bundle, rather than on `*.html`. Caddy evaluates `header` before
-	# `handle`, so a matcher sees the request path BEFORE try_files rewrites it — and `/today` does
-	# not end in `.html`. Only `/` was getting the no-cache header, so a browser holding a stale
-	# `/today.html` asked for a content-hashed bundle that the new image no longer contains, and the
-	# app failed to boot on exactly the route the user had left it on.
-	# Only on success: a chunk that is gone answers 404, and a 404 marked immutable for a year would
-	# be cached as the answer for that URL.
-	@immutable path /_expo/static/*
-	header @immutable {
+	# Build output is content-hashed, so it can be cached forever — but only an actual answer: a 404
+	# marked immutable would be cached as THE answer for that URL. 304 is included because a
+	# revalidation must repeat the freshness the 200 carried (RFC 9110 §15.4.5).
+	header @build {
 		Cache-Control "public, max-age=31536000, immutable"
 		match {
-			status 2xx
+			status 2xx 304
 		}
 	}
-	@document not path /_expo/static/*
+
+	# The app's documents must never be cached. Matched on what is NOT build output (and NOT the
+	# API), rather than on `*.html`: Caddy evaluates `header` before `handle`, so a matcher sees the
+	# request path BEFORE try_files rewrites it — and `/today` does not end in `.html`. Only `/` was
+	# getting the no-cache header, so a browser holding a stale `/today` asked for a bundle the new
+	# image no longer contained, and the app failed to boot on exactly the route it was left on.
+	#
+	# `/api/*` is excluded because the API sets its own caching: a second, earlier
+	# `Cache-Control: no-cache` here overrode the immutable header on media blobs (ADR 0009), and
+	# every image was downloaded again on every render.
+	@document not path /_expo/static/* /assets/* /api/*
 	header @document Cache-Control "no-cache"
 
 	log {
