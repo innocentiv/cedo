@@ -1,18 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
-import {
-  SessionLogInput,
-  WorkoutCreate,
-  WorkoutPlanInput,
-  formatWeight,
-  planInputFrom,
-} from '@cedo/contract'
+import { SessionLogInput, WorkoutCreate, WorkoutPlanInput, planInputFrom } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import * as SessionService from '../../modules/session/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
 import { trainingReview } from '../../modules/review/service.ts'
 import {
+  historyLines,
   json,
   reviewSummary,
   suggestionLines,
@@ -176,22 +171,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ exerciseId, limit }) => {
       const { history } = await import('../../modules/session/history.ts')
-      const result = await history(caller, exerciseId, { limit })
-      if (result.sessions.length === 0) return text('No sessions logged for this exercise.')
-
-      return text(
-        result.sessions
-          .map((s) => {
-            const sets = s.sets
-              .map(
-                (set) =>
-                  `${set.isWarmup ? 'w' : ''}${set.reps ?? '?'}${set.weightG === null ? '' : `×${formatWeight(set.weightG)}`}`,
-              )
-              .join(', ')
-            return `${s.performedAt.slice(0, 10)}: ${sets}`
-          })
-          .join('\n'),
-      )
+      return text(historyLines(await history(caller, exerciseId, { limit })))
     },
   )
 

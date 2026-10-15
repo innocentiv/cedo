@@ -146,10 +146,7 @@ function useResourceMutation<TInput, TResult>(
  * invalidated `['sessions']`, so an exercise's history and the next progression hint stayed stale
  * for the 30-second `staleTime` — showing "Nothing logged yet" right after a set was logged.
  */
-const DERIVED_FROM_LOGS = [
-  ['exercises', 'history'],
-  ['workouts', 'progression'],
-] as const
+const DERIVED_FROM_LOGS = [keys.exerciseHistories, keys.progressions] as const
 
 export const useCreateExercise = () =>
   useResourceMutation(

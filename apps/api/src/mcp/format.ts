@@ -1,5 +1,12 @@
-import type { Exercise, ProgressionSuggestion, Workout, WorkoutSummary } from '@cedo/contract'
-import { formatDistance, formatWeight } from '@cedo/contract'
+import type {
+  Exercise,
+  ExerciseHistory,
+  ProgressionSuggestion,
+  TrackingMode,
+  Workout,
+  WorkoutSummary,
+} from '@cedo/contract'
+import { formatEffort, kgToG } from '@cedo/contract'
 import type { TrainingReview } from '../modules/review/service.ts'
 
 /**
@@ -63,14 +70,17 @@ export const workoutLine = (workout: WorkoutSummary): string =>
   `${workout.name} | ${workout.dayCount} day${workout.dayCount === 1 ? '' : 's'}` +
   `${workout.canEdit ? '' : ' | read-only'} | ${workout.id}`
 
-const setLine = (set: Workout['days'][number]['entries'][number]['sets'][number]): string => {
-  const parts: string[] = []
-  if (set.target.reps !== null) parts.push(`${set.target.reps} reps`)
-  if (set.target.weightG !== null) parts.push(formatWeight(set.target.weightG))
-  if (set.target.durationS !== null) parts.push(`${set.target.durationS}s`)
-  if (set.target.distanceMm !== null) parts.push(formatDistance(set.target.distanceMm))
-  if (set.target.rpe !== null) parts.push(`RPE ${set.target.rpe}`)
-  return `${set.isWarmup ? 'warm-up' : 'work'}: ${parts.join(' × ') || 'unspecified'}`
+/**
+ * Every effort below goes through the contract's `formatEffort`, so the AI reads a set exactly as
+ * the app shows it. Hand-rolled here, a run's target read "no target set" (distance was dropped)
+ * while the app said "5 km in 25m 0s".
+ */
+const setLine = (
+  set: Workout['days'][number]['entries'][number]['sets'][number],
+  tracking: TrackingMode | undefined,
+): string => {
+  const rpe = set.target.rpe === null ? '' : ` @ RPE ${set.target.rpe}`
+  return `${set.isWarmup ? 'warm-up' : 'work'}: ${formatEffort(set.target, tracking)}${rpe}`
 }
 
 /** The whole plan as an outline. A 6-day plan is ~60 short lines rather than ~40 KB of JSON. */
@@ -88,7 +98,7 @@ export function workoutDetail(workout: Workout): string {
       const name = entry.exercise?.name ?? '[unavailable exercise]'
       return [
         `  - ${name}${superset}${rest}${rule}   [entry ${entry.id}]`,
-        ...entry.sets.map((set) => `      ${setLine(set)}`),
+        ...entry.sets.map((set) => `      ${setLine(set, entry.exercise?.tracking)}`),
       ].join('\n')
     })
     return [`Day ${day.index + 1}: ${day.name}`, ...entries].join('\n')
@@ -113,13 +123,30 @@ export function suggestionLines(suggestions: readonly ProgressionSuggestion[]): 
 }
 
 function describeTarget(target: ProgressionSuggestion['current']): string {
-  const parts: string[] = []
-  if (target.reps !== null) parts.push(`${target.reps} reps`)
-  // `formatWeight`, not a hand-rolled conversion: the two MCP outputs otherwise disagreed
-  // (`62.5kg` here versus `62.5 kg` from setLine). See CLAUDE.md invariant 6.
-  if (target.weightG !== null) parts.push(formatWeight(target.weightG))
-  if (target.durationS !== null) parts.push(`${target.durationS}s`)
-  return parts.join(' × ') || 'no target set'
+  const effort = formatEffort(target)
+  return effort === '—' ? 'no target set' : effort
+}
+
+/** A bodyweight movement has no weight and a hold has no reps; neither is shown as "?" or "0kg". */
+function stalledLine(s: TrainingReview['stalled'][number]): string {
+  const best = formatEffort({
+    reps: s.bestReps,
+    weightG: s.bestWeightKg === null ? null : kgToG(s.bestWeightKg),
+    durationS: null,
+    distanceMm: null,
+  })
+  return `${s.exercise}: ${s.sessions} sessions${best === '—' ? '' : `, best ${best}`}`
+}
+
+/** An exercise's recent sessions, one line each: `2026-10-14: w10 × 20 kg, 8 × 60 kg`. */
+export function historyLines(history: ExerciseHistory): string {
+  if (history.sessions.length === 0) return 'No sessions logged for this exercise.'
+  return history.sessions
+    .map((s) => {
+      const sets = s.sets.map((set) => `${set.isWarmup ? 'w' : ''}${formatEffort(set)}`).join(', ')
+      return `${s.performedAt.slice(0, 10)}: ${sets}`
+    })
+    .join('\n')
 }
 
 /**
@@ -154,14 +181,7 @@ export function reviewSummary(review: TrainingReview, weeks: number): string {
   const stalled =
     review.stalled.length === 0
       ? 'Nothing looks stalled.'
-      : `Stalled (no improvement across 3+ sessions):\n  ${review.stalled
-          .map((s) => {
-            // A bodyweight movement has no weight and a hold has no reps; neither is "?".
-            const load = s.bestWeightKg === null ? 'bodyweight' : `${s.bestWeightKg}kg`
-            const best = s.bestReps === null ? '' : ` at ${s.bestReps} × ${load}`
-            return `${s.exercise}: ${s.sessions} sessions${best}`
-          })
-          .join('\n  ')}`
+      : `Stalled (no improvement across 3+ sessions):\n  ${review.stalled.map((s) => stalledLine(s)).join('\n  ')}`
 
   return [
     `Last ${weeks} weeks: ${a.sessions} sessions (${a.perWeek}/week).`,

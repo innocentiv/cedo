@@ -225,7 +225,7 @@ describe('training review', () => {
     expect(review).toContain('quadriceps')
 
     const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
-    expect(history).toContain('5×100 kg')
+    expect(history).toContain('5 × 100 kg')
   })
 })
 

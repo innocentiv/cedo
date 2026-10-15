@@ -1,9 +1,22 @@
 import { useMemo, useState } from 'react'
 import { useLocalSearchParams } from 'expo-router'
 import { useGoBack } from '../../../../src/lib/use-go-back.ts'
-import { type Exercise, type SetLog, type WorkoutEntry, nextSetIndex } from '@cedo/contract'
+import {
+  type Exercise,
+  type SetLog,
+  type TrackingMode,
+  type Workout,
+  type WorkoutEntry,
+  nextSetIndex,
+} from '@cedo/contract'
 import { ErrorNotice, type LoggedValues, Screen, Spinner, Text } from '../../../../src/ui/index.ts'
-import { AdHoc, LoggedSets, PlannedDay, SessionFooter } from '../../../../src/lib/session-parts.tsx'
+import {
+  AdHoc,
+  LoggedSets,
+  PlanUnavailable,
+  PlannedDay,
+  SessionFooter,
+} from '../../../../src/lib/session-parts.tsx'
 import {
   useLogSet,
   useProgression,
@@ -59,6 +72,21 @@ function useRecordSet(
   }
 }
 
+/** Every exercise this screen can name, by id: the plan's, and any picked ad hoc. */
+function useTrackingByExercise(
+  workout: Workout | undefined,
+  chosen: readonly Exercise[],
+): ReadonlyMap<string, TrackingMode> {
+  return useMemo(() => {
+    const byId = new Map<string, TrackingMode>()
+    for (const entry of workout?.days.flatMap((d) => d.entries) ?? []) {
+      if (entry.exercise !== null) byId.set(entry.exerciseId, entry.exercise.tracking)
+    }
+    for (const exercise of chosen) byId.set(exercise.id, exercise.tracking)
+    return byId
+  }, [workout, chosen])
+}
+
 /**
  * Which exercises an ad-hoc session is working through. Local, not persisted: the logs themselves
  * are the record, and re-picking after a reload continues where it left off.
@@ -112,6 +140,7 @@ export default function LiveSession(): React.JSX.Element {
     () => new Map((progression.data ?? []).map((s) => [s.entryId, s])),
     [progression.data],
   )
+  const tracking = useTrackingByExercise(workout.data, chosen)
 
   if (session.error !== null) {
     return (
@@ -123,19 +152,18 @@ export default function LiveSession(): React.JSX.Element {
   if (session.isPending) return <Spinner testID="session-loading" />
 
   /**
-   * A planned session waits for its plan. Rendering on "no day found" alone showed the ad-hoc
-   * logger while the plan was still loading — "No plan behind this one" — and, if it failed to
-   * load, logged sets with no plan entry and never said why.
+   * A live planned session waits for its plan: rendering on "no day found" alone showed the ad-hoc
+   * logger while the plan was still loading. A FAILED plan is said, inline, but never replaces the
+   * screen — the session is the user's own, and losing access to a group plan (CLAUDE.md:
+   * visibility is not permanent) must not hide their logged sets or the way to finish. A finished
+   * session needs no plan at all. A failed background refetch keeps `data`, so it changes nothing.
    */
+  const live = session.data.endedAt === null
   const planned = session.data.workoutId !== null && session.data.dayId !== null
-  if (planned && workout.error !== null) {
-    return (
-      <Screen testID="session-screen">
-        <ErrorNotice message={workout.error.message} />
-      </Screen>
-    )
+  if (live && planned && workout.data === undefined && workout.error === null) {
+    return <Spinner testID="session-loading" />
   }
-  if (planned && workout.isPending) return <Spinner testID="session-loading" />
+  const planError = planned && workout.data === undefined ? workout.error : null
 
   if (picking) {
     return <ExercisePicker onCancel={stopPicking} onPick={choose} />
@@ -165,6 +193,7 @@ export default function LiveSession(): React.JSX.Element {
       }
     >
       {error === null ? null : <Text tone="danger">{error}</Text>}
+      {planError === null ? null : <PlanUnavailable reason={planError.message} />}
 
       {ended ? (
         <Text tone="muted" testID="session-finished">
@@ -190,6 +219,7 @@ export default function LiveSession(): React.JSX.Element {
 
       <LoggedSets
         logs={logs}
+        tracking={tracking}
         editable={!ended}
         onRemove={(logId) => {
           // Through `submit`: a set finished on another device answers 404, and the row would

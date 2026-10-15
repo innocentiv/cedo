@@ -157,6 +157,12 @@ export interface Page {
 
 export interface RunOptions {
   readonly layout?: 'phone' | 'tablet'
+  /**
+   * Console errors this journey EXPECTS — a read it deliberately makes fail, such as a plan the
+   * user has just lost access to. Each pattern must match at least one error, or the run fails:
+   * an allowance that never fires is a test that no longer exercises what it claims to.
+   */
+  readonly allowErrors?: readonly RegExp[]
 }
 
 const SIZE = { phone: { width: 420, height: 900 }, tablet: { width: 1280, height: 900 } } as const
@@ -196,8 +202,14 @@ export async function withApp(
     site.stop()
   }
 
-  if (errors.length > 0) {
-    throw new Error(`Console errors during "${name}":\n  ${errors.join('\n  ')}`)
+  const allowed = options.allowErrors ?? []
+  const unexpected = errors.filter((e) => !allowed.some((pattern) => pattern.test(e)))
+  if (unexpected.length > 0) {
+    throw new Error(`Console errors during "${name}":\n  ${unexpected.join('\n  ')}`)
+  }
+  const unused = allowed.filter((pattern) => !errors.some((e) => pattern.test(e)))
+  if (unused.length > 0) {
+    throw new Error(`Expected console errors never happened during "${name}": ${unused.join(', ')}`)
   }
 }
 

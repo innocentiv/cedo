@@ -30,13 +30,31 @@ export function hintFor(
   return `Next time: ${formatEffort(suggestion.suggested, tracking)}`
 }
 
+/**
+ * The plan behind a session failed to load — usually because the user lost access to its group.
+ * Said in one line, above a session that stays fully usable: the session is theirs either way.
+ */
+export function PlanUnavailable({ reason }: { readonly reason: string }): React.JSX.Element {
+  return (
+    <Text tone="danger" testID="session-plan-unavailable">
+      {`The plan behind this session is unavailable (${reason}). Your sets are kept, and you can still log and finish.`}
+    </Text>
+  )
+}
+
 /** What has actually been done this session, and the only way to take a mistake back. */
 export function LoggedSets({
   logs,
+  tracking,
   editable,
   onRemove,
 }: {
   readonly logs: readonly SetLog[]
+  /**
+   * Each exercise's mode, where the screen knows it. Without it a weighted pull-up's "+20 kg" read
+   * as a 20 kg lift, right under a target saying "bodyweight +20 kg".
+   */
+  readonly tracking: ReadonlyMap<string, TrackingMode>
   readonly editable: boolean
   readonly onRemove: (logId: string) => void
 }): React.JSX.Element | null {
@@ -51,7 +69,7 @@ export function LoggedSets({
           <ListRow
             key={log.id}
             title={`Set ${log.setIndex + 1}`}
-            subtitle={formatEffort(log)}
+            subtitle={formatEffort(log, tracking.get(log.exerciseId))}
             trailing={editable ? 'Undo' : undefined}
             onPress={
               editable

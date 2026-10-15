@@ -228,6 +228,75 @@ test(
 )
 
 test(
+  'losing access to a group plan does not hide your own session, or the way to finish it',
+  async () => {
+    const athlete = unique('ath')
+    await withApp(
+      'session-after-losing-plan',
+      async (page) => {
+        await register(page, athlete)
+
+        // A coach shares a plan through a group with the athlete in it.
+        const ids = await page.evaluate(`(async () => {
+          const call = async (method, path, token, body) => {
+            const res = await fetch('/api' + path, {
+              method,
+              headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
+              body: body === undefined ? undefined : JSON.stringify(body),
+            })
+            return res.status === 204 ? null : res.json()
+          }
+          const coach = await (await fetch('/api/auth/register', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ username: '${athlete}c', displayName: 'Coach', password: 'coach-password' }),
+          })).json()
+          const squad = await call('POST', '/groups', coach.token, { name: 'Squad' })
+          await call('POST', '/groups/' + squad.id + '/members', coach.token, { username: '${athlete}', role: 'reader' })
+          const squat = (await call('GET', '/exercises?q=Back%20Squat&limit=1', coach.token)).items[0]
+          const plan = await call('POST', '/workouts', coach.token, { name: 'Coached' })
+          await call('PUT', '/workouts/' + plan.id + '/plan', coach.token, {
+            days: [{ name: 'Legs', entries: [{ exerciseId: squat.id, sets: [{ targetReps: 5 }] }] }],
+          })
+          await call('POST', '/workouts/' + plan.id + '/transfer', coach.token, { toGroupId: squad.id })
+          const me = await call('GET', '/auth/me', localStorage.getItem('cedo.session'))
+          return JSON.stringify({ coach: coach.token, squad: squad.id, athlete: me.user.id })
+        })()`)
+        const {
+          coach,
+          squad,
+          athlete: athleteId,
+        } = JSON.parse(String(ids)) as Record<string, string>
+
+        // The athlete trains from it.
+        await page.goto('/workouts')
+        await page.click('[data-testid^="workout-row-"]')
+        await page.waitFor('workout-detail-screen')
+        await page.click('[data-testid="start-day-0"]')
+        await page.waitFor('session-screen')
+        await page.fill('log-entry-0-weight', '100')
+        await page.click('[data-testid="log-entry-0-log"]')
+        await page.waitFor('session-logs')
+        const sessionPath = String(await page.evaluate('location.pathname'))
+
+        // …and is then removed from the group.
+        await page.evaluate(
+          `fetch('/api/groups/${squad}/members/${athleteId}', { method: 'DELETE', headers: { authorization: 'Bearer ${coach}' } })`,
+        )
+        await Bun.sleep(300)
+
+        await page.goto(sessionPath)
+        await page.waitFor('session-logs')
+        expect(await page.exists('finish-session')).toBe(true)
+        expect(await page.text('session-screen')).toContain('unavailable')
+      },
+      { allowErrors: [/No such workout/u] },
+    )
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
   'undoing a set in the middle and logging again does not reuse its number',
   async () => {
     await withApp('undo-then-log', async (page) => {

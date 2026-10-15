@@ -46,10 +46,14 @@ export const keys = {
   exercises: ['exercises'] as const,
   exerciseList: (query: Record<string, unknown>) => ['exercises', 'list', query] as const,
   exercise: (id: string) => ['exercises', 'detail', id] as const,
+  /** Every exercise's history — the prefix a log invalidates. */
+  exerciseHistories: ['exercises', 'history'] as const,
   exerciseHistory: (id: string) => ['exercises', 'history', id] as const,
   workouts: ['workouts'] as const,
   workoutList: (query: Record<string, unknown>) => ['workouts', 'list', query] as const,
   workout: (id: string) => ['workouts', 'detail', id] as const,
+  /** Every workout's progression — the prefix a log invalidates. */
+  progressions: ['workouts', 'progression'] as const,
   progression: (id: string) => ['workouts', 'progression', id] as const,
   sessions: ['sessions'] as const,
   sessionList: (query: Record<string, unknown>) => ['sessions', 'list', query] as const,

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, TextInput } from 'react-native'
 import { CONTROL_HEIGHT, color, radius, space, type } from './tokens.ts'
 import { Stack } from './stack.tsx'
@@ -106,6 +106,12 @@ function cleanNumber(text: string, decimals: boolean): string {
  * and a parent that refuses an empty field (sets snap back to 1) put a digit back mid-edit, so
  * backspace-then-4 made 14. On blur it shows the parent's value again, whatever that settled to.
  *
+ * A value change the field did NOT cause resets the text even while focused. On native the keyboard
+ * can stay up while another control is tapped — removing or moving an entry — and the editors are
+ * keyed by position, so this same component then holds a different entry's value; keeping the old
+ * text made the next digit write old-text-plus-digit into the wrong entry. "Caused by this field"
+ * means: changed in the render right after its own keystroke, which is when a parent's clamp lands.
+ *
  * The parse is the only arithmetic a screen is allowed to do, and it does not convert units — that
  * is `@cedo/contract`'s job. See docs/08-frontend.md.
  */
@@ -117,6 +123,16 @@ export function NumberInput({
   testID,
 }: NumberInputProps): React.JSX.Element {
   const [editing, setEditing] = useState<string | null>(null)
+  const [previous, setPrevious] = useState(value)
+  const ownKeystroke = useRef(false)
+  if (value !== previous) {
+    setPrevious(value)
+    if (!ownKeystroke.current) setEditing(null)
+  }
+  // The flag lives for one render: the one the keystroke itself caused.
+  useEffect(() => {
+    ownKeystroke.current = false
+  })
   const shown = value === null ? '' : String(value)
   return (
     <TextInput
@@ -136,6 +152,7 @@ export function NumberInput({
       selectTextOnFocus
       onChangeText={(text) => {
         const cleaned = cleanNumber(text, decimals)
+        ownKeystroke.current = true
         setEditing(cleaned)
         if (cleaned === '' || cleaned === '.') {
           onChange(null)
