@@ -26,29 +26,6 @@ export const TRACKING_MODES = [
 export const TrackingMode = z.enum(TRACKING_MODES)
 export type TrackingMode = z.output<typeof TrackingMode>
 
-/** The measurable quantities a set can carry. */
-export type Dimension = 'weight' | 'reps' | 'duration' | 'distance'
-
-/**
- * Which quantities a mode actually measures — and therefore which inputs a screen renders, in the
- * plan editor and in the live logger alike.
- *
- * Here rather than in a screen because it is a domain rule, and because both screens had their own
- * copy: the plan editor asked for kilograms on a plank, which has no weight at all.
- *
- * `weight` is present for `bodyweight_reps` on purpose — it means weight ADDED to bodyweight, a
- * +20 kg pull-up, and is optional there. See `exerciseFields.tracking`.
- */
-export const DIMENSIONS_BY_TRACKING: Readonly<Record<TrackingMode, readonly Dimension[]>> = {
-  weight_reps: ['weight', 'reps'],
-  bodyweight_reps: ['reps', 'weight'],
-  duration: ['duration'],
-  distance_duration: ['distance', 'duration'],
-}
-
-export const tracks = (mode: TrackingMode, dimension: Dimension): boolean =>
-  DIMENSIONS_BY_TRACKING[mode].includes(dimension)
-
 /**
  * Two invariants, enforced here so the API, the MCP tools and the UI form all reject the same
  * input with the same message — rather than the database raising a primary-key violation that
