@@ -49,3 +49,18 @@ _Avoid_: move, share
 Copying a visible ownable into a group the caller can edit, so a read-only one can be changed as
 their own.
 _Avoid_: clone, fork
+
+## Measurement
+
+**Tracking mode**:
+What an exercise measures: weight and reps, bodyweight reps (with optional added weight), a
+duration, or a distance over a duration.
+_Avoid_: exercise type, measurement type
+
+**Dimension**:
+One measured quantity: weight, reps, duration or distance. A tracking mode is a set of them.
+_Avoid_: measure, metric
+
+**Effort**:
+The dimensions one set carries — prescribed as a target, or done as a log.
+_Avoid_: result, performance

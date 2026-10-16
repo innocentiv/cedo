@@ -84,7 +84,7 @@ Two constraints found by building it:
 | `Stack` | every layout. There is no other container |
 | `Text` | all text. Variants `title` / `heading` / `body` / `label` / `caption` / `mono` |
 | `Button`, `NavButton` | actions, and actions that navigate |
-| `Field`, `Input`, `NumberInput` | forms |
+| `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput` |
 | `Card`, `ListRow` | the one row shape every list uses |
 | `Chips` | one choice from a short flat set — list scopes, tracking mode, progression kind |
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |
@@ -104,12 +104,20 @@ being complete is what stops the next session re-inventing `Loaded` under a diff
 Dark only, deliberately: this is used in a gym, usually in poor light. A light theme is a second
 token map plus a `useColorScheme()` lookup, and no screen changes.
 
-`NumberInput` holds `number | null`, where null means empty — an empty numeric field is not zero,
-and zero reps is a meaningful log. While focused it shows the text being typed rather than the
-number it parses to, and it accepts a comma as the decimal separator. Both are load-bearing: the
-first version rendered from the number, so a half-typed "62." collapsed to 62 and the next key
-logged 625 kg. An e2e journey types decimals key by key, because `fill` inserts a whole string in
-one event and never passes through the half-typed state.
+A measured quantity — a weight, reps, a duration, a distance — is a `DimensionInput`: it takes and
+emits **base units**, and everything about how it is typed comes from `DIMENSION_FIELDS` in
+`@cedo/contract` — the unit label (`+kg` on a bodyweight movement), whether it takes decimals, the
+conversion, and the parse. Which fields a set shows, and in what order, is `fieldsOf(tracking)`.
+No screen converts a unit or picks a label: the logger, the plan editor and the progression field
+each used to, and disagreed. `NumberInput` is for plain counts — sets, a rep range, a percentage.
+
+Both share one typing mechanic, `TypedNumber`. A value is `number | null`, where null means empty —
+an empty numeric field is not zero, and zero reps is a meaningful log. While focused the field
+shows the text being typed rather than the number it parses to; the contract's parse returns both,
+and accepts a comma as the decimal separator. Both are load-bearing: the first version rendered from
+the number, so a half-typed "62." collapsed to 62 and the next key logged 625 kg. The parse has
+contract tests; an e2e journey still types decimals key by key, because `fill` inserts a whole
+string in one event and never passes through the half-typed state.
 
 ## The API client
 

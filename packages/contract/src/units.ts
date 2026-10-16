@@ -4,7 +4,7 @@
  * Everything is stored and transmitted as integers in base units: grams, millimetres, seconds.
  * Integers because progression arithmetic must be exact — repeatedly adding 2.5 as a float drifts,
  * and Postgres `numeric` arrives in JavaScript as a string. Imperial support is therefore purely a
- * display concern, added here and nowhere else.
+ * display concern: here, and in `dimension.ts`, which decides the unit a field is typed in.
  *
  * If you are about to write `/ 1000` or `* 2.2` anywhere else in this repository, stop and use a
  * function from this file. See docs/02-conventions.md.
