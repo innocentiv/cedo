@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, TextInput } from 'react-native'
-import { COUNT, type Typed } from '@cedo/contract'
+import { COUNT, type Typing } from '@cedo/contract'
 import { CONTROL_HEIGHT, color, radius, space, type } from './tokens.ts'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
@@ -36,7 +36,7 @@ export function Field({ label, error, hint, children }: FieldProps): React.JSX.E
 
 /**
  * A small caption over a numeric control, for rows of numbers side by side: a set's targets, the
- * logger's inputs, a progression's increments.
+ * logger's inputs, a progression's increments. Labels are lowercase, like the units beside them.
  */
 export function CompactField({
   label,
@@ -103,10 +103,8 @@ export interface TypedNumberProps {
   /** Null means empty. An empty numeric field is not zero — zero reps is a meaningful log. */
   readonly value: number | null
   readonly onChange: (value: number | null) => void
-  /** The text for a value, and what typed text means — both from `@cedo/contract`. */
-  readonly toText: (value: number | null) => string
-  readonly parse: (text: string) => Typed
-  readonly decimals: boolean
+  /** The text for a value, and what typed text means: `COUNT` or a `DIMENSION_FIELDS` entry. */
+  readonly typing: Typing
   readonly placeholder?: string | undefined
   readonly testID?: string | undefined
 }
@@ -130,9 +128,7 @@ export interface TypedNumberProps {
 export function TypedNumber({
   value,
   onChange,
-  toText,
-  parse,
-  decimals,
+  typing,
   placeholder,
   testID,
 }: TypedNumberProps): React.JSX.Element {
@@ -147,7 +143,7 @@ export function TypedNumber({
   useEffect(() => {
     ownKeystroke.current = false
   })
-  const shown = toText(value)
+  const shown = typing.toText(value)
   return (
     <TextInput
       testID={testID}
@@ -165,14 +161,14 @@ export function TypedNumber({
        */
       selectTextOnFocus
       onChangeText={(text) => {
-        const typed = parse(text)
+        const typed = typing.parse(text)
         ownKeystroke.current = true
         setEditing(typed.text)
         onChange(typed.value)
       }}
       placeholder={placeholder}
       placeholderTextColor={color.textFaint}
-      inputMode={decimals ? 'decimal' : 'numeric'}
+      inputMode={typing.decimals ? 'decimal' : 'numeric'}
       style={[styles.input, styles.numeric]}
     />
   )
@@ -188,7 +184,7 @@ export interface NumberInputProps {
 
 /** A plain whole number — a count. A measured quantity is a `DimensionInput`. */
 export function NumberInput(props: NumberInputProps): React.JSX.Element {
-  return <TypedNumber {...props} toText={COUNT.toText} parse={COUNT.parse} decimals={false} />
+  return <TypedNumber {...props} typing={COUNT} />
 }
 
 const styles = StyleSheet.create({

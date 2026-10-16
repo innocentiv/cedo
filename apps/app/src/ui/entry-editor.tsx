@@ -124,7 +124,7 @@ function Counts({
 }): React.JSX.Element {
   return (
     <Stack direction="row" gap="sm">
-      <CompactField label="Warm-ups">
+      <CompactField label="warm-ups">
         <NumberInput
           value={warmups}
           onChange={(n) => {
@@ -133,7 +133,7 @@ function Counts({
           testID={`${testID}-warmups`}
         />
       </CompactField>
-      <CompactField label="Sets">
+      <CompactField label="sets">
         <NumberInput
           value={working}
           onChange={(n) => {
@@ -167,7 +167,8 @@ function Targets({
           tracking={tracking}
           value={first?.[field.targetKey] ?? null}
           onChange={(value) => {
-            // Only the target that changed: the patch is applied to every working set.
+            // Only the target that changed: the patch is applied to every working set. `targetKey`
+            // is derived from the set schema this draft comes from, so it names a real field.
             onChange({ [field.targetKey]: value })
           }}
           testID={`${testID}-${field.dimension}`}
@@ -211,5 +212,3 @@ function Superset({
     </Stack>
   )
 }
-
-/** A labelled column. Local to this file: the shared `Field` is for full-width form rows. */

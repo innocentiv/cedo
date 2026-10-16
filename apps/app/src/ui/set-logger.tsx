@@ -12,9 +12,6 @@ import { DimensionInput } from './dimension-input.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
-/** What one logged set measured, in base units. */
-export type LoggedValues = Effort
-
 export interface SetLoggerProps {
   readonly exerciseName: string
   readonly tracking: TrackingMode
@@ -23,7 +20,7 @@ export interface SetLoggerProps {
   /** What the progression rule suggests for NEXT time, when it differs from the target. */
   readonly suggestion: string | null
   readonly done: number
-  readonly onLog: (values: LoggedValues) => void
+  readonly onLog: (values: Effort) => void
   readonly busy: boolean
   readonly testID: string
 }

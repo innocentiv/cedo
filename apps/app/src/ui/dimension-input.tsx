@@ -29,14 +29,7 @@ export function DimensionInput({
   const field = DIMENSION_FIELDS[dimension]
   return (
     <CompactField label={label ?? field.unit(tracking)}>
-      <TypedNumber
-        value={value}
-        onChange={onChange}
-        toText={field.toText}
-        parse={field.parse}
-        decimals={field.decimals}
-        testID={testID}
-      />
+      <TypedNumber value={value} onChange={onChange} typing={field} testID={testID} />
     </CompactField>
   )
 }

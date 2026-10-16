@@ -89,7 +89,7 @@ export function ProgressionField({
           />
         ) : null}
         {rule.kind === 'linear' || rule.kind === 'linear_duration' ? (
-          <CompactField label="After">
+          <CompactField label="after">
             <NumberInput
               value={rule.afterSuccesses}
               onChange={(n) => {
@@ -101,7 +101,7 @@ export function ProgressionField({
         ) : null}
         {rule.kind === 'double' ? (
           <>
-            <CompactField label="From">
+            <CompactField label="from">
               <NumberInput
                 value={rule.repRange[0]}
                 onChange={(n) => {
@@ -110,7 +110,7 @@ export function ProgressionField({
                 testID={`${testID}-rep-min`}
               />
             </CompactField>
-            <CompactField label="To">
+            <CompactField label="to">
               <NumberInput
                 value={rule.repRange[1]}
                 onChange={(n) => {
@@ -129,5 +129,3 @@ export function ProgressionField({
     </Stack>
   )
 }
-
-/** A labelled column, matching the one in `entry-editor.tsx`. */

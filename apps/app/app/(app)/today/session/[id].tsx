@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useLocalSearchParams } from 'expo-router'
 import { useGoBack } from '../../../../src/lib/use-go-back.ts'
 import {
+  type Effort,
   type Exercise,
   type SetLog,
   type TrackingMode,
@@ -9,7 +10,7 @@ import {
   type WorkoutEntry,
   nextSetIndex,
 } from '@cedo/contract'
-import { ErrorNotice, type LoggedValues, Screen, Spinner, Text } from '../../../../src/ui/index.ts'
+import { ErrorNotice, Screen, Spinner, Text } from '../../../../src/ui/index.ts'
 import {
   AdHoc,
   LoggedSets,
@@ -42,7 +43,7 @@ function useRecordSet(
     exerciseId: string,
     entryId: string | null,
     setIndex: number,
-    values: LoggedValues,
+    values: Effort,
   ): void => {
     void submit(async () => {
       await logSet.mutateAsync({
@@ -61,11 +62,11 @@ function useRecordSet(
 
   // Each series is numbered by `nextSetIndex`, never by counting — see its comment.
   return {
-    adHoc: (exercise: Exercise, values: LoggedValues) => {
+    adHoc: (exercise: Exercise, values: Effort) => {
       const series = logs.filter((l) => l.exerciseId === exercise.id)
       record(exercise.id, null, nextSetIndex(series), values)
     },
-    planned: (entry: WorkoutEntry, values: LoggedValues) => {
+    planned: (entry: WorkoutEntry, values: Effort) => {
       const series = logs.filter((l) => l.entryId === entry.id)
       record(entry.exerciseId, entry.id, nextSetIndex(series), values)
     },

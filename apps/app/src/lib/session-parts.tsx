@@ -1,4 +1,5 @@
 import type {
+  Effort,
   Exercise,
   ProgressionSuggestion,
   SetLog,
@@ -8,7 +9,7 @@ import type {
   WorkoutEntry,
 } from '@cedo/contract'
 import { formatEffort } from '@cedo/contract'
-import { Button, Card, ListRow, type LoggedValues, SetLogger, Stack, Text } from '../ui/index.ts'
+import { Button, Card, ListRow, SetLogger, Stack, Text } from '../ui/index.ts'
 
 /** The pieces the live session screen is assembled from, so the route itself stays control flow. */
 
@@ -103,7 +104,7 @@ export function AdHoc({
   readonly logs: readonly SetLog[]
   readonly busy: boolean
   readonly onAdd: () => void
-  readonly onLog: (exercise: Exercise, values: LoggedValues) => void
+  readonly onLog: (exercise: Exercise, values: Effort) => void
 }): React.JSX.Element {
   return (
     <Stack gap="md" testID="session-adhoc">
@@ -148,7 +149,7 @@ export function PlannedDay({
   readonly logs: readonly SetLog[]
   readonly suggestions: ReadonlyMap<string, ProgressionSuggestion>
   readonly busy: boolean
-  readonly onLog: (entry: WorkoutEntry, values: LoggedValues) => void
+  readonly onLog: (entry: WorkoutEntry, values: Effort) => void
 }): React.JSX.Element {
   return (
     <Stack gap="md">
