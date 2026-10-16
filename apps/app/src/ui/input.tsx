@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, TextInput } from 'react-native'
+import { COUNT, type Typed, cleanNumber } from '@cedo/contract'
 import { CONTROL_HEIGHT, color, radius, space, type } from './tokens.ts'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
@@ -77,30 +78,23 @@ export function Input({
   )
 }
 
-export interface NumberInputProps {
+export interface TypedNumberProps {
   /** Null means empty. An empty numeric field is not zero — zero reps is a meaningful log. */
   readonly value: number | null
   readonly onChange: (value: number | null) => void
+  /** The text for a value, and what typed text means — both from `@cedo/contract`. */
+  readonly toText: (value: number | null) => string
+  readonly parse: (text: string) => Typed
+  readonly decimals: boolean
   readonly placeholder?: string | undefined
-  readonly decimals?: boolean
   readonly testID?: string | undefined
 }
 
 /**
- * Keeps what was typed: digits, plus — with `decimals` — ONE separator, normalised to a point. A
- * comma is the decimal key on an Italian, German or French keypad, and stripping it turned "62,5"
- * into 625.
- */
-function cleanNumber(text: string, decimals: boolean): string {
-  if (!decimals) return text.replaceAll(/\D/gu, '')
-  const [whole = '', ...rest] = text
-    .replaceAll(',', '.')
-    .replaceAll(/[^\d.]/gu, '')
-    .split('.')
-  return rest.length === 0 ? whole : `${whole}.${rest.join('')}`
-}
-
-/**
+ * The typing mechanics every numeric field shares. What the text MEANS — units, separators,
+ * decimals — is the contract's (`DIMENSION_FIELDS`, `COUNT`); this only keeps the right text on
+ * screen while it is typed.
+ *
  * While focused, the field shows the TEXT being typed, not the number it parses to. Rendering from
  * the number made "62." collapse to "62" under the cursor, so typing 62.5 key by key logged 625 kg;
  * and a parent that refuses an empty field (sets snap back to 1) put a digit back mid-edit, so
@@ -111,17 +105,16 @@ function cleanNumber(text: string, decimals: boolean): string {
  * keyed by position, so this same component then holds a different entry's value; keeping the old
  * text made the next digit write old-text-plus-digit into the wrong entry. "Caused by this field"
  * means: changed in the render right after its own keystroke, which is when a parent's clamp lands.
- *
- * The parse is the only arithmetic a screen is allowed to do, and it does not convert units — that
- * is `@cedo/contract`'s job. See docs/08-frontend.md.
  */
-export function NumberInput({
+export function TypedNumber({
   value,
   onChange,
+  toText,
+  parse,
+  decimals,
   placeholder,
-  decimals = false,
   testID,
-}: NumberInputProps): React.JSX.Element {
+}: TypedNumberProps): React.JSX.Element {
   const [editing, setEditing] = useState<string | null>(null)
   const [previous, setPrevious] = useState(value)
   const ownKeystroke = useRef(false)
@@ -133,7 +126,7 @@ export function NumberInput({
   useEffect(() => {
     ownKeystroke.current = false
   })
-  const shown = value === null ? '' : String(value)
+  const shown = toText(value)
   return (
     <TextInput
       testID={testID}
@@ -151,20 +144,39 @@ export function NumberInput({
        */
       selectTextOnFocus
       onChangeText={(text) => {
-        const cleaned = cleanNumber(text, decimals)
+        const typed = parse(text)
         ownKeystroke.current = true
-        setEditing(cleaned)
-        if (cleaned === '' || cleaned === '.') {
-          onChange(null)
-          return
-        }
-        const parsed = Number(cleaned)
-        if (Number.isFinite(parsed)) onChange(parsed)
+        setEditing(typed.text)
+        onChange(typed.value)
       }}
       placeholder={placeholder}
       placeholderTextColor={color.textFaint}
       inputMode={decimals ? 'decimal' : 'numeric'}
       style={[styles.input, styles.numeric]}
+    />
+  )
+}
+
+export interface NumberInputProps {
+  /** Null means empty. An empty numeric field is not zero — zero reps is a meaningful log. */
+  readonly value: number | null
+  readonly onChange: (value: number | null) => void
+  readonly placeholder?: string | undefined
+  readonly decimals?: boolean
+  readonly testID?: string | undefined
+}
+
+/** A plain number. A measured quantity — a weight, a duration — is a `DimensionInput`. */
+export function NumberInput({ decimals = false, ...props }: NumberInputProps): React.JSX.Element {
+  return (
+    <TypedNumber
+      {...props}
+      toText={COUNT.toText}
+      parse={(text) => {
+        const cleaned = cleanNumber(text, decimals)
+        return { text: cleaned, value: cleaned === '' || cleaned === '.' ? null : Number(cleaned) }
+      }}
+      decimals={decimals}
     />
   )
 }

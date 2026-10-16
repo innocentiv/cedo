@@ -87,6 +87,9 @@ const shown = (fromBase: (value: number) => number) => (value: number | null) =>
 
 const identity = (n: number): number => n
 
+/** A plain count — sets, a rep range, a percentage: whole numbers, shown as typed. */
+export const COUNT = { toText: shown(identity), parse: parser(false, identity) } as const
+
 export const DIMENSION_FIELDS: Readonly<Record<Dimension, DimensionField>> = {
   weight: {
     dimension: 'weight',
