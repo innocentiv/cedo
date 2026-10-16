@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
-import { DIMENSIONS_BY_TRACKING, DIMENSION_FIELDS, type Dimension, fieldsOf } from './dimension.ts'
-import { TRACKING_MODES } from './exercise.ts'
+import { DIMENSION_FIELDS, type Dimension, fieldsOf } from './dimension.ts'
+import { TRACKING_MODES, type TrackingMode } from './exercise.ts'
+import { COUNT } from './typing.ts'
 
 const { weight, reps, duration, distance } = DIMENSION_FIELDS
 
@@ -51,6 +52,29 @@ describe('the other dimensions', () => {
   })
 })
 
+describe('what parsing does not decide', () => {
+  /** The schemas reject an out-of-range value on submit, with a message; the field just types it. */
+  test('it enforces no bounds: a 3-tonne weight types as 3 tonnes', () => {
+    expect(weight.parse('3000').value).toBe(3_000_000)
+    expect(reps.parse('99999').value).toBe(99_999)
+  })
+
+  /** `JSON.stringify(Infinity)` is `null`: the API would receive a silently empty field. */
+  test('a number too long to be finite is no value, not Infinity', () => {
+    const huge = '9'.repeat(400)
+    expect(reps.parse(huge)).toEqual({ text: huge, value: null })
+    expect(COUNT.parse(huge).value).toBeNull()
+  })
+})
+
+describe('a plain count', () => {
+  test('is a whole number stored as typed, and empty is null', () => {
+    expect(COUNT.parse('12')).toEqual({ text: '12', value: 12 })
+    expect(COUNT.parse('')).toEqual({ text: '', value: null })
+    expect(COUNT.toText(3)).toBe('3')
+  })
+})
+
 describe('the round trip', () => {
   const values: Record<Dimension, number[]> = {
     weight: [0, 500, 20_000, 62_500, 72_555, 2_000_000],
@@ -69,8 +93,16 @@ describe('the round trip', () => {
 })
 
 describe('which fields, in which order', () => {
-  test.each(TRACKING_MODES)('%s shows its dimensions in the table’s order', (mode) => {
-    expect(fieldsOf(mode).map((f) => f.dimension)).toEqual([...DIMENSIONS_BY_TRACKING[mode]])
+  /** Written out rather than read off the table, so reordering the table has to fail here. */
+  const shown: Record<TrackingMode, Dimension[]> = {
+    weight_reps: ['weight', 'reps'],
+    bodyweight_reps: ['reps', 'weight'],
+    duration: ['duration'],
+    distance_duration: ['distance', 'duration'],
+  }
+
+  test.each(TRACKING_MODES)('%s shows its dimensions in a fixed order', (mode) => {
+    expect(fieldsOf(mode).map((f) => f.dimension)).toEqual(shown[mode])
   })
 
   test('each field names the Effort key it reads and writes', () => {

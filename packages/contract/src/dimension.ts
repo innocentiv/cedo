@@ -1,6 +1,8 @@
 import type { Effort } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
+import { COUNT, type Typing, typing } from './typing.ts'
 import { gToKg, kgToG, mToMm, mmToM } from './units.ts'
+import type { WorkoutSetInput } from './workout.ts'
 
 /** The measurable quantities a set can carry. See GLOSSARY.md. */
 export type Dimension = 'weight' | 'reps' | 'duration' | 'distance'
@@ -25,13 +27,6 @@ export const DIMENSIONS_BY_TRACKING: Readonly<Record<TrackingMode, readonly Dime
 export const tracks = (mode: TrackingMode, dimension: Dimension): boolean =>
   DIMENSIONS_BY_TRACKING[mode].includes(dimension)
 
-/** What a field shows while it is being typed in, and the base-unit value that text means. */
-export interface Typed {
-  readonly text: string
-  /** Base units — grams, millimetres, seconds — or null for an empty field. */
-  readonly value: number | null
-}
-
 /**
  * Everything a screen needs to let someone type one dimension: the unit it is typed in, whether it
  * takes decimals, and the round trip between the base-unit integer stored everywhere and the text
@@ -42,55 +37,21 @@ export interface Typed {
  * in a different order on each, and eight hand-written `x === null ? null : kgToG(x)`. Here, they are
  * one table, and imperial units become a change to this file and `units.ts` alone.
  */
-export interface DimensionField {
+export interface DimensionField extends Typing {
   readonly dimension: Dimension
   /** Where the value lives on an `Effort` — a logged set, a suggestion. */
   readonly key: keyof Effort
   /** Where it lives on a prescribed set in a plan. */
-  readonly targetKey: 'targetWeightG' | 'targetReps' | 'targetDurationS' | 'targetDistanceMm'
+  readonly targetKey: TargetKey
   /**
    * The unit, as a field label. Only weight depends on the mode: on a bodyweight movement it is
    * weight ADDED, `+kg`. Without a mode — a progression increment — it is the plain unit.
    */
   readonly unit: (tracking?: TrackingMode) => string
-  readonly decimals: boolean
-  readonly toText: (value: number | null) => string
-  readonly parse: (text: string) => Typed
 }
 
-/**
- * Keeps what was typed: digits, plus — with `decimals` — ONE separator, normalised to a point. A
- * comma is the decimal key on an Italian, German or French keypad, and stripping it turned "62,5"
- * into 625.
- */
-function cleanNumber(text: string, decimals: boolean): string {
-  if (!decimals) return text.replaceAll(/\D/gu, '')
-  const [whole = '', ...rest] = text
-    .replaceAll(',', '.')
-    .replaceAll(/[^\d.]/gu, '')
-    .split('.')
-  return rest.length === 0 ? whole : `${whole}.${rest.join('')}`
-}
-
-/**
- * The text is returned as well as the value: "62." must stay "62." on screen while it parses to 62
- * kg, or the point vanishes under the cursor and 62.5 typed key by key becomes 625.
- */
-function parser(decimals: boolean, toBase: (typed: number) => number) {
-  return (text: string): Typed => {
-    const cleaned = cleanNumber(text, decimals)
-    if (cleaned === '' || cleaned === '.') return { text: cleaned, value: null }
-    return { text: cleaned, value: toBase(Number(cleaned)) }
-  }
-}
-
-const shown = (fromBase: (value: number) => number) => (value: number | null) =>
-  value === null ? '' : String(fromBase(value))
-
-const identity = (n: number): number => n
-
-/** A plain count — sets, a rep range, a percentage: whole numbers, shown as typed. */
-export const COUNT = { toText: shown(identity), parse: parser(false, identity) } as const
+/** A prescribed set's measured targets — derived from the schema, so a rename there breaks here. */
+export type TargetKey = Exclude<Extract<keyof WorkoutSetInput, `target${string}`>, 'targetRpe'>
 
 export const DIMENSION_FIELDS: Readonly<Record<Dimension, DimensionField>> = {
   weight: {
@@ -98,36 +59,28 @@ export const DIMENSION_FIELDS: Readonly<Record<Dimension, DimensionField>> = {
     key: 'weightG',
     targetKey: 'targetWeightG',
     unit: (tracking) => (tracking === 'bodyweight_reps' ? '+kg' : 'kg'),
-    decimals: true,
-    toText: shown(gToKg),
-    parse: parser(true, kgToG),
+    ...typing(true, kgToG, gToKg),
   },
   reps: {
     dimension: 'reps',
     key: 'reps',
     targetKey: 'targetReps',
     unit: () => 'reps',
-    decimals: false,
-    toText: shown(identity),
-    parse: parser(false, identity),
+    ...COUNT,
   },
   duration: {
     dimension: 'duration',
     key: 'durationS',
     targetKey: 'targetDurationS',
     unit: () => 'seconds',
-    decimals: false,
-    toText: shown(identity),
-    parse: parser(false, identity),
+    ...COUNT,
   },
   distance: {
     dimension: 'distance',
     key: 'distanceMm',
     targetKey: 'targetDistanceMm',
     unit: () => 'metres',
-    decimals: true,
-    toText: shown(mmToM),
-    parse: parser(true, mToMm),
+    ...typing(true, mToMm, mmToM),
   },
 }
 
