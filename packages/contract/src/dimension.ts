@@ -44,8 +44,10 @@ export interface Typed {
  */
 export interface DimensionField {
   readonly dimension: Dimension
-  /** Where the value lives on an `Effort`. */
+  /** Where the value lives on an `Effort` — a logged set, a suggestion. */
   readonly key: keyof Effort
+  /** Where it lives on a prescribed set in a plan. */
+  readonly targetKey: 'targetWeightG' | 'targetReps' | 'targetDurationS' | 'targetDistanceMm'
   /**
    * The unit, as a field label. Only weight depends on the mode: on a bodyweight movement it is
    * weight ADDED, `+kg`. Without a mode — a progression increment — it is the plain unit.
@@ -61,7 +63,7 @@ export interface DimensionField {
  * comma is the decimal key on an Italian, German or French keypad, and stripping it turned "62,5"
  * into 625.
  */
-export function cleanNumber(text: string, decimals: boolean): string {
+function cleanNumber(text: string, decimals: boolean): string {
   if (!decimals) return text.replaceAll(/\D/gu, '')
   const [whole = '', ...rest] = text
     .replaceAll(',', '.')
@@ -94,6 +96,7 @@ export const DIMENSION_FIELDS: Readonly<Record<Dimension, DimensionField>> = {
   weight: {
     dimension: 'weight',
     key: 'weightG',
+    targetKey: 'targetWeightG',
     unit: (tracking) => (tracking === 'bodyweight_reps' ? '+kg' : 'kg'),
     decimals: true,
     toText: shown(gToKg),
@@ -102,6 +105,7 @@ export const DIMENSION_FIELDS: Readonly<Record<Dimension, DimensionField>> = {
   reps: {
     dimension: 'reps',
     key: 'reps',
+    targetKey: 'targetReps',
     unit: () => 'reps',
     decimals: false,
     toText: shown(identity),
@@ -110,6 +114,7 @@ export const DIMENSION_FIELDS: Readonly<Record<Dimension, DimensionField>> = {
   duration: {
     dimension: 'duration',
     key: 'durationS',
+    targetKey: 'targetDurationS',
     unit: () => 'seconds',
     decimals: false,
     toText: shown(identity),
@@ -118,6 +123,7 @@ export const DIMENSION_FIELDS: Readonly<Record<Dimension, DimensionField>> = {
   distance: {
     dimension: 'distance',
     key: 'distanceMm',
+    targetKey: 'targetDistanceMm',
     unit: () => 'metres',
     decimals: true,
     toText: shown(mmToM),
@@ -128,25 +134,3 @@ export const DIMENSION_FIELDS: Readonly<Record<Dimension, DimensionField>> = {
 /** The fields a mode measures, in the order every screen shows them. */
 export const fieldsOf = (tracking: TrackingMode): readonly DimensionField[] =>
   DIMENSIONS_BY_TRACKING[tracking].map((dimension) => DIMENSION_FIELDS[dimension])
-
-/** A prescribed set's targets, as the contract's input names them. */
-export interface SetTargets {
-  readonly targetReps: number | null
-  readonly targetWeightG: number | null
-  readonly targetDurationS: number | null
-  readonly targetDistanceMm: number | null
-}
-
-export const targetsAsEffort = (set: SetTargets): Effort => ({
-  reps: set.targetReps,
-  weightG: set.targetWeightG,
-  durationS: set.targetDurationS,
-  distanceMm: set.targetDistanceMm,
-})
-
-export const effortAsTargets = (effort: Effort): SetTargets => ({
-  targetReps: effort.reps,
-  targetWeightG: effort.weightG,
-  targetDurationS: effort.durationS,
-  targetDistanceMm: effort.distanceMm,
-})

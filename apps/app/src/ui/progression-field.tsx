@@ -2,12 +2,12 @@ import {
   PROGRESSION_KINDS,
   type Progression,
   describeProgression,
+  DIMENSION_FIELDS,
   formatWeight,
-  gToKg,
-  kgToG,
 } from '@cedo/contract'
 import { Chips } from './chips.tsx'
-import { NumberInput } from './input.tsx'
+import { DimensionInput } from './dimension-input.tsx'
+import { CompactField, NumberInput } from './input.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
@@ -67,30 +67,29 @@ export function ProgressionField({
 
       <Stack direction="row" gap="sm">
         {rule.kind === 'linear' || rule.kind === 'double' ? (
-          <Field label="Add kg">
-            <NumberInput
-              value={gToKg(rule.incrementG)}
-              onChange={(kg) => {
-                onChange({ ...rule, incrementG: kg === null ? 2500 : kgToG(kg) })
-              }}
-              decimals
-              testID={`${testID}-increment`}
-            />
-          </Field>
+          <DimensionInput
+            dimension="weight"
+            label={`Add ${DIMENSION_FIELDS.weight.unit()}`}
+            value={rule.incrementG}
+            onChange={(g) => {
+              onChange({ ...rule, incrementG: g ?? 2500 })
+            }}
+            testID={`${testID}-increment`}
+          />
         ) : null}
         {rule.kind === 'linear_duration' ? (
-          <Field label="Add seconds">
-            <NumberInput
-              value={rule.incrementS}
-              onChange={(s) => {
-                onChange({ ...rule, incrementS: s ?? 15 })
-              }}
-              testID={`${testID}-increment`}
-            />
-          </Field>
+          <DimensionInput
+            dimension="duration"
+            label={`Add ${DIMENSION_FIELDS.duration.unit()}`}
+            value={rule.incrementS}
+            onChange={(s) => {
+              onChange({ ...rule, incrementS: s ?? 15 })
+            }}
+            testID={`${testID}-increment`}
+          />
         ) : null}
         {rule.kind === 'linear' || rule.kind === 'linear_duration' ? (
-          <Field label="After">
+          <CompactField label="After">
             <NumberInput
               value={rule.afterSuccesses}
               onChange={(n) => {
@@ -98,11 +97,11 @@ export function ProgressionField({
               }}
               testID={`${testID}-after`}
             />
-          </Field>
+          </CompactField>
         ) : null}
         {rule.kind === 'double' ? (
           <>
-            <Field label="From">
+            <CompactField label="From">
               <NumberInput
                 value={rule.repRange[0]}
                 onChange={(n) => {
@@ -110,8 +109,8 @@ export function ProgressionField({
                 }}
                 testID={`${testID}-rep-min`}
               />
-            </Field>
-            <Field label="To">
+            </CompactField>
+            <CompactField label="To">
               <NumberInput
                 value={rule.repRange[1]}
                 onChange={(n) => {
@@ -119,7 +118,7 @@ export function ProgressionField({
                 }}
                 testID={`${testID}-rep-max`}
               />
-            </Field>
+            </CompactField>
           </>
         ) : null}
       </Stack>
@@ -132,19 +131,3 @@ export function ProgressionField({
 }
 
 /** A labelled column, matching the one in `entry-editor.tsx`. */
-function Field({
-  label,
-  children,
-}: {
-  readonly label: string
-  readonly children: React.ReactNode
-}): React.JSX.Element {
-  return (
-    <Stack gap="xs" grow>
-      <Text variant="caption" tone="faint">
-        {label}
-      </Text>
-      {children}
-    </Stack>
-  )
-}

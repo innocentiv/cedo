@@ -1,10 +1,11 @@
-import { type TrackingMode, gToKg, kgToG, mToMm, mmToM, tracks } from '@cedo/contract'
+import { type TrackingMode, fieldsOf } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
 import { Chips } from './chips.tsx'
+import { DimensionInput } from './dimension-input.tsx'
 import { ProgressionField } from './progression-field.tsx'
-import { NumberInput } from './input.tsx'
+import { CompactField, NumberInput } from './input.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
@@ -123,7 +124,7 @@ function Counts({
 }): React.JSX.Element {
   return (
     <Stack direction="row" gap="sm">
-      <Field label="Warm-ups">
+      <CompactField label="Warm-ups">
         <NumberInput
           value={warmups}
           onChange={(n) => {
@@ -131,8 +132,8 @@ function Counts({
           }}
           testID={`${testID}-warmups`}
         />
-      </Field>
-      <Field label="Sets">
+      </CompactField>
+      <CompactField label="Sets">
         <NumberInput
           value={working}
           onChange={(n) => {
@@ -140,12 +141,12 @@ function Counts({
           }}
           testID={`${testID}-sets`}
         />
-      </Field>
+      </CompactField>
     </Stack>
   )
 }
 
-/** Only the quantities this exercise actually measures. See `DIMENSIONS_BY_TRACKING`. */
+/** Only the quantities this exercise measures, in the contract's order and terms. */
 function Targets({
   first,
   tracking,
@@ -159,52 +160,19 @@ function Targets({
 }): React.JSX.Element {
   return (
     <Stack direction="row" gap="sm">
-      {tracks(tracking, 'reps') ? (
-        <Field label="Reps">
-          <NumberInput
-            value={first?.targetReps ?? null}
-            onChange={(targetReps) => {
-              onChange({ targetReps })
-            }}
-            testID={`${testID}-reps`}
-          />
-        </Field>
-      ) : null}
-      {tracks(tracking, 'weight') ? (
-        <Field label={tracking === 'bodyweight_reps' ? '+kg' : 'kg'}>
-          <NumberInput
-            value={first?.targetWeightG === null ? null : gToKg(first?.targetWeightG ?? 0)}
-            onChange={(kg) => {
-              onChange({ targetWeightG: kg === null ? null : kgToG(kg) })
-            }}
-            decimals
-            testID={`${testID}-weight`}
-          />
-        </Field>
-      ) : null}
-      {tracks(tracking, 'duration') ? (
-        <Field label="Seconds">
-          <NumberInput
-            value={first?.targetDurationS ?? null}
-            onChange={(targetDurationS) => {
-              onChange({ targetDurationS })
-            }}
-            testID={`${testID}-duration`}
-          />
-        </Field>
-      ) : null}
-      {tracks(tracking, 'distance') ? (
-        <Field label="Metres">
-          <NumberInput
-            value={first?.targetDistanceMm === null ? null : mmToM(first?.targetDistanceMm ?? 0)}
-            onChange={(m) => {
-              onChange({ targetDistanceMm: m === null ? null : mToMm(m) })
-            }}
-            decimals
-            testID={`${testID}-distance`}
-          />
-        </Field>
-      ) : null}
+      {fieldsOf(tracking).map((field) => (
+        <DimensionInput
+          key={field.dimension}
+          dimension={field.dimension}
+          tracking={tracking}
+          value={first?.[field.targetKey] ?? null}
+          onChange={(value) => {
+            // Only the target that changed: the patch is applied to every working set.
+            onChange({ [field.targetKey]: value })
+          }}
+          testID={`${testID}-${field.dimension}`}
+        />
+      ))}
     </Stack>
   )
 }
@@ -245,19 +213,3 @@ function Superset({
 }
 
 /** A labelled column. Local to this file: the shared `Field` is for full-width form rows. */
-function Field({
-  label,
-  children,
-}: {
-  readonly label: string
-  readonly children: React.ReactNode
-}): React.JSX.Element {
-  return (
-    <Stack gap="xs" grow>
-      <Text variant="caption" tone="faint">
-        {label}
-      </Text>
-      {children}
-    </Stack>
-  )
-}

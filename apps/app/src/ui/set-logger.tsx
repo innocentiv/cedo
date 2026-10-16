@@ -79,17 +79,16 @@ export function SetLogger({
         {/* Which fields, in which order, labelled how: the contract's, as in the plan editor. */}
         <Stack direction="row" gap="sm">
           {fieldsOf(tracking).map((field) => (
-            <Stack grow key={field.dimension}>
-              <DimensionInput
-                dimension={field.dimension}
-                tracking={tracking}
-                value={effort[field.key]}
-                onChange={(value) => {
-                  setEffort((current) => ({ ...current, [field.key]: value }))
-                }}
-                testID={`${testID}-${field.dimension}`}
-              />
-            </Stack>
+            <DimensionInput
+              key={field.dimension}
+              dimension={field.dimension}
+              tracking={tracking}
+              value={effort[field.key]}
+              onChange={(value) => {
+                setEffort((current) => ({ ...current, [field.key]: value }))
+              }}
+              testID={`${testID}-${field.dimension}`}
+            />
           ))}
         </Stack>
 

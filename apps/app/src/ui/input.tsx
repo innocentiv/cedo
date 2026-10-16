@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, TextInput } from 'react-native'
-import { COUNT, type Typed, cleanNumber } from '@cedo/contract'
+import { COUNT, type Typed } from '@cedo/contract'
 import { CONTROL_HEIGHT, color, radius, space, type } from './tokens.ts'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
@@ -30,6 +30,27 @@ export function Field({ label, error, hint, children }: FieldProps): React.JSX.E
           {hint}
         </Text>
       ) : null}
+    </Stack>
+  )
+}
+
+/**
+ * A small caption over a numeric control, for rows of numbers side by side: a set's targets, the
+ * logger's inputs, a progression's increments.
+ */
+export function CompactField({
+  label,
+  children,
+}: {
+  readonly label: string
+  readonly children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <Stack gap="xs" grow>
+      <Text variant="caption" tone="faint">
+        {label}
+      </Text>
+      {children}
     </Stack>
   )
 }
@@ -162,23 +183,12 @@ export interface NumberInputProps {
   readonly value: number | null
   readonly onChange: (value: number | null) => void
   readonly placeholder?: string | undefined
-  readonly decimals?: boolean
   readonly testID?: string | undefined
 }
 
-/** A plain number. A measured quantity — a weight, a duration — is a `DimensionInput`. */
-export function NumberInput({ decimals = false, ...props }: NumberInputProps): React.JSX.Element {
-  return (
-    <TypedNumber
-      {...props}
-      toText={COUNT.toText}
-      parse={(text) => {
-        const cleaned = cleanNumber(text, decimals)
-        return { text: cleaned, value: cleaned === '' || cleaned === '.' ? null : Number(cleaned) }
-      }}
-      decimals={decimals}
-    />
-  )
+/** A plain whole number — a count. A measured quantity is a `DimensionInput`. */
+export function NumberInput(props: NumberInputProps): React.JSX.Element {
+  return <TypedNumber {...props} toText={COUNT.toText} parse={COUNT.parse} decimals={false} />
 }
 
 const styles = StyleSheet.create({

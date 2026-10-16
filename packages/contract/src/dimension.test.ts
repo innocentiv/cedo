@@ -1,12 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  DIMENSIONS_BY_TRACKING,
-  DIMENSION_FIELDS,
-  type Dimension,
-  effortAsTargets,
-  fieldsOf,
-  targetsAsEffort,
-} from './dimension.ts'
+import { DIMENSIONS_BY_TRACKING, DIMENSION_FIELDS, type Dimension, fieldsOf } from './dimension.ts'
 import { TRACKING_MODES } from './exercise.ts'
 
 const { weight, reps, duration, distance } = DIMENSION_FIELDS
@@ -89,13 +82,12 @@ describe('which fields, in which order', () => {
     ])
   })
 
-  test("a set's targets and an Effort map onto each other without loss", () => {
-    const targets = {
-      targetReps: 8,
-      targetWeightG: 60_000,
-      targetDurationS: null,
-      targetDistanceMm: 1500,
-    }
-    expect(effortAsTargets(targetsAsEffort(targets))).toEqual(targets)
+  test('and the target it is prescribed as in a plan', () => {
+    expect(Object.values(DIMENSION_FIELDS).map((f) => f.targetKey)).toEqual([
+      'targetWeightG',
+      'targetReps',
+      'targetDurationS',
+      'targetDistanceMm',
+    ])
   })
 })

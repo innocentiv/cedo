@@ -1,5 +1,5 @@
 import { DIMENSION_FIELDS, type Dimension, type TrackingMode } from '@cedo/contract'
-import { Field, TypedNumber } from './input.tsx'
+import { CompactField, TypedNumber } from './input.tsx'
 
 export interface DimensionInputProps {
   readonly dimension: Dimension
@@ -28,7 +28,7 @@ export function DimensionInput({
 }: DimensionInputProps): React.JSX.Element {
   const field = DIMENSION_FIELDS[dimension]
   return (
-    <Field label={label ?? field.unit(tracking)}>
+    <CompactField label={label ?? field.unit(tracking)}>
       <TypedNumber
         value={value}
         onChange={onChange}
@@ -37,6 +37,6 @@ export function DimensionInput({
         decimals={field.decimals}
         testID={testID}
       />
-    </Field>
+    </CompactField>
   )
 }
