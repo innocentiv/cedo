@@ -67,6 +67,8 @@ export interface PerfFixtures {
   readonly small: PerfProfile
   readonly large: PerfProfile
   readonly sharedGroupId: string
+  /** The owner of the realistically named library the audit is measured on. See `curated.ts`. */
+  readonly curator: Caller
   readonly setLogCount: number
 }
 

@@ -8,7 +8,8 @@ import { list as listSessions } from '../../modules/session/list.ts'
 import { history } from '../../modules/session/history.ts'
 import { suggestForWorkout } from '../../modules/progression/service.ts'
 import { trainingReview } from '../../modules/review/service.ts'
-import { type QueryPlan, explain, slowestOf } from '../explain.ts'
+import { libraryAudit } from '../../modules/review/curation.ts'
+import { type QueryPlan, explainInOrder, slowestOf } from '../explain.ts'
 import type { RecordedQuery } from '../../db/client.ts'
 
 /**
@@ -267,6 +268,20 @@ export const HOT_PATHS: readonly HotPath[] = [
       return await trainingReview(profile.caller, 8)
     },
   },
+  {
+    name: 'library audit',
+    why:
+      'A curator auditing a 10,000-exercise library of distinct names (seed-perf/curated.ts). Each ' +
+      'candidate looks up its near-duplicates through the trigram index. With a per-candidate ' +
+      'LIMIT the planner bet on walking the library in name order instead — 23s here — and at ' +
+      "pg_trgm's default threshold the index handed back every loose match: 1s against 0.28s.",
+    dimension: 'none — one library, so both runs must issue the same statements',
+    maxQueries: 6,
+    budgetMs: 700,
+    noSeqScan: ['exercises'],
+    indexes: ['exercises_name_trgm_idx'],
+    run: async (fixtures) => await libraryAudit(fixtures.curator, fixtures.curator.personalGroupId),
+  },
 ]
 
 export interface Measurement {
@@ -297,7 +312,7 @@ export async function measure(path: HotPath, fixtures: PerfFixtures): Promise<Me
 
   // Explained once, and the budget read off the same plans: a second pass would re-run every
   // statement under ANALYZE, doubling both the work and the writes on a write path.
-  const plans = await Promise.all(large.statements.map(async (s) => await explain(s)))
+  const plans = await explainInOrder(large.statements)
 
   return {
     path,

@@ -66,10 +66,13 @@ function readOnly(statement: string): boolean {
   return !/\b(insert|update|delete)\s/iu.test(statement)
 }
 
-export async function explain(query: RecordedQuery): Promise<QueryPlan> {
+/** Where a statement is explained: the pool, or one transaction replaying a whole call. */
+type Runner = Pick<typeof sql, 'unsafe'>
+
+export async function explain(query: RecordedQuery, runner: Runner = sql): Promise<QueryPlan> {
   const analyze = readOnly(query.sql)
   const options = analyze ? 'ANALYZE, BUFFERS, FORMAT JSON' : 'FORMAT JSON'
-  const rows = await sql.unsafe(`explain (${options}) ${query.sql}`, query.params.map(toParam))
+  const rows = await runner.unsafe(`explain (${options}) ${query.sql}`, query.params.map(toParam))
 
   // Postgres returns the document under a column named "QUERY PLAN", already parsed by postgres.js.
   const document = RawPlan.parse(rows.flatMap((r) => asRecord(r)['QUERY PLAN']))
@@ -82,6 +85,25 @@ export async function explain(query: RecordedQuery): Promise<QueryPlan> {
     planningMs: first['Planning Time'] ?? 0,
     executionMs: analyze ? (first['Execution Time'] ?? 0) : null,
   }
+}
+
+/**
+ * A call's statements, explained IN ORDER in ONE transaction. A statement can depend on the session
+ * state an earlier one set — the library audit's `select set_config('pg_trgm.similarity_threshold',
+ * …, true)` changes what `%` matches, and so the plan. Explained one by one on pooled connections,
+ * every statement after it was measured at the default setting: a plan nobody runs. Under ANALYZE
+ * the `set_config` executes, so the replay carries the setting exactly as the service did.
+ */
+export async function explainInOrder(statements: readonly RecordedQuery[]): Promise<QueryPlan[]> {
+  return await sql.begin(async (tx) => {
+    const plans: QueryPlan[] = []
+    for (const statement of statements) {
+      // In order, deliberately: each statement must see the state the one before it left.
+      // oxlint-disable-next-line no-await-in-loop
+      plans.push(await explain(statement, tx))
+    }
+    return plans
+  })
 }
 
 /** postgres.js rows are objects; typed as `unknown` so reading one column stays honest. */

@@ -101,17 +101,34 @@ async function loadExercises(caller: Caller, groupId: string) {
  *
  * Written as a plain self-join with `similarity(a, b) >= x` this is O(n^2) with the trigram index
  * unused: measured at 5,000 exercises it examined 6.5 MILLION row pairs. A LATERAL join with the
- * `%` operator lets Postgres look up candidates per row instead, which brought the same query to
- * 25,000 rows and ~220ms.
+ * `%` operator lets the trigram index look up each candidate's matches instead. Two details decide
+ * whether it actually does — both measured on the perf seed's curated library, 10,000 distinct
+ * names (`seed-perf/curated.ts`, `bun run perf:report`):
  *
- * Both caps below are REPORTED to the caller rather than applied silently — a truncated audit that
+ * - NO per-candidate LIMIT. With `limit 5` the planner gambled on walking the library in name order
+ *   and stopping at the fifth match — cheap when names come in near-identical runs, ruinous when
+ *   they are distinct: every candidate walked all 10,000 rows, and the scan took 23s. Without the
+ *   limit there is no early stop to bet on, and the trigram index wins: 0.28s.
+ * - The threshold SET to this scan's own bar. `%` matches at `pg_trgm.similarity_threshold`, 0.3
+ *   unless set, so the index handed back every loose match only for the scan to reject it: 1.04s
+ *   instead of 0.28s. Under the old limit the first five could all be rejects, hiding a true
+ *   duplicate behind them — `curation.test.ts` holds that.
+ *
+ * The cost now grows with the duplicates actually present: a library of thousands of numbered
+ * near-identical names (the perf seed's shared one) takes seconds, and is reporting junk anyway.
+ *
+ * The cap below is REPORTED to the caller rather than applied silently — a truncated audit that
  * looks complete is worse than one that says what it skipped.
  */
 const AUDIT_SCAN_LIMIT = 2000
-const MATCHES_PER_EXERCISE = 5
 
 async function findNearDuplicates(caller: Caller, groupId: string) {
-  const rows = await db.execute<{ a: string; b: string; similarity: number; scanned: number }>(sql`
+  const rows = await db.transaction(async (tx) => {
+    // `set_config(…, true)` is SET LOCAL with a bound value: it ends with this transaction.
+    await tx.execute(
+      sql`select set_config('pg_trgm.similarity_threshold', ${String(DUPLICATE_THRESHOLD)}, true)`,
+    )
+    return await tx.execute<{ a: string; b: string; similarity: number; scanned: number }>(sql`
     with candidates as (
       select id, name, owner_group_id
         from ${visibleExercises(caller, 'pool')}
@@ -128,12 +145,12 @@ async function findNearDuplicates(caller: Caller, groupId: string) {
          where b.owner_group_id = a.owner_group_id
            and b.id > a.id
            and b.name % a.name
-         limit ${MATCHES_PER_EXERCISE}
       ) x
      where similarity(a.name, x.name) >= ${DUPLICATE_THRESHOLD}
      order by similarity(a.name, x.name) desc
      limit 50
   `)
+  })
 
   return DuplicateRows.parse(rows)
 }

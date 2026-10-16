@@ -17,6 +17,7 @@ import {
   truncateAll,
 } from './volume.ts'
 import { loadProfile, seedProfile } from './profile.ts'
+import { loadCurator, seedCuratedLibrary } from './curated.ts'
 
 /**
  * A realistic-volume database, for `bun run perf` only.
@@ -57,12 +58,13 @@ export async function seedPerf(): Promise<PerfFixtures> {
   // After the profiles, so the users the hot paths run as have pins too: an empty favourites
   // join is solved for free and proves nothing.
   await seedFavourites(sharedGroupId)
+  const curator = await seedCuratedLibrary()
 
   // Without fresh statistics the planner works from defaults and chooses plans nobody in
   // production would get, which would make every assertion below meaningless.
   await db.execute(sql`analyze`)
 
-  return { small, large, sharedGroupId, setLogCount: await countRows('set_logs') }
+  return { small, large, sharedGroupId, curator, setLogCount: await countRows('set_logs') }
 }
 
 /**
@@ -80,9 +82,10 @@ export async function loadPerfFixtures(): Promise<PerfFixtures | null> {
 
   const small = await loadProfile('small')
   const large = await loadProfile('large')
-  if (small === null || large === null) return null
+  const curator = await loadCurator()
+  if (small === null || large === null || curator === null) return null
 
-  return { small, large, sharedGroupId, setLogCount }
+  return { small, large, sharedGroupId, curator, setLogCount }
 }
 
 if (import.meta.main) {

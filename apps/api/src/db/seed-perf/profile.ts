@@ -224,7 +224,7 @@ async function mintSession(userId: string): Promise<string> {
   return token
 }
 
-async function callerFor(userId: string): Promise<Caller> {
+export async function callerFor(userId: string): Promise<Caller> {
   const rows = await db.execute<{
     user_id: string
     username: string
