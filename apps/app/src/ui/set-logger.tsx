@@ -1,26 +1,19 @@
 import { useState } from 'react'
 import {
+  type Effort,
   type SetTarget,
   type TrackingMode,
+  fieldsOf,
   formatEffort,
-  gToKg,
-  kgToG,
-  mToMm,
-  mmToM,
-  tracks,
 } from '@cedo/contract'
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
-import { NumberInput } from './input.tsx'
+import { DimensionInput } from './dimension-input.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
-export interface LoggedValues {
-  readonly weightG: number | null
-  readonly reps: number | null
-  readonly durationS: number | null
-  readonly distanceMm: number | null
-}
+/** What one logged set measured, in base units. */
+export type LoggedValues = Effort
 
 export interface SetLoggerProps {
   readonly exerciseName: string
@@ -51,23 +44,13 @@ export function SetLogger({
   busy,
   testID,
 }: SetLoggerProps): React.JSX.Element {
-  const [weightKg, setWeightKg] = useState<number | null>(
-    target?.weightG === null || target?.weightG === undefined ? null : gToKg(target.weightG),
-  )
-  const [reps, setReps] = useState<number | null>(target?.reps ?? null)
-  const [durationS, setDurationS] = useState<number | null>(target?.durationS ?? null)
-  const [distanceM, setDistanceM] = useState<number | null>(
-    target?.distanceMm === null || target?.distanceMm === undefined
-      ? null
-      : mmToM(target.distanceMm),
-  )
-
-  // From the contract, not restated here: the plan editor asks the same question and the two
-  // answers must not drift. See `DIMENSIONS_BY_TRACKING`.
-  const showsWeight = tracks(tracking, 'weight')
-  const showsReps = tracks(tracking, 'reps')
-  const showsDuration = tracks(tracking, 'duration')
-  const showsDistance = tracks(tracking, 'distance')
+  // In base units throughout: the fields convert for display, so nothing here does arithmetic.
+  const [effort, setEffort] = useState<Effort>({
+    weightG: target?.weightG ?? null,
+    reps: target?.reps ?? null,
+    durationS: target?.durationS ?? null,
+    distanceMm: target?.distanceMm ?? null,
+  })
 
   return (
     <Card testID={testID}>
@@ -93,64 +76,27 @@ export function SetLogger({
           </Text>
         )}
 
+        {/* Which fields, in which order, labelled how: the contract's, as in the plan editor. */}
         <Stack direction="row" gap="sm">
-          {showsWeight ? (
-            <Stack grow>
-              <Text variant="caption" tone="faint">
-                kg
-              </Text>
-              <NumberInput
-                value={weightKg}
-                onChange={setWeightKg}
-                decimals
-                testID={`${testID}-weight`}
+          {fieldsOf(tracking).map((field) => (
+            <Stack grow key={field.dimension}>
+              <DimensionInput
+                dimension={field.dimension}
+                tracking={tracking}
+                value={effort[field.key]}
+                onChange={(value) => {
+                  setEffort((current) => ({ ...current, [field.key]: value }))
+                }}
+                testID={`${testID}-${field.dimension}`}
               />
             </Stack>
-          ) : null}
-          {showsReps ? (
-            <Stack grow>
-              <Text variant="caption" tone="faint">
-                reps
-              </Text>
-              <NumberInput value={reps} onChange={setReps} testID={`${testID}-reps`} />
-            </Stack>
-          ) : null}
-          {showsDuration ? (
-            <Stack grow>
-              <Text variant="caption" tone="faint">
-                seconds
-              </Text>
-              <NumberInput
-                value={durationS}
-                onChange={setDurationS}
-                testID={`${testID}-duration`}
-              />
-            </Stack>
-          ) : null}
-          {showsDistance ? (
-            <Stack grow>
-              <Text variant="caption" tone="faint">
-                metres
-              </Text>
-              <NumberInput
-                value={distanceM}
-                onChange={setDistanceM}
-                decimals
-                testID={`${testID}-distance`}
-              />
-            </Stack>
-          ) : null}
+          ))}
         </Stack>
 
         <Button
           title="Log set"
           onPress={() => {
-            onLog({
-              weightG: weightKg === null ? null : kgToG(weightKg),
-              reps,
-              durationS,
-              distanceMm: distanceM === null ? null : mToMm(distanceM),
-            })
+            onLog(effort)
           }}
           busy={busy}
           testID={`${testID}-log`}
