@@ -136,7 +136,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     maxQueries: 2,
     budgetMs: 60,
     noSeqScan: ['workouts', 'workout_days'],
-    indexes: ['workouts_name_id_idx', 'workout_days_workout_idx'],
+    indexes: ['workouts_name_id_idx', 'workout_days_order_idx'],
     ordered: ['workouts'],
     run: async (fixtures, size) =>
       await workoutService.list(fixtures.large.caller, { scope: 'all', limit: PAGE[size] }),
@@ -154,7 +154,7 @@ export const HOT_PATHS: readonly HotPath[] = [
      * turns each level into a filtered scan of the whole table. See
      * docs/adr/0019-visible-relations.md.
      */
-    indexes: ['workout_days_order_idx', 'workout_entries_day_idx', 'workout_sets_entry_idx'],
+    indexes: ['workout_days_order_idx', 'workout_entries_order_idx', 'workout_sets_order_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
       return await workoutService.get(profile.caller, profile.workoutId)
@@ -167,7 +167,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     maxQueries: 4,
     budgetMs: 200,
     noSeqScan: ['set_logs', 'workout_sets', 'workout_entries'],
-    indexes: ['workout_entries_day_idx', 'workout_sets_entry_idx'],
+    indexes: ['workout_entries_order_idx', 'workout_sets_order_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
       return await suggestForWorkout(profile.caller, profile.workoutId)

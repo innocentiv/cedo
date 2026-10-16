@@ -46,7 +46,12 @@ export const workoutDays = pgTable(
     name: text('name').notNull(),
   },
   (t) => [
-    index('workout_days_workout_idx').on(t.workoutId),
+    /**
+     * Also THE index for "the days of this workout": `workout_id` is its left prefix. A separate
+     * index on `workout_id` alone was a copy the planner used interchangeably with this one, and
+     * the same held for entries and sets below — three indexes maintained on every plan save for
+     * nothing. `bun run perf` holds that plan loads still walk these.
+     */
     uniqueIndex('workout_days_order_idx').on(t.workoutId, t.index),
     ownerKey('workout_days_workout_fk', [t.workoutId, t.ownerGroupId], workouts),
     ownerTarget('workout_days_id_owner_uq', t),
@@ -73,7 +78,6 @@ export const workoutEntries = pgTable(
     progression: jsonb('progression').$type<Progression>().notNull().default({ kind: 'none' }),
   },
   (t) => [
-    index('workout_entries_day_idx').on(t.dayId),
     uniqueIndex('workout_entries_order_idx').on(t.dayId, t.index),
     ownerKey('workout_entries_day_fk', [t.dayId, t.ownerGroupId], workoutDays),
     ownerTarget('workout_entries_id_owner_uq', t),
@@ -100,7 +104,6 @@ export const workoutSets = pgTable(
     targetDistanceMm: integer('target_distance_mm'),
   },
   (t) => [
-    index('workout_sets_entry_idx').on(t.entryId),
     uniqueIndex('workout_sets_order_idx').on(t.entryId, t.index),
     ownerKey('workout_sets_entry_fk', [t.entryId, t.ownerGroupId], workoutEntries),
     check('workout_sets_rpe_ck', sql`${t.targetRpe} is null or ${t.targetRpe} between 1 and 10`),

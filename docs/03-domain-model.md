@@ -209,7 +209,7 @@ against a realistic data volume — see [adr/0018](adr/0018-n1-detection.md).
 | **`workouts_owner_name_idx`** on `(owner_group_id, name, id)`, **`workouts_name_id_idx`** on `(name, id)` | the workout list, the same pair and the same reasons as the exercise ones |
 | `muscles_region_idx` | rendering the muscle picker in display order |
 | `media_created_by_idx` | a user's own uploads |
-| `workout_days_workout_idx`, `workout_entries_day_idx`, `workout_sets_entry_idx` | loading a plan without N+1 |
+| `workout_days_order_idx`, `workout_entries_order_idx`, `workout_sets_order_idx` (unique, on `(parent_id, index)`) | ordering a plan, and — by their `parent_id` prefix — loading one without N+1 |
 | `set_logs_exercise_time_idx` | the review's per-exercise aggregates, and the `exercise_id` foreign key on the largest table by an order of magnitude |
 | `set_logs_session_idx`, `set_logs_entry_idx` | a session's own sets; a prescribed set's history |
 | `workout_sessions_user_time_idx` on `(user_id, started_at desc nulls first, id desc nulls first)` | the session list, newest first — `id` included because the keyset cursor is a row comparison; `nulls first` because that is what `ORDER BY … DESC` means, and a mismatch turns the walk into a sort |
