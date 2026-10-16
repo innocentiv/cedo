@@ -111,6 +111,12 @@ conversion, and the parse. Which fields a set shows, and in what order, is `fiel
 No screen converts a unit or picks a label: the logger, the plan editor and the progression field
 each used to, and disagreed. `NumberInput` is for plain counts — sets, a rep range, a percentage.
 
+A logged set is held as an `Effort` and read and written through each field's `key`; a prescribed
+set's target through its `targetKey`. A screen therefore names no measurement field itself. The
+plan editor patches only the target that changed — never a whole `Effort` mapped back onto the
+set — because its patch is applied to every working set, and a whole one would overwrite the other
+sets' targets.
+
 Both share one typing mechanic, `TypedNumber`. A value is `number | null`, where null means empty —
 an empty numeric field is not zero, and zero reps is a meaningful log. While focused the field
 shows the text being typed rather than the number it parses to; the contract's parse returns both,

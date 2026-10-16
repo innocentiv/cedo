@@ -142,7 +142,7 @@ is a union extension with **no migration** — the same pattern as `progression`
 
 ### Exercises — and how they are measured
 
-`tracking` declares the measurement mode, which tells the UI which inputs to render and tells a
+`tracking` declares the tracking mode, which tells the UI which inputs to render and tells a
 progression rule which dimension to advance:
 
 | Mode | Example | Notes |

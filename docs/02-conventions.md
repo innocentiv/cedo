@@ -90,6 +90,10 @@ float, never a `numeric`, never kilograms in the database or on the wire.
 **`packages/contract/src/units.ts` is the only file permitted to convert.** If you find yourself
 writing `/ 1000` or `* 2.20462` anywhere else, stop and use a helper from that file.
 
+Which unit a value is *typed* in — kg for a weight, metres for a distance — is decided once, in
+`DIMENSION_FIELDS` (`packages/contract/src/dimension.ts`), which calls those helpers. A screen
+renders a `DimensionInput` and never picks a unit or a label itself. See `docs/08-frontend.md`.
+
 ## Schemas
 
 Author once, in Zod, in `packages/contract`. Never redeclare a shape in the API, the MCP tools, or a
