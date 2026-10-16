@@ -174,19 +174,15 @@ single `onError`.
 
 ## 5. The lifecycle: list, get, favourites, transfer, delete
 
-Declare the widget as an ownable in `apps/api/src/modules/widget/lifecycle.ts` — the one file
-besides `write*.ts` allowed to name the raw tables, because transfer and delete write to them:
+First register its tables in `OWNABLE_TABLES` in `apps/api/src/modules/ownable/write.ts` — add
+`'widget'` to `OWNABLE_KINDS` and `widget: { table: widgets, favourites: widgetFavourites }`. That
+write file holds every kind's raw tables, so nothing else in the module needs one. Then declare the
+widget in `apps/api/src/modules/widget/lifecycle.ts`:
 
 ```ts
 export const widgetLifecycle = ownableLifecycle({
   noun: 'widget',
-  table: widgets,
-  favourites: widgetFavourites,
-  view: (caller) => {
-    const visible = visibleWidgets(caller)
-    return { from: visible, row: visible._.selectedFields, id: visible.id,
-             name: visible.name, ownerGroupId: visible.ownerGroupId }
-  },
+  relation: (caller) => relationOf(visibleWidgets(caller)),
   // Optional: listConditions (its own filters), beforeTransfer (its own rule), inUse (409 text).
 })
 ```
@@ -269,7 +265,7 @@ An entity nobody measured is an entity that is fast until someone has a thousand
 [ ] favouriteTable()
 [ ] a visible relation per table; added to the lint importNames and to raw-sql.test.ts OWNED
 [ ] migration generated and committed
-[ ] lifecycle.ts declaring it; the service builds on it
+[ ] its tables in OWNABLE_TABLES (ownable/write.ts); lifecycle.ts declaring it; the service builds on it
 [ ] service reads through the relations; write.ts carries editable() on every statement
 [ ] a case per new GET route / read-only MCP tool in test/membership-lost.test.ts
 [ ] an entry in KINDS in modules/ownable/ownable.test.ts

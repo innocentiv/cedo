@@ -33,9 +33,10 @@ one UPDATE on the parent; Postgres carries the owner down.
 
 **The holes are closed mechanically.**
 
-- oxlint `no-restricted-imports` refuses importing the owned tables outside `db/`, the write files,
-  each kind's `lifecycle.ts` (which hands its table to the shared ownable lifecycle for transfer and
-  delete) and tests. Type imports are allowed.
+- oxlint `no-restricted-imports` refuses importing the owned tables outside `db/`, the write files
+  and tests. Type imports are allowed. The shared ownable lifecycle's transfer and delete need each
+  kind's raw table; `modules/ownable/write.ts` holds them in one registry, so a kind's
+  `lifecycle.ts` names itself and imports none.
 - Writes cannot target a subquery, so each module keeps them in `write*.ts`, which may import the
   raw tables and gates every statement on them — write or guard read — with `editable()`.
 - The Drizzle client is built without `{ schema }`, so the relational `db.query.*` API — which

@@ -82,8 +82,7 @@ db.update(exercisesTable)
 ```
 
 **A read of an owned table that does not go through its visible relation is a data leak.** It is
-enforced, not remembered: lint refuses importing the raw tables outside `db/`, `write*.ts`,
-`lifecycle.ts` and tests;
+enforced, not remembered: lint refuses importing the raw tables outside `db/`, `write*.ts` and tests;
 the Drizzle client has no `db.query`; and `raw-sql.test.ts` fails on an owned table named inside an
 `sql` template. Not-found and not-permitted both return 404 — a 403 would confirm the resource
 exists.

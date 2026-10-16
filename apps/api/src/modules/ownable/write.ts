@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, getTableName, sql } from 'drizzle-orm'
 import { db } from '../../db/client.ts'
 import {
   type FavouriteTable,
@@ -6,18 +6,42 @@ import {
   assertEditorOf,
   editable,
 } from '../../db/ownable.ts'
+import { exerciseFavourites, exercises, workoutFavourites, workouts } from '../../db/schema.ts'
 import { conflict, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
 /**
- * The statements every ownable shares. A write file: it reaches the raw table it is handed, and
- * every statement on it carries `editable()`. See docs/adr/0019-visible-relations.md.
+ * The statements every ownable shares. A write file: it holds the raw tables of every kind, and
+ * every statement on them carries `editable()`. See docs/adr/0019-visible-relations.md.
  */
+
+export const OWNABLE_KINDS = ['exercise', 'workout'] as const
+export type OwnableKindName = (typeof OWNABLE_KINDS)[number]
+
+/**
+ * Each kind's raw tables, held HERE rather than handed in by the kind. A kind's `lifecycle.ts`
+ * names itself and never imports a raw table, so the only module files that can reach one are
+ * write files — which gate every statement. Adding a kind adds a line here; the shared suite's
+ * completeness test fails until it does.
+ */
+const OWNABLE_TABLES: Readonly<
+  Record<OwnableKindName, { readonly table: OwnableTable; readonly favourites: FavouriteTable }>
+> = {
+  exercise: { table: exercises, favourites: exerciseFavourites },
+  workout: { table: workouts, favourites: workoutFavourites },
+}
+
+/** A kind's favourites table. Favourites are personal rows, not owned ones, so reads may join it. */
+export const favouritesOf = (noun: OwnableKindName): FavouriteTable =>
+  OWNABLE_TABLES[noun].favourites
+
+/** The SQL names of the registered ownable tables, for the completeness test. */
+export const ownableTableNames = (): string[] =>
+  OWNABLE_KINDS.map((noun) => getTableName(OWNABLE_TABLES[noun].table))
 
 /** What a transfer or a delete needs to know about the kind it is acting on. */
 export interface OwnableWrites {
-  readonly noun: string
-  readonly table: OwnableTable
+  readonly noun: OwnableKindName
   /**
    * Runs after the caller is known to edit the row and before it moves — a kind's own rule about
    * what may travel. Its refusal is only ever heard by someone allowed to edit the row.
@@ -41,12 +65,13 @@ export async function transferOwnable(
   id: string,
   toGroupId: string,
 ): Promise<void> {
+  const { table } = OWNABLE_TABLES[kind.noun]
   assertEditorOf(caller, toGroupId)
 
   const [own] = await db
-    .select({ id: kind.table.id })
-    .from(kind.table)
-    .where(and(editable(kind.table, caller), eq(kind.table.id, id)))
+    .select({ id: table.id })
+    .from(table)
+    .where(and(editable(table, caller), eq(table.id, id)))
     .limit(1)
   if (own === undefined) throw notFound(kind.noun)
 
@@ -54,10 +79,10 @@ export async function transferOwnable(
 
   // Children follow by the cascading owner key. See docs/03-domain-model.md.
   const moved = await db
-    .update(kind.table)
+    .update(table)
     .set({ ownerGroupId: toGroupId, updatedAt: sql`now()` })
-    .where(and(editable(kind.table, caller), eq(kind.table.id, id)))
-    .returning({ id: kind.table.id })
+    .where(and(editable(table, caller), eq(table.id, id)))
+    .returning({ id: table.id })
   if (moved.length === 0) throw notFound(kind.noun)
 }
 
@@ -71,10 +96,11 @@ export async function deleteOwnable(
   caller: Caller,
   id: string,
 ): Promise<void> {
+  const { table } = OWNABLE_TABLES[kind.noun]
   const deleted = await db
-    .delete(kind.table)
-    .where(and(editable(kind.table, caller), eq(kind.table.id, id)))
-    .returning({ id: kind.table.id })
+    .delete(table)
+    .where(and(editable(table, caller), eq(table.id, id)))
+    .returning({ id: table.id })
     .catch((error: unknown) => {
       if (kind.inUse !== undefined && isForeignKeyRefusal(error)) throw conflict(kind.inUse)
       throw error
@@ -84,11 +110,12 @@ export async function deleteOwnable(
 
 /** Pins or unpins. Whether the caller may see the row is checked first, by the caller of this. */
 export async function writeFavourite(
-  favourites: FavouriteTable,
+  noun: OwnableKindName,
   caller: Caller,
   id: string,
   favourite: boolean,
 ): Promise<void> {
+  const favourites = favouritesOf(noun)
   if (favourite) {
     await db
       .insert(favourites)

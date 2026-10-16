@@ -24,7 +24,6 @@ const NAMED = new RegExp(String.raw`\b(${OWNED.join('|')})\b`, 'iu')
 const ALLOWED = [
   /^db\//u,
   /^modules\/[^/]+\/write[^/]*\.ts$/u,
-  /^modules\/[^/]+\/lifecycle\.ts$/u,
   /^test\//u,
   /\.test\.ts$/u,
   // Instance-wide row counts for a curator, by design — every table, nobody's rows.

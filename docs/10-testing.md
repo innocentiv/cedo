@@ -60,8 +60,8 @@ new is not covered. See `docs/adr/0019-visible-relations.md`.
   search escaping, keyset paging, favourites, transfer, duplicate), run once per kind in `KINDS`. It
   reads every `ownable()` table off the schema and fails when one has no entry; the per-kind test
   files keep only what is the kind's own.
-- **`db/raw-sql.test.ts`** — scans every `sql` template outside `db/`, `write*.ts`, `lifecycle.ts`,
-  tests and the diagnostics exemption, and fails on the name of an owned table. It is the hole lint cannot see: a
+- **`db/raw-sql.test.ts`** — scans every `sql` template outside `db/`, `write*.ts`, tests and the
+  diagnostics exemption, and fails on the name of an owned table. It is the hole lint cannot see: a
   correlated subquery against a raw table needs no import.
 
 ### The database

@@ -10,6 +10,7 @@ import * as WorkoutService from '../workout/service.ts'
 import type { workoutLifecycle } from '../workout/lifecycle.ts'
 import * as schema from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { ownableTableNames } from './write.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
@@ -73,8 +74,8 @@ const KINDS: readonly Kind[] = [
 ]
 
 /**
- * Every table built with `ownable()` is a kind here. A new ownable without an entry would quietly
- * get none of the guarantees below, so its absence fails instead.
+ * Every table built with `ownable()` is a kind here, and is registered in `ownable/write.ts`. A new
+ * ownable without an entry would quietly get none of the guarantees below, so its absence fails.
  */
 test('every ownable table has a kind in this suite', () => {
   const ownableTables: string[] = Object.values(schema)
@@ -86,6 +87,8 @@ test('every ownable table has a kind in this suite', () => {
     .map((table) => getTableName(table))
 
   expect(ownableTables.toSorted()).toEqual(KINDS.map((k) => k.table).toSorted())
+  // And the shared write file holds each one's tables: no kind can be declared without that.
+  expect(ownableTableNames().toSorted()).toEqual(ownableTables.toSorted())
 })
 
 describe.each(KINDS)('$path', (kind) => {

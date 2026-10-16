@@ -2,11 +2,16 @@ import { type SQL, type Subquery, and, asc, eq, gt, ilike, isNotNull, or } from 
 import { type AnyPgColumn, type SelectedFieldsFlat, alias } from 'drizzle-orm/pg-core'
 import type { OwnableQuery } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import type { FavouriteTable } from '../../db/ownable.ts'
 import { invalid, notFound, unreachable } from '../../lib/error.ts'
 import { decodeCursor, encodeCursor, escapeLikePattern } from '../../lib/keyset.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { type OwnableWrites, deleteOwnable, transferOwnable, writeFavourite } from './write.ts'
+import {
+  type OwnableWrites,
+  deleteOwnable,
+  favouritesOf,
+  transferOwnable,
+  writeFavourite,
+} from './write.ts'
 
 /**
  * The lifecycle every ownable shares — list, get, favourite, transfer, delete — written once and
@@ -53,7 +58,6 @@ export interface OwnableKind<
   TQuery extends OwnableQuery,
 > extends OwnableWrites {
   readonly relation: (caller: Caller) => OwnableRelation<TFields>
-  readonly favourites: FavouriteTable
   /** A kind's own list filters, on top of scope, search and the cursor. */
   readonly listConditions?: (
     caller: Caller,
@@ -101,7 +105,7 @@ function withFavourite<TFields extends SelectedFieldsFlat, TQuery extends Ownabl
 ) {
   const relation = kind.relation(caller)
   // Aliased so the join has a literal name; see above, and the type test in ownable.test.ts.
-  const favourite = alias(kind.favourites, 'favourite')
+  const favourite = alias(favouritesOf(kind.noun), 'favourite')
   const rows = db
     .select({
       row: relation.row,
@@ -184,7 +188,7 @@ async function markFavourite<TFields extends SelectedFieldsFlat, TQuery extends 
     .where(eq(relation.id, id))
     .limit(1)
   if (found === undefined) throw notFound(kind.noun)
-  await writeFavourite(kind.favourites, caller, id, favourite)
+  await writeFavourite(kind.noun, caller, id, favourite)
 }
 
 /** One kind's lifecycle. `list` and `get` return `{ row, isFavourite }`, `row` typed as the kind's. */
