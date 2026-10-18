@@ -20,6 +20,15 @@ export const SupersetGroup = z
   .regex(/^[A-Z]$/u, 'Must be a single uppercase letter')
   .nullable()
 
+/**
+ * How big a plan may get. Named so the plan editor stops at the same place the schema refuses: it
+ * used to clamp warm-ups and working sets at 20 EACH, and an entry of 5 + 20 was accepted on screen
+ * and refused on save. See `plan-editing.ts`.
+ */
+export const MAX_SETS_PER_ENTRY = 20
+export const MAX_ENTRIES_PER_DAY = 40
+export const MAX_DAYS_PER_PLAN = 14
+
 export const WorkoutSetInput = z.strictObject({
   targetReps: TargetReps.nullable().default(null),
   targetWeightG: TargetWeightG.nullable().default(null),
@@ -43,7 +52,10 @@ export const WorkoutEntryInput = z
     supersetGroup: SupersetGroup.default(null),
     restSeconds: z.int().nonnegative().max(3600).nullable().default(null),
     progression: Progression.default({ kind: 'none' }),
-    sets: z.array(WorkoutSetInput).min(1).max(20),
+    sets: z
+      .array(WorkoutSetInput)
+      .min(1)
+      .max(MAX_SETS_PER_ENTRY, `An exercise holds at most ${MAX_SETS_PER_ENTRY} sets`),
   })
   .refine((e) => e.sets.some((s) => !s.isWarmup), {
     path: ['sets'],
@@ -60,14 +72,19 @@ export const WorkoutDayInput = z.strictObject({
    */
   id: Id.optional(),
   name: NonEmptyString.max(80),
-  entries: z.array(WorkoutEntryInput).max(40),
+  entries: z
+    .array(WorkoutEntryInput)
+    .max(MAX_ENTRIES_PER_DAY, `A day holds at most ${MAX_ENTRIES_PER_DAY} exercises`),
 })
 export type WorkoutDayInput = z.output<typeof WorkoutDayInput>
 
 /** `PUT /workouts/:id/plan` replaces the entire plan in one transaction. See docs/06-api.md. */
 export const WorkoutPlanInput = z
   .strictObject({
-    days: z.array(WorkoutDayInput).min(1).max(14),
+    days: z
+      .array(WorkoutDayInput)
+      .min(1, 'A plan needs at least one day')
+      .max(MAX_DAYS_PER_PLAN, `A plan holds at most ${MAX_DAYS_PER_PLAN} days`),
   })
   .superRefine((plan, ctx) => {
     const days = plan.days.flatMap((d) => (d.id === undefined ? [] : [d.id]))

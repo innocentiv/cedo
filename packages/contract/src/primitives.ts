@@ -16,7 +16,7 @@ export type Id = z.output<typeof Id>
 export const Timestamp = z.iso.datetime()
 export type Timestamp = z.output<typeof Timestamp>
 
-export const NonEmptyString = z.string().trim().min(1)
+export const NonEmptyString = z.string().trim().min(1, 'Cannot be empty')
 
 export const Slug = z
   .string()
