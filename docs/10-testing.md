@@ -105,6 +105,12 @@ every route renders, that nothing throws, and what it looks like. Every e2e test
 on any console error, and always writes a screenshot the AI reads back. See
 `docs/adr/0017-webview-for-ui-verification.md`.
 
+A journey that needs data the UI does not make — a second person, sixty exercises — sets it up from
+the test process with the app's own client: `clientAs(await page.session())` to act as the page's
+user, `signUp(name)` for anyone else. Typed and parsed by the contract, and awaited, so a fixture has
+finished when it returns. Never a `fetch` evaluated inside the page: untyped, ids spliced into
+strings, and easily fired without being awaited.
+
 ## T4 — performance
 
 ```bash

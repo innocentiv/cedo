@@ -1,9 +1,12 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test'
+import { ExerciseCreate, WorkoutPlanInput } from '@cedo/contract'
 import {
   E2E_STARTUP_TIMEOUT_MS,
   E2E_TIMEOUT_MS,
   type Page,
+  clientAs,
   sharedApi,
+  signUp,
   stopSharedApi,
   withApp,
 } from './harness.ts'
@@ -317,36 +320,22 @@ test(
         await register(page, athlete)
 
         // A coach shares a plan through a group with the athlete in it.
-        const ids = await page.evaluate(`(async () => {
-          const call = async (method, path, token, body) => {
-            const res = await fetch('/api' + path, {
-              method,
-              headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
-              body: body === undefined ? undefined : JSON.stringify(body),
-            })
-            return res.status === 204 ? null : res.json()
-          }
-          const coach = await (await fetch('/api/auth/register', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({ username: '${athlete}c', displayName: 'Coach', password: 'coach-password' }),
-          })).json()
-          const squad = await call('POST', '/groups', coach.token, { name: 'Squad' })
-          await call('POST', '/groups/' + squad.id + '/members', coach.token, { username: '${athlete}', role: 'reader' })
-          const squat = (await call('GET', '/exercises?q=Back%20Squat&limit=1', coach.token)).items[0]
-          const plan = await call('POST', '/workouts', coach.token, { name: 'Coached' })
-          await call('PUT', '/workouts/' + plan.id + '/plan', coach.token, {
-            days: [{ name: 'Legs', entries: [{ exerciseId: squat.id, sets: [{ targetReps: 5 }] }] }],
-          })
-          await call('POST', '/workouts/' + plan.id + '/transfer', coach.token, { toGroupId: squad.id })
-          const me = await call('GET', '/auth/me', localStorage.getItem('cedo.session'))
-          return JSON.stringify({ coach: coach.token, squad: squad.id, athlete: me.user.id })
-        })()`)
-        const {
-          coach,
-          squad,
-          athlete: athleteId,
-        } = JSON.parse(String(ids)) as Record<string, string>
+        const coach = await signUp(`${athlete}c`)
+        const squad = await coach.api.groups.create({ name: 'Squad' })
+        await coach.api.groups.addMember(squad.id, { username: athlete, role: 'reader' })
+        const [squat] = (await coach.api.exercises.list({ q: 'Back Squat', limit: 1 })).items
+        if (squat === undefined) throw new Error('The seeded library has no Back Squat')
+        const plan = await coach.api.workouts.create({ name: 'Coached', notes: null })
+        await coach.api.workouts.replacePlan(
+          plan.id,
+          WorkoutPlanInput.parse({
+            days: [
+              { name: 'Legs', entries: [{ exerciseId: squat.id, sets: [{ targetReps: 5 }] }] },
+            ],
+          }),
+        )
+        await coach.api.workouts.transfer(plan.id, { toGroupId: squad.id })
+        const { user: me } = await (await clientAs(await page.session())).auth.me()
 
         // The athlete trains from it.
         await page.goto('/workouts')
@@ -359,11 +348,8 @@ test(
         await page.waitFor('session-logs')
         const sessionPath = String(await page.evaluate('location.pathname'))
 
-        // …and is then removed from the group.
-        await page.evaluate(
-          `fetch('/api/groups/${squad}/members/${athleteId}', { method: 'DELETE', headers: { authorization: 'Bearer ${coach}' } })`,
-        )
-        await Bun.sleep(300)
+        // …and is then removed from the group — finished when this returns, so nothing to wait out.
+        await coach.api.groups.removeMember(squad.id, me.id)
 
         await page.goto(sessionPath)
         await page.waitFor('session-logs')
@@ -421,21 +407,18 @@ test(
       await register(page, unique('lib'))
 
       // 45 seeded + 60 of these puts "Zz Hold" well past the first 100 by name, where the editor
-      // used to look exercises up. Created through the API from the page, with its own session.
-      const created = await page.evaluate(`(async () => {
-        const token = localStorage.getItem('cedo.session')
-        const post = (body) => fetch('/api/exercises', {
-          method: 'POST',
-          headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
-          body: JSON.stringify(body),
-        })
-        for (let i = 0; i < 60; i++) {
-          await post({ name: 'Filler ' + String(i).padStart(2, '0'), muscles: [{ muscle: 'quadriceps', loadPct: 100 }] })
-        }
-        const hold = await post({ name: 'Zz Hold', tracking: 'duration', muscles: [{ muscle: 'rectus_abdominis', loadPct: 100 }] })
-        return hold.status
-      })()`)
-      expect(created).toBe(200)
+      // used to look exercises up. Created as the page's own user.
+      const mine = await clientAs(await page.session())
+      const anExercise = (name: string, tracking: 'weight_reps' | 'duration', muscle: string) =>
+        ExerciseCreate.parse({ name, tracking, muscles: [{ muscle, loadPct: 100 }] })
+      await Promise.all(
+        Array.from({ length: 60 }, async (_, i) =>
+          mine.exercises.create(
+            anExercise(`Filler ${String(i).padStart(2, '0')}`, 'weight_reps', 'quadriceps'),
+          ),
+        ),
+      )
+      await mine.exercises.create(anExercise('Zz Hold', 'duration', 'rectus_abdominis'))
 
       await page.goto('/workouts')
       await page.waitFor('workouts-screen')
@@ -564,12 +547,7 @@ test(
        * A page reload would prove nothing: the restore-on-startup path already handles a bad stored
        * token, and it is not the path this guards.
        */
-      await page.evaluate(
-        `fetch('/api/auth/logout', {
-           method: 'POST',
-           headers: { authorization: 'Bearer ' + localStorage.getItem('cedo.session') },
-         })`,
-      )
+      await (await clientAs(await page.session())).auth.logout()
       await page.click('[data-testid="nav-workouts"]')
 
       await page.waitFor('login-screen')

@@ -1,4 +1,7 @@
 import { join } from 'node:path'
+import type { User } from '@cedo/contract'
+import { type Api as Client, createApi } from '../src/api/client.ts'
+import { transport } from '../src/api/transport.ts'
 import { serveExport } from './server.ts'
 
 /**
@@ -131,6 +134,27 @@ export async function sharedApi(): Promise<Api> {
   return await shared
 }
 
+/**
+ * The API as whoever holds `token` — or as nobody — called from the TEST process with the app's own
+ * client: every response parsed by the contract, and awaited, so a fixture has finished when it
+ * returns. Fixtures used to be `fetch`es evaluated inside the page: untyped, ids spliced into
+ * template strings, and one of them fired and forgotten, behind a sleep.
+ */
+export async function clientAs(token: string | null): Promise<Client> {
+  const { url } = await sharedApi()
+  return createApi(transport({ baseUrl: () => url, token: () => token }))
+}
+
+/** A second person — a coach, a training partner — signed up over HTTP, with a client acting as them. */
+export async function signUp(
+  username: string,
+): Promise<{ readonly user: User; readonly api: Client }> {
+  const created = await (
+    await clientAs(null)
+  ).auth.register({ username, displayName: username, password: `${username}-password` })
+  return { user: created.user, api: await clientAs(created.token) }
+}
+
 export interface Page {
   /** Navigate to an app route and wait for it to settle. */
   readonly goto: (path: string) => Promise<void>
@@ -152,6 +176,8 @@ export interface Page {
    */
   readonly waitForSelector: (css: string, timeoutMs?: number) => Promise<string>
   readonly evaluate: (script: string) => Promise<unknown>
+  /** The signed-in user's credential, as the app stored it — to act as them with `clientAs`. */
+  readonly session: () => Promise<string>
   readonly errors: readonly string[]
 }
 
@@ -291,6 +317,12 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
       throw new Error(`Timed out waiting for an element matching ${css}.`)
     },
     evaluate: async (script) => await view.evaluate(script),
+    session: async () => {
+      // The key `src/auth/token-storage.ts` writes on web. Read, never written: the app owns it.
+      const token = await view.evaluate(`localStorage.getItem('cedo.session')`)
+      if (typeof token !== 'string') throw new Error('No signed-in session in the page')
+      return token
+    },
     get errors() {
       return errors
     },
