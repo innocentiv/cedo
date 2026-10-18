@@ -1,0 +1,124 @@
+import {
+  type Effort,
+  type Progression,
+  type ProgressionSuggestion,
+  type SessionAttempts,
+  type SetAttempt,
+  type SetTarget,
+  type TrackingMode,
+  type WorkoutSetInput,
+  nextTarget,
+  prescriptionOf,
+} from '@cedo/contract'
+import { groupBy } from '../../lib/keyset.ts'
+
+/**
+ * Progression's evaluation, apart from its loading: rows in, suggestions out, no database. The
+ * rules' maths is `nextTarget` in the contract and tested there; what is tested HERE is the wiring
+ * around it — which sets count, what the prescription is, which sessions are read and in what
+ * order, and when a suggestion is a change. See docs/adr/0012-progression-rules.md.
+ */
+
+/** An entry whose exercise the caller can see — the only kind there is anything to advise about. */
+export interface EntryToEvaluate {
+  readonly id: string
+  readonly exerciseId: string
+  readonly exerciseName: string
+  readonly tracking: TrackingMode
+  readonly progression: Progression
+}
+
+/** A prescribed set of one of those entries. */
+export interface PrescribedSet extends WorkoutSetInput {
+  readonly entryId: string
+}
+
+/** One of the caller's logged sets. A set logged outside a plan names no entry, and is not read. */
+export interface LoggedSet extends Effort {
+  readonly entryId: string | null
+  readonly sessionId: string
+  readonly isWarmup: boolean
+}
+
+/**
+ * One suggestion per entry, in the order the entries arrive. `prescribed` is in set order, and
+ * `logs` newest session first, already capped to the depth a rule may read — that is the loader's
+ * job, and it is done in SQL, where the rows are selected.
+ */
+export function suggest(
+  entries: readonly EntryToEvaluate[],
+  prescribed: readonly PrescribedSet[],
+  logs: readonly LoggedSet[],
+): ProgressionSuggestion[] {
+  const setsByEntry = groupBy(prescribed, (s) => s.entryId)
+  const logsByEntry = groupBy(
+    logs.filter((l): l is LoggedSet & { entryId: string } => l.entryId !== null),
+    (l) => l.entryId,
+  )
+  return entries.map((entry) =>
+    suggestForEntry(entry, setsByEntry.get(entry.id) ?? [], logsByEntry.get(entry.id) ?? []),
+  )
+}
+
+function suggestForEntry(
+  entry: EntryToEvaluate,
+  prescribed: readonly PrescribedSet[],
+  logs: readonly LoggedSet[],
+): ProgressionSuggestion {
+  const current = targetOf(prescriptionOf({ sets: prescribed }))
+  const sessions = toSessions(logs)
+
+  const suggested = nextTarget({
+    rule: entry.progression,
+    target: current,
+    workingSets: prescribed.filter((s) => !s.isWarmup).length,
+    sessions,
+  })
+
+  return {
+    entryId: entry.id,
+    exerciseId: entry.exerciseId,
+    exerciseName: entry.exerciseName,
+    tracking: entry.tracking,
+    rule: entry.progression,
+    current,
+    suggested,
+    changed: !sameTarget(current, suggested),
+    sessionsConsidered: sessions.length,
+  }
+}
+
+/** An entry with no working set prescribes nothing — every target null. */
+function targetOf(set: WorkoutSetInput | undefined): SetTarget {
+  return {
+    reps: set?.targetReps ?? null,
+    weightG: set?.targetWeightG ?? null,
+    rpe: set?.targetRpe ?? null,
+    durationS: set?.targetDurationS ?? null,
+    distanceMm: set?.targetDistanceMm ?? null,
+  }
+}
+
+/** Flat log rows into per-session attempts, keeping the order the sessions arrive in. */
+function toSessions(rows: readonly LoggedSet[]): SessionAttempts[] {
+  const bySession = new Map<string, SetAttempt[]>()
+  for (const row of rows) {
+    const list = bySession.get(row.sessionId) ?? []
+    list.push({
+      weightG: row.weightG,
+      reps: row.reps,
+      durationS: row.durationS,
+      distanceMm: row.distanceMm,
+      isWarmup: row.isWarmup,
+    })
+    bySession.set(row.sessionId, list)
+  }
+  return [...bySession.values()]
+}
+
+const sameTarget = (a: SetTarget, b: SetTarget): boolean =>
+  a.reps === b.reps &&
+  a.weightG === b.weightG &&
+  a.rpe === b.rpe &&
+  a.durationS === b.durationS &&
+  a.distanceMm === b.distanceMm

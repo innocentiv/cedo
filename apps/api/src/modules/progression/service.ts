@@ -1,25 +1,12 @@
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
-import {
-  type Progression,
-  type ProgressionSuggestion,
-  type SessionAttempts,
-  type SetAttempt,
-  type SetTarget,
-  type TrackingMode,
-  nextTarget,
-} from '@cedo/contract'
+import type { ProgressionSuggestion } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { groupBy } from '../../lib/keyset.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
-import {
-  type WorkoutSetRow,
-  visibleExercises,
-  visibleWorkoutSets,
-  visibleWorkouts,
-} from '../../db/visible.ts'
+import { visibleExercises, visibleWorkoutSets, visibleWorkouts } from '../../db/visible.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { planEntries } from '../workout/plan.ts'
+import { suggest } from './evaluate.ts'
 
 /**
  * How many past sessions a rule may look back over. `afterSuccesses` caps at 10, so ten is enough
@@ -28,11 +15,10 @@ import { planEntries } from '../workout/plan.ts'
 const HISTORY_DEPTH = 10
 
 /**
- * Evaluates every entry in a workout against its logged history.
- *
- * The maths is `nextTarget` from `@cedo/contract`, and this is its one caller: the logging screen's
- * hint and the `workout_progression` MCP tool both render this answer, so they can never disagree.
- * See docs/adr/0012-progression-rules.md.
+ * Evaluates every entry in a workout against its logged history: loaded here, evaluated by the
+ * pure `suggest` in ./evaluate.ts, whose maths is `nextTarget` from `@cedo/contract`. The logging
+ * screen's hint and the `workout_progression` MCP tool both render this answer, so they can never
+ * disagree. See docs/adr/0012-progression-rules.md.
  *
  * Deliberately batched: one query for the entries, one for their prescribed sets, one for the
  * caller's logs across all of them. A per-entry history query would be an N+1 that grows with the
@@ -43,18 +29,7 @@ export async function suggestForWorkout(
   workoutId: string,
 ): Promise<ProgressionSuggestion[]> {
   const loaded = await loadForWorkout(caller, workoutId)
-  if (loaded === null) return []
-  const { entries, prescribed, logs } = loaded
-
-  const setsByEntry = groupBy(prescribed, (s) => s.entryId)
-  const logsByEntry = groupBy(
-    logs.filter((l): l is typeof l & { entryId: string } => l.entryId !== null),
-    (l) => l.entryId,
-  )
-
-  return entries.map((entry) =>
-    suggestForEntry(entry, setsByEntry.get(entry.id) ?? [], logsByEntry.get(entry.id) ?? []),
-  )
+  return loaded === null ? [] : suggest(loaded.entries, loaded.prescribed, loaded.logs)
 }
 
 /** The three reads. Batched deliberately — a per-entry history query would be an N+1. */
@@ -147,89 +122,3 @@ async function loadLogs(caller: Caller, entryIds: string[]) {
     .where(sql`${ranked.rank} <= ${HISTORY_DEPTH}`)
     .orderBy(desc(ranked.startedAt), asc(ranked.setIndex))
 }
-
-interface EntryContext {
-  readonly id: string
-  readonly exerciseId: string
-  readonly exerciseName: string
-  readonly tracking: TrackingMode
-  readonly progression: Progression
-}
-
-/** Pure apart from its inputs: all the maths is `nextTarget` from the contract. */
-function suggestForEntry(
-  entry: EntryContext,
-  prescribed: readonly WorkoutSetRow[],
-  logs: readonly LoggedSet[],
-): ProgressionSuggestion {
-  const working = prescribed.filter((s) => !s.isWarmup)
-  const current = targetOf(working[0])
-  const sessions = toSessions(logs)
-
-  const suggested = nextTarget({
-    rule: entry.progression,
-    target: current,
-    workingSets: working.length,
-    sessions,
-  })
-
-  return {
-    entryId: entry.id,
-    exerciseId: entry.exerciseId,
-    exerciseName: entry.exerciseName,
-    tracking: entry.tracking,
-    rule: entry.progression,
-    current,
-    suggested,
-    changed: !sameTarget(current, suggested),
-    sessionsConsidered: sessions.length,
-  }
-}
-
-/**
- * The prescription for an entry is the FIRST working set: one weight per entry, sets never diverge.
- * See docs/adr/0012-progression-rules.md.
- */
-function targetOf(set: WorkoutSetRow | undefined): SetTarget {
-  return {
-    reps: set?.targetReps ?? null,
-    weightG: set?.targetWeightG ?? null,
-    rpe: set?.targetRpe ?? null,
-    durationS: set?.targetDurationS ?? null,
-    distanceMm: set?.targetDistanceMm ?? null,
-  }
-}
-
-interface LoggedSet {
-  readonly sessionId: string
-  readonly isWarmup: boolean
-  readonly weightG: number | null
-  readonly reps: number | null
-  readonly durationS: number | null
-  readonly distanceMm: number | null
-}
-
-/** Groups flat log rows into per-session attempts, most recent session first. */
-function toSessions(rows: readonly LoggedSet[]): SessionAttempts[] {
-  const bySession = new Map<string, SetAttempt[]>()
-  for (const row of rows) {
-    const list = bySession.get(row.sessionId) ?? []
-    list.push({
-      weightG: row.weightG,
-      reps: row.reps,
-      durationS: row.durationS,
-      distanceMm: row.distanceMm,
-      isWarmup: row.isWarmup,
-    })
-    bySession.set(row.sessionId, list)
-  }
-  // Already capped to HISTORY_DEPTH sessions per entry in SQL, and ordered newest first.
-  return [...bySession.values()]
-}
-
-const sameTarget = (a: SetTarget, b: SetTarget): boolean =>
-  a.reps === b.reps &&
-  a.weightG === b.weightG &&
-  a.rpe === b.rpe &&
-  a.durationS === b.durationS &&
-  a.distanceMm === b.distanceMm
