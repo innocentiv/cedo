@@ -1,11 +1,5 @@
-import type {
-  Exercise,
-  Workout,
-  WorkoutDayInput,
-  WorkoutEntryInput,
-  WorkoutPlanInput,
-} from '@cedo/contract'
-import { NO_PROGRESSION, planInputFrom, tracks } from '@cedo/contract'
+import type { Workout, WorkoutDayInput, WorkoutEntryInput, WorkoutPlanInput } from '@cedo/contract'
+import { planInputFrom } from '@cedo/contract'
 
 /**
  * The plan editor's working copy.
@@ -15,8 +9,9 @@ import { NO_PROGRESSION, planInputFrom, tracks } from '@cedo/contract'
  * is why nothing here carries one — reordering is a plain array move.
  * See docs/06-api.md.
  *
- * Pure functions over plain data: no React, no network, so the reducer logic stays testable and the
- * screen keeps no rules of its own.
+ * Pure functions over plain data: no React, no network. The RULES of editing a plan — new days and
+ * entries, set counts, limits, what a target change applies to — are the contract's
+ * (`plan-editing.ts`), where they are tested; this file only moves draft data around.
  */
 
 export type DayDraft = WorkoutDayInput
@@ -29,34 +24,6 @@ export type EntryDraft = WorkoutEntryInput
 export const draftFrom = (workout: Workout): DayDraft[] => planInputFrom(workout).days
 
 export const toPlanInput = (days: readonly DayDraft[]): WorkoutPlanInput => ({ days: [...days] })
-
-export const emptyDay = (index: number): DayDraft => ({
-  name: `Day ${index + 1}`,
-  entries: [],
-})
-
-/**
- * A new entry starts with three working sets, which is what almost every prescription is — and with
- * a target in whatever the exercise actually measures.
- *
- * Seeding `targetReps` regardless left a plank with three sets and an empty Seconds box: a required
- * field, blank, with nothing saying what belongs in it. The mode is known here because the picker
- * hands back the whole exercise.
- */
-export const emptyEntry = (exercise: Exercise): EntryDraft => ({
-  exerciseId: exercise.id,
-  supersetGroup: null,
-  restSeconds: 120,
-  progression: NO_PROGRESSION,
-  sets: Array.from({ length: 3 }, () => ({
-    targetReps: tracks(exercise.tracking, 'reps') ? 8 : null,
-    targetWeightG: null,
-    targetRpe: null,
-    targetDurationS: tracks(exercise.tracking, 'duration') ? 30 : null,
-    targetDistanceMm: tracks(exercise.tracking, 'distance') ? 100_000 : null,
-    isWarmup: false,
-  })),
-})
 
 export function replaceAt<T>(items: readonly T[], index: number, next: T): T[] {
   return items.map((item, i) => (i === index ? next : item))

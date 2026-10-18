@@ -1,4 +1,12 @@
-import { type TrackingMode, fieldsOf } from '@cedo/contract'
+import {
+  type SetBand,
+  type TrackingMode,
+  fieldsOf,
+  prescribe,
+  prescriptionOf,
+  resizeSets,
+  setCounts,
+} from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
@@ -20,15 +28,6 @@ const SUPERSET_OPTIONS = [
 
 type SetDraft = EntryDraft['sets'][number]
 
-const blankSet = (): SetDraft => ({
-  targetReps: 8,
-  targetWeightG: null,
-  targetRpe: null,
-  targetDurationS: null,
-  targetDistanceMm: null,
-  isWarmup: false,
-})
-
 export interface EntryEditorProps {
   readonly entry: EntryDraft
   readonly exerciseName: string
@@ -47,29 +46,9 @@ export function EntryEditor({
   onRemove,
   testID,
 }: EntryEditorProps): React.JSX.Element {
-  const warmups = entry.sets.filter((s) => s.isWarmup)
-  const workingSets = entry.sets.filter((s) => !s.isWarmup)
-  /**
-   * The prescription is the first WORKING set, which is also what `progression/service.ts` reads.
-   * Taking `sets[0]` instead showed a warm-up's light load as the prescription.
-   */
-  const first = workingSets[0]
-
-  /** Rebuilds one band of sets, leaving the other untouched. */
-  const resize = (band: 'warmup' | 'working', count: number | null) => {
-    const next = Math.max(band === 'warmup' ? 0 : 1, Math.min(count ?? 0, 20))
-    const template = { ...(first ?? blankSet()), isWarmup: band === 'warmup' }
-    const rebuilt = Array.from({ length: next }, () => ({ ...template }))
-    onChange({
-      ...entry,
-      sets: band === 'warmup' ? [...rebuilt, ...workingSets] : [...warmups, ...rebuilt],
-    })
-  }
-
-  /** One prescription per entry: working sets never diverge. Warm-ups keep their lighter load. */
-  const setAll = (patch: Partial<SetDraft>) => {
-    onChange({ ...entry, sets: entry.sets.map((s) => (s.isWarmup ? s : { ...s, ...patch })) })
-  }
+  // The rules are the contract's: how bands resize within the entry's total, and what a target
+  // change applies to. See `plan-editing.ts`.
+  const counts = setCounts(entry)
 
   return (
     <Card testID={testID}>
@@ -82,13 +61,22 @@ export function EntryEditor({
         </Stack>
 
         <Counts
-          warmups={warmups.length}
-          working={workingSets.length}
-          onResize={resize}
+          warmups={counts.warmup}
+          working={counts.working}
+          onResize={(band, count) => {
+            onChange(resizeSets(entry, band, count))
+          }}
           testID={testID}
         />
 
-        <Targets first={first} tracking={tracking} onChange={setAll} testID={testID} />
+        <Targets
+          first={prescriptionOf(entry)}
+          tracking={tracking}
+          onChange={(patch) => {
+            onChange(prescribe(entry, patch))
+          }}
+          testID={testID}
+        />
 
         <Superset
           value={entry.supersetGroup}
@@ -119,7 +107,7 @@ function Counts({
 }: {
   readonly warmups: number
   readonly working: number
-  readonly onResize: (band: 'warmup' | 'working', count: number | null) => void
+  readonly onResize: (band: SetBand, count: number | null) => void
   readonly testID: string
 }): React.JSX.Element {
   return (

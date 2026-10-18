@@ -1,4 +1,4 @@
-import type { Exercise } from '@cedo/contract'
+import { type Exercise, canAddEntry } from '@cedo/contract'
 import type { DayDraft, EntryDraft } from '../lib/plan-draft.ts'
 import { removeAt, replaceAt } from '../lib/plan-draft.ts'
 import { Button } from './button.tsx'
@@ -76,6 +76,7 @@ export function DayEditor({
         <Button
           title="Add exercise"
           variant="secondary"
+          disabled={!canAddEntry(day)}
           onPress={onAddEntry}
           testID={`add-entry-${index}`}
         />

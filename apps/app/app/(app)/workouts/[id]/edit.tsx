@@ -14,15 +14,13 @@ import {
 import {
   type DayDraft,
   draftFrom,
-  emptyDay,
-  emptyEntry,
   moveItem,
   removeAt,
   replaceAt,
   toPlanInput,
 } from '../../../../src/lib/plan-draft.ts'
 import { ExercisePicker } from '../../../../src/lib/exercise-picker.tsx'
-import type { Exercise } from '@cedo/contract'
+import { type Exercise, canAddDay, newDay, newEntry, planIssues } from '@cedo/contract'
 import { useReplacePlan, useWorkout } from '../../../../src/api/queries.ts'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
 
@@ -55,6 +53,12 @@ export default function EditPlan(): React.JSX.Element {
     return known
   }, [workout.data, picked])
 
+  /**
+   * The schema's verdict on the draft, read as it is edited rather than after a refused save. An
+   * empty plan has its own hint below, so it is not listed twice.
+   */
+  const issues = draft.length === 0 ? [] : planIssues(toPlanInput(draft))
+
   const save = () => {
     void submit(async () => {
       await replace.mutateAsync(toPlanInput(draft))
@@ -84,7 +88,7 @@ export default function EditPlan(): React.JSX.Element {
             setDays(
               replaceAt(draft, picking, {
                 ...day,
-                entries: [...day.entries, emptyEntry(exercise)],
+                entries: [...day.entries, newEntry(exercise)],
               }),
             )
           }
@@ -99,18 +103,16 @@ export default function EditPlan(): React.JSX.Element {
       title={`Edit ${workout.data.name}`}
       testID="plan-edit-screen"
       footer={
-        <Stack direction="row" gap="sm">
-          <Button
-            title="Add day"
-            variant="secondary"
-            grow
-            onPress={() => {
-              setDays([...draft, emptyDay(draft.length)])
-            }}
-            testID="add-day"
-          />
-          <Button title="Save plan" grow onPress={save} busy={busy} testID="save-plan" />
-        </Stack>
+        <PlanFooter
+          issues={issues}
+          canAddDay={canAddDay(draft)}
+          canSave={draft.length > 0 && issues.length === 0}
+          onAddDay={() => {
+            setDays([...draft, newDay(draft.length)])
+          }}
+          onSave={save}
+          busy={busy}
+        />
       }
     >
       <FormError message={error} testID="plan-edit-error" />
@@ -140,5 +142,53 @@ export default function EditPlan(): React.JSX.Element {
         ))
       )}
     </Screen>
+  )
+}
+
+/**
+ * Add a day, save — and, while the draft would be refused, why. Both buttons stop where the schema
+ * would: no fifteenth day, no save of a draft with issues.
+ */
+function PlanFooter({
+  issues,
+  canAddDay: dayAllowed,
+  canSave,
+  onAddDay,
+  onSave,
+  busy,
+}: {
+  readonly issues: readonly string[]
+  readonly canAddDay: boolean
+  readonly canSave: boolean
+  readonly onAddDay: () => void
+  readonly onSave: () => void
+  readonly busy: boolean
+}): React.JSX.Element {
+  return (
+    <Stack gap="xs">
+      {issues[0] === undefined ? null : (
+        <Text variant="caption" tone="danger" testID="plan-issues">
+          {issues.length === 1 ? issues[0] : `${issues[0]} (and ${issues.length - 1} more)`}
+        </Text>
+      )}
+      <Stack direction="row" gap="sm">
+        <Button
+          title="Add day"
+          variant="secondary"
+          grow
+          disabled={!dayAllowed}
+          onPress={onAddDay}
+          testID="add-day"
+        />
+        <Button
+          title="Save plan"
+          grow
+          disabled={!canSave}
+          onPress={onSave}
+          busy={busy}
+          testID="save-plan"
+        />
+      </Stack>
+    </Stack>
   )
 }

@@ -401,6 +401,46 @@ test(
 )
 
 test(
+  'the plan editor stops where the schema would, and says why before saving',
+  async () => {
+    await withApp('plan-limits', async (page) => {
+      await register(page, unique('lim'))
+      await openNewPlan(page)
+      const valueOf = async (testId: string) =>
+        await page.evaluate(`document.querySelector('[data-testid="${testId}"]').value`)
+      const saveDisabled = async () =>
+        await page.evaluate(
+          `document.querySelector('[data-testid="save-plan"]').getAttribute('aria-disabled')`,
+        )
+
+      // 5 warm-ups, then 20 working sets: an entry may hold 20 sets IN TOTAL, so the working
+      // band gets the 15 that are left. The editor used to accept 25 and the save refused them.
+      await page.click('[data-testid="plan-entry-0-0-warmups"]')
+      await typeKeys(page, ['Backspace', '5'])
+      await page.click('[data-testid="plan-entry-0-0-sets"]')
+      await typeKeys(page, ['Backspace', '2', '0'])
+      await page.click('[data-testid="day-name-0"]')
+      expect(await valueOf('plan-entry-0-0-sets')).toBe('15')
+      expect(await saveDisabled()).not.toBe('true')
+
+      // A draft the schema would refuse says so in the footer, and cannot be saved. The name field
+      // is a plain text input: the click left the caret wherever it landed, so go to the end and
+      // delete "Day 1" key by key.
+      await page.press('End')
+      await typeKeys(page, ['Backspace', 'Backspace', 'Backspace', 'Backspace', 'Backspace'])
+      await page.waitFor('plan-issues')
+      expect(await page.text('plan-issues')).toBe('Day 1, name: Cannot be empty')
+      expect(await saveDisabled()).toBe('true')
+
+      await typeKeys(page, ['L', 'e', 'g', 's'])
+      expect(await page.exists('plan-issues')).toBe(false)
+      expect(await saveDisabled()).not.toBe('true')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
   'an access token is shown once, and appears in the list',
   async () => {
     await withApp('access-token', async (page) => {
