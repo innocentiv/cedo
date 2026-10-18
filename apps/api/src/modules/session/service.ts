@@ -1,6 +1,7 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, eq, sql } from 'drizzle-orm'
 import type {
   LogSetInput,
+  LoggedExercise,
   SessionLogInput,
   SessionStart,
   SessionUpdate,
@@ -9,14 +10,10 @@ import type {
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
-import {
-  visibleExercises,
-  visibleWorkoutDays,
-  visibleWorkoutEntries,
-  visibleWorkouts,
-} from '../../db/visible.ts'
+import { visibleExercises, visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
 import { conflict, invalid, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { assertLoggable } from './loggable.ts'
 
 /**
  * Sessions are PERSONAL. They are not `ownable()` — they belong to a `user_id` directly and are
@@ -28,10 +25,11 @@ export const ownedBy = (caller: Caller) => eq(workoutSessions.userId, caller.use
 export type SessionRow = typeof workoutSessions.$inferSelect
 type LogRow = typeof setLogs.$inferSelect
 
-const toLog = (row: LogRow): SetLog => ({
+const toLog = (row: LogRow, exercise: LoggedExercise | null): SetLog => ({
   id: row.id,
   entryId: row.entryId,
   exerciseId: row.exerciseId,
+  exercise,
   setIndex: row.setIndex,
   isWarmup: row.isWarmup,
   weightG: row.weightG,
@@ -42,14 +40,19 @@ const toLog = (row: LogRow): SetLog => ({
   loggedAt: row.loggedAt.toISOString(),
 })
 
-const toSession = (row: SessionRow, logs: LogRow[]): WorkoutSession => ({
+interface LoggedRow {
+  readonly log: LogRow
+  readonly exercise: LoggedExercise | null
+}
+
+const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutSession => ({
   id: row.id,
   workoutId: row.workoutId,
   dayId: row.dayId,
   startedAt: row.startedAt.toISOString(),
   endedAt: row.endedAt?.toISOString() ?? null,
   notes: row.notes,
-  logs: logs.map((l) => toLog(l)),
+  logs: logs.map((l) => toLog(l.log, l.exercise)),
 })
 
 /**
@@ -140,13 +143,26 @@ export async function get(caller: Caller, id: string): Promise<WorkoutSession> {
     .limit(1)
   if (row === undefined) throw notFound('session')
 
+  /**
+   * LEFT JOIN onto the visible exercises: every log is the caller's and is listed, but the name and
+   * tracking mode come only while they can still see the exercise — null after losing its group.
+   */
+  const exercises = visibleExercises(caller)
   const logs = await db
-    .select()
+    .select({ log: setLogs, name: exercises.name, tracking: exercises.tracking })
     .from(setLogs)
+    .leftJoin(exercises, eq(exercises.id, setLogs.exerciseId))
     .where(eq(setLogs.sessionId, id))
     .orderBy(asc(setLogs.loggedAt), asc(setLogs.setIndex))
 
-  return toSession(row, logs)
+  return toSession(
+    row,
+    logs.map((l) => ({
+      log: l.log,
+      exercise:
+        l.name === null || l.tracking === null ? null : { name: l.name, tracking: l.tracking },
+    })),
+  )
 }
 
 export async function update(
@@ -198,7 +214,7 @@ export async function logSet(
     .where(and(ownedBy(caller), eq(workoutSessions.id, sessionId)))
     .limit(1)
   if (session === undefined) throw notFound('session')
-  await assertLoggable(caller, session.workoutId, [input])
+  const exercises = await assertLoggable(caller, session.workoutId, [input])
 
   return await db.transaction(async (tx) => {
     /**
@@ -221,7 +237,7 @@ export async function logSet(
       .returning()
       .catch(rethrowMissingEntry)
     if (created === undefined) throw new Error('Could not record the set')
-    return toLog(created)
+    return toLog(created, exercises.get(created.exerciseId) ?? null)
   })
 }
 
@@ -233,50 +249,6 @@ export async function logSet(
 function rethrowMissingEntry(error: unknown): never {
   if (isForeignKeyRefusal(error)) throw notFound('entry')
   throw error
-}
-
-/**
- * What a set may reference, checked for a whole batch in one query per kind — `logSet` passes one
- * set, `logWhole` a whole session.
- *
- * - Every exercise must be VISIBLE, or a log could reference one the caller cannot see.
- * - An entry must be part of the plan the session is FOR, and prescribe the exercise being logged.
- *   Progression reads logs by entry, so visibility alone let a set from plan A's session count
- *   toward plan B; and existence alone, before that, let anyone attach a log to a guessed id.
- */
-async function assertLoggable(
-  caller: Caller,
-  workoutId: string | null,
-  sets: readonly LogSetInput[],
-): Promise<void> {
-  const exerciseIds = [...new Set(sets.map((s) => s.exerciseId))]
-  const exercises = visibleExercises(caller)
-  const seen = await db
-    .select({ id: exercises.id })
-    .from(exercises)
-    .where(inArray(exercises.id, exerciseIds))
-  const visibleIds = new Set(seen.map((e) => e.id))
-  const hidden = exerciseIds.find((id) => !visibleIds.has(id))
-  if (hidden !== undefined) throw notFound('exercise')
-
-  const entryIds = [...new Set(sets.flatMap((s) => (s.entryId === null ? [] : [s.entryId])))]
-  if (entryIds.length === 0) return
-  if (workoutId === null) throw invalid('An ad-hoc session has no plan entries to log against')
-
-  const visibleEntries = visibleWorkoutEntries(caller)
-  const days = visibleWorkoutDays(caller)
-  const entries = await db
-    .select({ id: visibleEntries.id, exerciseId: visibleEntries.exerciseId })
-    .from(visibleEntries)
-    .innerJoin(days, eq(days.id, visibleEntries.dayId))
-    .where(and(eq(days.workoutId, workoutId), inArray(visibleEntries.id, entryIds)))
-  const exerciseOf = new Map(entries.map((e) => [e.id, e.exerciseId]))
-  for (const set of sets) {
-    if (set.entryId === null) continue
-    const prescribed = exerciseOf.get(set.entryId)
-    if (prescribed === undefined) throw notFound('entry')
-    if (prescribed !== set.exerciseId) throw invalid('That entry prescribes a different exercise')
-  }
 }
 
 export async function removeLog(caller: Caller, sessionId: string, logId: string): Promise<void> {

@@ -134,12 +134,15 @@ describe('logging sets', () => {
     expect(log.weightG).toBe(kgToG(62.5))
     expect(log.reps).toBe(8)
     expect(log.isWarmup).toBe(false)
+    // The log names what it was logged against, so a screen never rebuilds that from a plan.
+    expect(log.exercise).toEqual({ name: 'Bench Press', tracking: 'weight_reps' })
 
     const fetched = expectContract(
       WorkoutSession,
       (await alice.wire(`/sessions/${session.id}`)).body,
     )
     expect(fetched.logs).toHaveLength(1)
+    expect(fetched.logs[0]?.exercise).toEqual({ name: 'Bench Press', tracking: 'weight_reps' })
   })
 
   test('a duration exercise logs seconds instead of reps', async () => {

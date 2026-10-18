@@ -261,8 +261,8 @@ const ROUTES: Record<string, Case> = {
   },
   'GET /sessions/': { named: true, read: async () => await http('/sessions') },
   'GET /sessions/:id': {
-    // Her own session stays hers; it holds ids, not names.
-    named: false,
+    // Her own session stays hers, and each log names its exercise — while she can still see it.
+    named: true,
     read: async (w) => await http(`/sessions/${w.alicesSessionId}`),
   },
   // Curator-only, and Alice is no curator: she is refused before and after.

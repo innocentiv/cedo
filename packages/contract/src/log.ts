@@ -13,11 +13,21 @@ import { Id, PaginationQuery, Timestamp } from './primitives.ts'
  * Sessions belong to a user directly, not to a group: logs are personal and never shared.
  */
 
+/**
+ * The exercise a set was logged against — its name and how it is measured — as far as the caller
+ * can STILL see it. Null once they cannot: the log is theirs for good, the exercise's name is not
+ * (see docs/03-domain-model.md). Carried on the log so a screen never has to rebuild it from a plan
+ * it may no longer load, or from exercises picked before a reload.
+ */
+export const LoggedExercise = z.object({ name: z.string(), tracking: TrackingMode })
+export type LoggedExercise = z.output<typeof LoggedExercise>
+
 export const SetLog = z.object({
   id: Id,
   /** The prescribed set this fulfils, when the session came from a workout day. */
   entryId: Id.nullable(),
   exerciseId: Id,
+  exercise: LoggedExercise.nullable(),
   setIndex: z.int().nonnegative().max(999),
   weightG: LoggedWeightG.nullable(),
   reps: LoggedReps.nullable(),
