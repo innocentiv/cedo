@@ -8,6 +8,7 @@ import {
   type ExerciseHistoryQuery,
   type ExerciseQuery,
   type ExerciseUpdate,
+  type GroupAddMember,
   type GroupCreate,
   type LoginInput,
   Me,
@@ -16,6 +17,7 @@ import {
   GroupMembership,
   Media,
   PersonalAccessToken,
+  type PersonalAccessTokenCreate,
   PersonalAccessTokenCreated,
   ProgressionSuggestion,
   type SessionQuery,
@@ -34,14 +36,14 @@ import {
   type WorkoutUpdate,
   page,
 } from '@cedo/contract'
-import type { QueryInput, Request } from './transport.ts'
+import type { QueryInput, SendRequest } from './transport.ts'
 
 /**
  * Every call the app can make, named after the route it hits and typed by the contract schema the
  * API validates against. Adding a method without a contract schema is not possible — the response
  * parser needs one, which is the point. See docs/adr/0015-no-eden-treaty.md.
  *
- * Built over a `Request` rather than holding one, so the same table serves two adapters: the app's
+ * Built over a `SendRequest` rather than holding one, so the same table serves two adapters: the app's
  * own session (`api` in `http.ts`), and the e2e harness acting as any user it signs up — from the
  * test process, every response parsed, instead of untyped `fetch`es evaluated in the page.
  *
@@ -64,7 +66,7 @@ const asQuery = (query: Record<string, unknown>): QueryInput =>
   )
 
 /** The five verbs, over one `Request`. */
-function verbs(request: Request) {
+function verbs(request: SendRequest) {
   return {
     GET: async <S extends z.ZodType>(path: string, schema: S, query?: QueryInput) =>
       await request('GET', path, schema, { ...(query && { query }) }),
@@ -144,7 +146,7 @@ const groups = ({ GET, POST, DELETE }: Verbs) => ({
   list: async () => await GET('/groups', z.array(GroupMembership)),
   create: async (body: GroupCreate) => await POST('/groups', GroupMembership, body),
   members: async (id: string) => await GET(`/groups/${id}/members`, z.array(GroupMember)),
-  addMember: async (id: string, body: { username: string; role: 'editor' | 'reader' }) =>
+  addMember: async (id: string, body: GroupAddMember) =>
     await POST(`/groups/${id}/members`, GroupMember, body),
   removeMember: async (id: string, userId: string) =>
     await DELETE(`/groups/${id}/members/${userId}`, Ok),
@@ -156,11 +158,12 @@ const media = ({ POST }: Verbs) => ({
 
 const tokens = ({ GET, POST, DELETE }: Verbs) => ({
   list: async () => await GET('/tokens', z.array(PersonalAccessToken)),
-  create: async (body: { name: string }) => await POST('/tokens', PersonalAccessTokenCreated, body),
+  create: async (body: PersonalAccessTokenCreate) =>
+    await POST('/tokens', PersonalAccessTokenCreated, body),
   revoke: async (id: string) => await DELETE(`/tokens/${id}`, Ok),
 })
 
-export function createApi(request: Request) {
+export function createApi(request: SendRequest) {
   const v = verbs(request)
   return {
     auth: auth(v),
@@ -173,4 +176,4 @@ export function createApi(request: Request) {
   } as const
 }
 
-export type Api = ReturnType<typeof createApi>
+export type ApiClient = ReturnType<typeof createApi>

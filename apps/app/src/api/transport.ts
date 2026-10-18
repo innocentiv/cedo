@@ -21,7 +21,7 @@ export interface RequestOptions {
   readonly form?: FormData
 }
 
-export type Request = <S extends z.ZodType>(
+export type SendRequest = <S extends z.ZodType>(
   method: string,
   path: string,
   schema: S,
@@ -62,7 +62,7 @@ async function toApiError(response: Response, path: string): Promise<ApiError> {
   return new ApiError(response.status, 'internal', `${path} failed with ${response.status}`)
 }
 
-export function transport(config: TransportConfig): Request {
+export function transport(config: TransportConfig): SendRequest {
   return async (method, path, schema, options = {}) => {
     const headers: Record<string, string> = {}
     const sent = config.token()

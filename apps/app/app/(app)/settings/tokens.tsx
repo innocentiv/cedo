@@ -72,7 +72,8 @@ export default function Tokens(): React.JSX.Element {
 
   const add = () => {
     void submit(async () => {
-      setSecret((await create.mutateAsync({ name })).token)
+      // This screen offers no expiry; a token made here lasts until it is revoked.
+      setSecret((await create.mutateAsync({ name, expiresInDays: null })).token)
       setName('')
     })
   }

@@ -194,8 +194,10 @@ error that points nowhere near the cause.
 
 ### A rejected credential ends the session
 
-`http.ts` calls a handler whenever the API answers `unauthenticated` **and** a token was actually
-sent. `AuthProvider` registers one that clears the session and returns to login.
+`transport.ts` calls the adapter's handler whenever the API answers `unauthenticated`, a token was
+actually sent, **and** it is still the one in use — a late 401 for a previous user's token must not
+sign the next one out. `AuthProvider` registers one, through `http.ts`, that clears the session and
+returns to login.
 
 Without it a token revoked elsewhere — signed out on another device, or simply expired after a month
 — left every screen showing "Authentication required" with no way back to the login form. The guard

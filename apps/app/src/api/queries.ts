@@ -16,6 +16,7 @@ import type {
   Media,
   Page,
   PersonalAccessToken,
+  PersonalAccessTokenCreate,
   ProgressionSuggestion,
   Source,
   SessionQuery,
@@ -196,7 +197,7 @@ export const useRemoveLog = (sessionId: string) =>
   useWriteTo('session', async (logId: string) => await api.sessions.removeLog(sessionId, logId))
 
 export const useCreateToken = () =>
-  useWriteTo('token', async (input: { name: string }) => await api.tokens.create(input))
+  useWriteTo('token', async (input: PersonalAccessTokenCreate) => await api.tokens.create(input))
 
 export const useRevokeToken = () =>
   useWriteTo('token', async (id: string) => await api.tokens.revoke(id))

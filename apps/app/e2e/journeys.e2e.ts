@@ -1,10 +1,9 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test'
-import { ExerciseCreate, WorkoutPlanInput } from '@cedo/contract'
+import { ExerciseCreate, type TrackingMode, WorkoutPlanInput } from '@cedo/contract'
 import {
   E2E_STARTUP_TIMEOUT_MS,
   E2E_TIMEOUT_MS,
   type Page,
-  clientAs,
   sharedApi,
   signUp,
   stopSharedApi,
@@ -335,7 +334,7 @@ test(
           }),
         )
         await coach.api.workouts.transfer(plan.id, { toGroupId: squad.id })
-        const { user: me } = await (await clientAs(await page.session())).auth.me()
+        const { user: me } = await (await page.client()).auth.me()
 
         // The athlete trains from it.
         await page.goto('/workouts')
@@ -408,16 +407,15 @@ test(
 
       // 45 seeded + 60 of these puts "Zz Hold" well past the first 100 by name, where the editor
       // used to look exercises up. Created as the page's own user.
-      const mine = await clientAs(await page.session())
-      const anExercise = (name: string, tracking: 'weight_reps' | 'duration', muscle: string) =>
+      const mine = await page.client()
+      const anExercise = (name: string, tracking: TrackingMode, muscle: string) =>
         ExerciseCreate.parse({ name, tracking, muscles: [{ muscle, loadPct: 100 }] })
-      await Promise.all(
-        Array.from({ length: 60 }, async (_, i) =>
-          mine.exercises.create(
-            anExercise(`Filler ${String(i).padStart(2, '0')}`, 'weight_reps', 'quadriceps'),
-          ),
-        ),
-      )
+      for (let i = 0; i < 60; i += 1) {
+        // oxlint-disable-next-line no-await-in-loop -- one at a time: the API is shared by the run.
+        await mine.exercises.create(
+          anExercise(`Filler ${String(i).padStart(2, '0')}`, 'weight_reps', 'quadriceps'),
+        )
+      }
       await mine.exercises.create(anExercise('Zz Hold', 'duration', 'rectus_abdominis'))
 
       await page.goto('/workouts')
@@ -547,7 +545,7 @@ test(
        * A page reload would prove nothing: the restore-on-startup path already handles a bad stored
        * token, and it is not the path this guards.
        */
-      await (await clientAs(await page.session())).auth.logout()
+      await (await page.client()).auth.logout()
       await page.click('[data-testid="nav-workouts"]')
 
       await page.waitFor('login-screen')

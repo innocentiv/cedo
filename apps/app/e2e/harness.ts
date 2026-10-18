@@ -1,6 +1,6 @@
 import { join } from 'node:path'
 import type { User } from '@cedo/contract'
-import { type Api as Client, createApi } from '../src/api/client.ts'
+import { type ApiClient, createApi } from '../src/api/client.ts'
 import { transport } from '../src/api/transport.ts'
 import { serveExport } from './server.ts'
 
@@ -77,12 +77,13 @@ async function waitForHealth(url: string, process: Bun.Subprocess): Promise<void
   throw new Error(`The API at ${url} did not become healthy within 30s.`)
 }
 
-export interface Api {
+/** The API process the run shares. */
+export interface ApiServer {
   readonly url: string
   stop: () => void
 }
 
-let shared: Promise<Api> | undefined
+let shared: Promise<ApiServer> | undefined
 
 /**
  * How long a journey may take. Bun's default is five seconds, which is less than the API needs to
@@ -105,7 +106,7 @@ export async function stopSharedApi(): Promise<void> {
  * One API for the whole run. Starting it per test would pay migrations and seeding each time, and
  * seeding is deliberately idempotent rather than fast.
  */
-export async function sharedApi(): Promise<Api> {
+export async function sharedApi(): Promise<ApiServer> {
   shared ??= (async () => {
     const prepare = Bun.spawn(['bun', 'run', 'apps/api/src/db/prepare-test-db.ts'], {
       cwd: ROOT,
@@ -140,7 +141,7 @@ export async function sharedApi(): Promise<Api> {
  * returns. Fixtures used to be `fetch`es evaluated inside the page: untyped, ids spliced into
  * template strings, and one of them fired and forgotten, behind a sleep.
  */
-export async function clientAs(token: string | null): Promise<Client> {
+async function clientAs(token: string | null): Promise<ApiClient> {
   const { url } = await sharedApi()
   return createApi(transport({ baseUrl: () => url, token: () => token }))
 }
@@ -148,7 +149,7 @@ export async function clientAs(token: string | null): Promise<Client> {
 /** A second person — a coach, a training partner — signed up over HTTP, with a client acting as them. */
 export async function signUp(
   username: string,
-): Promise<{ readonly user: User; readonly api: Client }> {
+): Promise<{ readonly user: User; readonly api: ApiClient }> {
   const created = await (
     await clientAs(null)
   ).auth.register({ username, displayName: username, password: `${username}-password` })
@@ -176,8 +177,8 @@ export interface Page {
    */
   readonly waitForSelector: (css: string, timeoutMs?: number) => Promise<string>
   readonly evaluate: (script: string) => Promise<unknown>
-  /** The signed-in user's credential, as the app stored it — to act as them with `clientAs`. */
-  readonly session: () => Promise<string>
+  /** The API as the page's signed-in user, from the test process — for setting up their data. */
+  readonly client: () => Promise<ApiClient>
   readonly errors: readonly string[]
 }
 
@@ -317,11 +318,12 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
       throw new Error(`Timed out waiting for an element matching ${css}.`)
     },
     evaluate: async (script) => await view.evaluate(script),
-    session: async () => {
-      // The key `src/auth/token-storage.ts` writes on web. Read, never written: the app owns it.
+    client: async () => {
+      // The key `src/auth/token-storage.ts` writes on web — not imported, because that module
+      // brings `react-native` with it. Read, never written: the app owns its session.
       const token = await view.evaluate(`localStorage.getItem('cedo.session')`)
       if (typeof token !== 'string') throw new Error('No signed-in session in the page')
-      return token
+      return await clientAs(token)
     },
     get errors() {
       return errors

@@ -20,6 +20,11 @@ Do not use Eden Treaty in `apps/app`. The frontend depends only on `packages/con
 small hand-written `fetch` client (~40 lines of shared helpers plus one 2-line method per endpoint)
 that parses every response with its contract schema.
 
+The client is built over its transport — `createApi(request)` in `src/api/client.ts`, with one
+request per call in `src/api/transport.ts` — so the same route table serves two adapters: the app's
+session (`src/api/http.ts`) and the e2e harness, which sets up fixtures as any user from the test
+process. Still `apps/app` code, depending on the contract alone.
+
 Eden Treaty **is** still used inside `apps/api`'s own tests, where `treaty(app)` wraps the app
 instance. That is a devDependency of the API and crosses no boundary.
 
@@ -49,7 +54,8 @@ Roughly thirty hand-written two-line client methods, which can drift from the AP
   the same schema the client parses.
 - `ContractDriftError` failing loudly at runtime rather than corrupting state silently.
 - A rule that every client method must be exercised by at least one UI journey — an unexercised
-  method is the only real blind spot in this design.
+  method is the only real blind spot in this design. A journey's fixture counts: it calls the method
+  against the running API and parses the real response, which is the blind spot closed.
 
 ## Enforcement
 

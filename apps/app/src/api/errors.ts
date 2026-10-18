@@ -2,8 +2,9 @@ import type { z } from 'zod'
 import type { ErrorCode, ErrorDetail } from '@cedo/contract'
 
 /**
- * The two ways a request can fail that a screen may need to tell apart. Separated from `http.ts`
- * because they are a contract of their own: `useSubmit` and every error boundary branch on them.
+ * The two ways a request can fail that a screen may need to tell apart. Thrown by `transport.ts`,
+ * kept apart from it because they are a contract of their own: `useSubmit` and every error boundary
+ * branch on them.
  */
 
 /** The API answered, and said no. Carries the contract's own error code so screens can branch. */
