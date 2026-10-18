@@ -1,6 +1,6 @@
 import { visibleWorkouts } from '../../db/visible.ts'
 import { ownableLifecycle, relationOf } from '../ownable/service.ts'
-import { assertWorkoutCanTravel } from './transfer.ts'
+import { assertWorkoutCanTravel } from './references.ts'
 
 /**
  * How a workout is an ownable: its name, its visible relation, and the one thing it does

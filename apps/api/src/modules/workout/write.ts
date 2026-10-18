@@ -5,7 +5,7 @@ import { assertEditorOf, editable } from '../../db/ownable.ts'
 import { workouts } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { assertExercisesCanTravel } from './transfer.ts'
+import { assertPlanCanUse } from './references.ts'
 import { writePlan } from './write-plan.ts'
 
 /**
@@ -14,8 +14,8 @@ import { writePlan } from './write-plan.ts'
  * favourites are the shared lifecycle (`lifecycle.ts`).
  *
  * A write file may import the raw tables — a subquery cannot be an UPDATE target — and in exchange
- * every statement here on an owned table carries `editable()`. The travel rule it applies is a
- * read, through the visible relations, in `transfer.ts`. See docs/adr/0019-visible-relations.md.
+ * every statement here on an owned table carries `editable()`. The rule for which exercises a plan
+ * may use is a read, through the visible relations, in `references.ts`. See docs/adr/0019-visible-relations.md.
  */
 
 /** Returns the new workout's id. */
@@ -80,13 +80,13 @@ export async function savePlan(caller: Caller, id: string, plan: WorkoutPlanInpu
     if (own === undefined) throw notFound('workout')
 
     // Saving is the third way an exercise reaches a group, after transfer and duplicate, and is
-    // held to their rule: in a shared group, a private exercise would be an "Unavailable exercise"
-    // row for every other member. Against the owner read under the lock, so a concurrent transfer
-    // cannot move the target between the check and the write.
-    await assertExercisesCanTravel(
+    // held to their rule. Against the owner read under the lock, so a concurrent transfer cannot
+    // move the target between the check and the write.
+    await assertPlanCanUse(
       caller,
       plan.days.flatMap((d) => d.entries.map((e) => e.exerciseId)),
       own.ownerGroupId,
+      'request',
     )
 
     await writePlan(tx, caller, { id, ownerGroupId: own.ownerGroupId }, plan)
@@ -108,10 +108,11 @@ export async function insertCopy(
   toGroupId: string,
 ): Promise<string> {
   assertEditorOf(caller, toGroupId)
-  await assertExercisesCanTravel(
+  await assertPlanCanUse(
     caller,
     plan.days.flatMap((d) => d.entries.map((e) => e.exerciseId)),
     toGroupId,
+    'plan',
   )
 
   return await db.transaction(async (tx) => {

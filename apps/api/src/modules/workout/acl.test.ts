@@ -64,6 +64,18 @@ async function sharedWorkoutUsingAPrivateExercise() {
   return { secret, workout, squad }
 }
 
+/**
+ * The plan joins the squad with its exercise, then Alice pulls the exercise back out: every other
+ * member is left holding a plan whose exercise they cannot see. Visibility is not permanent.
+ */
+async function driftOutOfSight(exerciseId: string, workoutId: string, squadId: string) {
+  const move = async (path: string, toGroupId: string) =>
+    await alice.wire(path, { method: 'POST', body: JSON.stringify({ toGroupId }) })
+  await move(`/exercises/${exerciseId}/transfer`, squadId)
+  await move(`/workouts/${workoutId}/transfer`, squadId)
+  await move(`/exercises/${exerciseId}/transfer`, alice.personalGroupId)
+}
+
 describe('sharing a workout does not share its exercises', () => {
   test('transferring is REFUSED while an exercise would be invisible to the group', async () => {
     const { workout, squad } = await sharedWorkoutUsingAPrivateExercise()
@@ -210,19 +222,7 @@ describe('sharing a workout does not share its exercises', () => {
   test('an exercise that becomes invisible later is redacted, not leaked', async () => {
     const { secret, workout, squad } = await sharedWorkoutUsingAPrivateExercise()
 
-    await alice.wire(`/exercises/${secret.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: squad.id }),
-    })
-    await alice.wire(`/workouts/${workout.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: squad.id }),
-    })
-    // Alice pulls the exercise back out of the squad.
-    await alice.wire(`/exercises/${secret.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: alice.personalGroupId }),
-    })
+    await driftOutOfSight(secret.id, workout.id, squad.id)
 
     const seen = await bob.wire(`/workouts/${workout.id}`)
     expect(seen.status).toBe(200)
@@ -245,18 +245,7 @@ describe('sharing a workout does not share its exercises', () => {
    */
   test('duplicating a plan with a hidden exercise is refused, and leaves nothing behind', async () => {
     const { secret, workout, squad } = await sharedWorkoutUsingAPrivateExercise()
-    await alice.wire(`/exercises/${secret.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: squad.id }),
-    })
-    await alice.wire(`/workouts/${workout.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: squad.id }),
-    })
-    await alice.wire(`/exercises/${secret.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: alice.personalGroupId }),
-    })
+    await driftOutOfSight(secret.id, workout.id, squad.id)
 
     const res = await bob.wire(`/workouts/${workout.id}/duplicate`, { method: 'POST', body: '{}' })
     expect(res.status).toBe(409)
@@ -285,18 +274,7 @@ describe('sharing a workout does not share its exercises', () => {
       body: JSON.stringify({ username: 'bob', role: 'editor' }),
     })
     const { secret, workout } = await sharedWorkoutUsingAPrivateExercise()
-    await alice.wire(`/exercises/${secret.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: squad.id }),
-    })
-    await alice.wire(`/workouts/${workout.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: squad.id }),
-    })
-    await alice.wire(`/exercises/${secret.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: alice.personalGroupId }),
-    })
+    await driftOutOfSight(secret.id, workout.id, squad.id)
 
     const bobs = expectContract(
       GroupMembership,
@@ -313,20 +291,38 @@ describe('sharing a workout does not share its exercises', () => {
     ).toBe(squad.id)
   })
 
+  /**
+   * Regression: the travel rule returned early for the caller's PERSONAL group, so this transfer
+   * was the one path that let a plan move with an exercise its new owner cannot see — leaving them
+   * "Unavailable exercise" rows. Saving and duplicating already refused it. One rule now.
+   */
+  test('transferring it into your own personal group is refused just the same', async () => {
+    const squad = expectContract(
+      GroupMembership,
+      (await alice.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Squad' }) }))
+        .body,
+    )
+    await alice.wire(`/groups/${squad.id}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ username: 'bob', role: 'editor' }),
+    })
+    const { secret, workout } = await sharedWorkoutUsingAPrivateExercise()
+    await driftOutOfSight(secret.id, workout.id, squad.id)
+
+    const res = await bob.wire(`/workouts/${workout.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: bob.personalGroupId }),
+    })
+    expect(res.status).toBe(409)
+    expect(JSON.stringify(res.body)).not.toContain('Alice Secret Movement')
+    expect(
+      expectContract(Workout, (await alice.wire(`/workouts/${workout.id}`)).body).ownerGroupId,
+    ).toBe(squad.id)
+  })
+
   test('progression never names an exercise the caller cannot see', async () => {
     const { secret, workout, squad } = await sharedWorkoutUsingAPrivateExercise()
-    await alice.wire(`/exercises/${secret.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: squad.id }),
-    })
-    await alice.wire(`/workouts/${workout.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: squad.id }),
-    })
-    await alice.wire(`/exercises/${secret.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: alice.personalGroupId }),
-    })
+    await driftOutOfSight(secret.id, workout.id, squad.id)
 
     const res = await bob.wire(`/workouts/${workout.id}/progression`)
     expect(res.status).toBe(200)

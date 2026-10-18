@@ -137,19 +137,17 @@ neither take over another workout's rows nor inherit another exercise's history.
 constant number of statements whatever the plan's size — `writePlan` in
 `modules/workout/write-plan.ts`.
 
-Three things the replace checks before touching anything:
+What the replace checks before touching anything, all inside its transaction:
 
-- Every referenced exercise must be **visible** to the caller. Without that, a plan could reference
-  a hidden exercise and leak its name and description straight back through `GET /workouts/:id`.
-  Checked before the transaction opens.
-- The caller must be able to **edit** the workout. Checked INSIDE the transaction, with a row lock
-  (`for update`) — checked outside it, a co-editor transferring the workout away between the check
-  and the write let someone who had just lost access replace the whole plan.
-- In a shared group, every exercise must be one the group's members can read now and later:
-  owned by that group or by the starter library. The same rule as transfer and duplicate
-  (`assertExercisesCanTravel` in `modules/workout/transfer.ts`), so no route can put an
-  "Unavailable exercise" row in front of a group. Checked inside the transaction, against the
-  owner read under the lock.
+- The caller must be able to **edit** the workout, under a row lock (`for update`) — checked
+  outside the transaction, a co-editor transferring the workout away between the check and the
+  write let someone who had just lost access replace the whole plan.
+- The exercises must pass the one rule for what a plan may use where it lives —
+  `assertPlanCanUse` in `modules/workout/references.ts`, which transfer and duplicate apply too, so
+  no route can put an "Unavailable exercise" row in front of anyone. Every exercise must be
+  **visible** to the caller (an id they cannot see is a 404, as if it did not exist); in a shared
+  group, it must also be readable by the members now and later: owned by that group or by the
+  starter library. Checked against the owner read under the lock.
 
 Either way a rejected replace leaves the previous plan exactly as it was. A test asserts that.
 
