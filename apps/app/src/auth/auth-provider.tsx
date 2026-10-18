@@ -1,8 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { type QueryClient, useQueryClient } from '@tanstack/react-query'
-import { z } from 'zod'
-import { AuthResult, type LoginInput, Me, type RegisterInput } from '@cedo/contract'
-import { ApiError, GET, POST, setAuthToken, setUnauthenticatedHandler } from '../api/http.ts'
+import type { LoginInput, Me, RegisterInput } from '@cedo/contract'
+import { ApiError, api, setAuthToken, setUnauthenticatedHandler } from '../api/http.ts'
 import { clearToken, readToken, writeToken } from './token-storage.ts'
 
 /**
@@ -57,7 +56,7 @@ function useRestoreSession(set: {
       }
       setAuthToken(stored)
       try {
-        const identity = await GET('/auth/me', Me)
+        const identity = await api.auth.me()
         if (cancelled) return
         setMe(identity)
         setStatus('signed-in')
@@ -110,7 +109,7 @@ function useSessionState(): {
   const adopt = useCallback(async (token: string) => {
     setAuthToken(token)
     await writeToken(token)
-    setMe(await GET('/auth/me', Me))
+    setMe(await api.auth.me())
     setStatus('signed-in')
   }, [])
 
@@ -125,7 +124,7 @@ function useSessionState(): {
   const signOut = useCallback(async () => {
     // Best effort: the local session ends either way, and a network failure must not trap someone
     // in a signed-in shell they cannot use.
-    await POST('/auth/logout', z.object({ ok: z.boolean() })).catch(() => null)
+    await api.auth.logout().catch(() => null)
     forget()
     queryClient.clear()
   }, [forget, queryClient])
@@ -148,10 +147,10 @@ export function AuthProvider({
       status,
       me,
       signIn: async (input) => {
-        await adopt((await POST('/auth/login', AuthResult, input)).token)
+        await adopt((await api.auth.login(input)).token)
       },
       register: async (input) => {
-        await adopt((await POST('/auth/register', AuthResult, input)).token)
+        await adopt((await api.auth.register(input)).token)
       },
       signOut,
     }),

@@ -1,14 +1,12 @@
 import { Platform } from 'react-native'
-import { ApiError as ApiErrorSchema } from '@cedo/contract'
-import { ApiError, ContractDriftError } from './errors.ts'
-import type { z } from 'zod'
+import { createApi } from './client.ts'
+import { transport } from './transport.ts'
 
 /**
- * The whole client. It depends on `@cedo/contract` and nothing else from this repo — never on
- * `apps/api`, not even for a type. See docs/adr/0015-no-eden-treaty.md.
- *
- * Every response is parsed with the SAME schema the API validated it against, so a drift between
- * the two halves is a loud runtime failure with a JSON path, not a screen that renders `undefined`.
+ * The app's adapter for the client: where the API is, the session's credential, and what happens
+ * when the server stops honouring it. The client itself depends on `@cedo/contract` and nothing
+ * else from this repo — never on `apps/api`, not even for a type. See
+ * docs/adr/0015-no-eden-treaty.md.
  */
 
 /**
@@ -51,15 +49,6 @@ export function apiUrl(path: string): string {
   return `${base()}${path.startsWith('/') ? path : `/${path}`}`
 }
 
-export type QueryInput = Record<string, string | number | boolean | undefined>
-
-function queryString(query: QueryInput | undefined): string {
-  if (query === undefined) return ''
-  const pairs = Object.entries(query).filter(([, v]) => v !== undefined)
-  if (pairs.length === 0) return ''
-  return `?${new URLSearchParams(pairs.map(([k, v]) => [k, String(v)])).toString()}`
-}
-
 /** Set by the auth provider. A module-level holder so every call site does not thread it through. */
 let bearer: string | null = null
 
@@ -81,91 +70,15 @@ export function setUnauthenticatedHandler(handler: (() => void) | null): void {
   onUnauthenticated = handler
 }
 
-async function toApiError(response: Response, path: string): Promise<ApiError> {
-  const body: unknown = await response.json().catch(() => null)
-  const parsed = ApiErrorSchema.safeParse(body)
-  if (parsed.success) {
-    return new ApiError(
-      response.status,
-      parsed.data.error.code,
-      parsed.data.error.message,
-      parsed.data.error.details,
-    )
-  }
-  // A proxy or a crash can answer with something that is not the envelope at all.
-  return new ApiError(response.status, 'internal', `${path} failed with ${response.status}`)
-}
-
-export interface RequestOptions {
-  readonly query?: QueryInput
-  readonly body?: unknown
-  /** Multipart uploads set their own content type, including a boundary Request generates. */
-  readonly form?: FormData
-}
-
-export async function request<S extends z.ZodType>(
-  method: string,
-  path: string,
-  schema: S,
-  options: RequestOptions = {},
-): Promise<z.output<S>> {
-  const headers: Record<string, string> = {}
-  const sent = bearer
-  if (sent !== null) headers['authorization'] = `Bearer ${sent}`
-  if (options.body !== undefined) headers['content-type'] = 'application/json'
-
-  const body = options.form ?? (options.body === undefined ? null : JSON.stringify(options.body))
-  const response = await fetch(`${base()}${path}${queryString(options.query)}`, {
-    method,
-    headers,
-    body,
-  })
-
-  if (!response.ok) {
-    const failure = await toApiError(response, path)
-    // Only when we actually sent a credential: a 401 from the login route means "wrong password",
-    // which the form must show rather than the shell reacting to. And only when it is still the
-    // credential in use — a late 401 for the previous user's token, landing after a sign-in,
-    // otherwise signed the new user straight out.
-    if (failure.code === 'unauthenticated' && sent !== null && sent === bearer) {
+/** Every call the app makes, as the signed-in user. */
+export const api = createApi(
+  transport({
+    baseUrl: base,
+    token: () => bearer,
+    onUnauthenticated: () => {
       onUnauthenticated?.()
-    }
-    throw failure
-  }
-
-  const text = await response.text()
-  const payload: unknown = text === '' ? null : JSON.parse(text)
-
-  const parsed = schema.safeParse(payload)
-  if (!parsed.success) throw new ContractDriftError(path, parsed.error)
-  return parsed.data
-}
-
-export const GET = async <S extends z.ZodType>(
-  path: string,
-  schema: S,
-  query?: QueryInput,
-): Promise<z.output<S>> => await request('GET', path, schema, { ...(query && { query }) })
-
-export const POST = async <S extends z.ZodType>(
-  path: string,
-  schema: S,
-  body?: unknown,
-): Promise<z.output<S>> => await request('POST', path, schema, { body })
-
-export const PATCH = async <S extends z.ZodType>(
-  path: string,
-  schema: S,
-  body: unknown,
-): Promise<z.output<S>> => await request('PATCH', path, schema, { body })
-
-export const PUT = async <S extends z.ZodType>(
-  path: string,
-  schema: S,
-  body: unknown,
-): Promise<z.output<S>> => await request('PUT', path, schema, { body })
-
-export const DELETE = async <S extends z.ZodType>(path: string, schema: S): Promise<z.output<S>> =>
-  await request('DELETE', path, schema)
+    },
+  }),
+)
 
 export { ApiError, ContractDriftError } from './errors.ts'

@@ -31,7 +31,7 @@ import type {
   WorkoutSummary,
 } from '@cedo/contract'
 import { affectedBy } from '@cedo/contract'
-import { api } from './client.ts'
+import { api } from './http.ts'
 import { keys } from './query-client.ts'
 
 /**

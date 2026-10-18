@@ -47,7 +47,7 @@ app/(app)/exercises/        index · new · [id]/index · [id]/edit
 app/(app)/settings/         index · groups · tokens
 
 src/ui/                      the entire visual vocabulary
-src/api/                     http.ts, errors.ts, client.ts, query-client.ts, queries.ts
+src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts
 src/auth/                    auth-provider.tsx, token-storage.ts
 src/lib/                     use-submit.ts, plan-draft.ts, forms and pickers
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts
@@ -138,6 +138,13 @@ string in one event and never passes through the half-typed state.
 ## The API client
 
 A hand-written typed `fetch` client, not Eden Treaty. See `docs/adr/0015-no-eden-treaty.md`.
+
+Three layers, so the same route table serves more than the app. `transport.ts` sends one request and
+parses its response — plain `fetch` and the contract. `client.ts` is `createApi(request)`, every route
+the app calls, auth included. `http.ts` is the app's adapter: the base URL (`Platform`, env), the
+signed-in credential, the 401 handler, and the app's `api`. The e2e harness is the second adapter: it
+builds a client per user it signs up, from the test process, so fixtures are typed and parsed like
+everything else rather than `fetch`es evaluated inside the page.
 
 Every response is parsed with the **same contract schema** the API validated it against. On a
 mismatch the client throws `ContractDriftError` with the exact JSON path. That is deliberately loud:
