@@ -68,6 +68,19 @@ describe('suggesting the next prescription', () => {
     expect(suggestion?.sessionsConsidered).toBe(1)
   })
 
+  /**
+   * The FIRST working set, not any of them — what the plan editor shows as the prescription. Every
+   * working set shares one prescription when saved through the editor; the rows need not.
+   */
+  test('the prescription is the first working set, when the working sets differ', () => {
+    const [suggestion] = suggest(
+      [entry({ kind: 'none' })],
+      [prescribed(20_000, 5, true), prescribed(60_000, 8), prescribed(70_000, 6)],
+      [],
+    )
+    expect(suggestion?.current).toMatchObject({ weightG: 60_000, reps: 8 })
+  })
+
   /** The loader sends sessions newest first; the evaluator must keep them in that order. */
   test('the session that arrives first is read as the most recent', () => {
     const missedToday = [1, 2, 3].map(() => logged('today', 60_000, 6))

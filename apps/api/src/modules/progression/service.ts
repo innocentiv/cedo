@@ -32,7 +32,11 @@ export async function suggestForWorkout(
   return loaded === null ? [] : suggest(loaded.entries, loaded.prescribed, loaded.logs)
 }
 
-/** The three reads. Batched deliberately — a per-entry history query would be an N+1. */
+/**
+ * The four reads: the workout (a 404 when the caller cannot see it), its entries, their prescribed
+ * sets, and the caller's logs against them. Batched deliberately — a per-entry history query would
+ * be an N+1.
+ */
 async function loadForWorkout(caller: Caller, workoutId: string) {
   const workouts = visibleWorkouts(caller)
   const [workout] = await db

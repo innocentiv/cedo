@@ -16,6 +16,8 @@ import {
   MAX_SETS_PER_ENTRY,
   WorkoutEntryInput,
   WorkoutPlanInput,
+  setTargetOf,
+  targetFieldsOf,
 } from './workout.ts'
 
 const bench = newEntry({ id: crypto.randomUUID(), tracking: 'weight_reps' })
@@ -40,6 +42,26 @@ describe('the prescription', () => {
     const working = { isWarmup: false, target: { reps: 8, weightG: 60_000 } }
     expect(prescriptionOf({ sets: [warmup, working, { ...working }] })).toBe(working)
     expect(prescriptionOf({ sets: [warmup] })).toBeUndefined()
+  })
+})
+
+describe('a set’s targets', () => {
+  test('map from the written plan to the read one and back, every field in its place', () => {
+    const fields = {
+      targetReps: 8,
+      targetWeightG: 60_000,
+      targetRpe: 8,
+      targetDurationS: 30,
+      targetDistanceMm: 1000,
+    }
+    expect(setTargetOf(fields)).toEqual({
+      reps: 8,
+      weightG: 60_000,
+      rpe: 8,
+      durationS: 30,
+      distanceMm: 1000,
+    })
+    expect(targetFieldsOf(setTargetOf(fields))).toEqual(fields)
   })
 })
 

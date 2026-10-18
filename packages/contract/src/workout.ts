@@ -40,6 +40,29 @@ export const WorkoutSetInput = z.strictObject({
 })
 export type WorkoutSetInput = z.output<typeof WorkoutSetInput>
 
+/** A set's targets as a plan is written — `targetReps`, `targetWeightG`, … — without the flag. */
+export type TargetFields = Omit<WorkoutSetInput, 'isWarmup'>
+
+/**
+ * A set's targets as a plan is written, and as it is read (`target.reps`, …): the one mapping
+ * each way. The plan read, progression and `planInputFrom` each spelled it out for themselves.
+ */
+export const setTargetOf = (set: TargetFields): SetTarget => ({
+  reps: set.targetReps,
+  weightG: set.targetWeightG,
+  rpe: set.targetRpe,
+  durationS: set.targetDurationS,
+  distanceMm: set.targetDistanceMm,
+})
+
+export const targetFieldsOf = (target: SetTarget): TargetFields => ({
+  targetReps: target.reps,
+  targetWeightG: target.weightG,
+  targetRpe: target.rpe,
+  targetDurationS: target.durationS,
+  targetDistanceMm: target.distanceMm,
+})
+
 export const WorkoutEntryInput = z
   .strictObject({
     /**
@@ -189,14 +212,7 @@ export function planInputFrom(workout: Workout, { keepIds = true } = {}): Workou
         supersetGroup: entry.supersetGroup,
         restSeconds: entry.restSeconds,
         progression: entry.progression,
-        sets: entry.sets.map((set) => ({
-          targetReps: set.target.reps,
-          targetWeightG: set.target.weightG,
-          targetRpe: set.target.rpe,
-          targetDurationS: set.target.durationS,
-          targetDistanceMm: set.target.distanceMm,
-          isWarmup: set.isWarmup,
-        })),
+        sets: entry.sets.map((set) => ({ ...targetFieldsOf(set.target), isWarmup: set.isWarmup })),
       })),
     })),
   }

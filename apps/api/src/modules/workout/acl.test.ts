@@ -21,7 +21,7 @@ beforeEach(async () => {
 
 const SECRET = 'A description Bob must never see'
 
-async function sharedWorkoutUsingAPrivateExercise() {
+async function sharedWorkoutUsingAPrivateExercise(bobRole: 'reader' | 'editor' = 'reader') {
   const secret = expectContract(
     Exercise,
     (
@@ -59,7 +59,7 @@ async function sharedWorkoutUsingAPrivateExercise() {
   )
   await alice.wire(`/groups/${squad.id}/members`, {
     method: 'POST',
-    body: JSON.stringify({ username: 'bob', role: 'reader' }),
+    body: JSON.stringify({ username: 'bob', role: bobRole }),
   })
   return { secret, workout, squad }
 }
@@ -259,66 +259,41 @@ describe('sharing a workout does not share its exercises', () => {
   })
 
   /**
-   * The transfer form of the same rule. The check used to look only at exercises the CALLER could
-   * see, so one hidden from them was skipped rather than refused — and the plan moved into a group
-   * where it could only ever be an "Unavailable exercise" row.
+   * The transfer form of the same rule, for Bob — an editor of the squad, who can no longer see the
+   * plan's exercise. The check once looked only at exercises the CALLER could see, so one hidden
+   * from them was skipped rather than refused; and, until one rule covered every path, it returned
+   * early for a PERSONAL group, where saving and duplicating already refused. Either way the plan
+   * moved somewhere it could only ever be an "Unavailable exercise" row.
    */
-  test('transferring a plan with an exercise hidden from the caller is refused, unnamed', async () => {
-    const squad = expectContract(
-      GroupMembership,
-      (await alice.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Squad' }) }))
-        .body,
-    )
-    await alice.wire(`/groups/${squad.id}/members`, {
-      method: 'POST',
-      body: JSON.stringify({ username: 'bob', role: 'editor' }),
-    })
-    const { secret, workout } = await sharedWorkoutUsingAPrivateExercise()
-    await driftOutOfSight(secret.id, workout.id, squad.id)
+  test.each(['a new group of his', 'his personal group'])(
+    'moving a plan with an exercise hidden from the mover into %s is refused, unnamed',
+    async (destination) => {
+      const { secret, workout, squad } = await sharedWorkoutUsingAPrivateExercise('editor')
+      await driftOutOfSight(secret.id, workout.id, squad.id)
 
-    const bobs = expectContract(
-      GroupMembership,
-      (await bob.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Bobs' }) })).body,
-    )
-    const res = await bob.wire(`/workouts/${workout.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: bobs.id }),
-    })
-    expect(res.status).toBe(409)
-    expect(JSON.stringify(res.body)).not.toContain('Alice Secret Movement')
-    expect(
-      expectContract(Workout, (await alice.wire(`/workouts/${workout.id}`)).body).ownerGroupId,
-    ).toBe(squad.id)
-  })
-
-  /**
-   * Regression: the travel rule returned early for the caller's PERSONAL group, so this transfer
-   * was the one path that let a plan move with an exercise its new owner cannot see — leaving them
-   * "Unavailable exercise" rows. Saving and duplicating already refused it. One rule now.
-   */
-  test('transferring it into your own personal group is refused just the same', async () => {
-    const squad = expectContract(
-      GroupMembership,
-      (await alice.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Squad' }) }))
-        .body,
-    )
-    await alice.wire(`/groups/${squad.id}/members`, {
-      method: 'POST',
-      body: JSON.stringify({ username: 'bob', role: 'editor' }),
-    })
-    const { secret, workout } = await sharedWorkoutUsingAPrivateExercise()
-    await driftOutOfSight(secret.id, workout.id, squad.id)
-
-    const res = await bob.wire(`/workouts/${workout.id}/transfer`, {
-      method: 'POST',
-      body: JSON.stringify({ toGroupId: bob.personalGroupId }),
-    })
-    expect(res.status).toBe(409)
-    expect(JSON.stringify(res.body)).not.toContain('Alice Secret Movement')
-    expect(
-      expectContract(Workout, (await alice.wire(`/workouts/${workout.id}`)).body).ownerGroupId,
-    ).toBe(squad.id)
-  })
+      const toGroupId =
+        destination === 'his personal group'
+          ? bob.personalGroupId
+          : expectContract(
+              GroupMembership,
+              (
+                await bob.wire('/groups', {
+                  method: 'POST',
+                  body: JSON.stringify({ name: 'Bobs' }),
+                })
+              ).body,
+            ).id
+      const res = await bob.wire(`/workouts/${workout.id}/transfer`, {
+        method: 'POST',
+        body: JSON.stringify({ toGroupId }),
+      })
+      expect(res.status).toBe(409)
+      expect(JSON.stringify(res.body)).not.toContain('Alice Secret Movement')
+      expect(
+        expectContract(Workout, (await alice.wire(`/workouts/${workout.id}`)).body).ownerGroupId,
+      ).toBe(squad.id)
+    },
+  )
 
   test('progression never names an exercise the caller cannot see', async () => {
     const { secret, workout, squad } = await sharedWorkoutUsingAPrivateExercise()

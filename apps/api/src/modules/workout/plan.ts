@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
-import type { WorkoutDay, WorkoutEntry } from '@cedo/contract'
+import { type WorkoutDay, type WorkoutEntry, setTargetOf } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupBy } from '../../lib/keyset.ts'
 import { exerciseFavourites } from '../../db/schema.ts'
@@ -42,12 +42,12 @@ export function planEntries(caller: Caller, workoutId: string) {
     .as('plan_entries')
 }
 
-type PlanEntryRow = Awaited<ReturnType<typeof readEntries>>[number]
-
-const readEntries = async (caller: Caller, workoutId: string) => {
+async function readEntries(caller: Caller, workoutId: string) {
   const entries = planEntries(caller, workoutId)
-  return await db.select().from(entries).orderBy(asc(entries.index))
+  return await db.select().from(entries).orderBy(asc(entries.dayIndex), asc(entries.index))
 }
+
+type PlanEntryRow = Awaited<ReturnType<typeof readEntries>>[number]
 
 /**
  * A plan is three levels deep — days, entries, sets — with a full exercise on every entry. Loading
@@ -146,13 +146,7 @@ function toEntry(
       id: set.id,
       index: set.index,
       isWarmup: set.isWarmup,
-      target: {
-        reps: set.targetReps,
-        weightG: set.targetWeightG,
-        rpe: set.targetRpe,
-        durationS: set.targetDurationS,
-        distanceMm: set.targetDistanceMm,
-      },
+      target: setTargetOf(set),
     })),
   }
 }

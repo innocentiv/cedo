@@ -173,6 +173,23 @@ Ordering uses `(parent_id, index)` unique indexes. **API inputs carry no indices
 position and the server assigns them, which removes duplicate/gap indices and reorder endpoints
 entirely.
 
+**Which exercises a plan may use** depends on where the plan lives, and is one rule whichever way
+the plan got there — saved, duplicated or transferred (`assertPlanCanUse` in
+`modules/workout/references.ts`):
+
+1. Every exercise must be **visible** to whoever puts the plan there. A plan never starts out
+   referencing what its owner cannot read.
+2. In a **shared** group, every exercise must also be readable by every member **now and later**:
+   owned by that group, or by the starter library, which every account joins at registration.
+   Judged on the current members instead, a group holding only its creator would accept anything,
+   and everyone added afterwards would get unreadable rows. A personal group, which nobody else
+   ever joins, needs only (1).
+
+Visibility can still change afterwards — a membership is removed, an exercise is transferred away —
+so the read path is the second line of defence: an entry whose exercise the caller cannot see reads
+as `exercise: null`, its prescription still legible and nothing about the exercise leaked. That is
+the "Unavailable exercise" the UI shows.
+
 ### Logs
 
 ```

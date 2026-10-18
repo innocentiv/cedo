@@ -5,6 +5,7 @@ import {
   MAX_DAYS_PER_PLAN,
   MAX_ENTRIES_PER_DAY,
   MAX_SETS_PER_ENTRY,
+  type TargetFields,
   type WorkoutDayInput,
   type WorkoutEntryInput,
   WorkoutPlanInput,
@@ -24,7 +25,7 @@ import {
 export type SetKind = 'warmup' | 'working'
 
 /** A change to an entry's prescription. Never `isWarmup`: a target edit does not move a set. */
-export type Prescription = Partial<Omit<WorkoutSetInput, 'isWarmup'>>
+export type Prescription = Partial<TargetFields>
 
 const split = (entry: WorkoutEntryInput) => ({
   warmup: entry.sets.filter((s) => s.isWarmup),

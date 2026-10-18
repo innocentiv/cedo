@@ -77,7 +77,7 @@ async function sharedGroupWithAlice(): Promise<Shared> {
 /**
  * Regression: `transfer` reported on a workout's CONTENTS before checking the caller could edit it.
  *
- * `assertWorkoutCanTravel` throws a 409 naming the exercises that would be stranded — useful
+ * `assertWorkoutCanMoveTo` throws a 409 naming the exercises that would be stranded — useful
  * to an owner, an oracle to anyone else. Running it first turned the endpoint into a probe: a
  * stranger could confirm a private workout existed and learn what it prescribed, while
  * `GET /workouts/:id` correctly answered 404 for the same id.

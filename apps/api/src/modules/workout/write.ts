@@ -15,7 +15,8 @@ import { writePlan } from './write-plan.ts'
  *
  * A write file may import the raw tables — a subquery cannot be an UPDATE target — and in exchange
  * every statement here on an owned table carries `editable()`. The rule for which exercises a plan
- * may use is a read, through the visible relations, in `references.ts`. See docs/adr/0019-visible-relations.md.
+ * may use is a read, through the visible relations, in `references.ts`.
+ * See docs/adr/0019-visible-relations.md.
  */
 
 /** Returns the new workout's id. */

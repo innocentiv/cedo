@@ -9,6 +9,7 @@ import {
   type WorkoutSetInput,
   nextTarget,
   prescriptionOf,
+  setTargetOf,
 } from '@cedo/contract'
 import { groupBy } from '../../lib/keyset.ts'
 
@@ -65,7 +66,8 @@ function suggestForEntry(
   prescribed: readonly PrescribedSet[],
   logs: readonly LoggedSet[],
 ): ProgressionSuggestion {
-  const current = targetOf(prescriptionOf({ sets: prescribed }))
+  const first = prescriptionOf({ sets: prescribed })
+  const current = first === undefined ? NOTHING_PRESCRIBED : setTargetOf(first)
   const sessions = toSessions(logs)
 
   const suggested = nextTarget({
@@ -89,14 +91,12 @@ function suggestForEntry(
 }
 
 /** An entry with no working set prescribes nothing — every target null. */
-function targetOf(set: WorkoutSetInput | undefined): SetTarget {
-  return {
-    reps: set?.targetReps ?? null,
-    weightG: set?.targetWeightG ?? null,
-    rpe: set?.targetRpe ?? null,
-    durationS: set?.targetDurationS ?? null,
-    distanceMm: set?.targetDistanceMm ?? null,
-  }
+const NOTHING_PRESCRIBED: SetTarget = {
+  reps: null,
+  weightG: null,
+  rpe: null,
+  durationS: null,
+  distanceMm: null,
 }
 
 /** Flat log rows into per-session attempts, keeping the order the sessions arrive in. */

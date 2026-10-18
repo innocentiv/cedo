@@ -80,8 +80,8 @@ function refusedHidden(hidden: readonly string[], referencedBy: ReferencedBy) {
   )
 }
 
-/** The transfer form: the exercises are whatever the stored plan references. */
-export async function assertWorkoutCanTravel(
+/** Before a transfer: the one rule, over whatever exercises the stored plan references. */
+export async function assertWorkoutCanMoveTo(
   caller: Caller,
   workoutId: string,
   toGroupId: string,
