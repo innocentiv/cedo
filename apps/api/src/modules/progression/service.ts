@@ -14,13 +14,12 @@ import { setLogs, workoutSessions } from '../../db/schema.ts'
 import {
   type WorkoutSetRow,
   visibleExercises,
-  visibleWorkoutDays,
-  visibleWorkoutEntries,
   visibleWorkoutSets,
   visibleWorkouts,
 } from '../../db/visible.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { planEntries } from '../workout/plan.ts'
 
 /**
  * How many past sessions a rule may look back over. `afterSuccesses` caps at 10, so ten is enough
@@ -68,27 +67,24 @@ async function loadForWorkout(caller: Caller, workoutId: string) {
     .limit(1)
   if (workout === undefined) throw notFound('workout')
 
-  const visibleEntries = visibleWorkoutEntries(caller)
-  const days = visibleWorkoutDays(caller)
+  const plan = planEntries(caller, workoutId)
   const exercises = visibleExercises(caller)
   const entries = await db
     .select({
-      id: visibleEntries.id,
-      exerciseId: visibleEntries.exerciseId,
+      id: plan.id,
+      exerciseId: plan.exerciseId,
       exerciseName: exercises.name,
       tracking: exercises.tracking,
-      progression: visibleEntries.progression,
+      progression: plan.progression,
     })
-    .from(visibleEntries)
-    .innerJoin(days, eq(days.id, visibleEntries.dayId))
+    .from(plan)
     /**
      * An INNER join onto the visible exercises: without it a suggestion returns the name and
      * prescribed load of an exercise the caller cannot see. Entries whose exercise is hidden simply
      * do not appear — there is nothing useful to advise about a movement you cannot read.
      */
-    .innerJoin(exercises, eq(exercises.id, visibleEntries.exerciseId))
-    .where(eq(days.workoutId, workoutId))
-    .orderBy(asc(days.index), asc(visibleEntries.index))
+    .innerJoin(exercises, eq(exercises.id, plan.exerciseId))
+    .orderBy(asc(plan.dayIndex), asc(plan.index))
   if (entries.length === 0) return null
 
   const entryIds = entries.map((e) => e.id)

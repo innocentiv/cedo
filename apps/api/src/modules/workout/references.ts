@@ -2,9 +2,10 @@ import { and, eq, inArray } from 'drizzle-orm'
 import { DEFAULT_GROUP_SLUG } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groups } from '../../db/schema.ts'
-import { visibleExercises, visibleWorkoutDays, visibleWorkoutEntries } from '../../db/visible.ts'
+import { visibleExercises } from '../../db/visible.ts'
 import { conflict, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { planEntries } from './plan.ts'
 
 /**
  * Where the exercise ids came from, which decides only how a refusal is said: an id the REQUEST
@@ -85,13 +86,8 @@ export async function assertWorkoutCanTravel(
   workoutId: string,
   toGroupId: string,
 ): Promise<void> {
-  const entries = visibleWorkoutEntries(caller)
-  const days = visibleWorkoutDays(caller)
-  const referenced = await db
-    .selectDistinct({ id: entries.exerciseId })
-    .from(entries)
-    .innerJoin(days, eq(days.id, entries.dayId))
-    .where(eq(days.workoutId, workoutId))
+  const entries = planEntries(caller, workoutId)
+  const referenced = await db.selectDistinct({ id: entries.exerciseId }).from(entries)
   await assertPlanCanUse(
     caller,
     referenced.map((r) => r.id),

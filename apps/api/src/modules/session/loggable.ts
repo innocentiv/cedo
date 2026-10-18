@@ -1,9 +1,10 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { inArray } from 'drizzle-orm'
 import type { LogSetInput, LoggedExercise } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { visibleExercises, visibleWorkoutDays, visibleWorkoutEntries } from '../../db/visible.ts'
+import { visibleExercises } from '../../db/visible.ts'
 import { invalid, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { planEntries } from '../workout/plan.ts'
 
 /**
  * What a set may reference, checked for a whole batch in one query per kind — `logSet` passes one
@@ -34,13 +35,11 @@ export async function assertLoggable(
   if (entryIds.length === 0) return visible
   if (workoutId === null) throw invalid('An ad-hoc session has no plan entries to log against')
 
-  const visibleEntries = visibleWorkoutEntries(caller)
-  const days = visibleWorkoutDays(caller)
+  const plan = planEntries(caller, workoutId)
   const entries = await db
-    .select({ id: visibleEntries.id, exerciseId: visibleEntries.exerciseId })
-    .from(visibleEntries)
-    .innerJoin(days, eq(days.id, visibleEntries.dayId))
-    .where(and(eq(days.workoutId, workoutId), inArray(visibleEntries.id, entryIds)))
+    .select({ id: plan.id, exerciseId: plan.exerciseId })
+    .from(plan)
+    .where(inArray(plan.id, entryIds))
   const exerciseOf = new Map(entries.map((e) => [e.id, e.exerciseId]))
   for (const set of sets) {
     if (set.entryId === null) continue
