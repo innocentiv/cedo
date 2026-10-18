@@ -99,8 +99,9 @@ presentational — the rules they render (loads summing to 100, which inputs a t
 what a progression rule contains) all live in `@cedo/contract`.
 
 Editing a plan follows the same split. How sets resize within an entry's total, what a target change
-applies to, what a new entry prescribes, and how many days and exercises a plan may hold are
-`plan-editing.ts` in the contract, with its tests; the editor only wires them to controls. It also
+applies to, what a new entry prescribes, and whether another day or exercise fits are
+`plan-editing.ts` in the contract, with its tests; the limits themselves are declared once beside
+the schema in `workout.ts`, which enforces them. The editor only wires these to controls. It also
 reads `planIssues(draft)` — the schema's own verdict, located by day and exercise — as the draft is
 edited, shows it above Save, and disables Save while there is one. The editor prevents what it
 models; that line catches what it does not, before the request rather than as a 422. The editor

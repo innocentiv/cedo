@@ -64,3 +64,19 @@ _Avoid_: measure, metric
 **Effort**:
 The dimensions one set carries — prescribed as a target, or done as a log.
 _Avoid_: result, performance
+
+## Plans
+
+**Prescription**:
+What an exercise in a plan asks for on every working set: one set of targets, shared by all of
+them. Progression advances it.
+_Avoid_: target set, template
+
+**Working set**:
+A set that counts: it carries the prescription, and progression judges it.
+_Avoid_: main set, real set
+
+**Warm-up set**:
+A lighter ramp-up set before the working sets. It is not judged by progression and not counted as
+volume.
+_Avoid_: ramp set, prep set
