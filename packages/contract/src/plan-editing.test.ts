@@ -33,6 +33,16 @@ describe('a new entry', () => {
   })
 })
 
+describe('the prescription', () => {
+  /** One rule for every shape of set, so a plan as READ answers as the plan being edited does. */
+  test('is the first working set, in a plan as read just as in one being edited', () => {
+    const warmup = { isWarmup: true, target: { reps: 5, weightG: 20_000 } }
+    const working = { isWarmup: false, target: { reps: 8, weightG: 60_000 } }
+    expect(prescriptionOf({ sets: [warmup, working, { ...working }] })).toBe(working)
+    expect(prescriptionOf({ sets: [warmup] })).toBeUndefined()
+  })
+})
+
 describe('resizing a band of sets', () => {
   /**
    * Regression: each band was clamped to 20 on its own, while the schema allows 20 IN TOTAL — so

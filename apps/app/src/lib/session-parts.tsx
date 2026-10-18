@@ -3,19 +3,14 @@ import type {
   ProgressionSuggestion,
   SessionExercise,
   SetLog,
-  SetTarget,
   WorkoutDay,
   WorkoutEntry,
 } from '@cedo/contract'
-import { formatEffort } from '@cedo/contract'
+import { formatEffort, prescriptionOf } from '@cedo/contract'
 import { exerciseName } from './exercise-name.ts'
 import { Button, Card, ListRow, SetLogger, Stack, Text } from '../ui/index.ts'
 
 /** The pieces the live session screen is assembled from, so the route itself stays control flow. */
-
-/** The prescription for an entry is its first working set. See docs/adr/0012. */
-export const targetOf = (entry: WorkoutEntry): SetTarget | null =>
-  entry.sets.find((s) => !s.isWarmup)?.target ?? null
 
 /**
  * What the progression rule says to do next, in one line.
@@ -162,7 +157,7 @@ export function PlannedDay({
             // See docs/03-domain-model.md.
             exerciseName={exerciseName(entry.exercise)}
             tracking={entry.exercise?.tracking ?? 'weight_reps'}
-            target={targetOf(entry)}
+            target={prescriptionOf(entry)?.target ?? null}
             suggestion={hintFor(suggestions.get(entry.id))}
             done={done}
             busy={busy}

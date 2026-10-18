@@ -61,11 +61,15 @@ export const newEntry = (exercise: {
 })
 
 /**
- * The prescription is the FIRST WORKING set — which is also what progression reads. Taking `sets[0]`
- * instead showed a warm-up's light load as the prescription. See docs/adr/0012-progression-rules.md.
+ * The prescription is the FIRST WORKING set. Taking `sets[0]` instead showed a warm-up's light load
+ * as the prescription. See docs/adr/0012-progression-rules.md.
+ *
+ * Over any shape of set — a plan being edited, a plan as read, the prescribed rows progression
+ * evaluates — because the rule was written once for each of those, and is now written here.
  */
-export const prescriptionOf = (entry: WorkoutEntryInput): WorkoutSetInput | undefined =>
-  entry.sets.find((s) => !s.isWarmup)
+export const prescriptionOf = <S extends { readonly isWarmup: boolean }>(entry: {
+  readonly sets: readonly S[]
+}): S | undefined => entry.sets.find((s) => !s.isWarmup)
 
 export const setCounts = (entry: WorkoutEntryInput): Record<SetKind, number> => {
   const { warmup, working } = split(entry)
