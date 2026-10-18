@@ -149,6 +149,23 @@ read from the contract's own `details` array. Anything that is not an `ApiError`
 network — is re-thrown into the console rather than flattened into "something went wrong", because
 hiding it would hide exactly what the client exists to catch.
 
+### What a write makes stale is derived, not listed
+
+Every read declares, once, the resource it is OF and the resources it EMBEDS — `READS` in
+`packages/contract/src/reads.ts`. A `Workout` embeds `exercise`, because each entry carries its whole
+exercise; a session list embeds `workout`, because each row names its plan and day. A write names
+only the resource it changes (`useResourceMutation('exercise', …)`), and `affectedBy` derives the
+rest: the reads OF it are awaited — the next write may depend on them — and the reads that embed it
+refetch in the background.
+
+It used to be per write: each mutation listed what else it touched, and the lists had gaps nobody
+could see. Renaming an exercise left the open plan, its progression and a live session showing the
+old name for the whole `staleTime`. Query keys are flat — `[read, ...args]` — for the same reason: a
+key nested under another was refreshed with it by accident, which is a dependency written nowhere.
+
+A new read is a row in `READS` and a key in `keys` (`satisfies Record<Read, …>` refuses one without
+the other). The contract's T1 tests state each embedding as behaviour.
+
 ### Configuration reaches the bundle only through dot access
 
 `process.env.EXPO_PUBLIC_API_URL` — **never** `process.env['EXPO_PUBLIC_API_URL']`. Expo's Babel

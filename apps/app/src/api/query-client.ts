@@ -1,10 +1,8 @@
 import { QueryCache, QueryClient } from '@tanstack/react-query'
+import type { Read } from '@cedo/contract'
 import { ApiError } from './http.ts'
 
-/**
- * One cache for the app. Query keys are `[resource, ...scope]`, so invalidating `['exercises']`
- * refreshes every list and detail of that resource. See docs/08-frontend.md.
- */
+/** One cache for the app. See docs/08-frontend.md. */
 export function createQueryClient(): QueryClient {
   return new QueryClient({
     /**
@@ -40,24 +38,24 @@ export function createQueryClient(): QueryClient {
   })
 }
 
-/** Query keys, in one place, so an invalidation cannot miss a list nobody remembered. */
+/**
+ * One query key per read in the contract's `READS`: `[read, ...args]`, so `[read]` is the prefix
+ * that refreshes every copy of it.
+ *
+ * Flat on purpose. Progression used to live under `['workouts', …]` and history under
+ * `['exercises', …]`, so each was refreshed with its parent by accident — a dependency that worked
+ * without being written down anywhere. What a write makes stale is `affectedBy` in the contract,
+ * and nothing else. See docs/08-frontend.md.
+ */
 export const keys = {
-  muscles: ['muscles'] as const,
-  exercises: ['exercises'] as const,
-  exerciseList: (query: Record<string, unknown>) => ['exercises', 'list', query] as const,
-  exercise: (id: string) => ['exercises', 'detail', id] as const,
-  /** Every exercise's history — the prefix a log invalidates. */
-  exerciseHistories: ['exercises', 'history'] as const,
-  exerciseHistory: (id: string) => ['exercises', 'history', id] as const,
-  workouts: ['workouts'] as const,
-  workoutList: (query: Record<string, unknown>) => ['workouts', 'list', query] as const,
-  workout: (id: string) => ['workouts', 'detail', id] as const,
-  /** Every workout's progression — the prefix a log invalidates. */
-  progressions: ['workouts', 'progression'] as const,
-  progression: (id: string) => ['workouts', 'progression', id] as const,
-  sessions: ['sessions'] as const,
-  sessionList: (query: Record<string, unknown>) => ['sessions', 'list', query] as const,
-  session: (id: string) => ['sessions', 'detail', id] as const,
+  exerciseList: (query: Record<string, unknown>) => ['exerciseList', query] as const,
+  exercise: (id: string) => ['exercise', id] as const,
+  exerciseHistory: (id: string) => ['exerciseHistory', id] as const,
+  workoutList: (query: Record<string, unknown>) => ['workoutList', query] as const,
+  workout: (id: string) => ['workout', id] as const,
+  progression: (id: string) => ['progression', id] as const,
+  sessionList: (query: Record<string, unknown>) => ['sessionList', query] as const,
+  session: (id: string) => ['session', id] as const,
   groups: ['groups'] as const,
   tokens: ['tokens'] as const,
-} as const
+} as const satisfies Record<Read, unknown>

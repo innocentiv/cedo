@@ -85,7 +85,7 @@ test(
  * Builds a one-day plan around a seeded bench press and opens it in the editor. From the shared
  * library, so no exercise has to be created first.
  */
-async function openNewPlan(page: Page): Promise<string> {
+async function openNewPlan(page: Page, exercise = 'Bench'): Promise<string> {
   await page.goto('/workouts')
   await page.waitFor('workouts-screen')
   await page.fill('workout-name', 'Push Day')
@@ -97,7 +97,7 @@ async function openNewPlan(page: Page): Promise<string> {
   await page.click('[data-testid="add-entry-0"]')
 
   await page.waitFor('exercise-picker')
-  await page.fill('picker-search', 'Bench')
+  await page.fill('picker-search', exercise)
   const picked = await page.waitForSelector('[data-testid^="picker-row-"]')
   await page.click(`[data-testid="${picked}"]`)
   await page.waitFor('plan-entry-0-0')
@@ -222,6 +222,60 @@ test(
       await page.waitFor('exercise-detail-screen')
       await Bun.sleep(500)
       expect(await page.text('exercise-history')).not.toContain('Nothing logged yet')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * Regression: a write invalidated only its own resource, so a plan — which carries each entry's
+ * whole exercise — kept the old name for the 30-second `staleTime` after the exercise was renamed.
+ * The same missing link left progression and an open session stale. See `READS` in the contract.
+ */
+test(
+  'renaming an exercise shows in a plan already open, not 30 seconds later',
+  async () => {
+    await withApp('rename-in-plan', async (page) => {
+      await register(page, unique('ren'))
+      const before = unique('Cable Fly ')
+      const after = unique('Pec Deck ')
+
+      await page.goto('/exercises/new')
+      await page.waitFor('exercise-new-screen')
+      await page.fill('exercise-name', before)
+      await page.click('[data-testid="muscle-option-pectoralis_major"]')
+      await page.fill('muscle-load-pectoralis_major', '100')
+      await page.click('[data-testid="exercise-new-screen-save"]')
+      // Saving goes back to where the form was opened from: Today, where registering lands.
+      await page.waitFor('today-screen')
+
+      await openNewPlan(page, before)
+      await page.click('[data-testid="save-plan"]')
+      await page.waitFor('workouts-screen')
+      await page.click('[data-testid^="workout-row-"]')
+      await page.waitFor('workout-detail-screen')
+      expect(await page.text('workout-detail-screen')).toContain(before)
+
+      // Tabs, not `goto`: a navigation reloads the page and would empty the cache under test.
+      await page.click('[data-testid="nav-exercises"]')
+      await page.waitFor('exercises-screen')
+      await page.fill('exercise-search', before)
+      const row = await page.waitForSelector('[data-testid^="exercise-row-"]')
+      await page.click(`[data-testid="${row}"]`)
+      await page.waitFor('exercise-detail-screen')
+      await page.click('[data-testid="edit-exercise"]')
+      await page.waitFor('exercise-edit-screen')
+      await page.fill('exercise-name', after)
+      await page.click('[data-testid="exercise-edit-screen-save"]')
+      await page.waitFor('exercise-detail-screen')
+
+      // The tab keeps its stack: back to the very plan seen above, cached before the rename.
+      await page.click('[data-testid="nav-workouts"]')
+      await page.waitFor('workout-detail-screen')
+      await Bun.sleep(500)
+      const plan = await page.text('workout-detail-screen')
+      expect(plan).toContain(after)
+      expect(plan).not.toContain(before)
     })
   },
   E2E_TIMEOUT_MS,

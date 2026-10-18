@@ -16,6 +16,7 @@ import type {
   Page,
   PersonalAccessToken,
   ProgressionSuggestion,
+  Resource,
   SessionQuery,
   SessionStart,
   SessionUpdate,
@@ -28,15 +29,16 @@ import type {
   WorkoutSessionSummary,
   WorkoutSummary,
 } from '@cedo/contract'
+import { affectedBy } from '@cedo/contract'
 import { api } from './client.ts'
 import { keys } from './query-client.ts'
 
 /**
  * Every read and write a screen may perform, as hooks.
  *
- * Screens do not call `api.*` directly and do not build query keys, so an invalidation cannot miss
- * a list somebody forgot about — `keys` in `query-client.ts` is the only place they are written.
- * See docs/08-frontend.md.
+ * Screens do not call `api.*` directly and do not build query keys. A write names the one resource
+ * it changes, and what that makes stale is derived from what each read declares it is built from —
+ * `READS` in the contract. See docs/08-frontend.md.
  */
 
 export function useExercises(query: Partial<ExerciseQuery>): UseQueryResult<Page<Exercise>> {
@@ -111,11 +113,10 @@ export function useTokens(): UseQueryResult<PersonalAccessToken[]> {
 }
 
 /**
- * Mutations invalidate the whole resource, not one key.
- *
- * Creating an exercise changes the `all` list, the `mine` list, every filtered list and the group
- * it landed in. Enumerating those is how a stale screen happens; invalidating `['exercises']`
- * refetches only what is currently mounted anyway.
+ * A write to `resource` refreshes every read it makes stale (`affectedBy`): all copies of each,
+ * whatever their arguments, since only what is mounted actually refetches. The reads OF the
+ * resource are awaited, because the next write reads them — the live session numbers the next set
+ * from the refreshed logs. Reads that only embed it are marked stale at once and refetch behind.
  *
  * There is deliberately no `onError`.
  *
@@ -126,118 +127,95 @@ export function useTokens(): UseQueryResult<PersonalAccessToken[]> {
  * A bare `.mutate()` is the smell — it reads nothing back.
  */
 function useResourceMutation<TInput, TResult>(
-  resource: readonly string[],
+  resource: Resource,
   run: (input: TInput) => Promise<TResult>,
-  alsoAffects: readonly (readonly string[])[] = [],
 ): UseMutationResult<TResult, Error, TInput> {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: run,
     onSuccess: async () => {
-      /**
-       * Only the mutated resource is awaited — the next write reads it (the live session numbers
-       * the next set from the refreshed logs). Derived reads are marked stale at once and refetch
-       * in the background: awaiting them kept the Log button busy until progression had been
-       * recomputed, after every set.
-       */
-      for (const queryKey of alsoAffects) void queryClient.invalidateQueries({ queryKey })
-      await queryClient.invalidateQueries({ queryKey: resource })
+      const { awaited, background } = affectedBy(resource)
+      for (const read of background) void queryClient.invalidateQueries({ queryKey: [read] })
+      await Promise.all(
+        awaited.map(async (read) => {
+          await queryClient.invalidateQueries({ queryKey: [read] })
+        }),
+      )
     },
   })
 }
 
-/**
- * Reads computed from logged sets, which live under other resources' keys. Logging only
- * invalidated `['sessions']`, so an exercise's history and the next progression hint stayed stale
- * for the 30-second `staleTime` — showing "Nothing logged yet" right after a set was logged.
- */
-const DERIVED_FROM_LOGS = [keys.exerciseHistories, keys.progressions] as const
-
 export const useCreateExercise = () =>
   useResourceMutation(
-    keys.exercises,
+    'exercise',
     async (input: ExerciseCreate) => await api.exercises.create(input),
   )
 
 export const useUpdateExercise = (id: string) =>
   useResourceMutation(
-    keys.exercises,
+    'exercise',
     async (input: ExerciseUpdate) => await api.exercises.update(id, input),
   )
 
 export const useDeleteExercise = () =>
-  useResourceMutation(keys.exercises, async (id: string) => await api.exercises.remove(id))
+  useResourceMutation('exercise', async (id: string) => await api.exercises.remove(id))
 
 export const useFavouriteExercise = () =>
   useResourceMutation(
-    keys.exercises,
+    'exercise',
     async (input: { id: string; on: boolean }) => await api.exercises.favourite(input.id, input.on),
   )
 
 export const useDuplicateExercise = () =>
-  useResourceMutation(keys.exercises, async (id: string) => await api.exercises.duplicate(id))
+  useResourceMutation('exercise', async (id: string) => await api.exercises.duplicate(id))
 
 export const useCreateWorkout = () =>
-  useResourceMutation(
-    keys.workouts,
-    async (input: WorkoutCreate) => await api.workouts.create(input),
-  )
+  useResourceMutation('workout', async (input: WorkoutCreate) => await api.workouts.create(input))
 
-// Sessions name their day, and a save can rename it.
 export const useReplacePlan = (id: string) =>
   useResourceMutation(
-    keys.workouts,
+    'workout',
     async (input: WorkoutPlanInput) => await api.workouts.replacePlan(id, input),
-    [keys.sessions],
   )
 
-// Sessions name their workout, and lose that name when it is deleted.
 export const useDeleteWorkout = () =>
-  useResourceMutation(keys.workouts, async (id: string) => await api.workouts.remove(id), [
-    keys.sessions,
-  ])
+  useResourceMutation('workout', async (id: string) => await api.workouts.remove(id))
 
 export const useFavouriteWorkout = () =>
   useResourceMutation(
-    keys.workouts,
+    'workout',
     async (input: { id: string; on: boolean }) => await api.workouts.favourite(input.id, input.on),
   )
 
 export const useStartSession = () =>
-  useResourceMutation(keys.sessions, async (input: SessionStart) => await api.sessions.start(input))
+  useResourceMutation('session', async (input: SessionStart) => await api.sessions.start(input))
 
 export const useUpdateSession = (id: string) =>
   useResourceMutation(
-    keys.sessions,
+    'session',
     async (input: SessionUpdate) => await api.sessions.update(id, input),
-    DERIVED_FROM_LOGS,
   )
 
 export const useLogSet = (sessionId: string) =>
   useResourceMutation(
-    keys.sessions,
+    'session',
     async (input: LogSetInput): Promise<SetLog> => await api.sessions.logSet(sessionId, input),
-    DERIVED_FROM_LOGS,
   )
 
 export const useRemoveLog = (sessionId: string) =>
   useResourceMutation(
-    keys.sessions,
+    'session',
     async (logId: string) => await api.sessions.removeLog(sessionId, logId),
-    DERIVED_FROM_LOGS,
   )
 
 export const useCreateToken = () =>
-  useResourceMutation(
-    keys.tokens,
-    async (input: { name: string }) => await api.tokens.create(input),
-  )
+  useResourceMutation('token', async (input: { name: string }) => await api.tokens.create(input))
 
 export const useRevokeToken = () =>
-  useResourceMutation(keys.tokens, async (id: string) => await api.tokens.revoke(id))
+  useResourceMutation('token', async (id: string) => await api.tokens.revoke(id))
 
 export const useCreateMediaLink = () =>
   useResourceMutation(
-    keys.exercises,
+    'media',
     async (input: { url: string; title?: string }) => await api.media.link(input),
   )
