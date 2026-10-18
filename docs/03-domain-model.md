@@ -104,7 +104,8 @@ relation**, and the join kind is the one decision left, depending on whether the
 | decoration on a row that must still appear | **LEFT JOIN** the relation | the row stays, the name becomes `null` |
 | the subject of the row itself | **INNER JOIN** the relation, or select from it | the row drops out; there is nothing to say |
 
-The first is `GET /sessions` (your session, someone else's workout name) and `WorkoutEntry.exercise`.
+The first is `GET /sessions` (your session, someone else's workout name), `SetLog.exercise` (your
+log, the name and tracking mode of an exercise you may have lost) and `WorkoutEntry.exercise`.
 The second is `progression`, `stalled` and `dayBalance` — advice about a movement you cannot read is
 not advice.
 
