@@ -80,3 +80,16 @@ _Avoid_: main set, real set
 A lighter ramp-up set before the working sets. It is not judged by progression and not counted as
 volume.
 _Avoid_: ramp set, prep set
+
+## Training
+
+**Session**:
+One visit to the gym: when it started and ended, and the sets logged in it. It may follow a day
+of a plan, or no plan at all.
+_Avoid_: workout (that is the plan), training
+
+**Set log**:
+One set as it was done: the exercise, its effort, and — when the session follows a plan — the plan
+entry it answers. It belongs to the session, and keeps its effort even when its exercise or plan is
+later out of reach.
+_Avoid_: entry (that is the plan's), result

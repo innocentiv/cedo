@@ -384,6 +384,11 @@ test('losing a group takes back every name it showed, on every read path', async
   const gated = cases.filter(([, c]) => c.allowed !== undefined)
   const allowedBefore = await Promise.all(gated.map(async ([, c]) => await c.allowed?.(w)))
   expect(gated.filter((_, i) => allowedBefore[i] !== true).map(([name]) => name)).toEqual([])
+  const loggedBefore = expectContract(
+    WorkoutSession,
+    (await alice.wire(`/sessions/${w.alicesSessionId}`)).body,
+  ).logs
+  expect(loggedBefore.map((l) => l.exercise?.name)).toEqual(['Bobs Secret Lift'])
   const sessionsBefore = expectContract(
     page(WorkoutSessionSummary),
     (await alice.wire('/sessions')).body,
@@ -415,4 +420,13 @@ test('losing a group takes back every name it showed, on every read path', async
   expect(sessionsAfter.items.map((s) => [s.workoutName, s.dayName])).toEqual(
     sessionsAfter.items.map(() => [null, null]),
   )
+
+  // And each of her logs is still listed — a LEFT join onto the visible exercises — with the
+  // exercise it names gone, not the log itself.
+  const loggedAfter = expectContract(
+    WorkoutSession,
+    (await alice.wire(`/sessions/${w.alicesSessionId}`)).body,
+  ).logs
+  expect(loggedAfter.map((l) => l.id)).toEqual(loggedBefore.map((l) => l.id))
+  expect(loggedAfter.map((l) => l.exercise)).toEqual([null])
 })

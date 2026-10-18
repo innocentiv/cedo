@@ -1,4 +1,5 @@
 import { type Exercise, canAddEntry } from '@cedo/contract'
+import { exerciseName } from '../lib/exercise-name.ts'
 import type { DayDraft, EntryDraft } from '../lib/plan-draft.ts'
 import { removeAt, replaceAt } from '../lib/plan-draft.ts'
 import { Button } from './button.tsx'
@@ -61,7 +62,7 @@ export function DayEditor({
           <EntryEditor
             key={`entry-${index}-${entryIndex}`}
             entry={entry}
-            exerciseName={library.get(entry.exerciseId)?.name ?? 'Unavailable exercise'}
+            exerciseName={exerciseName(library.get(entry.exerciseId))}
             tracking={library.get(entry.exerciseId)?.tracking ?? 'weight_reps'}
             testID={`plan-entry-${index}-${entryIndex}`}
             onChange={(next) => {

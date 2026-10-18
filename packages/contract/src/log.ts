@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { LoggedDistanceMm, LoggedDurationS, LoggedReps, LoggedWeightG, Rpe } from './measurement.ts'
-import { TrackingMode } from './exercise.ts'
+import { Exercise, TrackingMode } from './exercise.ts'
 import { Id, PaginationQuery, Timestamp } from './primitives.ts'
 
 /**
@@ -19,7 +19,7 @@ import { Id, PaginationQuery, Timestamp } from './primitives.ts'
  * (see docs/03-domain-model.md). Carried on the log so a screen never has to rebuild it from a plan
  * it may no longer load, or from exercises picked before a reload.
  */
-export const LoggedExercise = z.object({ name: z.string(), tracking: TrackingMode })
+export const LoggedExercise = Exercise.pick({ name: true, tracking: true })
 export type LoggedExercise = z.output<typeof LoggedExercise>
 
 export const SetLog = z.object({
@@ -40,17 +40,16 @@ export const SetLog = z.object({
 export type SetLog = z.output<typeof SetLog>
 
 /** An exercise a session is working through: enough to show its logger. */
-export interface SessionExercise {
-  readonly id: string
-  readonly name: string
-  readonly tracking: TrackingMode
-}
+export const SessionExercise = LoggedExercise.extend({ id: Id })
+export type SessionExercise = z.output<typeof SessionExercise>
 
 /**
- * The exercises a session without a plan is working through: those it has logged — in the order
- * first logged — then any picked since. The logs are the record, so a reload continues where it
- * left off instead of starting from an empty screen. An exercise the caller can no longer see has
- * no name to show, and no logger: nothing new can be logged against it.
+ * The exercises a session is working through when no plan day is shown — a session without a
+ * plan, or one whose plan is out of reach: those it has logged, in the order first logged, then any
+ * picked since. The logs are the record, so a reload continues where it left off instead of starting
+ * from an empty screen. A set logged this way names no plan entry; with the plan out of reach there
+ * is no progression to count it toward. An exercise the caller can no longer see has no name to
+ * show, and no logger: nothing new can be logged against it.
  */
 export function exercisesInSession(
   logs: readonly SetLog[],

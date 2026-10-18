@@ -73,18 +73,17 @@ function useRecordSet(
   }
 }
 
-/**
- * Exercises picked for an ad-hoc session but not logged yet. Local, not persisted: once a set is
- * logged the log itself carries the exercise, which is what survives a reload.
- */
 /** Stable, so an absent session does not recompute the exercises on every render. */
 const NO_LOGS: readonly SetLog[] = []
 
+/**
+ * The exercises shown when no plan day is: what the session has logged, then any picked since
+ * (`exercisesInSession`). Picks are local and not persisted — once a set is logged, the log itself
+ * carries the exercise, and that is what survives a reload.
+ */
 function useAdHocExercises(logs: readonly SetLog[]) {
   const [chosen, setChosen] = useState<Exercise[]>([])
   const [picking, setPicking] = useState(false)
-  // What this session has logged, then anything picked since: the logs are the record, so a
-  // reload continues where it left off. See `exercisesInSession`.
   const exercises = useMemo(() => exercisesInSession(logs, chosen), [logs, chosen])
 
   return {
@@ -120,7 +119,7 @@ export default function LiveSession(): React.JSX.Element {
   const removeLog = useRemoveLog(id)
   const finish = useUpdateSession(id)
   const { submit, busy, error } = useSubmit()
-  const record = useRecordSet(logSet, submit, session.data?.logs ?? [])
+  const record = useRecordSet(logSet, submit, session.data?.logs ?? NO_LOGS)
 
   const day = useMemo(
     () => workout.data?.days.find((d) => d.id === session.data?.dayId),

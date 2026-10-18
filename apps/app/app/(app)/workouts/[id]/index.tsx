@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
+import { exerciseName } from '../../../../src/lib/exercise-name.ts'
 import { formatEffort } from '@cedo/contract'
 import type { WorkoutDay, WorkoutEntry } from '@cedo/contract'
 import {
@@ -92,7 +93,7 @@ export default function WorkoutDetail(): React.JSX.Element {
                 <Stack key={entry.id} gap="xs">
                   <Text variant="label">
                     {entry.supersetGroup === null ? '' : `${entry.supersetGroup} · `}
-                    {entry.exercise?.name ?? 'Unavailable exercise'}
+                    {exerciseName(entry.exercise)}
                   </Text>
                   <Text variant="caption" tone="muted">
                     {prescription(entry)}

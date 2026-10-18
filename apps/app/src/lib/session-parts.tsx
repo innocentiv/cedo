@@ -8,6 +8,7 @@ import type {
   WorkoutEntry,
 } from '@cedo/contract'
 import { formatEffort } from '@cedo/contract'
+import { exerciseName } from './exercise-name.ts'
 import { Button, Card, ListRow, SetLogger, Stack, Text } from '../ui/index.ts'
 
 /** The pieces the live session screen is assembled from, so the route itself stays control flow. */
@@ -64,7 +65,7 @@ export function LoggedSets({
         {logs.map((log) => (
           <ListRow
             key={log.id}
-            title={`${log.exercise?.name ?? 'Unavailable exercise'} · set ${log.setIndex + 1}`}
+            title={`${exerciseName(log.exercise)} · set ${log.setIndex + 1}`}
             subtitle={formatEffort(log, log.exercise?.tracking)}
             trailing={editable ? 'Undo' : undefined}
             onPress={
@@ -159,7 +160,7 @@ export function PlannedDay({
             key={entry.id}
             // An entry whose exercise the caller can no longer see arrives as null, deliberately.
             // See docs/03-domain-model.md.
-            exerciseName={entry.exercise?.name ?? 'Unavailable exercise'}
+            exerciseName={exerciseName(entry.exercise)}
             tracking={entry.exercise?.tracking ?? 'weight_reps'}
             target={targetOf(entry)}
             suggestion={hintFor(suggestions.get(entry.id))}

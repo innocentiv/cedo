@@ -313,7 +313,7 @@ test(
       await log()
       await log()
 
-      // Undo "Set 2" — the second row — then log once more.
+      // Undo set 2 — the second row — then log once more.
       const rows = await page.evaluate(
         `[...document.querySelectorAll('[data-testid^="logged-set-"]')].map((e) => e.dataset.testid)`,
       )
@@ -325,9 +325,9 @@ test(
 
       // A count would have numbered the new set 3, beside the existing set 3. Rows read
       // "Barbell Bench Press · set 1": the number is what follows the name.
-      const sets = (await loggedLines(page))
-        .filter((line) => line.includes(' · set '))
-        .map((line) => line.split(' · ')[1])
+      const sets = (await loggedLines(page)).flatMap(
+        (line) => / · (set \d+)$/u.exec(line)?.[1] ?? [],
+      )
       expect(sets).toEqual(['set 1', 'set 3', 'set 4'])
     })
   },
