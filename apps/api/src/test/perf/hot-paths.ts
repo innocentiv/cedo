@@ -210,7 +210,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     dimension: 'logged sets (9 vs 60)',
     maxQueries: 2,
     budgetMs: 60,
-    noSeqScan: ['set_logs'],
+    noSeqScan: ['set_logs', 'exercises'],
     indexes: ['set_logs_session_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
