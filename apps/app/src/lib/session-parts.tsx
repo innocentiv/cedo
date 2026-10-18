@@ -1,10 +1,9 @@
 import type {
   Effort,
-  Exercise,
   ProgressionSuggestion,
+  SessionExercise,
   SetLog,
   SetTarget,
-  TrackingMode,
   WorkoutDay,
   WorkoutEntry,
 } from '@cedo/contract'
@@ -43,16 +42,15 @@ export function PlanUnavailable({ reason }: { readonly reason: string }): React.
 /** What has actually been done this session, and the only way to take a mistake back. */
 export function LoggedSets({
   logs,
-  tracking,
   editable,
   onRemove,
 }: {
-  readonly logs: readonly SetLog[]
   /**
-   * Each exercise's mode, where the screen knows it. Without it a weighted pull-up's "+20 kg" read
-   * as a 20 kg lift, right under a target saying "bodyweight +20 kg".
+   * Each log names its exercise and how it is measured, as far as the caller can still see it —
+   * so a weighted pull-up's "+20 kg" reads as added weight even after a reload, or once its plan is
+   * out of reach, where the screen used to fall back to a 20 kg lift.
    */
-  readonly tracking: ReadonlyMap<string, TrackingMode>
+  readonly logs: readonly SetLog[]
   readonly editable: boolean
   readonly onRemove: (logId: string) => void
 }): React.JSX.Element | null {
@@ -66,8 +64,8 @@ export function LoggedSets({
         {logs.map((log) => (
           <ListRow
             key={log.id}
-            title={`Set ${log.setIndex + 1}`}
-            subtitle={formatEffort(log, tracking.get(log.exerciseId))}
+            title={`${log.exercise?.name ?? 'Unavailable exercise'} · set ${log.setIndex + 1}`}
+            subtitle={formatEffort(log, log.exercise?.tracking)}
             trailing={editable ? 'Undo' : undefined}
             onPress={
               editable
@@ -90,28 +88,29 @@ export function LoggedSets({
  * UI had no way to reach it: "Log without a plan" opened a screen that told you to log an exercise
  * and offered no means to. See docs/03-domain-model.md.
  *
- * Chosen exercises are local state, so a reload empties the list. What was already logged survives
- * in the record below, and re-picking continues where it left off.
+ * Its loggers are the exercises it has logged, then any picked since, so a reload continues where
+ * it left off: picked-but-unlogged ones are local state and do not survive it, which loses nothing.
  */
 export function AdHoc({
-  chosen,
+  exercises,
   logs,
   busy,
   onAdd,
   onLog,
 }: {
-  readonly chosen: readonly Exercise[]
+  /** What the session has logged, then anything picked since — `exercisesInSession`. */
+  readonly exercises: readonly SessionExercise[]
   readonly logs: readonly SetLog[]
   readonly busy: boolean
   readonly onAdd: () => void
-  readonly onLog: (exercise: Exercise, values: Effort) => void
+  readonly onLog: (exercise: SessionExercise, values: Effort) => void
 }): React.JSX.Element {
   return (
     <Stack gap="md" testID="session-adhoc">
-      {chosen.length === 0 ? (
+      {exercises.length === 0 ? (
         <Text tone="muted">No plan behind this one. Add an exercise to start logging.</Text>
       ) : (
-        chosen.map((exercise) => (
+        exercises.map((exercise) => (
           <SetLogger
             key={exercise.id}
             exerciseName={exercise.name}

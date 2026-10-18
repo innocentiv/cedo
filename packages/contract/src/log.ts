@@ -39,6 +39,33 @@ export const SetLog = z.object({
 })
 export type SetLog = z.output<typeof SetLog>
 
+/** An exercise a session is working through: enough to show its logger. */
+export interface SessionExercise {
+  readonly id: string
+  readonly name: string
+  readonly tracking: TrackingMode
+}
+
+/**
+ * The exercises a session without a plan is working through: those it has logged — in the order
+ * first logged — then any picked since. The logs are the record, so a reload continues where it
+ * left off instead of starting from an empty screen. An exercise the caller can no longer see has
+ * no name to show, and no logger: nothing new can be logged against it.
+ */
+export function exercisesInSession(
+  logs: readonly SetLog[],
+  picked: readonly SessionExercise[],
+): SessionExercise[] {
+  const byId = new Map<string, SessionExercise>()
+  for (const log of logs) {
+    if (log.exercise !== null && !byId.has(log.exerciseId)) {
+      byId.set(log.exerciseId, { id: log.exerciseId, ...log.exercise })
+    }
+  }
+  for (const exercise of picked) if (!byId.has(exercise.id)) byId.set(exercise.id, exercise)
+  return [...byId.values()]
+}
+
 export const WorkoutSession = z.object({
   id: Id,
   workoutId: Id.nullable(),

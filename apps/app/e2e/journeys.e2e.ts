@@ -323,9 +323,12 @@ test(
       await Bun.sleep(300)
       await log()
 
-      // A count would have numbered the new set 3, beside the existing Set 3.
-      const sets = (await loggedLines(page)).filter((line) => line.startsWith('Set '))
-      expect(sets).toEqual(['Set 1', 'Set 3', 'Set 4'])
+      // A count would have numbered the new set 3, beside the existing set 3. Rows read
+      // "Barbell Bench Press · set 1": the number is what follows the name.
+      const sets = (await loggedLines(page))
+        .filter((line) => line.includes(' · set '))
+        .map((line) => line.split(' · ')[1])
+      expect(sets).toEqual(['set 1', 'set 3', 'set 4'])
     })
   },
   E2E_TIMEOUT_MS,
@@ -566,6 +569,40 @@ test(
       )
       expect(typeof height).toBe('number')
       expect(height as number).toBeLessThan(80)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
+  'a session without a plan comes back after a reload, logger and all',
+  async () => {
+    await withApp('adhoc-after-reload', async (page) => {
+      await register(page, unique('adhoc'))
+      await page.goto('/today')
+      await page.waitFor('start-adhoc')
+      await page.click('[data-testid="start-adhoc"]')
+      await page.waitFor('session-adhoc')
+
+      await page.click('[data-testid="adhoc-add-exercise"]')
+      await page.waitFor('exercise-picker')
+      await page.fill('picker-search', 'Bench')
+      const picked = await page.waitForSelector('[data-testid^="picker-row-"]')
+      const exerciseId = picked.replace('picker-row-', '')
+      await page.click(`[data-testid="${picked}"]`)
+      await page.waitFor(`adhoc-${exerciseId}`)
+      await page.fill(`adhoc-${exerciseId}-weight`, '60')
+      await page.fill(`adhoc-${exerciseId}-reps`, '8')
+      await page.click(`[data-testid="adhoc-${exerciseId}-log"]`)
+      await page.waitForSelector('[data-testid^="logged-set-"]')
+
+      // The exercises picked were local state, so a reload used to show an empty session with
+      // no way to log the next set until the exercise was picked again. The log names it now.
+      await page.goto(String(await page.evaluate('location.pathname')))
+      await page.waitFor(`adhoc-${exerciseId}`)
+      const lines = (await loggedLines(page)).filter((line) => line.includes(' · set '))
+      expect(lines).toHaveLength(1)
+      expect(lines[0]).toMatch(/^.*Bench.* · set 1$/u)
     })
   },
   E2E_TIMEOUT_MS,

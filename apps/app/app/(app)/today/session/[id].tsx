@@ -4,10 +4,10 @@ import { useGoBack } from '../../../../src/lib/use-go-back.ts'
 import {
   type Effort,
   type Exercise,
+  type SessionExercise,
   type SetLog,
-  type TrackingMode,
-  type Workout,
   type WorkoutEntry,
+  exercisesInSession,
   nextSetIndex,
 } from '@cedo/contract'
 import { ErrorNotice, Screen, Spinner, Text } from '../../../../src/ui/index.ts'
@@ -62,7 +62,7 @@ function useRecordSet(
 
   // Each series is numbered by `nextSetIndex`, never by counting — see its comment.
   return {
-    adHoc: (exercise: Exercise, values: Effort) => {
+    adHoc: (exercise: SessionExercise, values: Effort) => {
       const series = logs.filter((l) => l.exerciseId === exercise.id)
       record(exercise.id, null, nextSetIndex(series), values)
     },
@@ -73,31 +73,22 @@ function useRecordSet(
   }
 }
 
-/** Every exercise this screen can name, by id: the plan's, and any picked ad hoc. */
-function useTrackingByExercise(
-  workout: Workout | undefined,
-  chosen: readonly Exercise[],
-): ReadonlyMap<string, TrackingMode> {
-  return useMemo(() => {
-    const byId = new Map<string, TrackingMode>()
-    for (const entry of workout?.days.flatMap((d) => d.entries) ?? []) {
-      if (entry.exercise !== null) byId.set(entry.exerciseId, entry.exercise.tracking)
-    }
-    for (const exercise of chosen) byId.set(exercise.id, exercise.tracking)
-    return byId
-  }, [workout, chosen])
-}
-
 /**
- * Which exercises an ad-hoc session is working through. Local, not persisted: the logs themselves
- * are the record, and re-picking after a reload continues where it left off.
+ * Exercises picked for an ad-hoc session but not logged yet. Local, not persisted: once a set is
+ * logged the log itself carries the exercise, which is what survives a reload.
  */
-function useAdHocExercises() {
+/** Stable, so an absent session does not recompute the exercises on every render. */
+const NO_LOGS: readonly SetLog[] = []
+
+function useAdHocExercises(logs: readonly SetLog[]) {
   const [chosen, setChosen] = useState<Exercise[]>([])
   const [picking, setPicking] = useState(false)
+  // What this session has logged, then anything picked since: the logs are the record, so a
+  // reload continues where it left off. See `exercisesInSession`.
+  const exercises = useMemo(() => exercisesInSession(logs, chosen), [logs, chosen])
 
   return {
-    chosen,
+    exercises,
     picking,
     startPicking: () => {
       setPicking(true)
@@ -121,8 +112,6 @@ export default function LiveSession(): React.JSX.Element {
   const goBack = useGoBack('/today')
   const id = sessionId ?? ''
 
-  const { chosen, picking, startPicking, stopPicking, choose } = useAdHocExercises()
-
   const session = useSession(id)
   const workoutId = session.data?.workoutId ?? ''
   const workout = useWorkout(workoutId)
@@ -141,7 +130,7 @@ export default function LiveSession(): React.JSX.Element {
     () => new Map((progression.data ?? []).map((s) => [s.entryId, s])),
     [progression.data],
   )
-  const tracking = useTrackingByExercise(workout.data, chosen)
+  const adHoc = useAdHocExercises(session.data?.logs ?? NO_LOGS)
 
   if (session.error !== null) {
     return (
@@ -166,8 +155,8 @@ export default function LiveSession(): React.JSX.Element {
   }
   const planError = live && planned && workout.data === undefined ? workout.error : null
 
-  if (picking) {
-    return <ExercisePicker onCancel={stopPicking} onPick={choose} />
+  if (adHoc.picking) {
+    return <ExercisePicker onCancel={adHoc.stopPicking} onPick={adHoc.choose} />
   }
 
   const logs = session.data.logs
@@ -202,8 +191,8 @@ export default function LiveSession(): React.JSX.Element {
         </Text>
       ) : day === undefined ? (
         <AdHoc
-          chosen={chosen}
-          onAdd={startPicking}
+          exercises={adHoc.exercises}
+          onAdd={adHoc.startPicking}
           onLog={record.adHoc}
           logs={logs}
           busy={logSet.isPending}
@@ -220,7 +209,6 @@ export default function LiveSession(): React.JSX.Element {
 
       <LoggedSets
         logs={logs}
-        tracking={tracking}
         editable={!ended}
         onRemove={(logId) => {
           // Through `submit`: a set finished on another device answers 404, and the row would
