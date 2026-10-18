@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gte, lt, sql } from 'drizzle-orm'
-import { gToKg } from '@cedo/contract'
+import { DIMENSION_FIELDS, gToKg } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import {
@@ -185,6 +185,12 @@ async function muscleVolume(
     .toSorted((a, b) => b.volumeKg - a.volumeKg)
 }
 
+/** A set's measured dimensions, as columns — every one `DIMENSION_FIELDS` knows. */
+const effortColumns = sql.join(
+  Object.values(DIMENSION_FIELDS).map((field) => setLogs[field.key]),
+  sql`, `,
+)
+
 /** `mapWith(Number)` would type a nullable aggregate as `number` while it stays null at runtime. */
 const numberOrNull = (value: string | null) => (value === null ? null : Number(value))
 
@@ -202,15 +208,14 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
       bestWeight: sql<number | null>`max(${setLogs.weightG})`.mapWith(numberOrNull),
       bestReps: sql<number | null>`max(${setLogs.reps})`.mapWith(numberOrNull),
       /**
-       * Progress is any improvement in weight OR reps OR duration — not weight alone.
-       * `count(distinct weight_g)` was 0 for every bodyweight and duration exercise, because
-       * `count(distinct NULL)` is 0, so a pull-up progressing 8 -> 10 -> 12 reps was reported as
-       * stalled: the tool advised changing the one movement that was actually working.
+       * Progress is a change in ANY measured dimension. `count(distinct weight_g)` was 0 for every
+       * bodyweight and duration exercise, because `count(distinct NULL)` is 0, so a pull-up going
+       * 8 -> 10 -> 12 reps read as stalled; the tuple that fixed it left out distance, and a run
+       * going further each week did too. Built from the dimension table, so none can be missed.
+       *
+       * Still crude: one failed rep on a last set is a second effort, so "not stalled".
        */
-      distinctEfforts:
-        sql<number>`count(distinct (${setLogs.weightG}, ${setLogs.reps}, ${setLogs.durationS}))`.mapWith(
-          Number,
-        ),
+      distinctEfforts: sql<number>`count(distinct (${effortColumns}))`.mapWith(Number),
     })
     .from(setLogs)
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
