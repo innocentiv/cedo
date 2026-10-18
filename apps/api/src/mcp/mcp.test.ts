@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { z } from 'zod'
-import { Exercise, PersonalAccessTokenCreated, Workout, WorkoutPlanInput } from '@cedo/contract'
+import {
+  Exercise,
+  PersonalAccessTokenCreated,
+  type TrackingMode,
+  Workout,
+  WorkoutPlanInput,
+} from '@cedo/contract'
 import { createApp } from '../app.ts'
 import { seedLibrary } from '../db/seed.ts'
 import { expectContract } from '../test/contract.ts'
@@ -194,6 +200,27 @@ describe('library curation', () => {
 })
 
 describe('training review', () => {
+  /** Through the tool, as the AI would; the id is read back out of its text. */
+  async function createExercise(
+    pat: string,
+    name: string,
+    muscle: string,
+    tracking: TrackingMode = 'weight_reps',
+  ): Promise<string> {
+    const created = textOf(
+      (
+        await callTool(pat, 'exercise_create', {
+          name,
+          tracking,
+          muscles: [{ muscle, loadPct: 100 }],
+        })
+      ).body,
+    )
+    const id = created.match(/\(([0-9a-f-]{36})\)/u)?.[1]
+    if (id === undefined) throw new Error(`could not read the id of ${name}`)
+    return id
+  }
+
   test('reports no history for a new user rather than failing', async () => {
     const pat = await mintPat(alice)
     const out = textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)
@@ -202,16 +229,7 @@ describe('training review', () => {
 
   test('a logged session flows through to the review and to history', async () => {
     const pat = await mintPat(alice)
-    const created = textOf(
-      (
-        await callTool(pat, 'exercise_create', {
-          name: 'Test Squat',
-          muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
-        })
-      ).body,
-    )
-    const exerciseId = created.match(/\(([0-9a-f-]{36})\)/u)?.[1]
-    if (exerciseId === undefined) throw new Error('could not read the new exercise id')
+    const exerciseId = await createExercise(pat, 'Test Squat', 'quadriceps')
 
     await callTool(pat, 'session_log', {
       sets: [
@@ -231,17 +249,12 @@ describe('training review', () => {
   /** The AI reads a weighted pull-up as the app shows it — added load, not a 20 kg lift. */
   test('history describes a bodyweight movement in its own terms', async () => {
     const pat = await mintPat(alice)
-    const created = textOf(
-      (
-        await callTool(pat, 'exercise_create', {
-          name: 'Weighted Pull-up',
-          tracking: 'bodyweight_reps',
-          muscles: [{ muscle: 'latissimus_dorsi', loadPct: 100 }],
-        })
-      ).body,
+    const exerciseId = await createExercise(
+      pat,
+      'Weighted Pull-up',
+      'latissimus_dorsi',
+      'bodyweight_reps',
     )
-    const exerciseId = created.match(/\(([0-9a-f-]{36})\)/u)?.[1]
-    if (exerciseId === undefined) throw new Error('could not read the new exercise id')
     await callTool(pat, 'session_log', {
       sets: [{ exerciseId, setIndex: 0, weightG: 20_000, reps: 6 }],
     })
@@ -250,30 +263,17 @@ describe('training review', () => {
     expect(history).toContain('6 × bodyweight +20 kg')
   })
 
-  /**
-   * The review used to send a stalled best as kg and reps alone, which the formatter turned back
-   * into grams with no tracking mode: the pull-up read "6 × 20 kg" and the plank had no best at
-   * all. Volume was a bare "25000kg". Every effort now reaches the text as the app shows it.
-   */
+  /** Every effort reaches the AI as the app shows it. See `stalled.test.ts` for the history. */
   test('a stalled movement reads in its own terms, and volume as a weight', async () => {
     const pat = await mintPat(alice)
-    const create = async (name: string, tracking: string, muscle: string): Promise<string> => {
-      const created = textOf(
-        (
-          await callTool(pat, 'exercise_create', {
-            name,
-            tracking,
-            muscles: [{ muscle, loadPct: 100 }],
-          })
-        ).body,
-      )
-      const id = created.match(/\(([0-9a-f-]{36})\)/u)?.[1]
-      if (id === undefined) throw new Error(`could not read the id of ${name}`)
-      return id
-    }
-    const pullUp = await create('Weighted Pull-up', 'bodyweight_reps', 'latissimus_dorsi')
-    const plank = await create('Plank', 'duration', 'rectus_abdominis')
-    const squat = await create('Test Squat', 'weight_reps', 'quadriceps')
+    const pullUp = await createExercise(
+      pat,
+      'Weighted Pull-up',
+      'latissimus_dorsi',
+      'bodyweight_reps',
+    )
+    const plank = await createExercise(pat, 'Plank', 'rectus_abdominis', 'duration')
+    const squat = await createExercise(pat, 'Test Squat', 'quadriceps')
 
     for (let i = 0; i < 3; i += 1) {
       // oxlint-disable-next-line no-await-in-loop -- three sessions, in order: what is under test.

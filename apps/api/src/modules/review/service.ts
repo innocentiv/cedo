@@ -213,6 +213,11 @@ const numberOrNull = (value: string | null) => (value === null ? null : Number(v
  * groups with a single distinct effort are kept (`oneEffort`). Null for a dimension the movement
  * does not log — and Drizzle does not run `mapWith` on a SQL NULL, so it arrives as null, never
  * NaN: assuming NaN once let `Math.round(null)` report a stalled pull-up as "0kg".
+ *
+ * Listed by hand where `effortColumns` is derived, because a derived object would lose each
+ * column's type; `satisfies` is what keeps it whole — a dimension is a key of `Effort`, so a new
+ * one fails here until it is added. These objects are shared by every call: `mapWith` mutates in
+ * place, so never call it on them again.
  */
 const repeatedEffort = {
   reps: sql<number | null>`max(${setLogs.reps})`.mapWith(numberOrNull),

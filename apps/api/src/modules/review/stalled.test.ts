@@ -9,8 +9,7 @@ import { trainingReview } from './service.ts'
  * `stalled` in every tracking mode. It reports the one effort an exercise keeps repeating, whole and
  * in base units, with the mode that says how to read it. It used to report a best weight in kg and
  * a best reps, which the MCP formatter turned back into grams with no mode, no duration and no
- * distance: a weighted pull-up read as a 20 kg lift and a plank as nothing. And a movement with no
- * weight once reported "0kg" — Drizzle skips `mapWith` for SQL NULL, so it is null, never NaN.
+ * distance: a weighted pull-up read as a 20 kg lift and a plank as nothing.
  */
 
 let alice: TestUser
@@ -19,7 +18,7 @@ beforeEach(async () => {
   alice = await (await makeApi()).as('alice')
 })
 
-async function anExercise(tracking: TrackingMode, name = 'Pull-up'): Promise<string> {
+async function anExercise(tracking: TrackingMode, name = 'Movement'): Promise<string> {
   const res = await alice.wire('/exercises', {
     method: 'POST',
     body: JSON.stringify({
@@ -31,8 +30,10 @@ async function anExercise(tracking: TrackingMode, name = 'Pull-up'): Promise<str
   return expectContract(Exercise, res.body).id
 }
 
+type LoggedSet = Partial<Effort> & { readonly exerciseId: string }
+
 /** One session per set, each logging that one set. */
-async function sessionsLogging(sets: readonly Record<string, unknown>[]): Promise<void> {
+async function sessionsLogging(sets: readonly LoggedSet[]): Promise<void> {
   for (const set of sets) {
     const session = expectContract(
       WorkoutSession,
@@ -45,7 +46,7 @@ async function sessionsLogging(sets: readonly Record<string, unknown>[]): Promis
   }
 }
 
-const threeIdenticalSessions = async (set: Record<string, unknown>): Promise<void> => {
+async function threeIdenticalSessions(set: LoggedSet): Promise<void> {
   await sessionsLogging([set, set, set])
 }
 
@@ -72,16 +73,12 @@ test.each(EVERY_MODE)(
     await threeIdenticalSessions({ exerciseId, ...effort })
 
     expect((await review()).stalled).toEqual([
-      { exercise: { name: 'Pull-up', tracking }, sessions: 3, effort },
+      { exercise: { name: 'Movement', tracking }, sessions: 3, effort },
     ])
   },
 )
 
-/**
- * Regression: the distinct-effort tuple was `(weight_g, reps, duration_s)` — distance was left out,
- * so a run that went further in the same time every session read as stalled, and the AI was told
- * to change the one thing that was working. The pull-up bug again, on the dimension it missed.
- */
+/** Regression: distance was left out of the stall test. See `oneEffort` in ./service.ts. */
 test('a run that goes further each session has not stalled', async () => {
   const exerciseId = await anExercise('distance_duration', 'Run')
   await sessionsLogging(
