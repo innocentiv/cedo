@@ -125,8 +125,27 @@ describe('the issues a draft would be refused for', () => {
     expect(planIssues({ days: [] })).toEqual(['A plan needs at least one day'])
   })
 
+  /**
+   * Regression: the field was the FIRST string after the exercise — always `sets` — so a bad
+   * target read "sets: Too small: expected number to be >0", once per working set.
+   */
+  test('a bad target is named by its unit, in plain words, once for all the working sets', () => {
+    const zeroReps = prescribe(bench, { targetReps: 0 })
+    expect(planIssues({ days: [{ name: 'Day 1', entries: [zeroReps] }] })).toEqual([
+      'Day 1, exercise 1, reps: Must be more than 0',
+    ])
+  })
+
   test('a limit says what the limit is', () => {
-    const crowded = { ...bench, sets: Array.from({ length: 21 }, () => bench.sets[0]) }
+    const set = {
+      targetReps: 8,
+      targetWeightG: null,
+      targetRpe: null,
+      targetDurationS: null,
+      targetDistanceMm: null,
+      isWarmup: false,
+    }
+    const crowded = { ...bench, sets: Array.from({ length: 21 }, () => set) }
     expect(planIssues({ days: [{ name: 'Day 1', entries: [crowded] }] })).toEqual([
       'Day 1, exercise 1, sets: An exercise holds at most 20 sets',
     ])

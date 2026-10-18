@@ -27,10 +27,12 @@ export const LoggedDurationS = z.int().nonnegative().max(MAX_DURATION_S)
 export const LoggedDistanceMm = z.int().nonnegative().max(MAX_DISTANCE_MM)
 
 /** Prescribed values must be meaningful: a target of zero reps is not a prescription. */
-export const TargetReps = z.int().positive().max(MAX_REPS)
-export const TargetWeightG = z.int().nonnegative().max(MAX_WEIGHT_G)
-export const TargetDurationS = z.int().positive().max(MAX_DURATION_S)
-export const TargetDistanceMm = z.int().positive().max(MAX_DISTANCE_MM)
+const MORE_THAN_ZERO = 'Must be more than 0'
+const TOO_LARGE = 'Too large'
+export const TargetReps = z.int().positive(MORE_THAN_ZERO).max(MAX_REPS, TOO_LARGE)
+export const TargetWeightG = z.int().nonnegative('Cannot be negative').max(MAX_WEIGHT_G, TOO_LARGE)
+export const TargetDurationS = z.int().positive(MORE_THAN_ZERO).max(MAX_DURATION_S, TOO_LARGE)
+export const TargetDistanceMm = z.int().positive(MORE_THAN_ZERO).max(MAX_DISTANCE_MM, TOO_LARGE)
 
 /** Rate of perceived exertion, 1–10. Identical for targets and logs. */
-export const Rpe = z.int().min(1).max(10)
+export const Rpe = z.int().min(1, 'RPE is 1 to 10').max(10, 'RPE is 1 to 10')

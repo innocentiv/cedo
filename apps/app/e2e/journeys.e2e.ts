@@ -414,7 +414,9 @@ test(
         )
 
       // 5 warm-ups, then 20 working sets: an entry may hold 20 sets IN TOTAL, so the working
-      // band gets the 15 that are left. The editor used to accept 25 and the save refused them.
+      // sets get the 15 that are left. The editor used to accept 25 and the save refused them.
+      // A numeric field selects its text on focus, so wherever the click lands, Backspace empties
+      // it.
       await page.click('[data-testid="plan-entry-0-0-warmups"]')
       await typeKeys(page, ['Backspace', '5'])
       await page.click('[data-testid="plan-entry-0-0-sets"]')
@@ -433,6 +435,10 @@ test(
       expect(await saveDisabled()).toBe('true')
 
       await typeKeys(page, ['L', 'e', 'g', 's'])
+      // Read once the render has caught up with the last key, not in the same tick.
+      for (let tries = 0; tries < 40 && (await page.exists('plan-issues')); tries += 1) {
+        await Bun.sleep(50)
+      }
       expect(await page.exists('plan-issues')).toBe(false)
       expect(await saveDisabled()).not.toBe('true')
     })

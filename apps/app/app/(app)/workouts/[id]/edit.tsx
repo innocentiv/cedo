@@ -105,7 +105,7 @@ export default function EditPlan(): React.JSX.Element {
       footer={
         <PlanFooter
           issues={issues}
-          canAddDay={canAddDay(draft)}
+          addDayAllowed={canAddDay(draft)}
           canSave={draft.length > 0 && issues.length === 0}
           onAddDay={() => {
             setDays([...draft, newDay(draft.length)])
@@ -151,14 +151,14 @@ export default function EditPlan(): React.JSX.Element {
  */
 function PlanFooter({
   issues,
-  canAddDay: dayAllowed,
+  addDayAllowed,
   canSave,
   onAddDay,
   onSave,
   busy,
 }: {
   readonly issues: readonly string[]
-  readonly canAddDay: boolean
+  readonly addDayAllowed: boolean
   readonly canSave: boolean
   readonly onAddDay: () => void
   readonly onSave: () => void
@@ -166,17 +166,25 @@ function PlanFooter({
 }): React.JSX.Element {
   return (
     <Stack gap="xs">
-      {issues[0] === undefined ? null : (
-        <Text variant="caption" tone="danger" testID="plan-issues">
-          {issues.length === 1 ? issues[0] : `${issues[0]} (and ${issues.length - 1} more)`}
-        </Text>
+      {issues.length === 0 ? null : (
+        <Stack gap="xs" testID="plan-issues">
+          {/* Three at most: the footer stays a footer. Fixing one shows the next. */}
+          {issues.slice(0, 3).map((issue) => (
+            <Text key={issue} variant="caption" tone="danger">
+              {issue}
+            </Text>
+          ))}
+          {issues.length > 3 ? (
+            <Text variant="caption" tone="danger">{`…and ${issues.length - 3} more`}</Text>
+          ) : null}
+        </Stack>
       )}
       <Stack direction="row" gap="sm">
         <Button
           title="Add day"
           variant="secondary"
           grow
-          disabled={!dayAllowed}
+          disabled={!addDayAllowed}
           onPress={onAddDay}
           testID="add-day"
         />

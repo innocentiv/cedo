@@ -1,4 +1,4 @@
-import { tracks } from './dimension.ts'
+import { DIMENSION_FIELDS, tracks } from './dimension.ts'
 import type { TrackingMode } from './exercise.ts'
 import { NO_PROGRESSION } from './progression.ts'
 import {
@@ -20,7 +20,16 @@ import {
  * tests hold them. See docs/08-frontend.md.
  */
 
-export type SetBand = 'warmup' | 'working'
+/** Warm-up sets ramp up to the work; working sets are the prescription. See GLOSSARY.md. */
+export type SetKind = 'warmup' | 'working'
+
+/** A change to an entry's prescription. Never `isWarmup`: a target edit does not move a set. */
+export type Prescription = Partial<Omit<WorkoutSetInput, 'isWarmup'>>
+
+const split = (entry: WorkoutEntryInput) => ({
+  warmup: entry.sets.filter((s) => s.isWarmup),
+  working: entry.sets.filter((s) => !s.isWarmup),
+})
 
 /** A new day, named by its position. */
 export const newDay = (index: number): WorkoutDayInput => ({
@@ -58,10 +67,10 @@ export const newEntry = (exercise: {
 export const prescriptionOf = (entry: WorkoutEntryInput): WorkoutSetInput | undefined =>
   entry.sets.find((s) => !s.isWarmup)
 
-export const setCounts = (entry: WorkoutEntryInput): Record<SetBand, number> => ({
-  warmup: entry.sets.filter((s) => s.isWarmup).length,
-  working: entry.sets.filter((s) => !s.isWarmup).length,
-})
+export const setCounts = (entry: WorkoutEntryInput): Record<SetKind, number> => {
+  const { warmup, working } = split(entry)
+  return { warmup: warmup.length, working: working.length }
+}
 
 /** A set with nothing prescribed — only for an entry that somehow has no working set to copy. */
 const UNPRESCRIBED: WorkoutSetInput = {
@@ -81,11 +90,10 @@ const UNPRESCRIBED: WorkoutSetInput = {
  */
 export function resizeSets(
   entry: WorkoutEntryInput,
-  band: SetBand,
+  band: SetKind,
   count: number | null,
 ): WorkoutEntryInput {
-  const warmups = entry.sets.filter((s) => s.isWarmup)
-  const working = entry.sets.filter((s) => !s.isWarmup)
+  const { warmup: warmups, working } = split(entry)
   const least = band === 'warmup' ? 0 : 1
   const room = MAX_SETS_PER_ENTRY - (band === 'warmup' ? working.length : warmups.length)
   const size = Math.max(least, Math.min(count ?? least, room))
@@ -96,10 +104,7 @@ export function resizeSets(
 }
 
 /** One prescription per entry: working sets never diverge. Warm-ups keep their own targets. */
-export const prescribe = (
-  entry: WorkoutEntryInput,
-  patch: Partial<Omit<WorkoutSetInput, 'isWarmup'>>,
-): WorkoutEntryInput => ({
+export const prescribe = (entry: WorkoutEntryInput, patch: Prescription): WorkoutEntryInput => ({
   ...entry,
   sets: entry.sets.map((s) => (s.isWarmup ? s : { ...s, ...patch })),
 })
@@ -115,21 +120,42 @@ export const canAddEntry = (day: WorkoutDayInput): boolean =>
  * schema's own verdict, read before the request rather than after it. The editor prevents what it
  * can; this catches whatever it does not model, without restating a rule.
  */
-export function planIssues(plan: unknown): string[] {
+export function planIssues(plan: WorkoutPlanInput): string[] {
   const result = WorkoutPlanInput.safeParse(plan)
   if (result.success) return []
-  return result.error.issues.map((issue) => `${where(issue.path)}${issue.message}`)
+  // Every working set carries the same prescription, so one bad target is one problem — not one
+  // line per set. The set's number is left out for the same reason.
+  return [...new Set(result.error.issues.map((issue) => `${where(issue.path)}${issue.message}`))]
 }
 
-/** `Day 2, exercise 1, sets: ` — the day and exercise by position, then the field, if any. */
+/** A field as a person names it: a target by the unit it is typed in, the rest by plain words. */
+const FIELD_NAMES: Readonly<Record<string, string>> = {
+  ...Object.fromEntries(Object.values(DIMENSION_FIELDS).map((f) => [f.targetKey, f.unit()])),
+  targetRpe: 'RPE',
+  name: 'name',
+  sets: 'sets',
+  entries: 'exercises',
+  exerciseId: 'exercise',
+  restSeconds: 'rest',
+  supersetGroup: 'superset',
+  progression: 'progression',
+}
+
+/**
+ * `Day 2, exercise 1, reps: ` — the day and exercise by position, then the deepest field the problem
+ * is about, by name: a bad target on a set reads as its unit, not as `sets`. Anything inside a
+ * progression rule is the rule's.
+ */
 function where(path: readonly PropertyKey[]): string {
   const day = path[0] === 'days' && typeof path[1] === 'number' ? path[1] : null
   const entry =
     day !== null && path[2] === 'entries' && typeof path[3] === 'number' ? path[3] : null
   if (day === null) return ''
-  const field = path
-    .slice(entry === null ? 2 : 4)
-    .find((segment): segment is string => typeof segment === 'string')
+  const rest = path.slice(entry === null ? 2 : 4)
+  const field = rest.includes('progression')
+    ? 'progression'
+    : rest.findLast((segment): segment is string => typeof segment === 'string')
   const located = entry === null ? [`Day ${day + 1}`] : [`Day ${day + 1}`, `exercise ${entry + 1}`]
-  return `${[...located, ...(field === undefined ? [] : [field])].join(', ')}: `
+  const named = field === undefined ? [] : [FIELD_NAMES[field] ?? field]
+  return `${[...located, ...named].join(', ')}: `
 }

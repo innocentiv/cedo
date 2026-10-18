@@ -1,5 +1,6 @@
 import {
-  type SetBand,
+  type Prescription,
+  type SetKind,
   type TrackingMode,
   fieldsOf,
   prescribe,
@@ -107,7 +108,7 @@ function Counts({
 }: {
   readonly warmups: number
   readonly working: number
-  readonly onResize: (band: SetBand, count: number | null) => void
+  readonly onResize: (band: SetKind, count: number | null) => void
   readonly testID: string
 }): React.JSX.Element {
   return (
@@ -143,7 +144,7 @@ function Targets({
 }: {
   readonly first: SetDraft | undefined
   readonly tracking: TrackingMode
-  readonly onChange: (patch: Partial<SetDraft>) => void
+  readonly onChange: (patch: Prescription) => void
   readonly testID: string
 }): React.JSX.Element {
   return (
