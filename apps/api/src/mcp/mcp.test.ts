@@ -249,6 +249,50 @@ describe('training review', () => {
     const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
     expect(history).toContain('6 × bodyweight +20 kg')
   })
+
+  /**
+   * The review used to send a stalled best as kg and reps alone, which the formatter turned back
+   * into grams with no tracking mode: the pull-up read "6 × 20 kg" and the plank had no best at
+   * all. Volume was a bare "25000kg". Every effort now reaches the text as the app shows it.
+   */
+  test('a stalled movement reads in its own terms, and volume as a weight', async () => {
+    const pat = await mintPat(alice)
+    const create = async (name: string, tracking: string, muscle: string): Promise<string> => {
+      const created = textOf(
+        (
+          await callTool(pat, 'exercise_create', {
+            name,
+            tracking,
+            muscles: [{ muscle, loadPct: 100 }],
+          })
+        ).body,
+      )
+      const id = created.match(/\(([0-9a-f-]{36})\)/u)?.[1]
+      if (id === undefined) throw new Error(`could not read the id of ${name}`)
+      return id
+    }
+    const pullUp = await create('Weighted Pull-up', 'bodyweight_reps', 'latissimus_dorsi')
+    const plank = await create('Plank', 'duration', 'rectus_abdominis')
+    const squat = await create('Test Squat', 'weight_reps', 'quadriceps')
+
+    for (let i = 0; i < 3; i += 1) {
+      // oxlint-disable-next-line no-await-in-loop -- three sessions, in order: what is under test.
+      await callTool(pat, 'session_log', {
+        sets: [
+          { exerciseId: pullUp, setIndex: 0, weightG: 20_000, reps: 6 },
+          { exerciseId: plank, setIndex: 0, durationS: 60 },
+          { exerciseId: squat, setIndex: 0, weightG: 100_000 + i * 2500, reps: 5 },
+        ],
+      })
+    }
+
+    const review = textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)
+    expect(review).toContain('Weighted Pull-up: 3 sessions, every set 6 × bodyweight +20 kg')
+    expect(review).toContain('Plank: 3 sessions, every set 1m 0s')
+    expect(review).not.toContain('Test Squat: 3 sessions')
+    // 5 × (100 + 102.5 + 105) kg.
+    expect(review).toContain('quadriceps: 1537.5 kg (no prior data)')
+  })
 })
 
 describe('logging a whole session', () => {

@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gte, lt, sql } from 'drizzle-orm'
-import { DIMENSION_FIELDS, gToKg } from '@cedo/contract'
+import { DIMENSION_FIELDS, type Effort, type LoggedExercise } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import {
@@ -39,19 +39,23 @@ export interface TrainingReview {
   }[]
   /**
    * Volume attributed to each muscle by its share of the load — this is what the muscle
-   * percentages are FOR. Compared against the equivalent window immediately before.
+   * percentages are FOR. Compared against the equivalent window immediately before. In grams, like
+   * every other weight here: converting is the formatter's job, through the contract.
    */
   readonly muscleVolume: {
     readonly muscle: string
-    readonly volumeKg: number
+    readonly volumeG: number
     readonly changePct: number | null
   }[]
-  /** Exercises whose logged top set has not moved. The signal for "change something". */
+  /**
+   * Exercises whose logged working sets have not moved. The signal for "change something". Each
+   * carries the one effort it keeps repeating, and how its exercise is measured — so it reads as
+   * the app shows it: `6 × bodyweight +20 kg`, not a 20 kg lift; `1m 0s` for a plank, not nothing.
+   */
   readonly stalled: {
-    readonly exercise: string
+    readonly exercise: LoggedExercise
     readonly sessions: number
-    readonly bestWeightKg: number | null
-    readonly bestReps: number | null
+    readonly effort: Effort
   }[]
 }
 
@@ -178,11 +182,11 @@ async function muscleVolume(
       const before = previous.get(muscle) ?? 0
       return {
         muscle,
-        volumeKg: gToKg(Math.round(volume)),
+        volumeG: Math.round(volume),
         changePct: before === 0 ? null : Math.round(((volume - before) / before) * 100),
       }
     })
-    .toSorted((a, b) => b.volumeKg - a.volumeKg)
+    .toSorted((a, b) => b.volumeG - a.volumeG)
 }
 
 /** A set's measured dimensions, as columns — every one `DIMENSION_FIELDS` knows. */
@@ -191,31 +195,45 @@ const effortColumns = sql.join(
   sql`, `,
 )
 
+/**
+ * Progress is a change in ANY measured dimension. `count(distinct weight_g)` was 0 for every
+ * bodyweight and duration exercise, because `count(distinct NULL)` is 0, so a pull-up going
+ * 8 -> 10 -> 12 reps read as stalled; the tuple that fixed it left out distance, and a run going
+ * further each week did too. Built from the dimension table, so none can be missed.
+ *
+ * Still crude: one failed rep on a last set is a second effort, so "not stalled".
+ */
+const oneEffort = sql`count(distinct (${effortColumns})) <= 1`
+
 /** `mapWith(Number)` would type a nullable aggregate as `number` while it stays null at runtime. */
 const numberOrNull = (value: string | null) => (value === null ? null : Number(value))
 
 /**
- * An exercise trained at least three times whose best logged set has not improved. Deliberately
+ * The one effort a stalled exercise repeats. `max()` of each column IS that effort, because only
+ * groups with a single distinct effort are kept (`oneEffort`). Null for a dimension the movement
+ * does not log — and Drizzle does not run `mapWith` on a SQL NULL, so it arrives as null, never
+ * NaN: assuming NaN once let `Math.round(null)` report a stalled pull-up as "0kg".
+ */
+const repeatedEffort = {
+  reps: sql<number | null>`max(${setLogs.reps})`.mapWith(numberOrNull),
+  weightG: sql<number | null>`max(${setLogs.weightG})`.mapWith(numberOrNull),
+  durationS: sql<number | null>`max(${setLogs.durationS})`.mapWith(numberOrNull),
+  distanceMm: sql<number | null>`max(${setLogs.distanceMm})`.mapWith(numberOrNull),
+} satisfies Record<keyof Effort, unknown>
+
+/**
+ * An exercise trained at least three times whose working sets have not changed. Deliberately
  * judged on what was LOGGED, not on the prescription: a plan can say anything, the logs say what
  * actually happened.
  */
 async function stalled(caller: Caller, since: Date): Promise<TrainingReview['stalled']> {
   const exercises = visibleExercises(caller)
-  const rows = await db
+  const sessions = sql<number>`count(distinct ${setLogs.sessionId})`.mapWith(Number)
+  return await db
     .select({
-      exercise: exercises.name,
-      sessions: sql<number>`count(distinct ${setLogs.sessionId})`.mapWith(Number),
-      bestWeight: sql<number | null>`max(${setLogs.weightG})`.mapWith(numberOrNull),
-      bestReps: sql<number | null>`max(${setLogs.reps})`.mapWith(numberOrNull),
-      /**
-       * Progress is a change in ANY measured dimension. `count(distinct weight_g)` was 0 for every
-       * bodyweight and duration exercise, because `count(distinct NULL)` is 0, so a pull-up going
-       * 8 -> 10 -> 12 reps read as stalled; the tuple that fixed it left out distance, and a run
-       * going further each week did too. Built from the dimension table, so none can be missed.
-       *
-       * Still crude: one failed rep on a last set is a second effort, so "not stalled".
-       */
-      distinctEfforts: sql<number>`count(distinct (${effortColumns}))`.mapWith(Number),
+      exercise: { name: exercises.name, tracking: exercises.tracking },
+      sessions,
+      effort: repeatedEffort,
     })
     .from(setLogs)
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
@@ -239,30 +257,10 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
      * a shared exercise into your own group produces an identical name by construction. Grouped on
      * the text, two sessions on the shared copy and two on your own became one row with
      * `sessions: 4`, clearing the `>= 3` threshold it never should have reached and telling the AI
-     * a movement had stalled that was never trained three times.
+     * a movement had stalled that was never trained three times. `name` and `tracking` are listed
+     * too: a visible relation is a subquery, so Postgres cannot see that its `id` is a key.
      */
-    .groupBy(exercises.id, exercises.name)
-    .having(sql`count(distinct ${setLogs.sessionId}) >= 3`)
+    .groupBy(exercises.id, exercises.name, exercises.tracking)
+    .having(and(sql`${sessions} >= 3`, oneEffort))
     .orderBy(asc(exercises.name))
-
-  return rows.filter((r) => r.distinctEfforts <= 1).map((r) => toStalled(r))
-}
-
-interface StalledRow {
-  readonly exercise: string
-  readonly sessions: number
-  /** Null for a movement that logs no weight — `max()` over nothing but NULLs. */
-  readonly bestWeight: number | null
-  readonly bestReps: number | null
-}
-
-function toStalled(r: StalledRow): TrainingReview['stalled'][number] {
-  return {
-    exercise: r.exercise,
-    sessions: r.sessions,
-    // Drizzle does not run `mapWith` on a SQL NULL, so it arrives as null — not NaN, as this once
-    // assumed, which let `Math.round(null)` report a stalled pull-up as "0kg".
-    bestWeightKg: r.bestWeight === null ? null : gToKg(Math.round(r.bestWeight)),
-    bestReps: r.bestReps,
-  }
 }

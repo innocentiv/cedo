@@ -6,7 +6,7 @@ import type {
   Workout,
   WorkoutSummary,
 } from '@cedo/contract'
-import { formatEffort, kgToG } from '@cedo/contract'
+import { formatEffort, formatWeight } from '@cedo/contract'
 import type { TrainingReview } from '../modules/review/service.ts'
 
 /**
@@ -127,15 +127,10 @@ function describeTarget(target: ProgressionSuggestion['current'], tracking: Trac
   return effort === '—' ? 'no target set' : effort
 }
 
-/** A bodyweight movement has no weight and a hold has no reps; neither is shown as "?" or "0kg". */
+/** In its exercise's own terms, like every other effort here: no unit arithmetic of its own. */
 function stalledLine(s: TrainingReview['stalled'][number]): string {
-  const best = formatEffort({
-    reps: s.bestReps,
-    weightG: s.bestWeightKg === null ? null : kgToG(s.bestWeightKg),
-    durationS: null,
-    distanceMm: null,
-  })
-  return `${s.exercise}: ${s.sessions} sessions${best === '—' ? '' : `, best ${best}`}`
+  const effort = formatEffort(s.effort, s.exercise.tracking)
+  return `${s.exercise.name}: ${s.sessions} sessions${effort === '—' ? '' : `, every set ${effort}`}`
 }
 
 /** An exercise's recent sessions, one line each: `2026-10-14: w10 × 20 kg, 8 × 60 kg`. */
@@ -176,7 +171,7 @@ export function reviewSummary(review: TrainingReview, weeks: number): string {
               m.changePct === null
                 ? 'no prior data'
                 : `${m.changePct > 0 ? '+' : ''}${m.changePct}%`
-            return `${m.muscle}: ${m.volumeKg}kg (${change})`
+            return `${m.muscle}: ${formatWeight(m.volumeG)} (${change})`
           })
           .join('\n  ')}`
 
