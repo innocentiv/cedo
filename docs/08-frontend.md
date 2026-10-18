@@ -98,6 +98,15 @@ would otherwise be copied: `MusclePicker`, `SetLogger`, `EntryEditor`, `DayEdito
 presentational — the rules they render (loads summing to 100, which inputs a tracking mode implies,
 what a progression rule contains) all live in `@cedo/contract`.
 
+Editing a plan follows the same split. How sets resize within an entry's total, what a target change
+applies to, what a new entry prescribes, and how many days and exercises a plan may hold are
+`plan-editing.ts` in the contract, with its tests; the editor only wires them to controls. It also
+reads `planIssues(draft)` — the schema's own verdict, located by day and exercise — as the draft is
+edited, shows it above Save, and disables Save while there is one. The editor prevents what it
+models; that line catches what it does not, before the request rather than as a 422. The editor
+once clamped warm-ups and working sets to 20 each while the schema allowed 20 in total, which is
+the drift this split exists to stop.
+
 **If you need something not on this list, add it here rather than inline in a screen.** The list
 being complete is what stops the next session re-inventing `Loaded` under a different name.
 
