@@ -129,6 +129,27 @@ async function loggedLines(page: Page): Promise<string[]> {
 }
 
 /**
+ * A screen's text once it satisfies `done`, polled for at most `withinMs` — far inside the 30-second
+ * `staleTime`, so it cannot pass by waiting the cache out. For a background refetch, which has no
+ * event to wait on: a fixed sleep either races it or wastes the run.
+ */
+async function textOnceSettled(
+  page: Page,
+  testId: string,
+  done: (text: string) => boolean,
+  withinMs = 3000,
+): Promise<string> {
+  const deadline = Date.now() + withinMs
+  for (;;) {
+    // oxlint-disable-next-line no-await-in-loop -- polling: each read must follow the last.
+    const text = (await page.text(testId)) ?? ''
+    if (done(text) || Date.now() > deadline) return text
+    // oxlint-disable-next-line no-await-in-loop -- polling: each read must follow the last.
+    await Bun.sleep(100)
+  }
+}
+
+/**
  * Types one key at a time, the way a thumb does, into whatever has focus. Never re-click a field
  * that is already focused to continue typing: the click moves the caret to where it landed.
  */
@@ -220,8 +241,12 @@ test(
       // mounted, holding the history it fetched before the set existed.
       await page.click('[data-testid="nav-exercises"]')
       await page.waitFor('exercise-detail-screen')
-      await Bun.sleep(500)
-      expect(await page.text('exercise-history')).not.toContain('Nothing logged yet')
+      const history = await textOnceSettled(
+        page,
+        'exercise-history',
+        (text) => !text.includes('Nothing logged yet'),
+      )
+      expect(history).not.toContain('Nothing logged yet')
     })
   },
   E2E_TIMEOUT_MS,
@@ -272,8 +297,9 @@ test(
       // The tab keeps its stack: back to the very plan seen above, cached before the rename.
       await page.click('[data-testid="nav-workouts"]')
       await page.waitFor('workout-detail-screen')
-      await Bun.sleep(500)
-      const plan = await page.text('workout-detail-screen')
+      const plan = await textOnceSettled(page, 'workout-detail-screen', (text) =>
+        text.includes(after),
+      )
       expect(plan).toContain(after)
       expect(plan).not.toContain(before)
     })

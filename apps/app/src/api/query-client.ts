@@ -38,6 +38,9 @@ export function createQueryClient(): QueryClient {
   })
 }
 
+/** A read's key starts with the read's own name — `[read]` is what a write refreshes. */
+type KeyOf<R extends Read> = readonly [R, ...unknown[]]
+
 /**
  * One query key per read in the contract's `READS`: `[read, ...args]`, so `[read]` is the prefix
  * that refreshes every copy of it.
@@ -58,4 +61,4 @@ export const keys = {
   session: (id: string) => ['session', id] as const,
   groups: ['groups'] as const,
   tokens: ['tokens'] as const,
-} as const satisfies Record<Read, unknown>
+} as const satisfies { readonly [R in Read]: KeyOf<R> | ((...args: never[]) => KeyOf<R>) }

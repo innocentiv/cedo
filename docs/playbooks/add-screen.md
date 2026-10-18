@@ -6,8 +6,10 @@ tested there — see `docs/08-frontend.md` for the thinness rule this exists to 
 ## 1. Make sure the data is already reachable
 
 A screen calls hooks from `src/api/queries.ts`, never `api.*` and never `fetch`. If the hook does not
-exist yet, add it there and add its key to `keys` in `src/api/query-client.ts`. Mutations invalidate
-the whole resource (`keys.exercises`), not one key — enumerating keys is how a stale list happens.
+exist yet, add it there and add its key to `keys` in `src/api/query-client.ts`. A new read is also a
+row in the contract's `READS`, naming what it is built from; a write names only the one source it
+changes (`useWriteTo('exercise', …)`), and what that makes stale is derived. See
+`docs/08-frontend.md`.
 
 ## 2. Put the file where the router expects it
 

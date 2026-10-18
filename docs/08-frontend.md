@@ -151,20 +151,23 @@ hiding it would hide exactly what the client exists to catch.
 
 ### What a write makes stale is derived, not listed
 
-Every read declares, once, the resource it is OF and the resources it EMBEDS — `READS` in
+Every read declares, once, the source it is OF and the sources it EMBEDS — `READS` in
 `packages/contract/src/reads.ts`. A `Workout` embeds `exercise`, because each entry carries its whole
-exercise; a session list embeds `workout`, because each row names its plan and day. A write names
-only the resource it changes (`useResourceMutation('exercise', …)`), and `affectedBy` derives the
-rest: the reads OF it are awaited — the next write may depend on them — and the reads that embed it
-refetch in the background.
+exercise; a session embeds `workout`, because it points into its plan. A write names only the source
+it changes (`useWriteTo('exercise', …)`), and `affectedBy` derives the rest: the reads OF it are
+awaited — the next write may depend on them — and the reads that embed it refetch in the background.
+A write that makes nothing stale — creating a media link, which is an exercise's only once the
+exercise is saved with it — is a plain `useMutation`.
 
 It used to be per write: each mutation listed what else it touched, and the lists had gaps nobody
 could see. Renaming an exercise left the open plan, its progression and a live session showing the
 old name for the whole `staleTime`. Query keys are flat — `[read, ...args]` — for the same reason: a
 key nested under another was refreshed with it by accident, which is a dependency written nowhere.
 
-A new read is a row in `READS` and a key in `keys` (`satisfies Record<Read, …>` refuses one without
-the other). The contract's T1 tests state each embedding as behaviour.
+A new read is a row in `READS` and a key in `keys`, whose type refuses one without the other and a
+key that does not start with its read's name. The contract's T1 tests state each embedding as
+behaviour; nothing ties `embeds` to the Zod shapes themselves, so a read that starts carrying another
+source's data needs its row changed by hand.
 
 ### Configuration reaches the bundle only through dot access
 

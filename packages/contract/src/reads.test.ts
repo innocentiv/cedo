@@ -27,19 +27,19 @@ describe('what a write makes stale', () => {
     expect(sorted(background)).toEqual(['exerciseHistory', 'progression'])
   })
 
-  test('saving a plan refreshes its progression, and the sessions that name its days', () => {
+  /**
+   * A live session points into its plan, and a save that removes an entry — or a delete — sets
+   * those pointers to null. Left cached, the session kept a deleted plan's id and showed the plan
+   * as unavailable rather than falling back to logging without one.
+   */
+  test('saving or deleting a plan refreshes its progression, and the sessions that point into it', () => {
     const { awaited, background } = affectedBy('workout')
     expect(sorted(awaited)).toEqual(['progression', 'workout', 'workoutList'])
-    expect(sorted(background)).toEqual(['sessionList'])
+    expect(sorted(background)).toEqual(['session', 'sessionList'])
   })
 
   test('a token touches nothing but the token list', () => {
     expect(affectedBy('token')).toEqual({ awaited: ['tokens'], background: [] })
-  })
-
-  /** A link is only an exercise's media once the exercise is saved with it, which is that write. */
-  test('creating a media link makes nothing stale', () => {
-    expect(affectedBy('media')).toEqual({ awaited: [], background: [] })
   })
 })
 

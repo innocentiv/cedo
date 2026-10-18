@@ -11,17 +11,16 @@
  */
 
 /**
- * What a write changes. A session's logs are part of the session: logging and finishing both are.
- * A media item stands alone until an exercise is saved with it — that save is the exercise write —
- * so no read is built from `media` itself, and creating one makes nothing stale.
+ * What a read is built from, and so what a write changes. A session's logs are part of the
+ * session: logging and finishing both write to it.
  */
-export type Resource = 'exercise' | 'workout' | 'session' | 'token' | 'group' | 'media'
+export type Source = 'exercise' | 'workout' | 'session' | 'token' | 'group'
 
 export interface ReadSources {
-  /** The resource the read is OF. A write to it must be read back before the next write. */
-  readonly of: Resource
-  /** Other resources it carries data from — a name, a tracking mode, a count. */
-  readonly embeds: readonly Resource[]
+  /** The source the read is OF. A write to it must be read back before the next write. */
+  readonly of: Source
+  /** Other sources it carries data from — a name, a tracking mode, a count, an id. */
+  readonly embeds: readonly Source[]
 }
 
 export const READS = {
@@ -36,8 +35,11 @@ export const READS = {
   progression: { of: 'workout', embeds: ['exercise', 'session'] },
   /** Each session names its workout and day. */
   sessionList: { of: 'session', embeds: ['workout'] },
-  /** Each logged set names its exercise and how it is measured. */
-  session: { of: 'session', embeds: ['exercise'] },
+  /**
+   * Each logged set names its exercise and how it is measured. And the session points into its
+   * plan — a workout, a day, an entry per set — which a plan save or delete can set to null.
+   */
+  session: { of: 'session', embeds: ['exercise', 'workout'] },
   tokens: { of: 'token', embeds: [] },
   groups: { of: 'group', embeds: [] },
 } as const satisfies Record<string, ReadSources>
@@ -48,19 +50,19 @@ const isRead = (name: string): name is Read => name in READS
 const READ_NAMES: readonly Read[] = Object.keys(READS).filter((name) => isRead(name))
 
 /**
- * The reads a write to `resource` makes stale, split by urgency: those OF it, which the next write
+ * The reads a write to `source` makes stale, split by urgency: those OF it, which the next write
  * may depend on (the next set is numbered from the session's refreshed logs), and those that only
  * EMBED it, which can catch up in the background — awaiting them kept the Log button busy until
  * progression had been recomputed, after every set.
  */
-export function affectedBy(resource: Resource): {
+export function affectedBy(source: Source): {
   readonly awaited: readonly Read[]
   readonly background: readonly Read[]
 } {
   const embedding = (read: Read): boolean =>
-    (READS[read].embeds as readonly Resource[]).includes(resource)
+    (READS[read].embeds as readonly Source[]).includes(source)
   return {
-    awaited: READ_NAMES.filter((read) => READS[read].of === resource),
-    background: READ_NAMES.filter((read) => READS[read].of !== resource && embedding(read)),
+    awaited: READ_NAMES.filter((read) => READS[read].of === source),
+    background: READ_NAMES.filter((read) => READS[read].of !== source && embedding(read)),
   }
 }

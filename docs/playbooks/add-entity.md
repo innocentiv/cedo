@@ -228,8 +228,10 @@ area gets a new file, and its `register…Tools(server, caller)` must be called 
 Three small steps, in order. Skipping the middle one is how a stale list happens.
 
 1. `apps/app/src/api/client.ts` — one 2-line method naming its response schema.
-2. `apps/app/src/api/query-client.ts` — its keys in `keys`. Mutations invalidate the **whole
-   resource** (`keys.widgets`), never one key.
+2. `apps/app/src/api/query-client.ts` — its keys in `keys`, and a row per read in the contract's
+   `READS` saying what each is built from — a new `Source`, `'widget'`, and any read that embeds a
+   widget. Writes name only that source (`useWriteTo('widget', …)`); what they make stale is
+   derived. See `docs/08-frontend.md`.
 3. `apps/app/src/api/queries.ts` — a `useWidgets` / `useWidget` / `useCreateWidget` hook.
 
 Only then the screen, which calls **those hooks** — not `api.*`, not `fetch` — renders UI
