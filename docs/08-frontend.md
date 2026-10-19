@@ -127,13 +127,18 @@ plan editor patches only the target that changed — never a whole `Effort` mapp
 set — because its patch is applied to every working set, and a whole one would overwrite the other
 sets' targets.
 
-Both share one typing mechanic, `TypedNumber`. A value is `number | null`, where null means empty —
-an empty numeric field is not zero, and zero reps is a meaningful log. While focused the field
-shows the text being typed rather than the number it parses to; the contract's parse returns both,
-and accepts a comma as the decimal separator. Both are load-bearing: the first version rendered from
-the number, so a half-typed "62." collapsed to 62 and the next key logged 625 kg. The parse has
-contract tests; an e2e journey still types decimals key by key, because `fill` inserts a whole
-string in one event and never passes through the half-typed state.
+Both share one field, `TypedNumber`. A value is `number | null`, where null means empty — an empty
+numeric field is not zero, and zero reps is a meaningful log. While focused the field shows the text
+being typed rather than the number it parses to; the contract's parse returns both, and accepts a
+comma as the decimal separator. Both are load-bearing: the first version rendered from the number,
+so a half-typed "62." collapsed to 62 and the next key logged 625 kg.
+
+What the field shows, and when its text gives way to the parent's value, is the contract's
+`editField` — a pure function of the field's state and one event (`type`, `value`, `settled`,
+`blur`), tested key by key in `typing.test.ts`. `TypedNumber` holds that state and forwards the
+input's events to it, nothing more. The e2e journeys that type key by key stay: they prove the
+wiring — that React delivers those events in the order the module assumes — because `fill` inserts
+a whole string in one event and never passes through the half-typed state.
 
 A duration is typed on a number pad, which has no `:` — so, as on a timer, the last two digits are
 seconds and the two before them minutes (`CLOCK` in the contract): `130` is 1:30, `2500` is 25:00,

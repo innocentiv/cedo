@@ -1,6 +1,14 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { StyleSheet, TextInput } from 'react-native'
-import { COUNT, type Typing } from '@cedo/contract'
+import {
+  COUNT,
+  type FieldEvent,
+  type FieldStep,
+  type Typing,
+  editField,
+  fieldEdit,
+  fieldText,
+} from '@cedo/contract'
 import { CONTROL_HEIGHT, color, radius, space, type } from './tokens.ts'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
@@ -110,20 +118,9 @@ export interface TypedNumberProps {
 }
 
 /**
- * The typing mechanics every numeric field shares. What the text MEANS — units, separators,
- * decimals — is the contract's (`fieldFor`, `COUNT`, `CLOCK`); this only keeps the right text on
- * screen while it is typed.
- *
- * While focused, the field shows the TEXT being typed, not the number it parses to. Rendering from
- * the number made "62." collapse to "62" under the cursor, so typing 62.5 key by key logged 625 kg;
- * and a parent that refuses an empty field (sets snap back to 1) put a digit back mid-edit, so
- * backspace-then-4 made 14. On blur it shows the parent's value again, whatever that settled to.
- *
- * A value change the field did NOT cause resets the text even while focused. On native the keyboard
- * can stay up while another control is tapped — removing or moving an entry — and the editors are
- * keyed by position, so this same component then holds a different entry's value; keeping the old
- * text made the next digit write old-text-plus-digit into the wrong entry. "Caused by this field"
- * means: changed in the render right after its own keystroke, which is when a parent's clamp lands.
+ * The field every number is typed into. What the text MEANS is the contract's `Typing`
+ * (`fieldFor`, `COUNT`, `CLOCK`); what stays on screen while it is typed is the contract's
+ * `editField`. This only wires the input's events to it.
  */
 export function TypedNumber({
   value,
@@ -132,27 +129,23 @@ export function TypedNumber({
   placeholder,
   testID,
 }: TypedNumberProps): React.JSX.Element {
-  const [editing, setEditing] = useState<string | null>(null)
-  const [previous, setPrevious] = useState(value)
-  const ownKeystroke = useRef(false)
-  if (value !== previous) {
-    setPrevious(value)
-    if (!ownKeystroke.current) setEditing(null)
+  const [edit, setEdit] = useState(() => fieldEdit(value))
+  const step = (event: FieldEvent): FieldStep => {
+    const next = editField(edit, event, typing)
+    setEdit(next.edit)
+    return next
   }
-  // The flag lives for one render: the one the keystroke itself caused.
+  if (value !== edit.value) step({ kind: 'value', value })
+  // A keystroke's window closes once the render it caused has committed.
   useEffect(() => {
-    ownKeystroke.current = false
+    if (edit.own) setEdit((current) => editField(current, { kind: 'settled' }, typing).edit)
   })
-  const shown = typing.toText(value)
   return (
     <TextInput
       testID={testID}
-      value={editing ?? shown}
-      onFocus={() => {
-        setEditing(shown)
-      }}
+      value={fieldText(edit, typing)}
       onBlur={() => {
-        setEditing(null)
+        step({ kind: 'blur' })
       }}
       /**
        * Focusing a prefilled numeric field selects it, so typing REPLACES the prescribed value.
@@ -161,10 +154,8 @@ export function TypedNumber({
        */
       selectTextOnFocus
       onChangeText={(text) => {
-        const typed = typing.parse(text)
-        ownKeystroke.current = true
-        setEditing(typed.text)
-        onChange(typed.value)
+        const { emit } = step({ kind: 'type', text })
+        if (emit !== undefined) onChange(emit)
       }}
       placeholder={placeholder}
       placeholderTextColor={color.textFaint}

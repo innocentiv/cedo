@@ -27,6 +27,11 @@ Pure functions, no database, no DOM: `nextTarget()`, the unit converters, `parse
 every `.refine()` invariant such as muscle loads summing to 100. Most of the domain's correctness is
 proven here, which is what makes the thinness rule affordable everywhere else.
 
+So is a numeric field's editing (`editField`, in `typing.ts`): what stays on screen while a number
+is typed, and when it gives way to the parent's value. `typing.test.ts` drives it key by key, as
+the screen does, in milliseconds — including the case on native where the value changes under a
+focused field, which no e2e journey can reach.
+
 `isomorphic.test.ts` additionally asserts the package imports nothing but `zod` — the dependency
 boundary is a test, not a convention.
 
