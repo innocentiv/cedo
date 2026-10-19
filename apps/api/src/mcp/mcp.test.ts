@@ -320,14 +320,12 @@ describe('training review', () => {
     expect(review).not.toContain('Declined')
   })
 
-  /**
-   * Regression: a muscle trained only in the period before had no sets now, so it sorted last, and
-   * the summary's cut to the twelve most-worked hid exactly the regression the comparison is for.
-   */
-  test('a muscle abandoned since the period before is still named, however many others worked', async () => {
+  /** Regression: the summary's own cut to twelve hid a declined muscle. See muscle-work.ts. */
+  test('a declined muscle is named however many others worked more', async () => {
     const pat = await mintPat(alice)
     const fixture = reviewFixture(alice)
-    const [abandoned, ...worked] = MUSCLE_SLUGS.slice(0, 14)
+    const [declinedMuscle, ...worked] = MUSCLE_SLUGS.slice(0, 14)
+    if (declinedMuscle === undefined) throw new Error('fewer than 14 muscles')
     const sets = []
     for (const muscle of worked) {
       // oxlint-disable-next-line no-await-in-loop -- one exercise per muscle; their order is not under test.
@@ -338,8 +336,8 @@ describe('training review', () => {
       sets.push({ exerciseId, weightG: 50_000, reps: 5 })
     }
     const before = await fixture.anExercise({
-      name: 'Abandoned',
-      muscles: [{ muscle: abandoned ?? '', loadPct: 100 }],
+      name: 'Declined',
+      muscles: [{ muscle: declinedMuscle, loadPct: 100 }],
     })
     // Five weeks back: inside the four weeks before the four reviewed.
     await fixture.aSession(
@@ -350,14 +348,14 @@ describe('training review', () => {
 
     const review = textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)
     const lines = review.split('\n').map((l) => l.trim())
-    // Twelve of the thirteen worked are named, the thirteenth counted; the abandoned one under its
+    // Twelve of the thirteen worked are named, the thirteenth counted; the declined one under its
     // own heading.
     expect(lines).toContain('and 1 more muscle with less work.')
     const declined = lines.indexOf(
       'Declined sharply (half or less of their sets in the preceding 4 weeks):',
     )
     expect(declined).toBeGreaterThan(-1)
-    expect(lines[declined + 1]).toBe(`${abandoned}: 0 sets (-100%)`)
+    expect(lines[declined + 1]).toBe(`${declinedMuscle}: 0 sets (-100%)`)
   })
 })
 

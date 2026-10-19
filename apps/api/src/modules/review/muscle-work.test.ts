@@ -110,9 +110,9 @@ describe('what is worth saying', () => {
   })
 
   test('names a declined muscle however many others worked more', () => {
-    const review = muscleWorkOf(worked(TOP_MUSCLES + 1), [work('dropped', 6)])
+    const review = muscleWorkOf(worked(TOP_MUSCLES + 1), [work('declined', 6)])
     expect(review.declined).toEqual([
-      { muscle: 'dropped', weightedSets: 0, liftedG: 0, changePct: -100 },
+      { muscle: 'declined', weightedSets: 0, liftedG: 0, changePct: -100 },
     ])
     expect(review.omitted).toBe(1)
   })
@@ -141,18 +141,24 @@ describe('what is worth saying', () => {
     expect(review.declined).toEqual([])
   })
 
-  test('a muscle with no work now is never in the top, even with room to spare', () => {
+  test('with room to spare, a muscle with no work now is named too, after the worked ones', () => {
     const review = muscleWorkOf([work('squat', 3)], [work('calves', 1)])
-    expect(names(review.top)).toEqual(['squat'])
-    expect(review.omitted).toBe(1)
+    expect(review.top).toEqual([
+      { muscle: 'squat', weightedSets: 3, liftedG: 0, changePct: null },
+      { muscle: 'calves', weightedSets: 0, liftedG: 0, changePct: -100 },
+    ])
+    expect(review.omitted).toBe(0)
   })
 
+  /**
+   * By sets LOST — not by sets before, nor by the steepest fall: each of those orders these three
+   * differently.
+   */
   test('declines come most sets lost first', () => {
-    const review = muscleWorkOf(worked(TOP_MUSCLES), [
-      work('some', 4),
-      work('most', 10),
-      work('least', 2),
-    ])
-    expect(names(review.declined)).toEqual(['most', 'some', 'least'])
+    const review = muscleWorkOf(
+      [...worked(TOP_MUSCLES), work('twentyToTen', 10), work('tenToFive', 5)],
+      [work('twentyToTen', 20), work('eightToNone', 8), work('tenToFive', 10)],
+    )
+    expect(names(review.declined)).toEqual(['twentyToTen', 'eightToNone', 'tenToFive'])
   })
 })

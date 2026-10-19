@@ -176,20 +176,18 @@ function muscleSections(
   weeks: number,
   unit: WeightUnit,
 ): string[] {
-  if (work.top.length === 0 && work.declined.length === 0) return ['No working sets recorded.']
-  const sections: string[] = []
-  if (work.top.length > 0) {
-    const more =
-      work.omitted === 0
-        ? []
-        : [`and ${work.omitted} more muscle${work.omitted === 1 ? '' : 's'} with less work.`]
-    sections.push(
-      `Working sets by muscle, by its share of each exercise (vs the preceding ${weeks} weeks):\n  ${[
-        ...work.top.map((m) => muscleLine(m, unit)),
-        ...more,
-      ].join('\n  ')}`,
-    )
-  }
+  // Empty only when no muscle was worked in either window: the rest are counted after the top.
+  if (work.top.length === 0) return ['No working sets recorded.']
+  const more =
+    work.omitted === 0
+      ? []
+      : [`and ${work.omitted} more muscle${work.omitted === 1 ? '' : 's'} with less work.`]
+  const sections = [
+    `Working sets by muscle, by its share of each exercise (vs the preceding ${weeks} weeks):\n  ${[
+      ...work.top.map((m) => muscleLine(m, unit)),
+      ...more,
+    ].join('\n  ')}`,
+  ]
   if (work.declined.length > 0) {
     sections.push(
       `Declined sharply (half or less of their sets in the preceding ${weeks} weeks):\n  ${work.declined

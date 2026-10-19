@@ -68,10 +68,9 @@ other — warm-ups excluded. Sets, because they count every tracking mode alike:
 it used to be, read a plank, a run or an unweighted pull-up as "0 kg". Weight × reps stays beside the
 sets as what was lifted, for loaded work only.
 
-The review, not the formatter, chooses which muscles are worth saying: the twelve worked most, every
-declined muscle (see `GLOSSARY.md`), and a count of the rest. The formatter once made the cut itself,
-after a sort that put a muscle abandoned since the period before last — so it hid the very
-regression the comparison exists to surface.
+The review, not the formatter, chooses which muscles are worth saying — the twelve worked most,
+every declined muscle (`GLOSSARY.md`), and a count of the rest — because only the review knows what
+the comparison is for (`review/muscle-work.ts`).
 
 `workout_progression` returns what `nextTarget()` proposes — the same pure function the logging
 screen uses, so the AI's advice and the app's hint can never diverge.

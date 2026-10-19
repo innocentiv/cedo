@@ -72,7 +72,7 @@ _Avoid_: volume per muscle, muscle volume
 
 **Declined muscle**:
 A muscle that got half or less of the working sets per muscle it got in the preceding period of the
-same length, having had at least two. Named in a training review however little it got now.
+same length, having had at least two.
 _Avoid_: dropped muscle, abandoned muscle
 
 **Weight lifted**:

@@ -100,7 +100,10 @@ export async function trainingReview(caller: Caller, weeks: number): Promise<Tra
     weeks,
     adherence: adherenceOf(sessions, weeks),
     dayBalance: await dayBalance(caller, since),
-    muscleWork: await muscleWork(caller, since, previousSince),
+    muscleWork: muscleWorkOf(
+      await workBetween(caller, since, new Date()),
+      await workBetween(caller, previousSince, since),
+    ),
     stalled: await stalled(caller, since),
   }
 }
@@ -180,17 +183,6 @@ async function workBetween(caller: Caller, from: Date, to: Date) {
       ),
     )
     .groupBy(exerciseMuscles.muscleSlug)
-}
-
-async function muscleWork(
-  caller: Caller,
-  since: Date,
-  previousSince: Date,
-): Promise<TrainingReview['muscleWork']> {
-  return muscleWorkOf(
-    await workBetween(caller, since, new Date()),
-    await workBetween(caller, previousSince, since),
-  )
 }
 
 /** A set's measured dimensions, as columns — every one `DIMENSION_FIELDS` knows. */

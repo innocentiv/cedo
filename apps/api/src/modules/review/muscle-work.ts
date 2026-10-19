@@ -3,8 +3,9 @@ import type { MuscleWork, TrainingReview } from './service.ts'
 /**
  * Pure: each muscle's work in two windows in, what is worth saying about it out. No database, so
  * the choice is unit-testable. The REVIEW chooses, because it knows what the comparison is for; a
- * formatter renders what it is given — it once cut the list to twelve itself, after a sort that put
- * a muscle abandoned since the period before last, and so hid exactly that muscle.
+ * formatter renders what it is given. The MCP formatter once cut the list to twelve itself — and a
+ * muscle trained only in the period before, with no sets now, sorted to the end of the list and was
+ * cut: the regression the comparison exists to surface, hidden by it.
  */
 
 /** One muscle's work in a window: working sets by load share, and weight × reps in grams. */
@@ -14,7 +15,10 @@ export interface WindowWork {
   readonly lifted: number
 }
 
-/** The most-worked muscles a review names; the rest are counted, unless they declined. */
+/**
+ * The muscles a review names first, most worked now first; the rest are counted, unless they
+ * declined. With room to spare, a muscle with no work now is among them, as `0 sets (-100%)`.
+ */
 export const TOP_MUSCLES = 12
 
 /**
@@ -34,7 +38,7 @@ export function muscleWorkOf(
 
   /**
    * The UNION of both windows, not just the current one. Iterating `current` alone made a muscle
-   * trained hard last period and abandoned this one simply disappear — indistinguishable from never
+   * trained hard last period and not this one simply disappear — indistinguishable from never
    * having been trained, and precisely the regression the comparison exists to surface.
    */
   const muscles = [...new Set([...now.keys(), ...before.keys()])].map((muscle) => {
@@ -51,7 +55,6 @@ export function muscleWorkOf(
   })
 
   const top = muscles
-    .filter((m) => m.sets > 0)
     .toSorted(
       (a, b) =>
         b.sets - a.sets ||
