@@ -70,6 +70,11 @@ The work a muscle got: every working set counted toward it by that muscle's shar
 exercise's load. Counts every tracking mode alike, which weight lifted cannot.
 _Avoid_: volume per muscle, muscle volume
 
+**Declined muscle**:
+A muscle that got half or less of the working sets per muscle it got in the preceding period of the
+same length, having had at least two. Named in a training review however little it got now.
+_Avoid_: dropped muscle, abandoned muscle
+
 **Weight lifted**:
 Weight × reps over working sets — what a session lifted. Work that carries no load (a plank, a run,
 an unweighted pull-up) adds nothing to it, so it is never the measure of whether a muscle trained.
