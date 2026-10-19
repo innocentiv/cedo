@@ -9,6 +9,7 @@ import {
   stopSharedApi,
   withApp,
 } from './harness.ts'
+import { auth, unique } from './screens/auth.ts'
 
 /**
  * The core loop, end to end: build an exercise, put it in a plan, run the plan, log a set.
@@ -16,10 +17,6 @@ import {
  * As with the route sweep, `withApp` fails on ANY console error and always writes a screenshot, so
  * these assert only the few things a passing render cannot imply. See docs/10-testing.md.
  */
-
-const PASSWORD = 'e2e-password'
-let seq = 0
-const unique = (prefix: string) => `${prefix}${Date.now().toString(36)}${(seq += 1)}`
 
 beforeAll(async () => {
   await sharedApi()
@@ -29,21 +26,11 @@ afterAll(async () => {
   await stopSharedApi()
 })
 
-async function register(page: Page, username: string): Promise<void> {
-  await page.goto('/register')
-  await page.waitFor('register-username')
-  await page.fill('register-username', username)
-  await page.fill('register-display-name', username)
-  await page.fill('register-password', PASSWORD)
-  await page.click('[data-testid="register-submit"]')
-  await page.waitFor('today-screen')
-}
-
 test(
   'creating an exercise puts it in the library',
   async () => {
     await withApp('create-exercise', async (page) => {
-      await register(page, unique('mk'))
+      await auth(page).register(unique('mk'))
 
       await page.goto('/exercises/new')
       await page.waitFor('exercise-new-screen')
@@ -66,7 +53,7 @@ test(
   'a muscle load that does not sum to 100 is refused, with the message from the contract',
   async () => {
     await withApp('exercise-validation', async (page) => {
-      await register(page, unique('val'))
+      await auth(page).register(unique('val'))
 
       await page.goto('/exercises/new')
       await page.waitFor('exercise-new-screen')
@@ -160,7 +147,7 @@ test(
   'a plan can be built, started, and a set logged against it',
   async () => {
     await withApp('log-a-set', async (page) => {
-      await register(page, unique('log'))
+      await auth(page).register(unique('log'))
       await openNewPlan(page)
       await saveAndStart(page)
 
@@ -184,7 +171,7 @@ test(
   'a decimal weight typed key by key is logged exactly — with a point or a comma',
   async () => {
     await withApp('log-a-decimal', async (page) => {
-      await register(page, unique('dec'))
+      await auth(page).register(unique('dec'))
       await openNewPlan(page)
       await saveAndStart(page)
 
@@ -212,7 +199,7 @@ test(
   "a logged set shows in the exercise's history straight away, not 30 seconds later",
   async () => {
     await withApp('history-after-log', async (page) => {
-      await register(page, unique('hist'))
+      await auth(page).register(unique('hist'))
       const exerciseId = await openNewPlan(page)
       await page.click('[data-testid="save-plan"]')
       await page.waitFor('workouts-screen')
@@ -257,7 +244,7 @@ test(
   'renaming an exercise shows in a plan already open, not 30 seconds later',
   async () => {
     await withApp('rename-in-plan', async (page) => {
-      await register(page, unique('ren'))
+      await auth(page).register(unique('ren'))
       const before = unique('Cable Fly ')
       const after = unique('Pec Deck ')
 
@@ -308,7 +295,7 @@ test(
     await withApp(
       'session-after-losing-plan',
       async (page) => {
-        await register(page, athlete)
+        await auth(page).register(athlete)
 
         // A coach shares a plan through a group with the athlete in it.
         const coach = await signUp(`${athlete}c`)
@@ -368,7 +355,7 @@ test(
   'undoing a set in the middle and logging again does not reuse its number',
   async () => {
     await withApp('undo-then-log', async (page) => {
-      await register(page, unique('undo'))
+      await auth(page).register(unique('undo'))
       await openNewPlan(page)
       await saveAndStart(page)
 
@@ -405,7 +392,7 @@ test(
   'the plan editor knows an exercise that is not in the first page of the library',
   async () => {
     await withApp('editor-beyond-first-page', async (page) => {
-      await register(page, unique('lib'))
+      await auth(page).register(unique('lib'))
 
       // 45 seeded + 60 of these puts "Zz Hold" well past the first 100 by name, where the editor
       // used to look exercises up. Created as the page's own user.
@@ -451,7 +438,7 @@ test(
   'a duration is typed on a number pad, timer-style, and reads back as a clock',
   async () => {
     await withApp('clock-duration', async (page) => {
-      await register(page, unique('clock'))
+      await auth(page).register(unique('clock'))
       await openNewPlan(page, 'Plank')
 
       // A new entry prescribes 30 seconds: shown as a clock, and typed over as one.
@@ -490,7 +477,7 @@ test(
   'someone who reads pounds plans and logs in pounds, and it is stored in grams',
   async () => {
     await withApp('weight-in-pounds', async (page) => {
-      await register(page, unique('lb'))
+      await auth(page).register(unique('lb'))
       const mine = await page.client()
       const chooseUnit = async (unit: 'kg' | 'lb') => {
         await page.click('[data-testid="nav-settings"]')
@@ -540,7 +527,7 @@ test(
   'emptying a field and typing a new number does not keep a digit of the old one',
   async () => {
     await withApp('retype-a-field', async (page) => {
-      await register(page, unique('retype'))
+      await auth(page).register(unique('retype'))
       await openNewPlan(page)
 
       // Sets cannot be fewer than one, and the editor used to snap an emptied field back to "1" —
@@ -564,7 +551,7 @@ test(
   'the plan editor stops where the schema would, and says why before saving',
   async () => {
     await withApp('plan-limits', async (page) => {
-      await register(page, unique('lim'))
+      await auth(page).register(unique('lim'))
       await openNewPlan(page)
       const saveDisabled = async () =>
         await page.evaluate(
@@ -608,7 +595,7 @@ test(
   'an access token is shown once, and appears in the list',
   async () => {
     await withApp('access-token', async (page) => {
-      await register(page, unique('tok'))
+      await auth(page).register(unique('tok'))
 
       await page.goto('/settings/tokens')
       await page.waitFor('tokens-screen')
@@ -629,7 +616,7 @@ test(
   'a credential revoked mid-session returns you to the login screen',
   async () => {
     await withApp('revoked-token', async (page) => {
-      await register(page, unique('rev'))
+      await auth(page).register(unique('rev'))
 
       /**
        * Revoke the session SERVER-side while the app keeps holding the token, which is what happens
@@ -642,7 +629,7 @@ test(
       await (await page.client()).auth.logout()
       await page.click('[data-testid="nav-workouts"]')
 
-      await page.waitFor('login-screen')
+      await auth(page).onLoginScreen()
       expect(await page.exists('error-boundary')).toBe(false)
     })
   },
@@ -653,7 +640,7 @@ test(
   'a shared exercise can be duplicated and the copy edited',
   async () => {
     await withApp('duplicate-exercise', async (page) => {
-      await register(page, unique('dup'))
+      await auth(page).register(unique('dup'))
 
       // The seeded library belongs to the shared `cedo` group, where a new user is a READER — so
       // this is the path the ACL is designed around: copy it, then edit the copy.
@@ -677,7 +664,7 @@ test(
   'a video link can be attached to an exercise',
   async () => {
     await withApp('attach-media', async (page) => {
-      await register(page, unique('med'))
+      await auth(page).register(unique('med'))
 
       await page.goto('/exercises/new')
       await page.waitFor('exercise-new-screen')
@@ -702,7 +689,7 @@ test(
   'an empty list still leaves its filter chips one row tall',
   async () => {
     await withApp('empty-list-chips', async (page) => {
-      await register(page, unique('chip'))
+      await auth(page).register(unique('chip'))
 
       // "Mine" is empty for a new account: the seeded library belongs to the shared group.
       await page.goto('/exercises')
@@ -728,7 +715,7 @@ test(
   'a session without a plan comes back after a reload, logger and all',
   async () => {
     await withApp('adhoc-after-reload', async (page) => {
-      await register(page, unique('adhoc'))
+      await auth(page).register(unique('adhoc'))
       await page.goto('/today')
       await page.waitFor('start-adhoc')
       await page.click('[data-testid="start-adhoc"]')
@@ -762,7 +749,7 @@ test(
   'finishing a session reached directly still leaves somewhere to go',
   async () => {
     await withApp('finish-without-history', async (page) => {
-      await register(page, unique('back'))
+      await auth(page).register(unique('back'))
 
       // Start a session, then navigate to it by URL — a reload, a shared link, or simply coming
       // back to the tab. The router's history is empty, so `router.back()` warned

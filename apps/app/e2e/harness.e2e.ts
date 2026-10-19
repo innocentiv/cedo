@@ -6,6 +6,7 @@ import {
   stopSharedApi,
   withApp,
 } from './harness.ts'
+import { auth, unique } from './screens/auth.ts'
 
 /**
  * The harness, tested. Every other e2e test leans on one guarantee — "any console error fails the
@@ -65,13 +66,7 @@ test(
     // A screen renders a failed query as an inline notice, and TanStack Query logs nothing, so the
     // route sweep used to pass over a screen whose every request was failing.
     const run = withApp('harness-failed-read', async (page) => {
-      await page.goto('/register')
-      await page.waitFor('register-username')
-      await page.fill('register-username', `probe${Date.now().toString(36)}`)
-      await page.fill('register-display-name', 'Probe')
-      await page.fill('register-password', 'probe-password')
-      await page.click('[data-testid="register-submit"]')
-      await page.waitFor('today-screen')
+      await auth(page).register(unique('probe'))
       await page.goto(`/exercises/${crypto.randomUUID()}`)
       await page.until(
         async () => page.errors.length,
