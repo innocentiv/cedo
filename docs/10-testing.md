@@ -130,6 +130,12 @@ So T4 runs against its own database (`cedo_test_perf`, selected by `CEDO_PERF=1`
 set logs, 10,000 shared exercises, 1,000 plans and 5,000 sessions. It is seeded once and reused; the
 integration harness never touches it.
 
+It is seeded into the state it would SETTLE in, not the one a bulk load leaves: the seed ends with
+`VACUUM ANALYZE`, and the suite checks — before measuring anything — that no GIN index still has
+entries pending. A fresh bulk load parks a GIN index's new entries in a pending list every lookup
+scans linearly; the library audit took 5s instead of 0.3s for the first runs after each seed, until
+autovacuum caught up, and a timing measured against that state describes nothing.
+
 ### The assertion classes, in order of what they are worth
 
 **1. Query count is identical at two volumes.** This is the N+1 detector and it is structural — it

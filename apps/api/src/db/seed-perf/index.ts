@@ -61,8 +61,11 @@ export async function seedPerf(): Promise<PerfFixtures> {
   const curator = await seedCuratedLibrary()
 
   // Without fresh statistics the planner works from defaults and chooses plans nobody in
-  // production would get, which would make every assertion below meaningless.
-  await db.execute(sql`analyze`)
+  // production would get, which would make every assertion below meaningless. VACUUM as well, for
+  // the same reason: a bulk load leaves GIN indexes with their new entries in a pending list that
+  // every lookup scans linearly until autovacuum flushes it — the trigram scan took 5s instead of
+  // 0.3s for the first ~40s after every seed. The suite refuses a database left in that state.
+  await db.execute(sql`vacuum analyze`)
 
   return { small, large, sharedGroupId, curator, setLogCount: await countRows('set_logs') }
 }

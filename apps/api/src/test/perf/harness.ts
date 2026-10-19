@@ -4,6 +4,8 @@ import {
   loadPerfFixtures,
   seedPerf,
 } from '../../db/seed-perf/index.ts'
+import { sql } from 'drizzle-orm'
+import { db } from '../../db/client.ts'
 import { ensureDatabaseExists } from '../../db/ensure.ts'
 import { runMigrations } from '../../db/migrate.ts'
 
@@ -52,4 +54,22 @@ export async function perfFixtures(): Promise<PerfFixtures> {
   })()
 
   return await fixtures
+}
+
+/**
+ * Pages still sitting in GIN pending lists, flushed as they are counted. A bulk load into a GIN
+ * index with `fastupdate` (the default) parks its entries in a pending list that EVERY lookup scans
+ * linearly until autovacuum gets to it — the 10,000-exercise curated library left 257 pages there,
+ * and the trigram scan took 5s instead of 0.3s for the first ~40s after every fresh seed. A
+ * database in that state is not the steady state the budgets describe, so the suite reads this
+ * BEFORE measuring and refuses to trust a non-zero answer.
+ */
+export async function flushGinPendingPages(): Promise<number> {
+  const rows = await db.execute<{ pages: number }>(sql`
+    select coalesce(sum(gin_clean_pending_list(c.oid)), 0)::int as pages
+      from pg_class c
+      join pg_am am on am.oid = c.relam
+     where am.amname = 'gin' and c.relkind = 'i'
+  `)
+  return rows[0]?.pages ?? 0
 }
