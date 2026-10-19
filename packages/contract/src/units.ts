@@ -28,6 +28,14 @@ export const kgToG = (kg: number): number => Math.round(kg * GRAMS_PER_KILOGRAM)
 export const gToKg = (g: number): number => g / GRAMS_PER_KILOGRAM
 export const lbToG = (lb: number): number => Math.round(lb * GRAMS_PER_POUND)
 export const gToLb = (g: number): number => g / GRAMS_PER_POUND
+/**
+ * A weight as a person reads it in a field: to the hundredth, as `formatWeight` writes it. Grams are
+ * not a whole number of pounds, so 135 lb is stored as 61 235 g and must read back as 135, not the
+ * 134.9997 it exactly is. And kilograms likewise: a set logged as 132.5 lb is 60 101 g, which reads
+ * "60.1 kg" everywhere — the field showed "60.101" beside it.
+ */
+export const gToLbShown = (g: number): number => Number(gToLb(g).toFixed(2))
+export const gToKgShown = (g: number): number => Number(gToKg(g).toFixed(2))
 
 export const cmToMm = (cm: number): number => Math.round(cm * MILLIMETRES_PER_CENTIMETRE)
 export const mToMm = (m: number): number => Math.round(m * 1000)
@@ -42,7 +50,7 @@ export const roundToIncrement = (grams: number, incrementG: number): number =>
   incrementG <= 0 ? grams : Math.round(grams / incrementG) * incrementG
 
 /** `formatWeight(72500)` -> `'72.5 kg'`. Trailing zeros are trimmed: 70000 -> `'70 kg'`. */
-export function formatWeight(grams: number, unit: WeightUnit = 'kg'): string {
+export function formatWeight(grams: number, unit: WeightUnit): string {
   const value = unit === 'kg' ? gToKg(grams) : gToLb(grams)
   return `${trimZeros(value.toFixed(2))} ${unit}`
 }

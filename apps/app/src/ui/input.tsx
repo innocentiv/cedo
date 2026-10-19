@@ -103,7 +103,7 @@ export interface TypedNumberProps {
   /** Null means empty. An empty numeric field is not zero — zero reps is a meaningful log. */
   readonly value: number | null
   readonly onChange: (value: number | null) => void
-  /** The text for a value, and what typed text means: `COUNT` or a `DIMENSION_FIELDS` entry. */
+  /** The text for a value, and what typed text means: `COUNT`, or a dimension's `fieldFor`. */
   readonly typing: Typing
   readonly placeholder?: string | undefined
   readonly testID?: string | undefined
@@ -111,7 +111,7 @@ export interface TypedNumberProps {
 
 /**
  * The typing mechanics every numeric field shares. What the text MEANS — units, separators,
- * decimals — is the contract's (`DIMENSION_FIELDS`, `COUNT`); this only keeps the right text on
+ * decimals — is the contract's (`fieldFor`, `COUNT`, `CLOCK`); this only keeps the right text on
  * screen while it is typed.
  *
  * While focused, the field shows the TEXT being typed, not the number it parses to. Rendering from

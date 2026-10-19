@@ -16,12 +16,13 @@ export interface Effort {
  * Every screen used to write `${reps ?? '—'} × ${weight ?? 'bodyweight'}` for itself, which
  * rendered a plank as "— × bodyweight" — hiding the duration that was its whole prescription — and
  * a barbell lift with no load yet as "@ bodyweight". With no mode, it renders what was measured.
- * Weights read in the reader's `unit` — kg unless they chose lb.
+ * Weights read in the reader's `unit`, which every caller must pass: a kilogram default would be
+ * the one screen that forgot.
  */
 export function formatEffort(
   effort: Effort,
-  tracking?: TrackingMode,
-  unit: WeightUnit = 'kg',
+  tracking: TrackingMode | undefined,
+  unit: WeightUnit,
 ): string {
   const parts = [lift(effort, tracking, unit), travel(effort)].filter((p) => p !== null)
   return parts.length === 0 ? '—' : parts.join(' ')

@@ -12,8 +12,9 @@ import {
 } from '../../../src/ui/index.ts'
 import { useAuth } from '../../../src/auth/auth-provider.tsx'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
+import { useWeightUnit } from '../../../src/lib/weight-unit.ts'
 
-const WEIGHT_UNITS: readonly ChipOption<WeightUnit>[] = [
+const UNIT_OPTIONS: readonly ChipOption<WeightUnit>[] = [
   { value: 'kg', label: 'Kilograms' },
   { value: 'lb', label: 'Pounds' },
 ]
@@ -21,6 +22,7 @@ const WEIGHT_UNITS: readonly ChipOption<WeightUnit>[] = [
 export default function Settings(): React.JSX.Element {
   const { me, signOut, setWeightUnit } = useAuth()
   const { submit, error } = useSubmit()
+  const unit = useWeightUnit()
 
   return (
     <Screen title="Settings" testID="settings-screen">
@@ -34,11 +36,11 @@ export default function Settings(): React.JSX.Element {
             testID="settings-weights"
           />
           <Chips
-            options={WEIGHT_UNITS}
-            value={me?.user.weightUnit ?? 'kg'}
-            onChange={(unit) => {
+            options={UNIT_OPTIONS}
+            value={unit}
+            onChange={(chosen) => {
               void submit(async () => {
-                await setWeightUnit(unit)
+                await setWeightUnit(chosen)
               })
             }}
             testID="weight-unit"

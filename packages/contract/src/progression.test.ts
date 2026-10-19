@@ -189,7 +189,7 @@ describe('nextTarget — invariants that must hold for every rule', () => {
       workingSets: 3,
       sessions: [at60(12, 12, 12)],
     })
-    expect(formatWeight(next.weightG ?? 0)).toBe('62.5 kg')
+    expect(formatWeight(next.weightG ?? 0, 'kg')).toBe('62.5 kg')
   })
 })
 

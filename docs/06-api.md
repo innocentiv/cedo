@@ -69,10 +69,15 @@ Handlers receive:
 ```ts
 caller: {
   userId, username, displayName, personalGroupId,
+  weightUnit,      // 'kg' | 'lb' — how they read weights; display only, storage is grams
   groupIds,        // every group the caller belongs to
   editorGroupIds,  // the subset they may write to
 }
 ```
+
+`weightUnit` rides on the caller because what is WRITTEN for them must use it — the MCP text above
+all, which has no screen to read a preference from. It is read with the credential, so a change
+through `PATCH /auth/me` applies on the very next request. It never changes a stored value.
 
 `groupIds` and `editorGroupIds` are what `visible()` and `editable()` consume. There is no way to
 read an ownable table without a caller.

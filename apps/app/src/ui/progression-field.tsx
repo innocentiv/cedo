@@ -1,9 +1,12 @@
 import {
+  DEFAULT_INCREMENT_G,
+  DEFAULT_INCREMENT_S,
   PROGRESSION_KINDS,
   type Progression,
   describeProgression,
   fieldFor,
   formatWeight,
+  progressionOf,
 } from '@cedo/contract'
 import { useWeightUnit } from '../lib/weight-unit.ts'
 import { Chips } from './chips.tsx'
@@ -16,24 +19,6 @@ const PROGRESSION_OPTIONS = PROGRESSION_KINDS.map((value) => ({
   value,
   label: { none: 'Manual', linear: 'Linear', double: 'Double', linear_duration: 'Duration' }[value],
 }))
-
-/**
- * Building a progression rule is the one place the editor touches a domain shape, so it does it by
- * constructing the contract's own discriminated union rather than a loose object.
- */
-export function progressionOf(kind: Progression['kind'], previous: Progression): Progression {
-  if (kind === previous.kind) return previous
-  switch (kind) {
-    case 'none':
-      return { kind: 'none' }
-    case 'linear':
-      return { kind: 'linear', incrementG: 2500, afterSuccesses: 1 }
-    case 'double':
-      return { kind: 'double', repRange: [8, 12], incrementG: 2500 }
-    case 'linear_duration':
-      return { kind: 'linear_duration', incrementS: 15, afterSuccesses: 1 }
-  }
-}
 
 /**
  * The rule AND its settings, together.
@@ -62,7 +47,7 @@ export function ProgressionField({
         options={PROGRESSION_OPTIONS}
         value={rule.kind}
         onChange={(kind) => {
-          onChange(progressionOf(kind, rule))
+          onChange(progressionOf(kind, rule, unit))
         }}
         testID={`${testID}-progression`}
       />
@@ -74,7 +59,7 @@ export function ProgressionField({
             label={`Add ${fieldFor('weight', unit).unit()}`}
             value={rule.incrementG}
             onChange={(g) => {
-              onChange({ ...rule, incrementG: g ?? 2500 })
+              onChange({ ...rule, incrementG: g ?? DEFAULT_INCREMENT_G[unit] })
             }}
             testID={`${testID}-increment`}
           />
@@ -85,7 +70,7 @@ export function ProgressionField({
             label="Add time"
             value={rule.incrementS}
             onChange={(s) => {
-              onChange({ ...rule, incrementS: s ?? 15 })
+              onChange({ ...rule, incrementS: s ?? DEFAULT_INCREMENT_S })
             }}
             testID={`${testID}-increment`}
           />

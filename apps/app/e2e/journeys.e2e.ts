@@ -487,38 +487,55 @@ test(
 
 /**
  * A person who reads pounds types and reads pounds everywhere, while every weight is still stored in
- * grams. Chosen in Settings, then the app is RELOADED: the choice lives on the account, not on the
- * device, so it comes back from the server.
+ * grams — key by key, through a half-typed "132." as a thumb would. Chosen in Settings, then the app
+ * is RELOADED (`openNewPlan` navigates): the choice lives on the account, so it comes back from the
+ * server. Switched back WITHOUT a reload at the end: every weight on screen follows at once.
  */
 test(
-  'someone who reads pounds logs in pounds, and the set is stored in grams',
+  'someone who reads pounds plans and logs in pounds, and it is stored in grams',
   async () => {
     await withApp('weight-in-pounds', async (page) => {
       await register(page, unique('lb'))
-      await page.click('[data-testid="nav-settings"]')
-      await page.waitFor('settings-screen')
-      await page.click('[data-testid="weight-unit-lb"]')
-      // Saved on the account before the reload below, or the reload would race the request.
       const mine = await page.client()
-      await page.until(
-        async () => (await mine.auth.me()).user.weightUnit,
-        (unit) => unit === 'lb',
-      )
+      const chooseUnit = async (unit: 'kg' | 'lb') => {
+        await page.click('[data-testid="nav-settings"]')
+        await page.waitFor('settings-screen')
+        await page.click(`[data-testid="weight-unit-${unit}"]`)
+        await page.until(
+          async () => (await mine.auth.me()).user.weightUnit,
+          (saved) => saved === unit,
+        )
+      }
+      await chooseUnit('lb')
 
       await openNewPlan(page)
+      await page.click('[data-testid="plan-entry-0-0-weight"]')
+      await typeKeys(page, ['1', '3', '2', '.', '5'])
+      expect(await fieldValue(page, 'plan-entry-0-0-weight')).toBe('132.5')
+      // A new rule adds 5 lb for someone who reads pounds — not the 5.51 that 2.5 kg would be.
+      await page.click('[data-testid="plan-entry-0-0-progression-linear"]')
+      expect(await page.text('plan-entry-0-0-progression-summary')).toBe('Linear, +5 lb')
+
       await saveAndStart(page)
-      await page.fill('log-entry-0-weight', '135')
-      await page.fill('log-entry-0-reps', '8')
+      expect(await page.text('log-entry-0-target')).toBe('Prescribed 8 × 132.5 lb')
       await page.click('[data-testid="log-entry-0-log"]')
       await page.until(
         async () => await loggedLines(page),
-        (lines) => lines.includes('8 × 135 lb'),
+        (lines) => lines.includes('8 × 132.5 lb'),
       )
-
       const [latest] = (await mine.sessions.list({ limit: 1 })).items
       if (latest === undefined) throw new Error('The session was not listed')
-      const { logs } = await mine.sessions.get(latest.id)
-      expect(logs.map((l) => l.weightG)).toEqual([61_235])
+      expect((await mine.sessions.get(latest.id)).logs.map((l) => l.weightG)).toEqual([60_101])
+
+      // Back to kilograms with no reload: the open session (the tab kept its stack) follows at once.
+      await chooseUnit('kg')
+      await page.click('[data-testid="nav-today"]')
+      await page.until(
+        async () => await loggedLines(page),
+        (lines) => lines.includes('8 × 60.1 kg'),
+      )
+      expect(await page.text('log-entry-0-target')).toBe('Prescribed 8 × 60.1 kg')
+      expect(await fieldValue(page, 'log-entry-0-weight')).toBe('60.1')
     })
   },
   E2E_TIMEOUT_MS,

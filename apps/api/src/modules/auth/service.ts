@@ -1,12 +1,14 @@
 import { and, eq, lt } from 'drizzle-orm'
 import {
   DEFAULT_GROUP_SLUG,
+  type Account,
   type AuthResult,
   type LoginInput,
   type Me,
   type MeUpdate,
   type RegisterInput,
   type User,
+  type WeightUnit,
 } from '@cedo/contract'
 import { type Transaction, db } from '../../db/client.ts'
 import { groupMembers, groups, sessions, users } from '../../db/schema.ts'
@@ -33,8 +35,14 @@ const toUser = (row: PublicUserRow): User => ({
   createdAt: row.createdAt.toISOString(),
 })
 
+/** What only the person themselves is shown: who they are, and how they read. */
+const toAccount = (row: PublicUserRow & { readonly weightUnit: WeightUnit }): Account => ({
+  ...toUser(row),
+  weightUnit: row.weightUnit,
+})
+
 /** The person's own columns — the public ones and their preferences. Never the password hash. */
-const ACCOUNT = {
+const ACCOUNT_COLUMNS = {
   id: users.id,
   username: users.username,
   displayName: users.displayName,
@@ -133,7 +141,7 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
 export async function login(input: LoginInput): Promise<AuthResult> {
   // The one query that legitimately reads password_hash. Nothing here reaches the wire.
   const [found] = await db
-    .select({ ...ACCOUNT, passwordHash: users.passwordHash })
+    .select({ ...ACCOUNT_COLUMNS, passwordHash: users.passwordHash })
     .from(users)
     .where(eq(users.username, input.username))
     .limit(1)
@@ -157,12 +165,13 @@ export async function logout(token: string): Promise<void> {
 
 /** Delegates the group half to GroupService so the two never drift. */
 export async function me(caller: Caller): Promise<Me> {
-  const [row] = await db.select(ACCOUNT).from(users).where(eq(users.id, caller.userId)).limit(1)
+  const [row] = await db
+    .select(ACCOUNT_COLUMNS)
+    .from(users)
+    .where(eq(users.id, caller.userId))
+    .limit(1)
   if (row === undefined) throw notFound('user')
-  return {
-    user: { ...toUser(row), weightUnit: row.weightUnit },
-    groups: await GroupService.list(caller),
-  }
+  return { user: toAccount(row), groups: await GroupService.list(caller) }
 }
 
 /** What a person may change about themselves — their weight unit — answered with who they now are. */

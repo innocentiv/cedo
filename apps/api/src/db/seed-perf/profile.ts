@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm'
+import type { WeightUnit } from '@cedo/contract'
 import { db } from '../client.ts'
 import { mintToken } from '../../lib/token.ts'
 import { type Caller, foldCaller } from '../../plugins/auth.ts'
@@ -229,7 +230,7 @@ export async function callerFor(userId: string): Promise<Caller> {
     user_id: string
     username: string
     display_name: string
-    weight_unit: 'kg' | 'lb'
+    weight_unit: WeightUnit
     personal_group_id: string
     group_id: string | null
     role: 'editor' | 'reader' | null

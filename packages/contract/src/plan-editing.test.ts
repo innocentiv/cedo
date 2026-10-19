@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test'
+import { NO_PROGRESSION, describeProgression } from './progression.ts'
+import { formatWeight } from './units.ts'
 import {
   canAddDay,
   canAddEntry,
@@ -7,6 +9,7 @@ import {
   planIssues,
   prescribe,
   prescriptionOf,
+  progressionOf,
   resizeSets,
   setCounts,
 } from './plan-editing.ts'
@@ -191,5 +194,28 @@ describe('the issues a draft would be refused for', () => {
     expect(planIssues({ days: [{ name: 'Day 1', entries: [crowded] }] })).toEqual([
       'Day 1, exercise 1, sets: An exercise holds at most 20 sets',
     ])
+  })
+})
+
+describe('a new rule', () => {
+  /** In the person's unit: 2.5 kg read in pounds was "+5.51 lb", and every target drifted off. */
+  test('adds 2.5 kg — or 5 lb, for someone who reads pounds', () => {
+    expect(progressionOf('linear', NO_PROGRESSION, 'kg')).toMatchObject({ incrementG: 2500 })
+    expect(progressionOf('linear', NO_PROGRESSION, 'lb')).toMatchObject({ incrementG: 2268 })
+    expect(progressionOf('double', NO_PROGRESSION, 'lb')).toMatchObject({ incrementG: 2268 })
+    expect(
+      describeProgression(progressionOf('linear', NO_PROGRESSION, 'lb'), (g) =>
+        formatWeight(g, 'lb'),
+      ),
+    ).toBe('Linear, +5 lb')
+  })
+
+  test('a duration rule adds time, whatever the weight unit', () => {
+    expect(progressionOf('linear_duration', NO_PROGRESSION, 'lb')).toMatchObject({ incrementS: 15 })
+  })
+
+  test('choosing the kind it already is keeps its settings', () => {
+    const tuned = { kind: 'linear', incrementG: 5000, afterSuccesses: 3 } as const
+    expect(progressionOf('linear', tuned, 'lb')).toBe(tuned)
   })
 })

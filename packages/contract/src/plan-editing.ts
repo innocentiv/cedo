@@ -1,6 +1,7 @@
 import { DIMENSION_FIELDS, tracks } from './dimension.ts'
 import type { TrackingMode } from './exercise.ts'
-import { NO_PROGRESSION } from './progression.ts'
+import { NO_PROGRESSION, type Progression } from './progression.ts'
+import { type WeightUnit, lbToG } from './units.ts'
 import {
   MAX_DAYS_PER_PLAN,
   MAX_ENTRIES_PER_DAY,
@@ -31,6 +32,38 @@ const split = (entry: WorkoutEntryInput) => ({
   warmup: entry.sets.filter((s) => s.isWarmup),
   working: entry.sets.filter((s) => !s.isWarmup),
 })
+
+/**
+ * The weight a new rule adds, in the person's unit: 2.5 kg, or 5 lb — the smallest pair of plates
+ * on each kind of bar. 2.5 kg shown to someone who reads pounds was "+5.51 lb", and after 135 lb
+ * the next target read 140.51.
+ */
+export const DEFAULT_INCREMENT_G: Readonly<Record<WeightUnit, number>> = { kg: 2500, lb: lbToG(5) }
+
+/** The time a new duration rule adds. */
+export const DEFAULT_INCREMENT_S = 15
+
+/** A new rule of each kind, in the person's unit — one per kind, or this does not compile. */
+const NEW_RULE: { readonly [K in Progression['kind']]: (unit: WeightUnit) => Progression } = {
+  none: () => NO_PROGRESSION,
+  linear: (unit) => ({ kind: 'linear', incrementG: DEFAULT_INCREMENT_G[unit], afterSuccesses: 1 }),
+  double: (unit) => ({ kind: 'double', repRange: [8, 12], incrementG: DEFAULT_INCREMENT_G[unit] }),
+  linear_duration: () => ({
+    kind: 'linear_duration',
+    incrementS: DEFAULT_INCREMENT_S,
+    afterSuccesses: 1,
+  }),
+}
+
+/**
+ * A rule of `kind` — `previous` itself if it is that kind already, so switching away and back does
+ * not lose its settings, otherwise a new one with its defaults in the person's `unit`.
+ */
+export const progressionOf = (
+  kind: Progression['kind'],
+  previous: Progression,
+  unit: WeightUnit,
+): Progression => (kind === previous.kind ? previous : NEW_RULE[kind](unit))
 
 /** A new day, named by its position. */
 export const newDay = (index: number): WorkoutDayInput => ({

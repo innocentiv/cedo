@@ -72,7 +72,7 @@ export const ProgressionSuggestion = z.object({
   entryId: z.uuid(),
   exerciseId: z.uuid(),
   exerciseName: z.string(),
-  /** So a reader renders targets in the exercise's terms — `formatEffort(target, tracking)`. */
+  /** So a reader renders targets in the exercise's terms — `formatEffort(target, tracking, unit)`. */
   tracking: TrackingMode,
   rule: Progression,
   current: SetTarget,

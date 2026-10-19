@@ -65,6 +65,11 @@ _Avoid_: measure, metric
 The dimensions one set carries — prescribed as a target, or done as a log.
 _Avoid_: result, performance
 
+**Weight unit**:
+How a person reads and types weights: kilograms or pounds. Their own preference; it changes what
+they are shown, never what is stored.
+_Avoid_: units setting, locale
+
 ## Plans
 
 **Prescription**:

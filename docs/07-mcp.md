@@ -131,6 +131,13 @@ context; the same information as one line each is a tenth of that.
   that edits a plan through this round trip keeps its logged history attached. See
   `docs/06-api.md`.
 
+### What the model reads is in the person's unit; what it sends is in grams
+
+Every weight in tool OUTPUT is formatted in the caller's `weightUnit` — "5 × 220.46 lb" for someone
+who reads pounds — because the AI is writing for that person. Every weight in tool INPUT is grams,
+whoever the caller is, as the schemas say: one unit to send in, so a model never has to guess which
+one a number is in.
+
 ### Schemas come from the contract
 
 `inputSchema` is the Zod schema from `@cedo/contract`, so the JSON Schema an AI reads is generated

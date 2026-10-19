@@ -50,9 +50,21 @@ describe('typing a weight in pounds', () => {
     expect(pounds.unit('bodyweight_reps')).toBe('+lb')
   })
 
-  test('a mode’s fields carry the person’s unit; every other dimension is unchanged', () => {
-    expect(fieldsOf('weight_reps', 'lb').map((f) => f.unit())).toEqual(['lb', 'reps'])
+  /** A weight entered in pounds, read in kilograms, reads as `formatWeight` writes it. */
+  test('both units read to the hundredth, as every weight is written', () => {
+    expect(fieldFor('weight', 'kg').toText(60_101)).toBe('60.1')
+    expect(fieldFor('weight', 'kg').toText(62_500)).toBe('62.5')
+  })
+
+  test('only weight depends on the person; every other dimension is the same for everyone', () => {
+    expect(fieldFor('reps', 'lb')).toBe(DIMENSION_FIELDS.reps)
     expect(fieldFor('duration', 'lb')).toBe(DIMENSION_FIELDS.duration)
+  })
+
+  /** The default increment for someone who reads pounds: 5 lb, stored as the grams it is. */
+  test('5 lb is 2268 g, and reads back as 5', () => {
+    expect(pounds.parse('5')).toEqual({ text: '5', value: 2268 })
+    expect(pounds.toText(2268)).toBe('5')
   })
 })
 
@@ -140,15 +152,24 @@ describe('a plain count', () => {
   })
 })
 
+/**
+ * Every value a field can be TYPED as reads back exactly. A weight is typed to the hundredth — a
+ * field reads as `formatWeight` writes, so a gram-precise 72.555 kg reads 72.56 — and the field
+ * keeps the number it was given, not its text: the rounding is what is read, never what is saved.
+ */
 describe('the round trip', () => {
   const values: Record<Dimension, number[]> = {
-    weight: [0, 500, 20_000, 62_500, 72_555, 2_000_000],
+    weight: [0, 500, 20_000, 62_500, 72_550, 2_000_000],
     reps: [0, 1, 8, 1000],
     duration: [0, 45, 1500, 86_400],
     distance: [0, 1, 1500, 100_000, 5_000_000],
   }
 
   const dimensions = ['weight', 'reps', 'duration', 'distance'] as const satisfies Dimension[]
+
+  test('a gram-precise weight reads to the hundredth', () => {
+    expect(DIMENSION_FIELDS.weight.toText(72_555)).toBe('72.56')
+  })
 
   test.each(dimensions)('%s survives text and back exactly', (d) => {
     const field = DIMENSION_FIELDS[d]

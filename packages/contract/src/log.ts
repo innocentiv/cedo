@@ -161,7 +161,7 @@ export type ExerciseHistoryEntry = z.output<typeof ExerciseHistoryEntry>
 /** Most recent session first. */
 export const ExerciseHistory = z.object({
   exerciseId: Id,
-  /** So a reader renders the sets in the exercise's terms — `formatEffort(set, tracking)`. */
+  /** So a reader renders the sets in the exercise's terms — `formatEffort(set, tracking, unit)`. */
   tracking: TrackingMode,
   sessions: z.array(ExerciseHistoryEntry),
 })

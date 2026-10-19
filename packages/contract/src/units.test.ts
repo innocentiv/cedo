@@ -42,10 +42,10 @@ describe('weight conversion', () => {
 
 describe('formatWeight', () => {
   test('trims trailing zeros but keeps meaningful decimals', () => {
-    expect(formatWeight(kgToG(70))).toBe('70 kg')
-    expect(formatWeight(kgToG(72.5))).toBe('72.5 kg')
-    expect(formatWeight(kgToG(72.25))).toBe('72.25 kg')
-    expect(formatWeight(0)).toBe('0 kg')
+    expect(formatWeight(kgToG(70), 'kg')).toBe('70 kg')
+    expect(formatWeight(kgToG(72.5), 'kg')).toBe('72.5 kg')
+    expect(formatWeight(kgToG(72.25), 'kg')).toBe('72.25 kg')
+    expect(formatWeight(0, 'kg')).toBe('0 kg')
   })
 
   test('renders imperial on request — the only place imperial exists today', () => {

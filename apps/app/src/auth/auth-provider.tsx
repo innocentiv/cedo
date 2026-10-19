@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { type QueryClient, useQueryClient } from '@tanstack/react-query'
 import type { LoginInput, Me, RegisterInput, WeightUnit } from '@cedo/contract'
 import { ApiError, api, setAuthToken, setUnauthenticatedHandler } from '../api/http.ts'
+import { WeightUnitProvider } from '../lib/weight-unit.ts'
 import { clearToken, readToken, writeToken } from './token-storage.ts'
 
 /**
@@ -165,5 +166,9 @@ export function AuthProvider({
     [status, me, adopt, signOut, setWeightUnit],
   )
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return (
+    <AuthContext.Provider value={value}>
+      <WeightUnitProvider value={me?.user.weightUnit ?? 'kg'}>{children}</WeightUnitProvider>
+    </AuthContext.Provider>
+  )
 }
