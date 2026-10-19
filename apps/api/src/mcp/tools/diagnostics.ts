@@ -74,8 +74,8 @@ export function registerDiagnosticTools(server: McpServer, caller: Caller, versi
             .join('\n\n'),
         )
       } catch (error: unknown) {
-        // Only the "extension not installed" conflict is an answer. Anything else — a non-curator's
-        // 404 above all — stays an error, or the refusal reads as an ordinary result.
+        // Only the "extension not installed" conflict is an answer. Anything else — above all the
+        // service's 404 for a non-curator — stays an error, or the refusal reads as a result.
         if (error instanceof DomainError && error.code === 'conflict') return text(error.message)
         throw error
       }

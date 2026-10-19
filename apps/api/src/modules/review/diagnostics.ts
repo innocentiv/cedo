@@ -7,8 +7,8 @@ import type { Caller } from '../../plugins/auth.ts'
 import { requireCurator } from './curation.ts'
 
 /**
- * Instance diagnostics, for a CURATOR only — checked here, inside each function, so the HTTP route
- * and the MCP tool are one line each and no third surface can forget the check. A non-curator gets
+ * Instance diagnostics, for a CURATOR only — checked here, inside each function, so neither the HTTP
+ * route nor the MCP tool carries the check, and no third surface can forget it. A non-curator gets
  * a 404, not a 403: whether an instance has a curator at all is not theirs to learn.
  *
  * The honest use for this is not local development — there you have psql, the source and the tests.

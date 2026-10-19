@@ -4,7 +4,7 @@ import { ExerciseCreate, ExerciseUpdate, MUSCLES, MuscleSlug } from '@cedo/contr
 import type { Caller } from '../../plugins/auth.ts'
 import * as ExerciseService from '../../modules/exercise/service.ts'
 import * as MediaService from '../../modules/media/service.ts'
-import { libraryAudit, requireCurator, sharedGroupId } from '../../modules/review/curation.ts'
+import { libraryAudit, sharedGroupId } from '../../modules/review/curation.ts'
 import { exerciseDetail, exerciseLine, text } from '../format.ts'
 
 const READ = { readOnlyHint: true, openWorldHint: false } as const
@@ -94,8 +94,9 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
       annotations: WRITE,
     },
     async ({ shared, ...input }) => {
-      const group = shared ? await requireCurator(caller) : caller.personalGroupId
-      const created = await ExerciseService.create(caller, input, group)
+      const created = shared
+        ? await ExerciseService.createShared(caller, input)
+        : await ExerciseService.create(caller, input)
       return text(`Created.\n\n${exerciseDetail(created)}`)
     },
   )

@@ -2,6 +2,7 @@ import type { Exercise, ExerciseCreate, ExerciseQuery, ExerciseUpdate, Page } fr
 import { assertEditorOf } from '../../db/ownable.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { requireCurator } from '../review/curation.ts'
 import { exerciseLifecycle } from './lifecycle.ts'
 import { hydrate } from './mapper.ts'
 import { insertExercise, updateExercise } from './write.ts'
@@ -29,6 +30,14 @@ export async function create(
   ownerGroupId = caller.personalGroupId,
 ): Promise<Exercise> {
   return await get(caller, await insertExercise(caller, input, ownerGroupId))
+}
+
+/**
+ * Into the shared library, which only a curator may write to — checked here, not by whichever
+ * surface offers it, so none can forget. A non-curator gets a 404, like any write they may not make.
+ */
+export async function createShared(caller: Caller, input: ExerciseCreate): Promise<Exercise> {
+  return await create(caller, input, await requireCurator(caller))
 }
 
 export async function update(caller: Caller, id: string, patch: ExerciseUpdate): Promise<Exercise> {

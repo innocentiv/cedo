@@ -156,6 +156,45 @@ export async function signUp(
   return { user: created.user, api: await clientAs(created.token) }
 }
 
+/** How long a wait may take before it fails, unless it says otherwise. */
+const WAIT_MS = 8000
+
+/** A wait that ran out — told apart so a caller rewraps only that, never an error from the read. */
+class WaitTimeout extends Error {}
+
+/**
+ * Reads `read` until `done` holds, and returns that value; fails after `withinMs` with the last
+ * value seen. The one way to wait for something with no event of its own — a refetch, a re-render,
+ * a row appearing. A fixed sleep either races it or wastes the run, so journeys never sleep.
+ */
+async function until<T, U extends T>(
+  read: () => Promise<T>,
+  done: (value: T) => value is U,
+  withinMs?: number,
+): Promise<U>
+async function until<T>(
+  read: () => Promise<T>,
+  done: (value: T) => boolean,
+  withinMs?: number,
+): Promise<T>
+async function until<T>(
+  read: () => Promise<T>,
+  done: (value: T) => boolean,
+  withinMs = WAIT_MS,
+): Promise<T> {
+  const deadline = Date.now() + withinMs
+  for (;;) {
+    // oxlint-disable-next-line no-await-in-loop -- polling: each read must follow the last.
+    const value = await read()
+    if (done(value)) return value
+    if (Date.now() > deadline) {
+      throw new WaitTimeout(`Still waiting after ${withinMs}ms; last saw ${JSON.stringify(value)}`)
+    }
+    // oxlint-disable-next-line no-await-in-loop -- polling: each read must follow the last.
+    await Bun.sleep(100)
+  }
+}
+
 export interface Page {
   /** Navigate to an app route and wait for it to settle. */
   readonly goto: (path: string) => Promise<void>
@@ -176,16 +215,7 @@ export interface Page {
    * fails for a reason that has nothing to do with what it is testing.
    */
   readonly waitForSelector: (css: string, timeoutMs?: number) => Promise<string>
-  /**
-   * Reads `read` until `done` holds, and returns that value; fails after `withinMs` with the last
-   * value seen. The one way to wait for something with no event of its own — a refetch, a re-render,
-   * a row appearing. A fixed sleep either races it or wastes the run, so journeys never sleep.
-   */
-  readonly until: <T>(
-    read: () => Promise<T>,
-    done: (value: T) => boolean,
-    withinMs?: number,
-  ) => Promise<T>
+  readonly until: typeof until
   readonly evaluate: (script: string) => Promise<unknown>
   /** The API as the page's signed-in user, from the test process — for setting up their data. */
   readonly client: () => Promise<ApiClient>
@@ -303,48 +333,40 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
     },
     exists: async (testId) =>
       (await view.evaluate(`!!document.querySelector(${quote(selector(testId))})`)) === true,
-    until: async (read, done, withinMs = 8000) => {
-      const deadline = Date.now() + withinMs
-      for (;;) {
-        // oxlint-disable-next-line no-await-in-loop -- polling: each read must follow the last.
-        const value = await read()
-        if (done(value)) return value
-        if (Date.now() > deadline) {
-          throw new Error(`Still waiting after ${withinMs}ms; last saw ${JSON.stringify(value)}`)
-        }
-        // oxlint-disable-next-line no-await-in-loop -- polling: each read must follow the last.
-        await Bun.sleep(100)
-      }
-    },
-    waitFor: async (testId, timeoutMs = 8000) => {
+    until,
+    waitFor: async (testId, timeoutMs = WAIT_MS) => {
       try {
-        await page.until(
+        await until(
           async () => await page.exists(testId),
           (shown) => shown,
           timeoutMs,
         )
-      } catch {
-        const seen = await view.evaluate(
-          `Array.from(document.querySelectorAll('[data-testid]')).map(e => e.getAttribute('data-testid')).join(', ')`,
-        )
+      } catch (error) {
+        if (!(error instanceof WaitTimeout)) throw error
+        const seen = await view
+          .evaluate(
+            `Array.from(document.querySelectorAll('[data-testid]')).map(e => e.getAttribute('data-testid')).join(', ')`,
+          )
+          .catch(() => '(the page could not be read)')
         throw new Error(
           `Timed out waiting for "${testId}". On screen: ${String(seen)}\n` +
             (errors.length > 0 ? `Console errors so far:\n  ${errors.join('\n  ')}` : ''),
+          { cause: error },
         )
       }
     },
-    waitForSelector: async (css, timeoutMs = 8000) => {
+    waitForSelector: async (css, timeoutMs = WAIT_MS) => {
       const read = `document.querySelector(${quote(css)})?.getAttribute('data-testid') ?? null`
-      const found = await page
-        .until(
+      try {
+        return await until(
           async () => await view.evaluate(read),
-          (id) => typeof id === 'string',
+          (id): id is string => typeof id === 'string',
           timeoutMs,
         )
-        .catch(() => {
-          throw new Error(`Timed out waiting for an element matching ${css}.`)
-        })
-      return String(found)
+      } catch (error) {
+        if (!(error instanceof WaitTimeout)) throw error
+        throw new Error(`Timed out waiting for an element matching ${css}.`, { cause: error })
+      }
     },
     evaluate: async (script) => await view.evaluate(script),
     client: async () => {

@@ -118,6 +118,32 @@ async function saveAndStart(page: Page): Promise<void> {
   await page.waitFor('session-screen')
 }
 
+/** Every logged-set row on screen. */
+const LOGGED_SET = '[data-testid^="logged-set-"]'
+
+/** The logged-set rows, in order, by test id. */
+async function loggedIds(page: Page): Promise<string[]> {
+  const ids = await page.evaluate(
+    `[...document.querySelectorAll('${LOGGED_SET}')].map((e) => e.dataset.testid)`,
+  )
+  if (!Array.isArray(ids) || !ids.every((id): id is string => typeof id === 'string')) {
+    throw new Error(`Could not read the logged sets: ${JSON.stringify(ids)}`)
+  }
+  return ids
+}
+
+/**
+ * A screen's text once it satisfies `done` — within 3 seconds, far inside the 30-second
+ * `staleTime`, so a refetch the app never made cannot pass by waiting the cache out.
+ */
+async function settledText(
+  page: Page,
+  testId: string,
+  done: (text: string) => boolean,
+): Promise<string> {
+  return await page.until(async () => (await page.text(testId)) ?? '', done, 3000)
+}
+
 /**
  * The rendered lines of every logged set, newest last. `innerText`, not `textContent`: the latter
  * runs "Set 1" into "8 × 60 kg" as "Set 18 × 60 kg", and a `toContain('8 × 60 kg')` over that also
@@ -125,7 +151,7 @@ async function saveAndStart(page: Page): Promise<void> {
  */
 async function loggedLines(page: Page): Promise<string[]> {
   const text = await page.evaluate(
-    `[...document.querySelectorAll('[data-testid^="logged-set-"]')].map((e) => e.innerText).join('\\n')`,
+    `[...document.querySelectorAll('${LOGGED_SET}')].map((e) => e.innerText).join('\\n')`,
   )
   return typeof text === 'string' ? text.split('\n').map((line) => line.trim()) : []
 }
@@ -222,11 +248,10 @@ test(
       // mounted, holding the history it fetched before the set existed.
       await page.click('[data-testid="nav-exercises"]')
       await page.waitFor('exercise-detail-screen')
-      // Far inside the 30-second staleTime, so this cannot pass by waiting the cache out.
-      const history = await page.until(
-        async () => (await page.text('exercise-history')) ?? '',
+      const history = await settledText(
+        page,
+        'exercise-history',
         (text) => !text.includes('Nothing logged yet'),
-        3000,
       )
       expect(history).not.toContain('Nothing logged yet')
     })
@@ -279,12 +304,7 @@ test(
       // The tab keeps its stack: back to the very plan seen above, cached before the rename.
       await page.click('[data-testid="nav-workouts"]')
       await page.waitFor('workout-detail-screen')
-      // Far inside the 30-second staleTime, so this cannot pass by waiting the cache out.
-      const plan = await page.until(
-        async () => (await page.text('workout-detail-screen')) ?? '',
-        (text) => text.includes(after),
-        3000,
-      )
+      const plan = await settledText(page, 'workout-detail-screen', (text) => text.includes(after))
       expect(plan).toContain(after)
       expect(plan).not.toContain(before)
     })
@@ -352,10 +372,7 @@ test(
       await openNewPlan(page)
       await saveAndStart(page)
 
-      const rows = async () =>
-        Number(
-          await page.evaluate(`document.querySelectorAll('[data-testid^="logged-set-"]').length`),
-        )
+      const rows = async () => (await loggedIds(page)).length
       /** Logs a set, and waits until it is a row — the next set is numbered from the refreshed logs. */
       const log = async (expected: number) => {
         await page.fill('log-entry-0-weight', '60')
@@ -367,11 +384,8 @@ test(
       await log(3)
 
       // Undo set 2 — the second row — then log once more.
-      const ids = await page.evaluate(
-        `[...document.querySelectorAll('[data-testid^="logged-set-"]')].map((e) => e.dataset.testid)`,
-      )
-      const second = Array.isArray(ids) ? ids[1] : undefined
-      if (typeof second !== 'string') throw new Error('expected three logged rows')
+      const second = (await loggedIds(page))[1]
+      if (second === undefined) throw new Error('expected three logged rows')
       await page.click(`[data-testid="${second}"]`)
       await page.until(rows, (n) => n === 2)
       await log(3)
@@ -638,7 +652,7 @@ test(
       await page.fill(`adhoc-${exerciseId}-weight`, '60')
       await page.fill(`adhoc-${exerciseId}-reps`, '8')
       await page.click(`[data-testid="adhoc-${exerciseId}-log"]`)
-      await page.waitForSelector('[data-testid^="logged-set-"]')
+      await page.waitForSelector(LOGGED_SET)
 
       // The exercises picked were local state, so a reload used to show an empty session with
       // no way to log the next set until the exercise was picked again. The log names it now.
