@@ -115,10 +115,11 @@ export const MOVEMENT = `(array['Bench Press','Row','Squat','Curl','Overhead Pre
  * reads without changing anything), so a database left unsettled stays visibly unsettled, run after
  * run, instead of being repaired by the very check that found it.
  *
- * A bulk load into a GIN index with `fastupdate` (the default) parks its entries in a pending list
- * that EVERY lookup scans linearly until a vacuum flushes it. The 10,000-exercise curated library
- * left 257 pages there, and the trigram scan took 5s instead of 0.3s until autovacuum caught up.
- * The perf database only: the extension is created here, never in an application database.
+ * A GIN index with `fastupdate` parks bulk-loaded entries in a pending list EVERY lookup scans
+ * linearly until a vacuum flushes it: the curated library once left 257 pages in the trigram
+ * index, and searches ran at 5s instead of 0.3s. Every GIN index is `fastupdate = off` now
+ * (db/gin.test.ts), so this guards the seed's VACUUM and any index that slips through. The perf
+ * database only: the extension is created here, never in an application database.
  */
 export async function ginPendingPages(): Promise<number> {
   await db.execute(sql`create extension if not exists pgstattuple`)

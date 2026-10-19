@@ -134,9 +134,9 @@ rather than reused — a half-built library once failed the trigram guards for w
 
 It is seeded into the state it would SETTLE in, not the one a bulk load leaves: the seed ends with
 `VACUUM ANALYZE`, and the suite counts — read-only, through `pgstattuple`, before measuring anything —
-the pages GIN indexes still hold pending, and fails if there are any. A fresh bulk load parks a GIN index's new entries in a pending list every lookup
-scans linearly; the library audit took 5s instead of 0.3s for the first runs after each seed, until
-autovacuum caught up, and a timing measured against that state describes nothing.
+the pages GIN indexes still hold pending, and fails if there are any. A timing measured against a
+pending list describes nothing (see `docs/05-database.md`). None can be pending today, since every GIN
+index is `fastupdate = off`; the check guards the seed and the next index.
 
 ### The assertion classes, in order of what they are worth
 

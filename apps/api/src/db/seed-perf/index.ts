@@ -46,7 +46,7 @@ export type { PerfFixtures, PerfProfile } from './shape.ts'
  * plans: an audit over an empty library "did not use the trigram index", a read "scanned
  * sequentially" for want of statistics.
  */
-const COMPLETED = sql.raw('perf_seed_completed')
+const COMPLETED = sql.identifier('perf_seed_completed')
 
 export async function seedPerf(): Promise<PerfFixtures> {
   await ensureDatabaseExists()
@@ -72,13 +72,11 @@ export async function seedPerf(): Promise<PerfFixtures> {
 
   // Without fresh statistics the planner works from defaults and chooses plans nobody in
   // production would get, which would make every assertion below meaningless. VACUUM as well, for
-  // the same reason: a bulk load leaves GIN indexes with their new entries in a pending list that
-  // every lookup scans linearly until autovacuum flushes it — the trigram scan took 5s instead of
-  // 0.3s for the first ~40s after every seed. The suite fails, naming the pending pages, on a
-  // database left in that state.
+  // the same reason: it sets the visibility map a bulk load leaves empty, and flushes any GIN
+  // pending list — none today, since every GIN index is `fastupdate = off`, but the trigram index
+  // once held 257 pages here and searched at 5s instead of 0.3s.
   await db.execute(sql`vacuum analyze`)
-  await db.execute(sql`create table ${COMPLETED} (completed_at timestamptz not null default now())`)
-  await db.execute(sql`insert into ${COMPLETED} default values`)
+  await db.execute(sql`create table ${COMPLETED} as select now() as completed_at`)
 
   return { small, large, sharedGroupId, curator, setLogCount: await countRows('set_logs') }
 }

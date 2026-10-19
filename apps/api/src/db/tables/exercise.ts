@@ -57,9 +57,7 @@ export const exercises = pgTable(
     index('exercises_name_id_idx').on(t.name, t.id),
     /**
      * Substring search. A GIN trigram index can serve neither ORDER BY nor a range on `name`.
-     * `fastupdate = off`: every entry is written straight in, never parked in the pending list each
-     * lookup would scan linearly until a vacuum — 5s instead of 0.3s per search after a bulk import.
-     * Exercises are written rarely and searched constantly. See db/trigram.test.ts.
+     * `fastupdate = off`, as every GIN index here — see db/gin.test.ts.
      */
     index('exercises_name_trgm_idx')
       .using('gin', sql`${t.name} gin_trgm_ops`)

@@ -55,9 +55,9 @@ test('the fixtures are at production volume', () => {
 
 /**
  * Regression: a fresh seed left the trigram index's GIN pending list full, so the library audit
- * missed its budget (5s) for the first two or three runs after every seed, then passed once
- * autovacuum flushed it. The seed must leave the database as it would settle. A non-zero count
- * means it did not — the timings below then fail too, and this says why.
+ * missed its budget (5s) for the first runs after every seed. Watched failing with 257 pages on
+ * that seed. Every GIN index is `fastupdate = off` now, so this cannot fail on today's schema: it
+ * stands guard for the seed's VACUUM and for a GIN index added without the option.
  */
 test('the fixtures are in steady state: no GIN index has entries still pending', () => {
   expect(pendingGinPages).toBe(0)

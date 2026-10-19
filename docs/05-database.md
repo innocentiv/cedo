@@ -52,11 +52,11 @@ export const exercises = pgTable(
 )
 ```
 
-A GIN index is `fastupdate = off` here. Its default parks new entries in a pending list that every
+Every GIN index is `fastupdate = off`. Its default parks new entries in a pending list that every
 lookup scans linearly until a vacuum flushes it — below the 4 MB that forces a flush, indefinitely —
-and a bulk import of exercises left name search at 5s instead of 0.3s. These tables are written
-rarely and searched constantly, so an index pays at write time instead. `db/trigram.test.ts`
-asserts it.
+and a bulk import of exercises left name search at 5s instead of 0.3s. The searched tables are
+written rarely, so an index pays at write time instead. `db/gin.test.ts` asserts it of every GIN
+index.
 
 Each index here exists for a query the perf suite measured — see `docs/03-domain-model.md` for why
 there is deliberately no bare `owner_group_id` index. A `.desc()` column that a query ORDERS BY must
@@ -147,17 +147,18 @@ production volume: 250,000 set logs, 10,000 shared exercises, 1,000 plans, 5,000
 media, favourites and browser sessions. It shares nothing with `seed.ts` beyond `seedMuscles`,
 because it is answering a different question.
 
-Three rules govern it:
+Four rules govern it:
 
 - **Every value is derived arithmetically from a row number** — not even a seeded PRNG. Two runs
   produce byte-identical data, so a query plan that changed did so because the code changed.
 - **It is written as bulk `insert … select … from generate_series`.** A quarter of a million rows
   through ORM value lists takes minutes; this takes about thirty seconds, and it is then reused
   across runs.
-- **It ends settled — `VACUUM ANALYZE`, not just `ANALYZE`.** A bulk load leaves a GIN index's new
-  entries in a pending list that every lookup scans linearly until a vacuum flushes it; the trigram
-  search ran at 5s instead of 0.3s for the first runs after each seed. The suite counts what is
-  still pending, read-only (`pgstattuple`, in the perf database only), and fails on any.
+- **It ends settled — `VACUUM ANALYZE`, not just `ANALYZE`.** The vacuum sets the visibility map a
+  bulk load leaves empty, and flushes any GIN pending list (above). The suite counts what is still
+  pending, read-only (`pgstattuple`, in the perf database only), and fails on any.
+- **It ends with a marker.** `perf_seed_completed` is dropped first and created last, so a seed
+  interrupted part way is rebuilt, not reused.
 
 It is also, with the perf suite's own probes beside it, the one place raw SQL is correct. Everything
 the application runs goes through Drizzle.
