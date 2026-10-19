@@ -60,15 +60,23 @@ function useRecordSet(
     })
   }
 
-  // Each series is numbered by `nextSetIndex`, never by counting — see its comment.
+  // Each set is numbered within its series by `nextSetIndex`, never by counting — see its comment.
   return {
     adHoc: (exercise: SessionExercise, values: Effort) => {
-      const series = logs.filter((l) => l.exerciseId === exercise.id)
-      record(exercise.id, null, nextSetIndex(series), values)
+      record(
+        exercise.id,
+        null,
+        nextSetIndex(logs, { entryId: null, exerciseId: exercise.id }),
+        values,
+      )
     },
     planned: (entry: WorkoutEntry, values: Effort) => {
-      const series = logs.filter((l) => l.entryId === entry.id)
-      record(entry.exerciseId, entry.id, nextSetIndex(series), values)
+      record(
+        entry.exerciseId,
+        entry.id,
+        nextSetIndex(logs, { entryId: entry.id, exerciseId: entry.exerciseId }),
+        values,
+      )
     },
   }
 }

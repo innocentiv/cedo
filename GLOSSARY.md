@@ -108,3 +108,9 @@ One set as it was done: the exercise, its effort, and — when the session follo
 entry it answers. It belongs to the session, and keeps its effort even when its exercise or plan is
 later out of reach.
 _Avoid_: entry (that is the plan's), result
+
+**Series**:
+The sets of one plan entry within a session — or, for sets logged with no plan entry, of one
+exercise. A set's number counts within its series, warm-ups included, in the order performed, and
+is never given again once a set has had it.
+_Avoid_: group, block

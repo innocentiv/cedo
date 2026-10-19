@@ -129,12 +129,39 @@ export const SessionLogInput = z.strictObject({
 export type SessionLogInput = z.output<typeof SessionLogInput>
 
 /**
- * The index the next set of a series should take: one past the highest logged, not a count of the
- * logs. Counting reused an index after an undo — log sets 1-3, undo set 2, log again, and there
- * were two "Set 3" and no "Set 2" — because a count does not know which one was removed.
+ * What says which SERIES a set counts in: its plan entry, or — logged with none — its exercise.
+ * Two entries for one exercise in a day are two series; a set of that exercise logged without an
+ * entry is a third. See GLOSSARY.md, "Series".
  */
-export const nextSetIndex = (logs: readonly { readonly setIndex: number }[]): number =>
-  logs.reduce((next, log) => Math.max(next, log.setIndex + 1), 0)
+export interface SeriesMember {
+  readonly entryId: string | null
+  readonly exerciseId: string
+}
+
+export const sameSeries = (a: SeriesMember, b: SeriesMember): boolean =>
+  a.entryId === null ? b.entryId === null && a.exerciseId === b.exerciseId : a.entryId === b.entryId
+
+/**
+ * The index the next set of `member`'s series takes: one past the highest logged in it, warm-ups
+ * included — one sequence, in the order performed. Not a count: counting reused an index after an
+ * undo — log sets 1-3, undo set 2, log again, and there were two "Set 3" and no "Set 2" — because a
+ * count does not know which one was removed. A number, once given, is never given again.
+ *
+ * The server numbers every set with this, under the session's lock; nothing else does.
+ */
+export const nextSetIndex = (
+  logs: readonly (SeriesMember & { readonly setIndex: number })[],
+  member: SeriesMember,
+): number =>
+  logs
+    .filter((log) => sameSeries(log, member))
+    .reduce((next, log) => Math.max(next, log.setIndex + 1), 0)
+
+/** The working sets done in `member`'s series — what a logger shows as "N done". */
+export const workingSetsDone = (
+  logs: readonly (SeriesMember & { readonly isWarmup: boolean })[],
+  member: SeriesMember,
+): number => logs.filter((log) => !log.isWarmup && sameSeries(log, member)).length
 
 export const SessionQuery = PaginationQuery.extend({
   workoutId: Id.optional(),

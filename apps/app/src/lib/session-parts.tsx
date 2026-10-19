@@ -6,7 +6,7 @@ import type {
   WorkoutDay,
   WorkoutEntry,
 } from '@cedo/contract'
-import { type WeightUnit, formatEffort, prescriptionOf } from '@cedo/contract'
+import { type WeightUnit, formatEffort, prescriptionOf, workingSetsDone } from '@cedo/contract'
 import { useWeightUnit } from './weight-unit.ts'
 import { exerciseName } from './exercise-name.ts'
 import { Button, Card, ListRow, SetLogger, Stack, Text } from '../ui/index.ts'
@@ -118,7 +118,7 @@ export function AdHoc({
             tracking={exercise.tracking}
             target={null}
             suggestion={null}
-            done={logs.filter((l) => l.exerciseId === exercise.id && !l.isWarmup).length}
+            done={workingSetsDone(logs, { entryId: null, exerciseId: exercise.id })}
             busy={busy}
             testID={`adhoc-${exercise.id}`}
             onLog={(values) => {
@@ -155,7 +155,7 @@ export function PlannedDay({
   return (
     <Stack gap="md">
       {day.entries.map((entry) => {
-        const done = logs.filter((l) => l.entryId === entry.id && !l.isWarmup).length
+        const done = workingSetsDone(logs, { entryId: entry.id, exerciseId: entry.exerciseId })
         return (
           <SetLogger
             key={entry.id}
