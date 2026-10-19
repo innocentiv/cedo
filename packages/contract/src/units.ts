@@ -4,7 +4,8 @@
  * Everything is stored and transmitted as integers in base units: grams, millimetres, seconds.
  * Integers because progression arithmetic must be exact — repeatedly adding 2.5 as a float drifts,
  * and Postgres `numeric` arrives in JavaScript as a string. Imperial support is therefore purely a
- * display concern: here, and in `dimension.ts`, which decides the unit a field is typed in.
+ * display concern: here, and in `dimension.ts`, which decides the unit a field is typed in — and
+`typing.ts`, which reads a clock's digits through `clockToS` below.
  *
  * If you are about to write `/ 1000` or `* 2.2` anywhere else in this repository, stop and use a
  * function from this file. See docs/02-conventions.md.
@@ -62,6 +63,10 @@ export function formatDuration(seconds: number): string {
 
   return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${secs}` : `${minutes}:${secs}`
 }
+
+/** A clock's parts to seconds: `clockToS(1, 2, 5)` -> 3725. Seconds past 59 are added as given. */
+export const clockToS = (hours: number, minutes: number, seconds: number): number =>
+  hours * SECONDS_PER_HOUR + minutes * SECONDS_PER_MINUTE + seconds
 
 function trimZeros(fixed: string): string {
   return fixed.includes('.') ? fixed.replace(/\.?0+$/u, '') : fixed

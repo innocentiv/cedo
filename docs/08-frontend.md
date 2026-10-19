@@ -135,6 +135,12 @@ the number, so a half-typed "62." collapsed to 62 and the next key logged 625 kg
 contract tests; an e2e journey still types decimals key by key, because `fill` inserts a whole
 string in one event and never passes through the half-typed state.
 
+A duration is typed on a number pad, which has no `:` — so, as on a timer, the last two digits are
+seconds and the two before them minutes (`CLOCK` in the contract): `130` is 1:30, `2500` is 25:00,
+and a bare `90` is still 90 seconds. The field regroups its digits as they grow ("13" becomes "1:30")
+and shows them as typed until it is left, so `190` reads "1:90" while focused and "2:30" after. A
+duration READS as the same clock everywhere (`formatDuration`), so what you read is what you type.
+
 ## The API client
 
 A hand-written typed `fetch` client, not Eden Treaty. See `docs/adr/0015-no-eden-treaty.md`.

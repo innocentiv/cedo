@@ -6,7 +6,7 @@ import type {
   Workout,
   WorkoutSummary,
 } from '@cedo/contract'
-import { formatEffort, formatWeight } from '@cedo/contract'
+import { formatDuration, formatEffort, formatWeight } from '@cedo/contract'
 import type { TrainingReview } from '../modules/review/service.ts'
 
 /**
@@ -91,7 +91,7 @@ export function workoutDetail(workout: Workout): string {
   const days = workout.days.map((day) => {
     const entries = day.entries.map((entry) => {
       const superset = entry.supersetGroup === null ? '' : ` (superset ${entry.supersetGroup})`
-      const rest = entry.restSeconds === null ? '' : `, rest ${entry.restSeconds}s`
+      const rest = entry.restSeconds === null ? '' : `, rest ${formatDuration(entry.restSeconds)}`
       const rule =
         entry.progression.kind === 'none' ? '' : `, progression: ${entry.progression.kind}`
       // Null when the caller cannot see the exercise — see the note on WorkoutEntry.exercise.

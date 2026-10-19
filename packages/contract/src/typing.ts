@@ -1,9 +1,9 @@
-import { formatDuration } from './units.ts'
+import { clockToS, formatDuration } from './units.ts'
 
 /**
  * How a number is TYPED into a field: what text a value shows as, and what typed text means. A
- * measured dimension has one (`DIMENSION_FIELDS`), and so does a plain count (`COUNT`); the app's one
- * typing mechanic takes either. See docs/08-frontend.md.
+ * measured dimension has one (`DIMENSION_FIELDS`), a plain count has `COUNT`, and a duration has
+ * `CLOCK`; the app's one typing mechanic takes any of them. See docs/08-frontend.md.
  */
 
 /** What a field shows while it is being typed in, and the value that text means. */
@@ -78,16 +78,22 @@ export const CLOCK: Typing = {
     // At most one leading zero survives: "0" stays on screen, "045" is 45.
     const digits = text.replaceAll(/\D/gu, '').replace(/^0+(?=\d)/u, '')
     if (digits === '') return { text: '', value: null }
-    const seconds = Number(digits.slice(-2))
-    const minutes = Number(digits.slice(-4, -2) || '0')
-    const hours = Number(digits.slice(0, -4) || '0')
-    const value = hours * 3600 + minutes * 60 + seconds
+    // `Number('')` is 0, so a group not typed yet counts as none.
+    const value = clockToS(
+      Number(digits.slice(0, -4)),
+      Number(digits.slice(-4, -2)),
+      Number(digits.slice(-2)),
+    )
     if (!Number.isFinite(value)) return { text: digits, value: null }
     return { text: clockText(digits), value }
   },
 }
 
-/** `"5"` → `"5"`, `"130"` → `"1:30"`, `"10205"` → `"1:02:05"`: the digits, grouped as typed. */
+/**
+ * `"5"` → `"5"`, `"130"` → `"1:30"`, `"10205"` → `"1:02:05"`: the digits, grouped as typed. Not
+ * `formatDuration`, which groups a number of SECONDS: typed text keeps its digits as they are —
+ * "190" is "1:90" until the field is left, never a "2:30" that moves under the cursor.
+ */
 function clockText(digits: string): string {
   if (digits.length <= 2) return digits
   const seconds = digits.slice(-2)

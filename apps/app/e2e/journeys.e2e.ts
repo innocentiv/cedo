@@ -464,9 +464,14 @@ test(
       await page.click('[data-testid="plan-entry-0-0-duration"]')
       await typeKeys(page, ['1', '3', '0'])
       expect(await fieldValue(page, 'plan-entry-0-0-duration')).toBe('1:30')
+      // A real backspace takes the last digit back, regrouping what is left: 13 seconds.
+      await typeKeys(page, ['Backspace'])
+      expect(await fieldValue(page, 'plan-entry-0-0-duration')).toBe('13')
+      await typeKeys(page, ['0'])
+      expect(await fieldValue(page, 'plan-entry-0-0-duration')).toBe('1:30')
 
       await saveAndStart(page)
-      expect(await page.text('log-entry-0-target')).toContain('1:30')
+      expect(await page.text('log-entry-0-target')).toBe('Prescribed 1:30')
 
       await page.click('[data-testid="log-entry-0-duration"]')
       await typeKeys(page, ['4', '5'])

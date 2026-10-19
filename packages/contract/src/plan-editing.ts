@@ -41,7 +41,7 @@ export const newDay = (index: number): WorkoutDayInput => ({
 /**
  * A new entry starts with three working sets, which is what almost every prescription is — and with
  * a target in whatever the exercise actually measures. Seeding `targetReps` regardless left a plank
- * with three sets and an empty seconds box.
+ * with three sets and an empty duration box.
  */
 export const newEntry = (exercise: {
   readonly id: string
@@ -133,9 +133,13 @@ export function planIssues(plan: WorkoutPlanInput): string[] {
   return [...new Set(result.error.issues.map((issue) => `${where(issue.path)}${issue.message}`))]
 }
 
-/** A field as a person names it: a target by the unit it is typed in, the rest by plain words. */
+/**
+ * A field as a person names it: a target by what it measures (`weight`, `duration`), the rest by
+ * plain words. Not by the unit it is typed in: a label like `m:ss` or `lb` is a format, and
+ * "m:ss: Must be more than 0" names nothing.
+ */
 const FIELD_NAMES: Readonly<Record<string, string>> = {
-  ...Object.fromEntries(Object.values(DIMENSION_FIELDS).map((f) => [f.targetKey, f.unit()])),
+  ...Object.fromEntries(Object.values(DIMENSION_FIELDS).map((f) => [f.targetKey, f.dimension])),
   targetRpe: 'RPE',
   name: 'name',
   sets: 'sets',

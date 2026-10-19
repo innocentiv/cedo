@@ -168,6 +168,16 @@ describe('the issues a draft would be refused for', () => {
     ])
   })
 
+  /** By what it measures, not its unit label — `m:ss` is a format, not a name. */
+  test('a bad duration is named as a duration', () => {
+    const plank = prescribe(newEntry({ id: crypto.randomUUID(), tracking: 'duration' }), {
+      targetDurationS: 0,
+    })
+    expect(planIssues({ days: [{ name: 'Day 1', entries: [plank] }] })).toEqual([
+      'Day 1, exercise 1, duration: Must be more than 0',
+    ])
+  })
+
   test('a limit says what the limit is', () => {
     const set = {
       targetReps: 8,

@@ -80,7 +80,7 @@ export function ProgressionField({
         {rule.kind === 'linear_duration' ? (
           <DimensionInput
             dimension="duration"
-            label={`Add ${DIMENSION_FIELDS.duration.unit()}`}
+            label="Add time"
             value={rule.incrementS}
             onChange={(s) => {
               onChange({ ...rule, incrementS: s ?? 15 })
