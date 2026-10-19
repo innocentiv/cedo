@@ -100,3 +100,72 @@ function clockText(digits: string): string {
   if (digits.length <= 4) return `${digits.slice(0, -2)}:${seconds}`
   return `${digits.slice(0, -4)}:${digits.slice(-4, -2)}:${seconds}`
 }
+
+/**
+ * A numeric field being edited: the text kept on screen while it is typed, and when that text gives
+ * way to the parent's value. The field component only renders `fieldText` and forwards events; every
+ * rule is here, where a test reaches it in milliseconds. See docs/08-frontend.md.
+ *
+ * While focused, the field shows the TEXT being typed, not the number it parses to. Rendering from
+ * the number made "62." collapse to "62" under the cursor, so typing 62.5 key by key logged 625 kg;
+ * and a parent that refuses an empty field (sets snap back to 1) put a digit back mid-edit, so
+ * backspace-then-4 made 14. On blur it shows the parent's value again, whatever that settled to.
+ *
+ * A value change the field did NOT cause resets the text even while focused. On native the keyboard
+ * can stay up while another control is tapped — removing or moving an entry — and the editors are
+ * keyed by position, so the same field then holds a different entry's value; keeping the old text
+ * made the next digit write old-text-plus-digit into the wrong entry. "Caused by this field" means:
+ * changed before the render after its own keystroke `settled`, which is when a parent's clamp lands.
+ */
+export interface FieldEdit {
+  /** The last value the parent gave. */
+  readonly value: number | null
+  /** What is being typed; null when not editing, so the field shows `value`. */
+  readonly text: string | null
+  /** A keystroke happened and its render has not settled: a value change now is its answer. */
+  readonly own: boolean
+}
+
+/**
+ * No `focus`: until the first keystroke a focused field shows its value's text, which is what
+ * `text: null` shows. The input selects that text on focus, so the first key replaces it.
+ */
+export type FieldEvent =
+  | { readonly kind: 'blur' }
+  | { readonly kind: 'settled' }
+  /** The field's whole text after a keystroke, as the input reports it. */
+  | { readonly kind: 'type'; readonly text: string }
+  /** The parent's value changed. */
+  | { readonly kind: 'value'; readonly value: number | null }
+
+export interface FieldStep {
+  readonly edit: FieldEdit
+  /** The value a keystroke means, for the parent; absent when nothing was typed. */
+  readonly emit?: number | null
+}
+
+export const fieldEdit = (value: number | null): FieldEdit => ({ value, text: null, own: false })
+
+export const fieldText = (edit: FieldEdit, field: Typing): string =>
+  edit.text ?? field.toText(edit.value)
+
+/**
+ * The next state of a field for one event. An event that changes nothing returns the SAME `edit`,
+ * so a component holding it in state does not render again for it.
+ */
+export function editField(edit: FieldEdit, event: FieldEvent, field: Typing): FieldStep {
+  switch (event.kind) {
+    case 'blur':
+      return { edit: edit.text === null ? edit : { ...edit, text: null } }
+    case 'settled':
+      return { edit: edit.own ? { ...edit, own: false } : edit }
+    case 'type': {
+      const typed = field.parse(event.text)
+      return { edit: { ...edit, text: typed.text, own: true }, emit: typed.value }
+    }
+    case 'value':
+      break
+  }
+  if (event.value === edit.value) return { edit }
+  return { edit: { ...edit, value: event.value, text: edit.own ? edit.text : null } }
+}
