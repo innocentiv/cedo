@@ -132,7 +132,7 @@ describe('delete', () => {
     )
     await alice.wire(`/sessions/${session.id}/logs`, {
       method: 'POST',
-      body: JSON.stringify({ exerciseId: exercise.id, setIndex: 0, reps: 5 }),
+      body: JSON.stringify({ exerciseId: exercise.id, reps: 5 }),
     })
 
     const res = await alice.wire(`/exercises/${exercise.id}`, { method: 'DELETE' })

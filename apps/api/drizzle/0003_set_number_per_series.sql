@@ -1,0 +1,2 @@
+DROP INDEX "set_logs_session_idx";--> statement-breakpoint
+ALTER TABLE "set_logs" ADD CONSTRAINT "set_logs_series_number_uq" UNIQUE NULLS NOT DISTINCT("session_id","exercise_id","entry_id","set_index");

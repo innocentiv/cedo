@@ -38,11 +38,11 @@ export function reviewFixture(user: TestUser) {
         WorkoutSession,
         (await user.wire('/sessions', { method: 'POST', body: '{}' })).body,
       )
-      for (const [setIndex, set] of sets.entries()) {
-        // oxlint-disable-next-line no-await-in-loop -- in order: each set is numbered by its index.
+      for (const set of sets) {
+        // oxlint-disable-next-line no-await-in-loop -- in order: the server numbers them as they come.
         await user.wire(`/sessions/${session.id}/logs`, {
           method: 'POST',
-          body: JSON.stringify({ setIndex, ...set }),
+          body: JSON.stringify(set),
         })
       }
       if (daysAgo > 0) {

@@ -14,7 +14,7 @@ import {
 import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../../db/client.ts'
-import { workoutSessions } from '../../db/schema.ts'
+import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 import * as SessionService from './service.ts'
@@ -127,7 +127,7 @@ describe('logging sets', () => {
       (
         await alice.wire(`/sessions/${session.id}/logs`, {
           method: 'POST',
-          body: JSON.stringify({ exerciseId, setIndex: 0, weightG: kgToG(62.5), reps: 8, rpe: 8 }),
+          body: JSON.stringify({ exerciseId, weightG: kgToG(62.5), reps: 8, rpe: 8 }),
         })
       ).body,
     )
@@ -166,7 +166,7 @@ describe('logging sets', () => {
       (
         await alice.wire(`/sessions/${session.id}/logs`, {
           method: 'POST',
-          body: JSON.stringify({ exerciseId: plank.id, setIndex: 0, durationS: 65 }),
+          body: JSON.stringify({ exerciseId: plank.id, durationS: 65 }),
         })
       ).body,
     )
@@ -184,7 +184,7 @@ describe('logging sets', () => {
 
     const res = await alice.wire(`/sessions/${session.id}/logs`, {
       method: 'POST',
-      body: JSON.stringify({ exerciseId, setIndex: 0, reps: 5 }),
+      body: JSON.stringify({ exerciseId, reps: 5 }),
     })
     expect(res.status).toBe(409)
   })
@@ -208,7 +208,6 @@ describe('logging sets', () => {
       body: JSON.stringify({
         exerciseId,
         entryId: planB.days[0]?.entries[0]?.id,
-        setIndex: 0,
         reps: 5,
       }),
     })
@@ -225,7 +224,6 @@ describe('logging sets', () => {
       body: JSON.stringify({
         exerciseId,
         entryId: plan.days[0]?.entries[0]?.id,
-        setIndex: 0,
         reps: 5,
       }),
     })
@@ -253,7 +251,7 @@ describe('logging sets', () => {
     const session = expectContract(WorkoutSession, (await startSession(alice)).body)
     const res = await alice.wire(`/sessions/${session.id}/logs`, {
       method: 'POST',
-      body: JSON.stringify({ exerciseId: secret, setIndex: 0, reps: 5 }),
+      body: JSON.stringify({ exerciseId: secret, reps: 5 }),
     })
     expect(res.status).toBe(404)
   })
@@ -266,7 +264,7 @@ describe('logging sets', () => {
       (
         await alice.wire(`/sessions/${session.id}/logs`, {
           method: 'POST',
-          body: JSON.stringify({ exerciseId, setIndex: 0, reps: 8 }),
+          body: JSON.stringify({ exerciseId, reps: 8 }),
         })
       ).body,
     )
@@ -293,10 +291,10 @@ describe('logging a whole session at once', () => {
       alice.caller,
       SessionLogInput.parse({
         sets: [
-          { exerciseId: squat, setIndex: 0, reps: 5 },
-          { exerciseId: squat, setIndex: 1, reps: 5 },
-          { exerciseId: bench, setIndex: 0, reps: 8 },
-          { exerciseId: bench, setIndex: 1, reps: 8 },
+          { exerciseId: squat, reps: 5 },
+          { exerciseId: squat, reps: 5 },
+          { exerciseId: bench, reps: 8 },
+          { exerciseId: bench, reps: 8 },
         ],
       }),
     )
@@ -332,7 +330,7 @@ describe('sessions are private', () => {
       (
         await bob.wire(`/sessions/${session.id}/logs`, {
           method: 'POST',
-          body: JSON.stringify({ exerciseId, setIndex: 0, reps: 5 }),
+          body: JSON.stringify({ exerciseId, reps: 5 }),
         })
       ).status,
     ).toBe(404)
@@ -358,7 +356,7 @@ describe('the session list', () => {
     ] as const) {
       await alice.wire(`/sessions/${session.id}/logs`, {
         method: 'POST',
-        body: JSON.stringify({ exerciseId, setIndex: 0, weightG: kgToG(60), reps, isWarmup }),
+        body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps, isWarmup }),
       })
     }
 
@@ -438,7 +436,7 @@ describe('exercise history', () => {
       const session = expectContract(WorkoutSession, (await startSession(alice)).body)
       await alice.wire(`/sessions/${session.id}/logs`, {
         method: 'POST',
-        body: JSON.stringify({ exerciseId, setIndex: 0, weightG: kgToG(60), reps }),
+        body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps }),
       })
       await Bun.sleep(5)
     }
@@ -461,7 +459,7 @@ describe('exercise history', () => {
     const bobSession = expectContract(WorkoutSession, (await startSession(bob)).body)
     await bob.wire(`/sessions/${bobSession.id}/logs`, {
       method: 'POST',
-      body: JSON.stringify({ exerciseId: shared.id, setIndex: 0, reps: 12 }),
+      body: JSON.stringify({ exerciseId: shared.id, reps: 12 }),
     })
 
     const forAlice = expectContract(
@@ -484,13 +482,12 @@ describe('progression suggestions', () => {
       WorkoutSession,
       (await startSession(user, { workoutId: workout.id, dayId: workout.days[0]?.id })).body,
     )
-    for (const [index, count] of reps.entries()) {
+    for (const count of reps) {
       await user.wire(`/sessions/${session.id}/logs`, {
         method: 'POST',
         body: JSON.stringify({
           exerciseId: entry.exerciseId,
           entryId: entry.id,
-          setIndex: index,
           weightG: kgToG(60),
           reps: count,
         }),
@@ -588,17 +585,16 @@ describe('progression suggestions', () => {
       (await startSession(alice, { workoutId: workout.id, dayId: workout.days[0]?.id })).body,
     )
     // A ramp, then only TWO of the three working sets.
-    for (const [index, [reps, weight, isWarmup]] of [
+    for (const [reps, weight, isWarmup] of [
       [10, 20, true],
       [8, 60, false],
       [8, 60, false],
-    ].entries()) {
+    ]) {
       await alice.wire(`/sessions/${session.id}/logs`, {
         method: 'POST',
         body: JSON.stringify({
           exerciseId,
           entryId: entry.id,
-          setIndex: index,
           weightG: kgToG(Number(weight)),
           reps: Number(reps),
           isWarmup: Boolean(isWarmup),
@@ -612,5 +608,113 @@ describe('progression suggestions', () => {
     )
     // Three working sets were prescribed; only two were logged.
     expect(suggestion?.changed).toBe(false)
+  })
+})
+
+/**
+ * The server numbers every set, within its series — one plan entry, or one exercise logged with no
+ * entry — the same way for the app and for an AI. See `nextSetIndex` and GLOSSARY.md, "Series".
+ */
+describe('numbering sets', () => {
+  const logTo = async (sessionId: string, body: Record<string, unknown>) =>
+    expectContract(
+      SetLog,
+      (
+        await alice.wire(`/sessions/${sessionId}/logs`, {
+          method: 'POST',
+          body: JSON.stringify(body),
+        })
+      ).body,
+    )
+
+  test('each set takes the next number in its series, and an undone number is not reused', async () => {
+    const exerciseId = await anExercise(alice)
+    const { id } = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const first = await logTo(id, { exerciseId, reps: 5 })
+    const second = await logTo(id, { exerciseId, reps: 5 })
+    const third = await logTo(id, { exerciseId, reps: 5 })
+    expect([first, second, third].map((l) => l.setIndex)).toEqual([0, 1, 2])
+
+    await alice.wire(`/sessions/${id}/logs/${second.id}`, { method: 'DELETE' })
+    expect((await logTo(id, { exerciseId, reps: 5 })).setIndex).toBe(3)
+  })
+
+  /**
+   * Regression: the screen numbered an ad-hoc set among EVERY log of its exercise, planned ones
+   * included, so bench logged without a plan after two planned sets began at "set 3".
+   */
+  test('a set logged without an entry starts its own series, apart from the planned ones', async () => {
+    const exerciseId = await anExercise(alice)
+    const workout = await aPlannedWorkout(alice, exerciseId)
+    const day = workout.days[0]
+    const entry = day?.entries[0]
+    if (day === undefined || entry === undefined) throw new Error('the workout has no entry')
+    const { id } = expectContract(
+      WorkoutSession,
+      (await startSession(alice, { workoutId: workout.id, dayId: day.id })).body,
+    )
+    await logTo(id, { exerciseId, entryId: entry.id, reps: 8 })
+    await logTo(id, { exerciseId, entryId: entry.id, reps: 8 })
+
+    expect((await logTo(id, { exerciseId, reps: 8 })).setIndex).toBe(0)
+    expect((await logTo(id, { exerciseId, entryId: entry.id, reps: 8 })).setIndex).toBe(2)
+  })
+
+  /** Numbered under the session's lock: two devices logging at once cannot take one number. */
+  test('sets logged at the same moment take different numbers', async () => {
+    const exerciseId = await anExercise(alice)
+    const { id } = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const logged = await Promise.all(
+      Array.from({ length: 6 }, async () => await logTo(id, { exerciseId, reps: 5 })),
+    )
+    expect(logged.map((l) => l.setIndex).toSorted((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5])
+  })
+
+  test('a whole session is numbered per series in the order sent, warm-ups included', async () => {
+    const squat = await anExercise(alice, 'Squat')
+    const bench = await anExercise(alice, 'Bench Press')
+    const logged = await SessionService.logWhole(
+      alice.caller,
+      SessionLogInput.parse({
+        sets: [
+          { exerciseId: squat, reps: 10, isWarmup: true },
+          { exerciseId: bench, reps: 8 },
+          { exerciseId: squat, reps: 5 },
+          { exerciseId: squat, reps: 5 },
+        ],
+      }),
+    )
+    expect(logged.logs.map((l) => [l.exerciseId, l.setIndex])).toEqual([
+      [squat, 0],
+      [bench, 0],
+      [squat, 1],
+      [squat, 2],
+    ])
+  })
+
+  /** The number is not the caller's to give — and a caller still giving one is told, not ignored. */
+  test('a set that still names its own number is refused', async () => {
+    const exerciseId = await anExercise(alice)
+    const { id } = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const res = await alice.wire(`/sessions/${id}/logs`, {
+      method: 'POST',
+      body: JSON.stringify({ exerciseId, setIndex: 7, reps: 5 }),
+    })
+    expect(res.status).toBe(422)
+  })
+
+  /** The backstop: if numbering ever broke, a duplicate would fail loudly, not land. */
+  test('the database refuses a second set with the same number in its series', async () => {
+    const exerciseId = await anExercise(alice)
+    const { id } = expectContract(WorkoutSession, (await startSession(alice)).body)
+    await logTo(id, { exerciseId, reps: 5 })
+    const duplicate = await db
+      .insert(setLogs)
+      .values({ sessionId: id, exerciseId, entryId: null, setIndex: 0, reps: 5 })
+      .then(
+        () => null,
+        (error: unknown) => error,
+      )
+    expect(duplicate).toMatchObject({ cause: { code: '23505' } })
   })
 })

@@ -8,6 +8,7 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { exercises } from './exercise.ts'
@@ -90,8 +91,19 @@ export const setLogs = pgTable(
      * workout_sessions_user_time_idx for how a NULLS mismatch silently becomes a sort.
      */
     index('set_logs_exercise_time_idx').on(t.exerciseId, t.loggedAt.desc()),
-    index('set_logs_session_idx').on(t.sessionId),
     index('set_logs_entry_idx').on(t.entryId),
     check('set_logs_rpe_ck', sql`${t.rpe} is null or ${t.rpe} between 1 and 10`),
+    /**
+     * A set's number is unique within its series — one plan entry, or one exercise logged with no
+     * entry; NULLS NOT DISTINCT makes those ad-hoc sets one series, not each its own. The server
+     * numbers under the session's lock, so this never trips; if it does, numbering is broken, and a
+     * loud failure is the point. See `nextSetIndex` in the contract.
+     *
+     * It also serves a session's own sets — it leads with `session_id` — which is why there is no
+     * separate index on that column: on the largest table, one would be write cost for nothing.
+     */
+    unique('set_logs_series_number_uq')
+      .on(t.sessionId, t.exerciseId, t.entryId, t.setIndex)
+      .nullsNotDistinct(),
   ],
 )

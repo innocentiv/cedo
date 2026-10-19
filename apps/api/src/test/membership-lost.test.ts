@@ -117,7 +117,6 @@ async function buildWorld(): Promise<World> {
     await post(alice, `/sessions/${session.id}/logs`, {
       exerciseId: bobsExerciseId,
       entryId: entry.id,
-      setIndex: 0,
       weightG: 60_000,
       reps: 5,
     })

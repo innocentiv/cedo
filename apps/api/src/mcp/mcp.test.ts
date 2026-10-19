@@ -233,8 +233,8 @@ describe('training review', () => {
 
     await callTool(pat, 'session_log', {
       sets: [
-        { exerciseId, setIndex: 0, weightG: 100_000, reps: 5 },
-        { exerciseId, setIndex: 1, weightG: 100_000, reps: 5 },
+        { exerciseId, weightG: 100_000, reps: 5 },
+        { exerciseId, weightG: 100_000, reps: 5 },
       ],
     })
 
@@ -256,7 +256,7 @@ describe('training review', () => {
       'bodyweight_reps',
     )
     await callTool(pat, 'session_log', {
-      sets: [{ exerciseId, setIndex: 0, weightG: 20_000, reps: 6 }],
+      sets: [{ exerciseId, weightG: 20_000, reps: 6 }],
     })
 
     const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
@@ -271,7 +271,7 @@ describe('training review', () => {
     const pat = await mintPat(alice)
     const exerciseId = await createExercise(pat, 'Test Squat', 'quadriceps')
     await callTool(pat, 'session_log', {
-      sets: [{ exerciseId, setIndex: 0, weightG: 100_000, reps: 5 }],
+      sets: [{ exerciseId, weightG: 100_000, reps: 5 }],
     })
     await alice.wire('/auth/me', { method: 'PATCH', body: JSON.stringify({ weightUnit: 'lb' }) })
 
@@ -296,9 +296,9 @@ describe('training review', () => {
       // oxlint-disable-next-line no-await-in-loop -- three sessions, in order: what is under test.
       await callTool(pat, 'session_log', {
         sets: [
-          { exerciseId: pullUp, setIndex: 0, weightG: 20_000, reps: 6 },
-          { exerciseId: plank, setIndex: 0, durationS: 60 },
-          { exerciseId: squat, setIndex: 0, weightG: 100_000 + i * 2500, reps: 5 },
+          { exerciseId: pullUp, weightG: 20_000, reps: 6 },
+          { exerciseId: plank, durationS: 60 },
+          { exerciseId: squat, weightG: 100_000 + i * 2500, reps: 5 },
         ],
       })
     }
@@ -352,8 +352,8 @@ describe('logging a whole session', () => {
     const pat = await mintPat(alice)
     const result = await callTool(pat, 'session_log', {
       sets: [
-        { exerciseId: mine.id, setIndex: 0, weightG: 100_000, reps: 5 },
-        { exerciseId: secret.id, setIndex: 1, weightG: 100_000, reps: 5 },
+        { exerciseId: mine.id, weightG: 100_000, reps: 5 },
+        { exerciseId: secret.id, weightG: 100_000, reps: 5 },
       ],
     })
     expect(JSON.stringify(result.body)).toContain('No such exercise')

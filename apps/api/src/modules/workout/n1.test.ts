@@ -152,7 +152,7 @@ describe('reads do not N+1', () => {
       const { id } = expectContract(WorkoutSession, session.body)
       await alice.wire(`/sessions/${id}/logs`, {
         method: 'POST',
-        body: JSON.stringify({ exerciseId, setIndex: 0, reps: 8, weightG: 60_000 }),
+        body: JSON.stringify({ exerciseId, reps: 8, weightG: 60_000 }),
       })
     }
 

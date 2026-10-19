@@ -141,7 +141,6 @@ test('a set heavy enough to overflow int4 does not break the review', async () =
   await SessionService.logSet(caller, session.id, {
     exerciseId: shared.exerciseId,
     entryId: null,
-    setIndex: 0,
     weightG: 500_000,
     reps: 50,
     rpe: null,

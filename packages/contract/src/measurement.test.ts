@@ -50,11 +50,7 @@ describe('weight is bounded everywhere it appears', () => {
       { reps: null, weightG: overflow, rpe: null, durationS: null, distanceMm: null },
     ],
     ['WorkoutSetInput', WorkoutSetInput, { targetWeightG: overflow }],
-    [
-      'LogSetInput',
-      LogSetInput,
-      { exerciseId: crypto.randomUUID(), setIndex: 0, weightG: overflow },
-    ],
+    ['LogSetInput', LogSetInput, { exerciseId: crypto.randomUUID(), weightG: overflow }],
   ] as const)('%s rejects an int4 overflow', (_name, schema: z.ZodType, value) => {
     expect(schema.safeParse(value).success).toBe(false)
   })

@@ -80,15 +80,14 @@ async function logFirstDay(user: TestUser, workout: Workout): Promise<void> {
       })
     ).body,
   )
-  for (const setIndex of [0, 1, 2]) {
+  for (const reps of [8, 8, 8]) {
     await user.wire(`/sessions/${session.id}/logs`, {
       method: 'POST',
       body: JSON.stringify({
         exerciseId: bench.exerciseId,
         entryId: bench.id,
-        setIndex,
         weightG: kgToG(60),
-        reps: 8,
+        reps,
       }),
     })
   }

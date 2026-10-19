@@ -274,20 +274,28 @@ export async function fillLogs(fill: LogFill): Promise<void> {
     ), popular as (
       select id from exercises where owner_group_id = ${fill.sharedGroupId}::uuid
        order by name limit 1
-    ), plan_entries as (${entries})
+    ), plan_entries as (${entries}),
+    generated as (
+      select t.id as session_id, pe.id as entry_id,
+             case when i % 5 = 0 then p.id else l.id end as exercise_id,
+             i, t.rn, t.started_at
+        from target_sessions t
+        cross join generate_series(0, ${fill.perSession - 1}) i
+        cross join popular p
+        join library l on l.rn = (t.rn * 13 + i) % ${libraryCount}
+        join plan_entries pe on pe.rn = i % ${entryCount}
+    )
     insert into set_logs (session_id, entry_id, exercise_id, set_index, is_warmup,
                           weight_g, reps, rpe, logged_at)
-    select t.id, pe.id,
-           case when i % 5 = 0 then p.id else l.id end,
-           i % 5, i % 5 = 0,
-           40000 + ((t.rn + i) % 20) * 2500,
+    select session_id, entry_id, exercise_id,
+           -- Numbered within its series, as the server numbers a real set: one number per set in
+           -- (session, exercise, entry), NULL entries one series — set_logs_series_number_uq.
+           (row_number() over (partition by session_id, exercise_id, entry_id order by i))::int - 1,
+           i % 5 = 0,
+           40000 + ((rn + i) % 20) * 2500,
            5 + (i % 8),
            case when i % 3 = 0 then 7 + (i % 3) else null end,
-           t.started_at + ((i * 90) || ' seconds')::interval
-      from target_sessions t
-      cross join generate_series(0, ${fill.perSession - 1}) i
-      cross join popular p
-      join library l on l.rn = (t.rn * 13 + i) % ${libraryCount}
-      join plan_entries pe on pe.rn = i % ${entryCount}
+           started_at + ((i * 90) || ' seconds')::interval
+      from generated
   `)
 }

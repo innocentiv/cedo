@@ -8,7 +8,6 @@ import {
   type SetLog,
   type WorkoutEntry,
   exercisesInSession,
-  nextSetIndex,
 } from '@cedo/contract'
 import { ErrorNotice, Screen, Spinner, Text } from '../../../../src/ui/index.ts'
 import {
@@ -32,24 +31,18 @@ import { useSubmit } from '../../../../src/lib/use-submit.ts'
 /**
  * The one write this screen makes. Planned and ad-hoc sets differ only in whether they name a
  * prescribed entry — `entry_id` is nullable for exactly that reason — so they share a path rather
- * than each keeping a copy of the payload.
+ * than each keeping a copy of the payload. The set's number is the server's to give: it numbers
+ * within the series, under the session's lock, the same way for this screen and for an AI.
  */
 function useRecordSet(
   logSet: ReturnType<typeof useLogSet>,
   submit: ReturnType<typeof useSubmit>['submit'],
-  logs: readonly SetLog[],
 ) {
-  const record = (
-    exerciseId: string,
-    entryId: string | null,
-    setIndex: number,
-    values: Effort,
-  ): void => {
+  const record = (exerciseId: string, entryId: string | null, values: Effort): void => {
     void submit(async () => {
       await logSet.mutateAsync({
         exerciseId,
         entryId,
-        setIndex,
         weightG: values.weightG,
         reps: values.reps,
         rpe: null,
@@ -60,23 +53,12 @@ function useRecordSet(
     })
   }
 
-  // Each set is numbered within its series by `nextSetIndex`, never by counting — see its comment.
   return {
     adHoc: (exercise: SessionExercise, values: Effort) => {
-      record(
-        exercise.id,
-        null,
-        nextSetIndex(logs, { entryId: null, exerciseId: exercise.id }),
-        values,
-      )
+      record(exercise.id, null, values)
     },
     planned: (entry: WorkoutEntry, values: Effort) => {
-      record(
-        entry.exerciseId,
-        entry.id,
-        nextSetIndex(logs, { entryId: entry.id, exerciseId: entry.exerciseId }),
-        values,
-      )
+      record(entry.exerciseId, entry.id, values)
     },
   }
 }
@@ -127,7 +109,7 @@ export default function LiveSession(): React.JSX.Element {
   const removeLog = useRemoveLog(id)
   const finish = useUpdateSession(id)
   const { submit, busy, error } = useSubmit()
-  const record = useRecordSet(logSet, submit, session.data?.logs ?? NO_LOGS)
+  const record = useRecordSet(logSet, submit)
 
   const day = useMemo(
     () => workout.data?.days.find((d) => d.id === session.data?.dayId),

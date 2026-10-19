@@ -189,7 +189,9 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       title: 'Log a training session',
       description:
         'Record a whole, finished session in ONE call. All or nothing: if any set is invalid, ' +
-        'nothing is logged, so fix it and retry. Weights are in GRAMS. Give `workoutId` and ' +
+        'nothing is logged, so fix it and retry. Weights are in GRAMS. Sets are numbered for you, ' +
+        'per plan entry (or per exercise, without one), in the order you send them, warm-ups ' +
+        'included — send them in the order they were done. Give `workoutId` and ' +
         '`dayId` to tie it to a plan (then `entryId` may name the plan entry a set fulfils), or ' +
         'omit both for ad-hoc training.',
       inputSchema: SessionLogInput,

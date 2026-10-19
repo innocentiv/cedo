@@ -103,10 +103,14 @@ export const SessionUpdate = z.strictObject({
 })
 export type SessionUpdate = z.output<typeof SessionUpdate>
 
+/**
+ * One set as done. No `setIndex`: the server numbers every set within its series (`nextSetIndex`),
+ * so the app and an AI cannot number them two different ways. Strict, so a caller still sending
+ * one is told, not ignored.
+ */
 export const LogSetInput = z.strictObject({
   exerciseId: Id,
   entryId: Id.nullable().default(null),
-  setIndex: z.int().nonnegative().max(999),
   weightG: LoggedWeightG.nullable().default(null),
   reps: LoggedReps.nullable().default(null),
   rpe: Rpe.nullable().default(null),
@@ -147,7 +151,8 @@ export const sameSeries = (a: SeriesMember, b: SeriesMember): boolean =>
  * undo — log sets 1-3, undo set 2, log again, and there were two "Set 3" and no "Set 2" — because a
  * count does not know which one was removed. A number, once given, is never given again.
  *
- * The server numbers every set with this, under the session's lock; nothing else does.
+ * The server numbers every set with this — under the session's lock, or in a whole session's
+ * order sent — and nothing else does.
  */
 export const nextSetIndex = (
   logs: readonly (SeriesMember & { readonly setIndex: number })[],
