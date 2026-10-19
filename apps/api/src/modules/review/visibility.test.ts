@@ -151,8 +151,8 @@ test('a set heavy enough to overflow int4 does not break the review', async () =
   })
 
   const review = await trainingReview(caller, 4)
-  expect(review.muscleVolume.find((m) => m.muscle === 'quadriceps')?.volumeG).toBe(25_000_000)
+  expect(review.muscleWork.find((m) => m.muscle === 'quadriceps')?.liftedG).toBe(25_000_000)
 
   const sessions = await listSessions(caller, { limit: 5 })
-  expect(sessions.items[0]?.totalVolumeG).toBe(25_000_000)
+  expect(sessions.items[0]?.liftedG).toBe(25_000_000)
 })

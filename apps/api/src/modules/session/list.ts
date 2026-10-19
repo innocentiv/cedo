@@ -89,7 +89,7 @@ interface SummaryRow {
 
 function toSummary(
   r: SummaryRow,
-  total: { sets: number; volume: number } | undefined,
+  total: { sets: number; lifted: number } | undefined,
 ): WorkoutSessionSummary {
   return {
     id: r.session.id,
@@ -101,24 +101,25 @@ function toSummary(
     workoutName: r.workoutName,
     dayName: r.dayName,
     setCount: total?.sets ?? 0,
-    totalVolumeG: total?.volume ?? 0,
+    liftedG: total?.lifted ?? 0,
   }
 }
 
 /**
- * Set counts and volume for a whole page in ONE grouped query, never one per session. Warm-ups are
- * excluded from both — they are not work performed. See docs/adr/0012-progression-rules.md.
+ * Set counts and weight lifted for a whole page in ONE grouped query, never one per session.
+ * Warm-ups are excluded from both — they are not work performed. See
+ * docs/adr/0012-progression-rules.md.
  */
 async function totalsFor(sessionIds: string[]) {
-  if (sessionIds.length === 0) return new Map<string, { sets: number; volume: number }>()
+  if (sessionIds.length === 0) return new Map<string, { sets: number; lifted: number }>()
 
   const totals = await db
     .select({
       sessionId: setLogs.sessionId,
       sets: sql<number>`count(*) filter (where not ${setLogs.isWarmup})`.mapWith(Number),
-      volume:
-        // `::bigint` for the same reason as the review's volume sum: weight × reps overflows int4
-        // at loads the contract permits. See modules/review/service.ts.
+      lifted:
+        // `::bigint` for the same reason as the review's weight-lifted sum: weight × reps overflows
+        // int4 at loads the contract permits. See modules/review/service.ts.
         sql<number>`coalesce(sum(${setLogs.weightG}::bigint * ${setLogs.reps}) filter (where not ${setLogs.isWarmup}), 0)`.mapWith(
           Number,
         ),
@@ -127,5 +128,5 @@ async function totalsFor(sessionIds: string[]) {
     .where(inArray(setLogs.sessionId, sessionIds))
     .groupBy(setLogs.sessionId)
 
-  return new Map(totals.map((t) => [t.sessionId, { sets: t.sets, volume: t.volume }]))
+  return new Map(totals.map((t) => [t.sessionId, { sets: t.sets, lifted: t.lifted }]))
 }

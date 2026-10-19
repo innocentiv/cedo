@@ -41,8 +41,10 @@ function History({
             key={session.id}
             title={session.dayName ?? session.workoutName ?? 'Ad-hoc session'}
             subtitle={new Date(session.startedAt).toLocaleDateString()}
+            // Weight lifted, said as such: a session of planks lifted nothing, which is not
+            // the same as having done nothing.
             trailing={
-              session.totalVolumeG === 0 ? undefined : formatWeight(session.totalVolumeG, unit)
+              session.liftedG === 0 ? undefined : `${formatWeight(session.liftedG, unit)} lifted`
             }
             onPress={() => {
               router.push(`/today/session/${session.id}`)

@@ -156,6 +156,18 @@ export function historyLines(history: ExerciseHistory, unit: WeightUnit): string
 }
 
 /**
+ * `quadriceps: 12 sets, 1537.5 kg lifted (+20%)`. Work with no load — a plank, a run — is its sets
+ * alone: it used to read "0 kg", as if the muscle had not been trained.
+ */
+function muscleLine(m: TrainingReview['muscleWork'][number], unit: WeightUnit): string {
+  const sets = `${m.workingSets} set${m.workingSets === 1 ? '' : 's'}`
+  const lifted = m.liftedG === 0 ? '' : `, ${formatWeight(m.liftedG, unit)} lifted`
+  const change =
+    m.changePct === null ? 'no prior data' : `${m.changePct > 0 ? '+' : ''}${m.changePct}%`
+  return `${m.muscle}: ${sets}${lifted} (${change})`
+}
+
+/**
  * The coaching summary. Lives here with its siblings rather than inline in the tool, because a tool
  * handler calls one service and formats the result — it does not BE the formatter.
  * See docs/07-mcp.md.
@@ -170,18 +182,12 @@ export function reviewSummary(review: TrainingReview, weeks: number, unit: Weigh
           .map((d) => `${d.workout} / ${d.day}: ${d.sessions}x`)
           .join('\n  ')}`
 
-  const volume =
-    review.muscleVolume.length === 0
-      ? 'No working volume recorded.'
-      : `Volume by muscle (vs the preceding ${weeks} weeks):\n  ${review.muscleVolume
+  const work =
+    review.muscleWork.length === 0
+      ? 'No working sets recorded.'
+      : `Working sets by muscle, by its share of each exercise (vs the preceding ${weeks} weeks):\n  ${review.muscleWork
           .slice(0, 12)
-          .map((m) => {
-            const change =
-              m.changePct === null
-                ? 'no prior data'
-                : `${m.changePct > 0 ? '+' : ''}${m.changePct}%`
-            return `${m.muscle}: ${formatWeight(m.volumeG, unit)} (${change})`
-          })
+          .map((m) => muscleLine(m, unit))
           .join('\n  ')}`
 
   const stalled =
@@ -197,7 +203,7 @@ export function reviewSummary(review: TrainingReview, weeks: number, unit: Weigh
     '',
     days,
     '',
-    volume,
+    work,
     '',
     stalled,
   ].join('\n')

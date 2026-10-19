@@ -81,7 +81,12 @@ export const WorkoutSessionSummary = WorkoutSession.omit({ logs: true }).extend(
   workoutName: z.string().nullable(),
   dayName: z.string().nullable(),
   setCount: z.int().nonnegative(),
-  totalVolumeG: z.int().nonnegative(),
+  /**
+   * Weight × reps over its working sets, in grams. Work with no load — a plank, a run, an
+   * unweighted pull-up — adds nothing, so 0 is a session that lifted nothing, not one that did no
+   * work: `setCount` says that. See GLOSSARY.md, "Weight lifted".
+   */
+  liftedG: z.int().nonnegative(),
 })
 export type WorkoutSessionSummary = z.output<typeof WorkoutSessionSummary>
 

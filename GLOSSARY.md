@@ -65,6 +65,16 @@ _Avoid_: measure, metric
 The dimensions one set carries — prescribed as a target, or done as a log.
 _Avoid_: result, performance
 
+**Working sets per muscle**:
+The work a muscle got: every working set counted toward it by that muscle's share of the
+exercise's load. Counts every tracking mode alike, which weight lifted cannot.
+_Avoid_: volume per muscle, muscle volume
+
+**Weight lifted**:
+Weight × reps over working sets — what a session lifted. Work that carries no load (a plank, a run,
+an unweighted pull-up) adds nothing to it, so it is never the measure of whether a muscle trained.
+_Avoid_: volume, tonnage
+
 **Weight unit**:
 How a person reads and types weights: kilograms or pounds. Their own preference; it changes what
 they are shown, never what is stored.
@@ -82,8 +92,8 @@ A set that counts: it carries the prescription, and progression judges it.
 _Avoid_: main set, real set
 
 **Warm-up set**:
-A lighter ramp-up set before the working sets. It is not judged by progression and not counted as
-volume.
+A lighter ramp-up set before the working sets. It is not judged by progression, and counts toward
+neither working sets per muscle nor weight lifted.
 _Avoid_: ramp set, prep set
 
 ## Training

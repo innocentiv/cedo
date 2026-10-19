@@ -33,8 +33,9 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       title: 'Review recent training',
       description:
         'START HERE when asked about progress, consistency or what to change. Returns adherence ' +
-        '(sessions per week, streak, longest gap), which planned days are being skipped, volume ' +
-        'per muscle against the preceding period, and which exercises have stalled.',
+        '(sessions per week, streak, longest gap), which planned days are being skipped, working ' +
+        'sets per muscle (and weight lifted) against the preceding period, and which exercises ' +
+        'have stalled.',
       inputSchema: z.object({
         weeks: z.int().min(1).max(52).default(8).describe('How far back to look'),
       }),

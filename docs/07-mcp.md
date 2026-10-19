@@ -59,11 +59,14 @@ caller's own group.
 aggregation over data the API already exposes. It exists because the alternative is the model paging
 through every session and doing date arithmetic itself, which is slow, expensive in context, and a
 reliable source of quiet errors. One call returns adherence (sessions per week, streak, longest
-gap), which planned days are being skipped, volume per muscle against the preceding period, and
-which exercises have stalled.
+gap), which planned days are being skipped, working sets per muscle against the preceding period,
+and which exercises have stalled.
 
-Volume per muscle is what the load percentages are **for**: `weight × reps × (load_pct / 100)`,
-warm-ups excluded.
+The work per muscle is what the load percentages are **for**: each working set counts toward a
+muscle by `load_pct / 100` — a set of a 70/30 exercise is 0.7 of a set for one muscle and 0.3 for the
+other — warm-ups excluded. Sets, because they count every tracking mode alike: weight × reps, which
+it used to be, read a plank, a run or an unweighted pull-up as "0 kg". Weight × reps stays beside the
+sets as what was lifted, for loaded work only.
 
 `workout_progression` returns what `nextTarget()` proposes — the same pure function the logging
 screen uses, so the AI's advice and the app's hint can never diverge.

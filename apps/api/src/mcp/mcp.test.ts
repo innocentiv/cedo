@@ -281,7 +281,7 @@ describe('training review', () => {
   })
 
   /** Every effort reaches the AI as the app shows it. See `stalled.test.ts` for the history. */
-  test('a stalled movement reads in its own terms, and volume as a weight', async () => {
+  test('a stalled movement reads in its own terms, and a muscle’s work as sets', async () => {
     const pat = await mintPat(alice)
     const pullUp = await createExercise(
       pat,
@@ -307,8 +307,10 @@ describe('training review', () => {
     expect(review).toContain('Weighted Pull-up: 3 sessions, every set 6 × bodyweight +20 kg')
     expect(review).toContain('Plank: 3 sessions, every set 1:00')
     expect(review).not.toContain('Test Squat: 3 sessions')
-    // 5 × (100 + 102.5 + 105) kg.
-    expect(review).toContain('quadriceps: 1537.5 kg (no prior data)')
+    // Three sets, 5 × (100 + 102.5 + 105) kg lifted.
+    expect(review).toContain('quadriceps: 3 sets, 1537.5 kg lifted (no prior data)')
+    // A plank lifts nothing, and is still three sets of work — it used to read "0kg".
+    expect(review).toContain('rectus_abdominis: 3 sets (no prior data)')
   })
 })
 

@@ -364,7 +364,7 @@ describe('the session list', () => {
 
     const listed = expectContract(Page, (await alice.wire('/sessions')).body)
     expect(listed.items[0]?.setCount).toBe(2)
-    expect(listed.items[0]?.totalVolumeG).toBe(kgToG(60) * 16)
+    expect(listed.items[0]?.liftedG).toBe(kgToG(60) * 16)
   })
 
   test('is newest first', async () => {

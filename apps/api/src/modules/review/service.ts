@@ -38,13 +38,20 @@ export interface TrainingReview {
     readonly sessions: number
   }[]
   /**
-   * Volume attributed to each muscle by its share of the load — this is what the muscle
-   * percentages are FOR. Compared against the equivalent window immediately before. In grams, like
-   * every other weight here: converting is the formatter's job, through the contract.
+   * The work each muscle got, by its share of each exercise's load — this is what the muscle
+   * percentages are FOR — compared against the equivalent window immediately before.
+   *
+   * Measured in WORKING SETS: a set of a 70/30 exercise is 0.7 of a set for one muscle and 0.3 for
+   * the other. It used to be weight × reps alone, which a plank, a run or an unweighted pull-up
+   * cannot register: a muscle trained only by those read "0 kg", as if untrained. Sets count every
+   * tracking mode alike; weight × reps stays beside them as what was LIFTED, for loaded work.
    */
-  readonly muscleVolume: {
+  readonly muscleWork: {
     readonly muscle: string
-    readonly volumeG: number
+    /** To one decimal. What `changePct` compares. */
+    readonly workingSets: number
+    /** Weight × reps, in grams — 0 for work that carries no load. */
+    readonly liftedG: number
     readonly changePct: number | null
   }[]
   /**
@@ -77,7 +84,7 @@ export async function trainingReview(caller: Caller, weeks: number): Promise<Tra
     weeks,
     adherence: adherenceOf(sessions, weeks),
     dayBalance: await dayBalance(caller, since),
-    muscleVolume: await muscleVolume(caller, since, previousSince),
+    muscleWork: await muscleWork(caller, since, previousSince),
     stalled: await stalled(caller, since),
   }
 }
@@ -113,15 +120,15 @@ async function dayBalance(caller: Caller, since: Date): Promise<TrainingReview['
 }
 
 /**
- * `weight × reps × (load_pct / 100)`, summed per muscle. Warm-ups are excluded — they are not work.
- * One query for the current window and one for the window before it, so the trend is a comparison
- * rather than a number with no context.
+ * Per muscle: working sets, each counted by `load_pct / 100`, and `weight × reps × load_pct / 100`.
+ * Warm-ups are excluded — they are not work. One query for the current window and one for the
+ * window before it, so the trend is a comparison rather than a number with no context.
  */
-async function volumeBetween(caller: Caller, from: Date, to: Date) {
+async function workBetween(caller: Caller, from: Date, to: Date) {
   /**
    * The third branch of this review, held to the same rule as `stalled` and `dayBalance`. Weaker
    * than those — it reveals a muscle slug, not a name — but it reads the CURRENT `load_pct` of an
-   * exercise the caller may have lost access to, so their volume would shift to reflect an edit
+   * exercise the caller may have lost access to, so their work would shift to reflect an edit
    * they cannot see. The muscles carry their exercise's owner, so their relation alone is the
    * gate. Leaving one of three inconsistent is how the next session concludes the rule does not
    * apply here.
@@ -130,7 +137,8 @@ async function volumeBetween(caller: Caller, from: Date, to: Date) {
   return await db
     .select({
       muscle: exerciseMuscles.muscleSlug,
-      volume:
+      sets: sql<number>`sum(${exerciseMuscles.loadPct}) / 100.0`.mapWith(Number),
+      lifted:
         /**
          * `::bigint` on the first factor, or the PER-ROW product overflows int4 before the divide
          * ever happens: 500 kg × 50 reps × 100% is 2.5e9 against a 2.147e9 ceiling, and both those
@@ -158,14 +166,16 @@ async function volumeBetween(caller: Caller, from: Date, to: Date) {
     .groupBy(exerciseMuscles.muscleSlug)
 }
 
-async function muscleVolume(
+const oneDecimal = (n: number): number => Math.round(n * 10) / 10
+
+async function muscleWork(
   caller: Caller,
   since: Date,
   previousSince: Date,
-): Promise<TrainingReview['muscleVolume']> {
-  const current = await volumeBetween(caller, since, new Date())
+): Promise<TrainingReview['muscleWork']> {
+  const current = await workBetween(caller, since, new Date())
   const previous = new Map(
-    (await volumeBetween(caller, previousSince, since)).map((r) => [r.muscle, r.volume]),
+    (await workBetween(caller, previousSince, since)).map((r) => [r.muscle, r.sets]),
   )
 
   /**
@@ -173,20 +183,22 @@ async function muscleVolume(
    * trained hard last period and abandoned this one simply disappear — indistinguishable from never
    * having been trained, and precisely the regression the comparison exists to surface.
    */
-  const currentByMuscle = new Map(current.map((r) => [r.muscle, r.volume]))
+  const currentByMuscle = new Map(current.map((r) => [r.muscle, r]))
   const muscles = new Set([...currentByMuscle.keys(), ...previous.keys()])
 
   return [...muscles]
     .map((muscle) => {
-      const volume = currentByMuscle.get(muscle) ?? 0
+      const now = currentByMuscle.get(muscle)
+      const sets = now?.sets ?? 0
       const before = previous.get(muscle) ?? 0
       return {
         muscle,
-        volumeG: Math.round(volume),
-        changePct: before === 0 ? null : Math.round(((volume - before) / before) * 100),
+        workingSets: oneDecimal(sets),
+        liftedG: Math.round(now?.lifted ?? 0),
+        changePct: before === 0 ? null : Math.round(((sets - before) / before) * 100),
       }
     })
-    .toSorted((a, b) => b.volumeG - a.volumeG)
+    .toSorted((a, b) => b.workingSets - a.workingSets || b.liftedG - a.liftedG)
 }
 
 /** A set's measured dimensions, as columns — every one `DIMENSION_FIELDS` knows. */
