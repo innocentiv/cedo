@@ -160,7 +160,7 @@ export function historyLines(history: ExerciseHistory, unit: WeightUnit): string
  * alone: it used to read "0 kg", as if the muscle had not been trained.
  */
 function muscleLine(m: TrainingReview['muscleWork'][number], unit: WeightUnit): string {
-  const sets = `${m.workingSets} set${m.workingSets === 1 ? '' : 's'}`
+  const sets = `${m.weightedSets} set${m.weightedSets === 1 ? '' : 's'}`
   const lifted = m.liftedG === 0 ? '' : `, ${formatWeight(m.liftedG, unit)} lifted`
   const change =
     m.changePct === null ? 'no prior data' : `${m.changePct > 0 ? '+' : ''}${m.changePct}%`

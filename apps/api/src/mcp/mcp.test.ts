@@ -311,6 +311,8 @@ describe('training review', () => {
     expect(review).toContain('quadriceps: 3 sets, 1537.5 kg lifted (no prior data)')
     // A plank lifts nothing, and is still three sets of work — it used to read "0kg".
     expect(review).toContain('rectus_abdominis: 3 sets (no prior data)')
+    // The weighted pull-up lifted its added 20 kg, 6 reps a set, three times over.
+    expect(review).toContain('latissimus_dorsi: 3 sets, 360 kg lifted (no prior data)')
   })
 })
 

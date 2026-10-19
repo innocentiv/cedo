@@ -176,7 +176,7 @@ export const HOT_PATHS: readonly HotPath[] = [
   },
   {
     name: 'GET /sessions (list)',
-    why: 'The landing screen. Set counts and volume must be one grouped query for the whole page.',
+    why: 'The landing screen. Set counts and weight lifted must be one grouped query for the page.',
     dimension: 'page size (5 vs 50)',
     maxQueries: 2,
     budgetMs: 60,

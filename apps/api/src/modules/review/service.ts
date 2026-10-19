@@ -48,8 +48,11 @@ export interface TrainingReview {
    */
   readonly muscleWork: {
     readonly muscle: string
-    /** To one decimal. What `changePct` compares. */
-    readonly workingSets: number
+    /**
+     * Working sets, each counted by this muscle's share of the exercise's load — so fractional: a
+     * set of a 70/30 exercise is 0.7 here. To one decimal; `changePct` compares the unrounded sums.
+     */
+    readonly weightedSets: number
     /** Weight × reps, in grams — 0 for work that carries no load. */
     readonly liftedG: number
     readonly changePct: number | null
@@ -193,12 +196,17 @@ async function muscleWork(
       const before = previous.get(muscle) ?? 0
       return {
         muscle,
-        workingSets: oneDecimal(sets),
+        weightedSets: oneDecimal(sets),
         liftedG: Math.round(now?.lifted ?? 0),
         changePct: before === 0 ? null : Math.round(((sets - before) / before) * 100),
       }
     })
-    .toSorted((a, b) => b.workingSets - a.workingSets || b.liftedG - a.liftedG)
+    .toSorted(
+      (a, b) =>
+        b.weightedSets - a.weightedSets ||
+        b.liftedG - a.liftedG ||
+        a.muscle.localeCompare(b.muscle),
+    )
 }
 
 /** A set's measured dimensions, as columns — every one `DIMENSION_FIELDS` knows. */

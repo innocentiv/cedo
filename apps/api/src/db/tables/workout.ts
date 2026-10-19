@@ -95,7 +95,7 @@ export const workoutSets = pgTable(
     entryId: uuid('entry_id').notNull(),
     ...childOwner(),
     index: smallint('index').notNull(),
-    /** Ramp-up sets. Excluded from progression and from volume totals. */
+    /** Ramp-up sets. Excluded from progression, from working sets per muscle and weight lifted. */
     isWarmup: boolean('is_warmup').notNull().default(false),
     targetReps: smallint('target_reps'),
     targetWeightG: integer('target_weight_g'),

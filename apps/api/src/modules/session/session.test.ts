@@ -347,7 +347,7 @@ describe('sessions are private', () => {
 })
 
 describe('the session list', () => {
-  test('summarises sets and volume, excluding warm-ups', async () => {
+  test('summarises sets and weight lifted, excluding warm-ups', async () => {
     const exerciseId = await anExercise(alice)
     const session = expectContract(WorkoutSession, (await startSession(alice)).body)
 

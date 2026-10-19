@@ -35,7 +35,7 @@ export const WorkoutSetInput = z.strictObject({
   targetRpe: Rpe.nullable().default(null),
   targetDurationS: TargetDurationS.nullable().default(null),
   targetDistanceMm: TargetDistanceMm.nullable().default(null),
-  /** Ramp-up sets. Excluded from progression and from volume totals. */
+  /** Ramp-up sets. Excluded from progression, from working sets per muscle and weight lifted. */
   isWarmup: z.boolean().default(false),
 })
 export type WorkoutSetInput = z.output<typeof WorkoutSetInput>

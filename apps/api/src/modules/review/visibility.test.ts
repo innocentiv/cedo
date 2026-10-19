@@ -125,8 +125,8 @@ test('transfer answers 404 for a workout you cannot edit, naming nothing', async
 })
 
 /**
- * Regression: the volume sums multiplied int4 by int2s before dividing, so the PER-ROW product
- * overflowed and Postgres raised `integer out of range`.
+ * Regression: the weight-lifted sums multiplied int4 by int2s before dividing, so the PER-ROW
+ * product overflowed and Postgres raised `integer out of range`.
  *
  * A 500 kg sled for 50 reps is inside `MAX_WEIGHT_G` and `MAX_REPS`, so the contract accepts it and
  * the review then failed permanently for that user — for the whole window and the one before it —
