@@ -65,7 +65,10 @@ export async function history(
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
     .innerJoin(recentSessions, eq(sql`recent.id`, setLogs.sessionId))
     .where(eq(setLogs.exerciseId, exerciseId))
-    .orderBy(desc(workoutSessions.startedAt), asc(setLogs.setIndex))
+    // In the order performed. Not by number alone: a number counts within its SERIES, so two
+    // series of one exercise in a session — two plan entries, or planned and extra sets — share
+    // numbers, and ordered by number they interleaved arbitrarily.
+    .orderBy(desc(workoutSessions.startedAt), asc(setLogs.loggedAt), asc(setLogs.setIndex))
 
   return { exerciseId, tracking, sessions: groupIntoSessions(rows) }
 }

@@ -1,4 +1,4 @@
-import { type SQL, and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, sql } from 'drizzle-orm'
 import type {
   LogSetInput,
   LoggedExercise,
@@ -8,13 +8,13 @@ import type {
   SetLog,
   WorkoutSession,
 } from '@cedo/contract'
-import { nextSetIndex } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises, visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
 import { conflict, invalid, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { assertLoggable } from './loggable.ts'
+import { nextNumber, nowPlusMicros, numberedRows } from './numbering.ts'
 
 /**
  * Sessions are PERSONAL. They are not `ownable()` — they belong to a `user_id` directly and are
@@ -99,27 +99,6 @@ async function assertStartable(caller: Caller, input: SessionStart): Promise<voi
   }
 }
 
-// One INSERT shares one `now()`, and `get` orders logs by `logged_at` then `set_index`, so equal
-// timestamps read back interleaved — squat 1, bench 1, squat 2. `logWhole` spaces them instead.
-const nowPlusMicros = (n: number) => sql<Date>`now() + ${n}::integer * interval '1 microsecond'`
-
-/**
- * A whole session's rows, in the order sent: each set numbered within its series — a new session
- * has nothing before them — and stamped a microsecond after the last, so they read back as sent.
- */
-function rowsInOrder(sessionId: string, sets: readonly LogSetInput[]) {
-  const rows: (LogSetInput & { sessionId: string; setIndex: number; loggedAt: SQL<Date> })[] = []
-  for (const set of sets) {
-    rows.push({
-      ...set,
-      sessionId,
-      setIndex: nextSetIndex(rows, set),
-      loggedAt: nowPlusMicros(rows.length),
-    })
-  }
-  return rows
-}
-
 /**
  * A whole, finished session in ONE transaction — `session_log` over MCP. Everything is validated
  * before anything is written, so one bad set logs nothing and a retry cannot duplicate the rest.
@@ -141,7 +120,7 @@ export async function logWhole(caller: Caller, input: SessionLogInput): Promise<
       })
       .returning({ id: workoutSessions.id })
     if (created === undefined) throw new Error('Could not record the session')
-    await tx.insert(setLogs).values(rowsInOrder(created.id, input.sets)).catch(rethrowMissingEntry)
+    await tx.insert(setLogs).values(numberedRows(created.id, input.sets)).catch(rethrowMissingEntry)
     return created.id
   })
 
@@ -244,19 +223,10 @@ export async function logSet(
     if (locked === undefined) throw notFound('session')
     if (locked.endedAt !== null) throw conflict('That session has already been finished')
 
-    // Numbered here, under the lock, so two devices logging at once cannot take the same number.
-    // A series never spans exercises, so this one's logs are all that need reading.
-    const logged = await tx
-      .select({
-        entryId: setLogs.entryId,
-        exerciseId: setLogs.exerciseId,
-        setIndex: setLogs.setIndex,
-      })
-      .from(setLogs)
-      .where(and(eq(setLogs.sessionId, sessionId), eq(setLogs.exerciseId, input.exerciseId)))
+    const setIndex = await nextNumber(tx, caller, { id: sessionId, ...session }, input)
     const [created] = await tx
       .insert(setLogs)
-      .values({ sessionId, ...input, setIndex: nextSetIndex(logged, input) })
+      .values({ sessionId, ...input, setIndex })
       .returning()
       .catch(rethrowMissingEntry)
     if (created === undefined) throw new Error('Could not record the set')

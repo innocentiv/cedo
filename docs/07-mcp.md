@@ -118,7 +118,9 @@ in one call, because the alternative is `1 + N` round trips for one workout. The
 `session_start`/`session_log_set`/`session_finish` triple, because no caller wants one.
 
 A task-shaped tool is still ONE service call: `session_log` is `SessionService.logWhole`, one
-transaction, all or nothing. Its first version looped over `logSet` inside the tool — domain logic
+transaction, all or nothing. It numbers the sets itself, per plan entry or exercise in the order
+sent — the model sends no `setIndex`, and is refused if it does, so it cannot number them
+differently from the app. Its first version looped over `logSet` inside the tool — domain logic
 in a handler, and a failure part way left a session that was never finished, which the AI's
 natural retry then logged a second time.
 

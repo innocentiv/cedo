@@ -288,8 +288,7 @@ export async function fillLogs(fill: LogFill): Promise<void> {
     insert into set_logs (session_id, entry_id, exercise_id, set_index, is_warmup,
                           weight_g, reps, rpe, logged_at)
     select session_id, entry_id, exercise_id,
-           -- Numbered within its series, as the server numbers a real set: one number per set in
-           -- (session, exercise, entry), NULL entries one series — set_logs_series_number_uq.
+           -- One number per set in its series (session, exercise, entry), as a real session has.
            (row_number() over (partition by session_id, exercise_id, entry_id order by i))::int - 1,
            i % 5 = 0,
            40000 + ((rn + i) % 20) * 2500,

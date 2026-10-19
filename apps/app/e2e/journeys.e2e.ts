@@ -362,6 +362,17 @@ test(
         await page.waitFor('session-logs')
         expect(await page.exists('finish-session')).toBe(true)
         expect(await page.text('session-screen')).toContain('unavailable')
+        // The squat logged against the lost plan still counts: the session goes on as one without a
+        // plan, not with "0 done" above "set 1" and a second "set 1" to come.
+        await page.waitFor(`adhoc-${squat.id}-done`)
+        expect(await page.text(`adhoc-${squat.id}-done`)).toBe('1 done')
+        await page.fill(`adhoc-${squat.id}-weight`, '100')
+        await page.fill(`adhoc-${squat.id}-reps`, '5')
+        await page.click(`[data-testid="adhoc-${squat.id}-log"]`)
+        await page.until(
+          async () => await loggedLines(page),
+          (lines) => lines.includes('Barbell Back Squat · set 2'),
+        )
       },
       { allowErrors: [/No such workout/u] },
     )

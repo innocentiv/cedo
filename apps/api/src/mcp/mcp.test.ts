@@ -317,6 +317,29 @@ describe('training review', () => {
 })
 
 describe('logging a whole session', () => {
+  /** The server numbers the sets; a model still numbering its own is told so, not ignored. */
+  test('a set that names its own number is refused, and nothing is logged', async () => {
+    const pat = await mintPat(alice)
+    const mine = expectContract(
+      Exercise,
+      (
+        await alice.wire('/exercises', {
+          method: 'POST',
+          body: JSON.stringify({ name: 'Mine', muscles: [{ muscle: 'quadriceps', loadPct: 100 }] }),
+        })
+      ).body,
+    )
+    const { body } = await callTool(pat, 'session_log', {
+      sets: [{ exerciseId: mine.id, setIndex: 0, reps: 5 }],
+    })
+    expect(body.result?.isError ?? body.error !== undefined).toBe(true)
+    const sessions = expectContract(
+      z.object({ items: z.array(z.unknown()) }),
+      (await alice.wire('/sessions')).body,
+    )
+    expect(sessions.items).toHaveLength(0)
+  })
+
   /**
    * All or nothing. It used to start the session, log set by set, and finish — so a bad set part
    * way through left a session that was never finished, and the AI's natural retry logged the

@@ -181,7 +181,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     maxQueries: 2,
     budgetMs: 60,
     noSeqScan: ['workout_sessions', 'set_logs'],
-    indexes: ['workout_sessions_user_time_idx', 'set_logs_series_number_uq'],
+    indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
     ordered: ['workout_sessions'],
     run: async (fixtures, size) => await listSessions(fixtures.large.caller, { limit: PAGE[size] }),
   },
@@ -193,7 +193,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     maxQueries: 4,
     budgetMs: 60,
     noSeqScan: ['workout_sessions', 'set_logs'],
-    indexes: ['workout_sessions_user_time_idx', 'set_logs_series_number_uq'],
+    indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
     ordered: ['workout_sessions'],
     run: async (fixtures, size) => {
       const caller = fixtures.large.caller
@@ -211,7 +211,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     maxQueries: 2,
     budgetMs: 60,
     noSeqScan: ['set_logs', 'exercises'],
-    indexes: ['set_logs_series_number_uq'],
+    indexes: ['set_logs_session_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
       return await sessionService.get(profile.caller, profile.sessionId)
@@ -224,7 +224,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     maxQueries: 2,
     budgetMs: 80,
     noSeqScan: ['set_logs', 'workout_sessions'],
-    indexes: ['workout_sessions_user_time_idx', 'set_logs_series_number_uq'],
+    indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
       return await history(profile.caller, profile.exerciseId, { limit: 20 })
@@ -236,8 +236,9 @@ export const HOT_PATHS: readonly HotPath[] = [
       'The one write a user repeats dozens of times an hour, mid-workout, on a phone. It is also ' +
       'the only guarded path that mutates, so its plans are read without ANALYZE.',
     dimension: 'sets already logged in the session (9 vs 60)',
-    // Four, plus reading the set's series under the lock to number it.
-    maxQueries: 5,
+    // Four, plus reading the set's series under the lock to number it — and, in a session with a
+    // plan, which of its entries the caller can still reach.
+    maxQueries: 6,
     budgetMs: 40,
     noSeqScan: ['workout_sessions', 'set_logs'],
     indexes: [],
@@ -262,7 +263,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     maxQueries: 5,
     budgetMs: 400,
     noSeqScan: ['set_logs', 'workout_sessions'],
-    indexes: ['workout_sessions_user_time_idx', 'set_logs_series_number_uq'],
+    indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
       return await trainingReview(profile.caller, 8)

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import {
   type SeriesMember,
   type SetLog,
+  asSeen,
   exercisesInSession,
   nextSetIndex,
   workingSetsDone,
@@ -50,6 +51,21 @@ describe('the next number in a series', () => {
   test('warm-ups take their place in the same sequence', () => {
     const logs = [{ ...heavy, setIndex: 0, isWarmup: true }, ...logged(heavy, 1)]
     expect(nextSetIndex(logs, heavy)).toBe(2)
+  })
+})
+
+describe('a set whose plan entry is gone', () => {
+  /** A lost plan: the squat logged against it is still set 1, and the next one is set 2. */
+  test('counts as logged with no entry, once the entry is out of reach', () => {
+    const logs = logged(heavy, 0)
+    expect(nextSetIndex(asSeen(logs, new Set()), adHoc)).toBe(1)
+    expect(workingSetsDone(asSeen(logs, new Set()), adHoc)).toBe(1)
+  })
+
+  test('a reachable entry keeps its series', () => {
+    const logs = logged(heavy, 0)
+    expect(nextSetIndex(asSeen(logs, new Set([heavyEntry])), adHoc)).toBe(0)
+    expect(nextSetIndex(asSeen(logs, new Set([heavyEntry])), heavy)).toBe(1)
   })
 })
 

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test } from 'bun:test'
 import {
   Exercise,
   ExerciseHistory,
+  GroupMembership,
   ProgressionSuggestion,
   SessionLogInput,
   SetLog,
@@ -14,7 +15,8 @@ import {
 import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../../db/client.ts'
-import { setLogs, workoutSessions } from '../../db/schema.ts'
+import { seedLibrary } from '../../db/seed.ts'
+import { workoutSessions } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 import * as SessionService from './service.ts'
@@ -450,7 +452,6 @@ describe('exercise history', () => {
   })
 
   test("does not include another user's logs for a shared exercise", async () => {
-    const { seedLibrary } = await import('../../db/seed.ts')
     await seedLibrary(h.groupId, h.systemUserId)
     const shared = expectContract(page(Exercise), (await alice.wire('/exercises?limit=1')).body)
       .items[0]
@@ -702,19 +703,104 @@ describe('numbering sets', () => {
     })
     expect(res.status).toBe(422)
   })
+})
 
-  /** The backstop: if numbering ever broke, a duplicate would fail loudly, not land. */
-  test('the database refuses a second set with the same number in its series', async () => {
+describe('a plan edit after sets were logged', () => {
+  /**
+   * Removing an entry from a plan keeps its logs, detached (`entry_id` set null). They must not
+   * collide with the session's sets of that exercise logged without an entry.
+   */
+  /**
+   * Regression: a unique constraint on (session, exercise, entry, number) made this plan save a 500 —
+   * the removed entry's sets, detached, collided with the ad-hoc sets of the same exercise.
+   */
+  test('removing an entry whose sets share numbers with ad-hoc sets of its exercise still saves', async () => {
     const exerciseId = await anExercise(alice)
-    const { id } = expectContract(WorkoutSession, (await startSession(alice)).body)
-    await logTo(id, { exerciseId, reps: 5 })
-    const duplicate = await db
-      .insert(setLogs)
-      .values({ sessionId: id, exerciseId, entryId: null, setIndex: 0, reps: 5 })
-      .then(
-        () => null,
-        (error: unknown) => error,
-      )
-    expect(duplicate).toMatchObject({ cause: { code: '23505' } })
+    const workout = await aPlannedWorkout(alice, exerciseId)
+    const day = workout.days[0]
+    const entry = day?.entries[0]
+    if (day === undefined || entry === undefined) throw new Error('the workout has no entry')
+    const { id } = expectContract(
+      WorkoutSession,
+      (await startSession(alice, { workoutId: workout.id, dayId: day.id })).body,
+    )
+    for (const body of [
+      { exerciseId, entryId: entry.id, reps: 8 },
+      { exerciseId, reps: 8 },
+    ]) {
+      await alice.wire(`/sessions/${id}/logs`, { method: 'POST', body: JSON.stringify(body) })
+    }
+
+    const saved = await alice.wire(`/workouts/${workout.id}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({ days: [{ id: day.id, name: day.name, entries: [] }] }),
+    })
+    expect(saved.status).toBe(200)
+
+    // Both sets are now the exercise's entry-free series; the next one numbers after them.
+    const next = expectContract(
+      SetLog,
+      (
+        await alice.wire(`/sessions/${id}/logs`, {
+          method: 'POST',
+          body: JSON.stringify({ exerciseId, reps: 8 }),
+        })
+      ).body,
+    )
+    expect(next.setIndex).toBe(1)
+  })
+})
+
+describe('a session whose plan is out of reach', () => {
+  /**
+   * The plan behind a session can become unreachable mid-workout — the lifter is removed from the
+   * group it lives in. Their sets against it count as logged with no entry, so the session goes on
+   * like one without a plan: the squat logged against the plan is set 1, and the next is set 2.
+   */
+  test('goes on numbering its sets after the ones logged against the plan', async () => {
+    await seedLibrary(h.groupId, h.systemUserId)
+    const squat = expectContract(
+      z.object({ items: z.array(Exercise) }),
+      (await bob.wire('/exercises?q=Back%20Squat&limit=1')).body,
+    ).items[0]
+    if (squat === undefined) throw new Error('the library has no Back Squat')
+    const squad = expectContract(
+      GroupMembership,
+      (await alice.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Squad' }) }))
+        .body,
+    )
+    await alice.wire(`/groups/${squad.id}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ username: 'bob', role: 'reader' }),
+    })
+    const workout = await aPlannedWorkout(alice, squat.id)
+    await alice.wire(`/workouts/${workout.id}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: squad.id }),
+    })
+    const day = workout.days[0]
+    const entry = day?.entries[0]
+    if (day === undefined || entry === undefined) throw new Error('the workout has no entry')
+
+    const { id } = expectContract(
+      WorkoutSession,
+      (await startSession(bob, { workoutId: workout.id, dayId: day.id })).body,
+    )
+    await bob.wire(`/sessions/${id}/logs`, {
+      method: 'POST',
+      body: JSON.stringify({ exerciseId: squat.id, entryId: entry.id, reps: 5 }),
+    })
+    await alice.wire(`/groups/${squad.id}/members/${bob.userId}`, { method: 'DELETE' })
+
+    const next = expectContract(
+      SetLog,
+      (
+        await bob.wire(`/sessions/${id}/logs`, {
+          method: 'POST',
+          body: JSON.stringify({ exerciseId: squat.id, reps: 5 }),
+        })
+      ).body,
+    )
+    expect(next.setIndex).toBe(1)
   })
 })
