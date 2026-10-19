@@ -6,9 +6,7 @@ import {
   type Exercise,
   type SessionExercise,
   type SetLog,
-  type Workout,
   type WorkoutEntry,
-  asSeen,
   exercisesInSession,
 } from '@cedo/contract'
 import { ErrorNotice, Screen, Spinner, Text } from '../../../../src/ui/index.ts'
@@ -96,17 +94,6 @@ function useAdHocExercises(logs: readonly SetLog[]) {
   }
 }
 
-/**
- * The logs as their series see them, for the "N done" counts: a set whose plan entry this screen
- * cannot reach — the plan was lost — counts as one logged with none, as the server numbers it.
- */
-function useSeenLogs(logs: readonly SetLog[], plan: Workout | undefined): SetLog[] {
-  return useMemo(
-    () => asSeen(logs, new Set(plan?.days.flatMap((d) => d.entries.map((e) => e.id)) ?? [])),
-    [logs, plan],
-  )
-}
-
 export default function LiveSession(): React.JSX.Element {
   // `[id]`, not `[sessionId]`: route filenames are kebab-case like every other file, and a
   // camelCase segment cannot be spelled that way.
@@ -133,7 +120,6 @@ export default function LiveSession(): React.JSX.Element {
     [progression.data],
   )
   const adHoc = useAdHocExercises(session.data?.logs ?? NO_LOGS)
-  const seen = useSeenLogs(session.data?.logs ?? NO_LOGS, workout.data)
 
   if (session.error !== null) {
     return (
@@ -197,13 +183,13 @@ export default function LiveSession(): React.JSX.Element {
           exercises={adHoc.exercises}
           onAdd={adHoc.startPicking}
           onLog={record.adHoc}
-          logs={seen}
+          logs={logs}
           busy={logSet.isPending}
         />
       ) : (
         <PlannedDay
           day={day}
-          logs={seen}
+          logs={logs}
           suggestions={suggestions}
           busy={logSet.isPending}
           onLog={record.planned}

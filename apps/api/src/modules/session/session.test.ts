@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import {
+  ApiError,
   Exercise,
   ExerciseHistory,
   GroupMembership,
+  MAX_SET_INDEX,
   ProgressionSuggestion,
   SessionLogInput,
   SetLog,
@@ -16,7 +18,7 @@ import { eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '../../db/client.ts'
 import { seedLibrary } from '../../db/seed.ts'
-import { workoutSessions } from '../../db/schema.ts'
+import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 import * as SessionService from './service.ts'
@@ -707,12 +709,9 @@ describe('numbering sets', () => {
 
 describe('a plan edit after sets were logged', () => {
   /**
-   * Removing an entry from a plan keeps its logs, detached (`entry_id` set null). They must not
-   * collide with the session's sets of that exercise logged without an entry.
-   */
-  /**
-   * Regression: a unique constraint on (session, exercise, entry, number) made this plan save a 500 —
-   * the removed entry's sets, detached, collided with the ad-hoc sets of the same exercise.
+   * Removing an entry from a plan keeps its logs, detached (`entry_id` set null), in their
+   * exercise's entry-free series. Regression: a unique constraint on (session, exercise, entry,
+   * number) made this plan save a 500 — the detached sets collided with the ad-hoc ones.
    */
   test('removing an entry whose sets share numbers with ad-hoc sets of its exercise still saves', async () => {
     const exerciseId = await anExercise(alice)
@@ -769,15 +768,17 @@ describe('a session whose plan is out of reach', () => {
       (await alice.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Squad' }) }))
         .body,
     )
-    await alice.wire(`/groups/${squad.id}/members`, {
+    const joined = await alice.wire(`/groups/${squad.id}/members`, {
       method: 'POST',
       body: JSON.stringify({ username: 'bob', role: 'reader' }),
     })
+    expect(joined.status).toBe(200)
     const workout = await aPlannedWorkout(alice, squat.id)
-    await alice.wire(`/workouts/${workout.id}/transfer`, {
+    const moved = await alice.wire(`/workouts/${workout.id}/transfer`, {
       method: 'POST',
       body: JSON.stringify({ toGroupId: squad.id }),
     })
+    expect(moved.status).toBe(200)
     const day = workout.days[0]
     const entry = day?.entries[0]
     if (day === undefined || entry === undefined) throw new Error('the workout has no entry')
@@ -786,11 +787,19 @@ describe('a session whose plan is out of reach', () => {
       WorkoutSession,
       (await startSession(bob, { workoutId: workout.id, dayId: day.id })).body,
     )
-    await bob.wire(`/sessions/${id}/logs`, {
+    const planned = await bob.wire(`/sessions/${id}/logs`, {
       method: 'POST',
       body: JSON.stringify({ exerciseId: squat.id, entryId: entry.id, reps: 5 }),
     })
-    await alice.wire(`/groups/${squad.id}/members/${bob.userId}`, { method: 'DELETE' })
+    expect(planned.status).toBe(200)
+    const removed = await alice.wire(`/groups/${squad.id}/members/${bob.userId}`, {
+      method: 'DELETE',
+    })
+    expect(removed.status).toBe(200)
+
+    // The set logged against the lost plan now reads as logged with none — the series it counts in.
+    const read = expectContract(WorkoutSession, (await bob.wire(`/sessions/${id}`)).body)
+    expect(read.logs.map((l) => [l.setIndex, l.entryId])).toEqual([[0, null]])
 
     const next = expectContract(
       SetLog,
@@ -803,4 +812,28 @@ describe('a session whose plan is out of reach', () => {
     )
     expect(next.setIndex).toBe(1)
   })
+})
+
+/** A series is numbered to `MAX_SET_INDEX`; one past it is refused, not stored past the contract. */
+test('a set past the most a series holds is refused', async () => {
+  const exerciseId = await anExercise(alice)
+  const { id } = expectContract(WorkoutSession, (await startSession(alice)).body)
+  await db.insert(setLogs).values(
+    Array.from({ length: MAX_SET_INDEX + 1 }, (_, setIndex) => ({
+      sessionId: id,
+      exerciseId,
+      setIndex,
+      reps: 5,
+    })),
+  )
+  const res = await alice.wire(`/sessions/${id}/logs`, {
+    method: 'POST',
+    body: JSON.stringify({ exerciseId, reps: 5 }),
+  })
+  // Refused by the numbering, before the insert — not stored, then failing the response contract,
+  // which is ALSO a 422 and is what happened without the check: the message tells them apart.
+  expect(res.status).toBe(422)
+  expect(expectContract(ApiError, res.body).error.message).toBe('A series holds at most 1000 sets')
+  const read = expectContract(WorkoutSession, (await alice.wire(`/sessions/${id}`)).body)
+  expect(read.logs).toHaveLength(MAX_SET_INDEX + 1)
 })

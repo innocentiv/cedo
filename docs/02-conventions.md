@@ -16,6 +16,7 @@ though it were written at once.
   | `service.ts`     | All business logic. Functions taking `(caller, input)`; reads through visible relations | Any HTTP concept; a raw owned table |
   | `lifecycle.ts`   | The module's kind declared to the shared ownable lifecycle (`modules/ownable/`): its name, relation and hooks | A raw owned table — lint refuses it, as anywhere outside `db/` and `write*.ts` |
   | `write*.ts`      | The statements that change owned rows, and the guards that must share their transaction | A statement on an owned table without `editable()` |
+  | `<concept>.ts`   | One part of the service, named for what it decides — `plan.ts`, `references.ts`, `loggable.ts`, `numbering.ts` — when the service grows past one file | Any HTTP concept; a raw owned table; a vague name |
   | `<name>.test.ts` | Unit + integration tests, colocated                           | —                  |
 
 - **Never create a `utils.ts`.** Name the file after what it does (`password.ts`, `token.ts`).

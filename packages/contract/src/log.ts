@@ -20,15 +20,22 @@ import { Id, PaginationQuery, Timestamp } from './primitives.ts'
  * it may no longer load, or from exercises picked before a reload.
  */
 export const LoggedExercise = Exercise.pick({ name: true, tracking: true })
+
+/** The highest number a set takes in its series: a thousand sets, which no session approaches. */
+export const MAX_SET_INDEX = 999
 export type LoggedExercise = z.output<typeof LoggedExercise>
 
 export const SetLog = z.object({
   id: Id,
-  /** The prescribed set this fulfils, when the session came from a workout day. */
+  /**
+   * The prescribed set this fulfils, when the session came from a workout day — as the reader sees
+   * it: null once that entry is gone from the plan or out of their reach, like a set logged without
+   * one. That is the series the set now counts in. See GLOSSARY.md, "Series".
+   */
   entryId: Id.nullable(),
   exerciseId: Id,
   exercise: LoggedExercise.nullable(),
-  setIndex: z.int().nonnegative().max(999),
+  setIndex: z.int().nonnegative().max(MAX_SET_INDEX),
   weightG: LoggedWeightG.nullable(),
   reps: LoggedReps.nullable(),
   rpe: Rpe.nullable(),
@@ -142,25 +149,6 @@ export interface SeriesMember {
   readonly exerciseId: string
 }
 
-/**
- * The logs as the caller's series see them: a set whose plan entry is GONE counts as one logged with
- * none. Gone is removed from the plan — its `entryId` is already null — or out of the caller's reach,
- * which only the caller's reachable entries can say. A session whose plan was lost goes on like one
- * without a plan: its squat set 1 is still set 1, and the next squat is set 2, not another "set 1".
- */
-export function asSeen<L extends SeriesMember>(
-  logs: readonly L[],
-  reachableEntryIds: ReadonlySet<string>,
-): L[] {
-  const seen: L[] = []
-  for (const log of logs) {
-    seen.push(
-      log.entryId === null || reachableEntryIds.has(log.entryId) ? log : { ...log, entryId: null },
-    )
-  }
-  return seen
-}
-
 export const sameSeries = (a: SeriesMember, b: SeriesMember): boolean =>
   a.entryId === null ? b.entryId === null && a.exerciseId === b.exerciseId : a.entryId === b.entryId
 
@@ -168,10 +156,11 @@ export const sameSeries = (a: SeriesMember, b: SeriesMember): boolean =>
  * The index the next set of `member`'s series takes: one past the highest logged in it, warm-ups
  * included — one sequence, in the order performed. Not a count: counting reused an index after an
  * undo — log sets 1-3, undo set 2, log again, and there were two "Set 3" and no "Set 2" — because a
- * count does not know which one was removed. A number, once given, is never given again.
+ * count does not know which one was removed. So a number below the highest is never given again;
+ * undoing the LAST set frees its number, and the next set takes it, as a correction would.
  *
- * The server numbers every set with this — under the session's lock, over `asSeen` logs, or in a
- * whole session's order sent — and nothing else does. The lock is what keeps a number unique: a
+ * The server numbers every set with this — under the session's lock, over the logs as the caller
+ * sees them, or in a whole session's order sent — and nothing else does. The lock is what keeps a number unique: a
  * database constraint could not, because an entry can be removed from a plan underneath its logs,
  * and those logs then join the exercise's entry-free series with the numbers they already had.
  */

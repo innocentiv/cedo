@@ -14,7 +14,8 @@ import { visibleExercises, visibleWorkoutDays, visibleWorkouts } from '../../db/
 import { conflict, invalid, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { assertLoggable } from './loggable.ts'
-import { nextNumber, nowPlusMicros, numberedRows } from './numbering.ts'
+import { nextNumber, numberedInOrder } from './numbering.ts'
+import { planEntries } from '../workout/plan.ts'
 
 /**
  * Sessions are PERSONAL. They are not `ownable()` — they belong to a `user_id` directly and are
@@ -26,9 +27,10 @@ export const ownedBy = (caller: Caller) => eq(workoutSessions.userId, caller.use
 export type SessionRow = typeof workoutSessions.$inferSelect
 type LogRow = typeof setLogs.$inferSelect
 
-const toLog = (row: LogRow, exercise: LoggedExercise | null): SetLog => ({
+/** `entryId` as the caller sees it — see `get`. */
+const toLog = (row: LogRow, exercise: LoggedExercise | null, entryId: string | null): SetLog => ({
   id: row.id,
-  entryId: row.entryId,
+  entryId,
   exerciseId: row.exerciseId,
   exercise,
   setIndex: row.setIndex,
@@ -44,6 +46,7 @@ const toLog = (row: LogRow, exercise: LoggedExercise | null): SetLog => ({
 interface LoggedRow {
   readonly log: LogRow
   readonly exercise: LoggedExercise | null
+  readonly entryId: string | null
 }
 
 const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutSession => ({
@@ -53,7 +56,7 @@ const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutSession 
   startedAt: row.startedAt.toISOString(),
   endedAt: row.endedAt?.toISOString() ?? null,
   notes: row.notes,
-  logs: logs.map((l) => toLog(l.log, l.exercise)),
+  logs: logs.map((l) => toLog(l.log, l.exercise, l.entryId)),
 })
 
 /**
@@ -99,6 +102,10 @@ async function assertStartable(caller: Caller, input: SessionStart): Promise<voi
   }
 }
 
+// One INSERT shares one `now()`, and `get` orders logs by `logged_at` then `set_index`, so equal
+// timestamps read back interleaved — squat 1, bench 1, squat 2. `logWhole` spaces them instead.
+const nowPlusMicros = (n: number) => sql<Date>`now() + ${n}::integer * interval '1 microsecond'`
+
 /**
  * A whole, finished session in ONE transaction — `session_log` over MCP. Everything is validated
  * before anything is written, so one bad set logs nothing and a retry cannot duplicate the rest.
@@ -120,7 +127,10 @@ export async function logWhole(caller: Caller, input: SessionLogInput): Promise<
       })
       .returning({ id: workoutSessions.id })
     if (created === undefined) throw new Error('Could not record the session')
-    await tx.insert(setLogs).values(numberedRows(created.id, input.sets)).catch(rethrowMissingEntry)
+    const rows = numberedInOrder(input.sets).map((set, i) =>
+      Object.assign(set, { sessionId: created.id, loggedAt: nowPlusMicros(i) }),
+    )
+    await tx.insert(setLogs).values(rows).catch(rethrowMissingEntry)
     return created.id
   })
 
@@ -136,14 +146,24 @@ export async function get(caller: Caller, id: string): Promise<WorkoutSession> {
   if (row === undefined) throw notFound('session')
 
   /**
-   * LEFT JOIN onto the visible exercises: every log is the caller's and is listed, but the name and
-   * tracking mode come only while they can still see the exercise — null after losing its group.
+   * LEFT JOINs: every log is the caller's and is listed, but the exercise's name and tracking mode
+   * come only while they can still see the exercise — null after losing its group — and so does
+   * the plan entry. A set whose entry is gone or out of reach reads `entryId: null`, as one logged
+   * without a plan, which is exactly how the server numbers it (see `nextNumber`): the screen's
+   * "N done" and the next number cannot disagree.
    */
   const exercises = visibleExercises(caller)
+  const plan = planEntries(caller, row.workoutId)
   const logs = await db
-    .select({ log: setLogs, name: exercises.name, tracking: exercises.tracking })
+    .select({
+      log: setLogs,
+      name: exercises.name,
+      tracking: exercises.tracking,
+      entryId: plan.id,
+    })
     .from(setLogs)
     .leftJoin(exercises, eq(exercises.id, setLogs.exerciseId))
+    .leftJoin(plan, eq(plan.id, setLogs.entryId))
     .where(eq(setLogs.sessionId, id))
     .orderBy(asc(setLogs.loggedAt), asc(setLogs.setIndex))
 
@@ -153,6 +173,7 @@ export async function get(caller: Caller, id: string): Promise<WorkoutSession> {
       log: l.log,
       exercise:
         l.name === null || l.tracking === null ? null : { name: l.name, tracking: l.tracking },
+      entryId: l.entryId,
     })),
   )
 }
@@ -230,7 +251,8 @@ export async function logSet(
       .returning()
       .catch(rethrowMissingEntry)
     if (created === undefined) throw new Error('Could not record the set')
-    return toLog(created, exercises.get(created.exerciseId) ?? null)
+    // The entry it names was checked reachable by `assertLoggable`, so it is seen as stored.
+    return toLog(created, exercises.get(created.exerciseId) ?? null, created.entryId)
   })
 }
 

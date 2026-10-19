@@ -210,7 +210,8 @@ export const HOT_PATHS: readonly HotPath[] = [
     dimension: 'logged sets (9 vs 60)',
     maxQueries: 2,
     budgetMs: 60,
-    noSeqScan: ['set_logs', 'exercises'],
+    // Its logs LEFT JOIN the plan's entries, which reach the days: neither may be scanned.
+    noSeqScan: ['set_logs', 'exercises', 'workout_entries', 'workout_days'],
     indexes: ['set_logs_session_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
@@ -236,11 +237,11 @@ export const HOT_PATHS: readonly HotPath[] = [
       'The one write a user repeats dozens of times an hour, mid-workout, on a phone. It is also ' +
       'the only guarded path that mutates, so its plans are read without ANALYZE.',
     dimension: 'sets already logged in the session (9 vs 60)',
-    // Four, plus reading the set's series under the lock to number it — and, in a session with a
-    // plan, which of its entries the caller can still reach.
-    maxQueries: 6,
+    // Four, plus reading the set's series under the lock to number it — its logs LEFT JOINed onto
+    // the plan entries the caller can still reach, in the same query.
+    maxQueries: 5,
     budgetMs: 40,
-    noSeqScan: ['workout_sessions', 'set_logs'],
+    noSeqScan: ['workout_sessions', 'set_logs', 'workout_entries', 'workout_days'],
     indexes: [],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)

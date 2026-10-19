@@ -214,17 +214,20 @@ day or entry the plan no longer holds loses its link, and its logs stay in histo
 
 **The server numbers every set** (`set_index`), within its **series** — the session's sets of one
 plan entry, or of one exercise logged with no entry — one past the highest number in it, warm-ups
-included, never reusing a number after an undo. The app and an AI send no number. A set whose entry
-is gone counts as logged with none: removed from the plan (its `entry_id` is null) or out of the
-caller's reach (a group plan they lost), so a session whose plan was lost goes on numbering its
-squats 2, 3 after the planned set 1. The rule is the contract's `nextSetIndex` over `asSeen` logs.
+included: a number below the highest is never given again, and undoing the last set lets the next
+take its number, as a correction would. The app and an AI send no number. A set whose entry is gone
+counts as logged with none: removed from the plan (its `entry_id` is null) or out of the caller's
+reach (a group plan they lost), so a session whose plan was lost goes on numbering its squats 2, 3
+after the planned set 1. Reachability is read in ONE place — the session read and the numbering
+both LEFT JOIN `planEntries`, so a log reads `entryId: null` exactly when it is numbered as one —
+and the rule itself is the contract's `nextSetIndex`.
 
 One number per set is kept by numbering under the session's row lock, not by a unique constraint —
-deliberately. An entry can be removed from a plan underneath its logs, which then join their
-exercise's entry-free series with the numbers they already had; a constraint over
-`(session, exercise, entry, set_index)` made that plan save a 500. A number is never rewritten to
-make room, so such an edit can leave two "set 1"s in that session's history of the exercise, and
-nothing new is ever numbered into one.
+deliberately. An entry can be removed from a plan underneath its logs, or its plan can go out of
+reach; either way its logs join their exercise's entry-free series with the numbers they already
+had, and a constraint over `(session, exercise, entry, set_index)` made the plan save a 500. A
+number is never rewritten to make room, so either can leave two "set 1"s in that session's history
+of the exercise, and nothing new is ever numbered into one.
 
 ## Index plan
 

@@ -111,6 +111,8 @@ _Avoid_: entry (that is the plan's), result
 
 **Series**:
 The sets of one plan entry within a session — or, for sets logged with no plan entry, of one
-exercise. A set's number counts within its series, warm-ups included, in the order performed, and
-is never given again once a set has had it.
+exercise. A set whose plan entry is gone — removed from the plan, or out of the lifter's reach —
+counts as logged with none. A set's number counts within its series, warm-ups included, in the
+order performed: one past the highest, so a number below it is never given again, while undoing
+the last set lets the next take its number.
 _Avoid_: group, block

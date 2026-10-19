@@ -20,8 +20,10 @@ import type { Caller } from '../../plugins/auth.ts'
  * Every question about "the entries of this plan" asks it — reading the plan, progression, logging
  * against an entry, and what a transfer carries. Each used to write the entries ⋈ days join for
  * itself. Order by `dayIndex`, then `index`, for plan order: a subquery's own ORDER BY is not kept.
+ *
+ * No plan, no entries: a session without one can join this like any other, and finds nothing.
  */
-export function planEntries(caller: Caller, workoutId: string) {
+export function planEntries(caller: Caller, workoutId: string | null) {
   const entries = visibleWorkoutEntries(caller)
   const days = visibleWorkoutDays(caller)
   return db
@@ -38,7 +40,7 @@ export function planEntries(caller: Caller, workoutId: string) {
     })
     .from(entries)
     .innerJoin(days, eq(days.id, entries.dayId))
-    .where(eq(days.workoutId, workoutId))
+    .where(workoutId === null ? sql`false` : eq(days.workoutId, workoutId))
     .as('plan_entries')
 }
 

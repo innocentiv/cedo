@@ -332,7 +332,9 @@ describe('logging a whole session', () => {
     const { body } = await callTool(pat, 'session_log', {
       sets: [{ exerciseId: mine.id, setIndex: 0, reps: 5 }],
     })
-    expect(body.result?.isError ?? body.error !== undefined).toBe(true)
+    // An MCP error result, not an HTTP status: the model is told which key is not its to send.
+    expect(body.result?.isError).toBe(true)
+    expect(textOf(body)).toContain('Unrecognized key: "setIndex"')
     const sessions = expectContract(
       z.object({ items: z.array(z.unknown()) }),
       (await alice.wire('/sessions')).body,
