@@ -20,13 +20,13 @@ describe('formatEffort renders what the tracking mode measures', () => {
   })
 
   test('a hold is its duration, not "— × bodyweight"', () => {
-    expect(formatEffort({ ...none, durationS: 60 }, 'duration')).toBe('1m 0s')
+    expect(formatEffort({ ...none, durationS: 60 }, 'duration')).toBe('1:00')
   })
 
   test('a run is distance in time', () => {
     expect(
       formatEffort({ ...none, distanceMm: 5_000_000, durationS: 1500 }, 'distance_duration'),
-    ).toBe('5 km in 25m 0s')
+    ).toBe('5 km in 25:00')
     expect(formatEffort({ ...none, distanceMm: 400_000 }, 'distance_duration')).toBe('400 m')
   })
 
@@ -36,7 +36,7 @@ describe('formatEffort renders what the tracking mode measures', () => {
 
   test('with no mode known, it renders whatever was measured', () => {
     expect(formatEffort({ ...none, reps: 8, weightG: 60_000 })).toBe('8 × 60 kg')
-    expect(formatEffort({ ...none, durationS: 45 })).toBe('45s')
+    expect(formatEffort({ ...none, durationS: 45 })).toBe('0:45')
     expect(formatEffort({ ...none, reps: 12 })).toBe('12 reps')
   })
 })

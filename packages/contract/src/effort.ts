@@ -11,7 +11,7 @@ export interface Effort {
 
 /**
  * One line for a target, a logged set or a suggestion, in the terms its tracking mode measures:
- * `8 × 60 kg`, `10 × bodyweight`, `6 × bodyweight +20 kg`, `1m 0s`, `5 km in 25m 0s`.
+ * `8 × 60 kg`, `10 × bodyweight`, `6 × bodyweight +20 kg`, `1:00`, `5 km in 25:00`.
  *
  * Every screen used to write `${reps ?? '—'} × ${weight ?? 'bodyweight'}` for itself, which
  * rendered a plank as "— × bodyweight" — hiding the duration that was its whole prescription — and

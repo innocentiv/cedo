@@ -288,7 +288,7 @@ describe('training review', () => {
 
     const review = textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)
     expect(review).toContain('Weighted Pull-up: 3 sessions, every set 6 × bodyweight +20 kg')
-    expect(review).toContain('Plank: 3 sessions, every set 1m 0s')
+    expect(review).toContain('Plank: 3 sessions, every set 1:00')
     expect(review).not.toContain('Test Squat: 3 sessions')
     // 5 × (100 + 102.5 + 105) kg.
     expect(review).toContain('quadriceps: 1537.5 kg (no prior data)')

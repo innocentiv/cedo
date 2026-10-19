@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { TrackingMode } from './exercise.ts'
 import { Rpe, TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
+import { formatDuration } from './units.ts'
 
 /**
  * How a set's targets advance over time. Stored as JSONB on `workout_entries`, so adding a rule
@@ -263,7 +264,7 @@ export function describeProgression(
         ? `Linear, +${formatIncrement(rule.incrementG)}`
         : `Linear, +${formatIncrement(rule.incrementG)} after ${rule.afterSuccesses} clean sessions`
     case 'linear_duration':
-      return `Linear, +${rule.incrementS}s`
+      return `Linear, +${formatDuration(rule.incrementS)}`
     case 'double': {
       const [min, max] = normaliseRange(rule.repRange)
       return `Double ${min}–${max}, +${formatIncrement(rule.incrementG)}`

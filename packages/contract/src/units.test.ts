@@ -72,14 +72,16 @@ describe('distance and duration', () => {
     expect(Number.isInteger(cmToMm(180.4))).toBe(true)
   })
 
-  test('durations render at the right granularity', () => {
-    expect(formatDuration(45)).toBe('45s')
-    expect(formatDuration(95)).toBe('1m 35s')
-    expect(formatDuration(3725)).toBe('1h 2m')
-    expect(formatDuration(0)).toBe('0s')
+  /** As a clock — the form a duration is typed in, so what is read is what was typed. */
+  test('durations read as a clock, with hours only when there are any', () => {
+    expect(formatDuration(45)).toBe('0:45')
+    expect(formatDuration(95)).toBe('1:35')
+    expect(formatDuration(1500)).toBe('25:00')
+    expect(formatDuration(3725)).toBe('1:02:05')
+    expect(formatDuration(0)).toBe('0:00')
   })
 
   test('negative durations clamp rather than rendering nonsense', () => {
-    expect(formatDuration(-10)).toBe('0s')
+    expect(formatDuration(-10)).toBe('0:00')
   })
 })

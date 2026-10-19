@@ -1,6 +1,6 @@
 import type { Effort } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
-import { COUNT, type Typing, typing } from './typing.ts'
+import { CLOCK, COUNT, type Typing, typing } from './typing.ts'
 import { gToKg, kgToG, mToMm, mmToM } from './units.ts'
 import type { WorkoutSetInput } from './workout.ts'
 
@@ -72,8 +72,8 @@ export const DIMENSION_FIELDS: Readonly<Record<Dimension, DimensionField>> = {
     dimension: 'duration',
     key: 'durationS',
     targetKey: 'targetDurationS',
-    unit: () => 'seconds',
-    ...COUNT,
+    unit: () => 'm:ss',
+    ...CLOCK,
   },
   distance: {
     dimension: 'distance',

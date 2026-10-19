@@ -50,7 +50,7 @@ export interface TrainingReview {
   /**
    * Exercises whose logged working sets have not moved. The signal for "change something". Each
    * carries the one effort it keeps repeating, and how its exercise is measured — so it reads as
-   * the app shows it: `6 × bodyweight +20 kg`, not a 20 kg lift; `1m 0s` for a plank, not nothing.
+   * the app shows it: `6 × bodyweight +20 kg`, not a 20 kg lift; `1:00` for a plank, not nothing.
    */
   readonly stalled: {
     readonly exercise: LoggedExercise

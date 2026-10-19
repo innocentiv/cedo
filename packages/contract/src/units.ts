@@ -49,16 +49,18 @@ export function formatDistance(millimetres: number): string {
     : `${trimZeros(metres.toFixed(1))} m`
 }
 
-/** `formatDuration(3725)` -> `'1h 2m'`; `formatDuration(95)` -> `'1m 35s'`; `formatDuration(45)` -> `'45s'`. */
+/**
+ * A clock, as a duration is typed: `formatDuration(45)` -> `'0:45'`, `95` -> `'1:35'`, `1500` ->
+ * `'25:00'`, `3725` -> `'1:02:05'`. It used to read `1m 35s` while the field took plain seconds, so
+ * what you read was not what you typed. See `CLOCK` in typing.ts.
+ */
 export function formatDuration(seconds: number): string {
   const total = Math.max(0, Math.round(seconds))
   const hours = Math.floor(total / SECONDS_PER_HOUR)
   const minutes = Math.floor((total % SECONDS_PER_HOUR) / SECONDS_PER_MINUTE)
-  const secs = total % SECONDS_PER_MINUTE
+  const secs = String(total % SECONDS_PER_MINUTE).padStart(2, '0')
 
-  if (hours > 0) return `${hours}h ${minutes}m`
-  if (minutes > 0) return `${minutes}m ${secs}s`
-  return `${secs}s`
+  return hours > 0 ? `${hours}:${String(minutes).padStart(2, '0')}:${secs}` : `${minutes}:${secs}`
 }
 
 function trimZeros(fixed: string): string {

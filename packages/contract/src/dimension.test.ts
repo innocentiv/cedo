@@ -36,10 +36,9 @@ describe('typing a weight', () => {
 })
 
 describe('the other dimensions', () => {
-  test('reps and seconds are whole numbers; a point is not a decimal there', () => {
+  test('reps are whole numbers; a point is not a decimal there', () => {
     expect(reps.parse('8')).toEqual({ text: '8', value: 8 })
     expect(reps.parse('1.2')).toEqual({ text: '12', value: 12 })
-    expect(duration.parse('90s')).toEqual({ text: '90', value: 90 })
   })
 
   test('distance is typed in metres and stored in millimetres', () => {
@@ -48,7 +47,52 @@ describe('the other dimensions', () => {
   })
 
   test('every field says its unit', () => {
-    expect([reps.unit(), duration.unit(), distance.unit()]).toEqual(['reps', 'seconds', 'metres'])
+    expect([reps.unit(), duration.unit(), distance.unit()]).toEqual(['reps', 'm:ss', 'metres'])
+  })
+})
+
+/**
+ * A number pad has no `:`. So, as on a timer, the last two digits are seconds, the two before them
+ * minutes, the rest hours — and a bare `90` still means the 90 seconds it always did.
+ */
+describe('typing a duration', () => {
+  test('the last two digits are seconds, the two before them minutes, the rest hours', () => {
+    expect(duration.parse('90')).toEqual({ text: '90', value: 90 })
+    expect(duration.parse('130')).toEqual({ text: '1:30', value: 90 })
+    expect(duration.parse('2500')).toEqual({ text: '25:00', value: 1500 })
+    expect(duration.parse('10205')).toEqual({ text: '1:02:05', value: 3725 })
+  })
+
+  /** Key by key, the clock grows from the right, and a backspace gives back what it took. */
+  test('typed key by key, and taken back, the clock follows the keys', () => {
+    expect(['1', '13', '130', '1300'].map((keys) => duration.parse(keys).text)).toEqual([
+      '1',
+      '13',
+      '1:30',
+      '13:00',
+    ])
+    // "1:30" with its last digit deleted is "1:3" — the digits 1 and 3: thirteen seconds.
+    expect(duration.parse('1:3')).toEqual({ text: '13', value: 13 })
+  })
+
+  test('a separator typed anyway is ignored, so the field reads its own text back', () => {
+    expect(duration.parse('1:30')).toEqual({ text: '1:30', value: 90 })
+    expect(duration.parse(duration.toText(3725))).toEqual({ text: '1:02:05', value: 3725 })
+    expect(duration.parse(duration.toText(45))).toEqual({ text: '45', value: 45 })
+  })
+
+  test('seconds past 59 are taken as typed, and read back as a clock', () => {
+    expect(duration.parse('190').value).toBe(150)
+    expect(duration.toText(150)).toBe('2:30')
+  })
+
+  test('empty is null, not zero; a lone zero is zero', () => {
+    expect(duration.parse('')).toEqual({ text: '', value: null })
+    expect(duration.parse('0')).toEqual({ text: '0', value: 0 })
+  })
+
+  test('a number pad, not a decimal one', () => {
+    expect(duration.decimals).toBe(false)
   })
 })
 

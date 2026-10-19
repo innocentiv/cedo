@@ -144,6 +144,11 @@ async function settledText(
   return await page.until(async () => (await page.text(testId)) ?? '', done, 3000)
 }
 
+/** What an input field holds right now — what the thumb sees, not what the app parsed. */
+async function fieldValue(page: Page, testId: string): Promise<unknown> {
+  return await page.evaluate(`document.querySelector('[data-testid="${testId}"]').value`)
+}
+
 /**
  * The rendered lines of every logged set, newest last. `innerText`, not `textContent`: the latter
  * runs "Set 1" into "8 × 60 kg" as "Set 18 × 60 kg", and a `toContain('8 × 60 kg')` over that also
@@ -442,6 +447,39 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/**
+ * A number pad has no `:`, so a duration is typed as on a timer: the last two digits are seconds.
+ * Key by key, never `fill` — the field rewrites its own text as it grows ("13" becomes "1:30"), and
+ * only one keystroke at a time passes through that.
+ */
+test(
+  'a duration is typed on a number pad, timer-style, and reads back as a clock',
+  async () => {
+    await withApp('clock-duration', async (page) => {
+      await register(page, unique('clock'))
+      await openNewPlan(page, 'Plank')
+
+      // A new entry prescribes 30 seconds: shown as a clock, and typed over as one.
+      expect(await fieldValue(page, 'plan-entry-0-0-duration')).toBe('0:30')
+      await page.click('[data-testid="plan-entry-0-0-duration"]')
+      await typeKeys(page, ['1', '3', '0'])
+      expect(await fieldValue(page, 'plan-entry-0-0-duration')).toBe('1:30')
+
+      await saveAndStart(page)
+      expect(await page.text('log-entry-0-target')).toContain('1:30')
+
+      await page.click('[data-testid="log-entry-0-duration"]')
+      await typeKeys(page, ['4', '5'])
+      await page.click('[data-testid="log-entry-0-log"]')
+      await page.until(
+        async () => await loggedLines(page),
+        (lines) => lines.includes('0:45'),
+      )
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
 test(
   'emptying a field and typing a new number does not keep a digit of the old one',
   async () => {
@@ -472,8 +510,6 @@ test(
     await withApp('plan-limits', async (page) => {
       await register(page, unique('lim'))
       await openNewPlan(page)
-      const valueOf = async (testId: string) =>
-        await page.evaluate(`document.querySelector('[data-testid="${testId}"]').value`)
       const saveDisabled = async () =>
         await page.evaluate(
           `document.querySelector('[data-testid="save-plan"]').getAttribute('aria-disabled')`,
@@ -488,7 +524,7 @@ test(
       await page.click('[data-testid="plan-entry-0-0-sets"]')
       await typeKeys(page, ['Backspace', '2', '0'])
       await page.click('[data-testid="day-name-0"]')
-      expect(await valueOf('plan-entry-0-0-sets')).toBe('15')
+      expect(await fieldValue(page, 'plan-entry-0-0-sets')).toBe('15')
       expect(await saveDisabled()).not.toBe('true')
 
       // A draft the schema would refuse says so in the footer, and cannot be saved. The name field
