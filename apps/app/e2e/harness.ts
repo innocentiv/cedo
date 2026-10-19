@@ -202,7 +202,15 @@ export interface Page {
   readonly type: (text: string) => Promise<void>
   /** One key, such as `Backspace` — for emptying a field the way a thumb does, not by select-all. */
   readonly press: (key: string) => Promise<void>
+  /**
+   * Keys one at a time, the way a thumb types, into whatever has focus — a character, or
+   * `Backspace`. Never re-click a focused field to continue: the click moves the caret to where it
+   * landed.
+   */
+  readonly keys: (keys: readonly string[]) => Promise<void>
   readonly fill: (testId: string, text: string) => Promise<void>
+  /** What an input holds right now — what the thumb sees, not what the app parsed. */
+  readonly value: (testId: string) => Promise<unknown>
   readonly text: (testId: string) => Promise<string | null>
   readonly exists: (testId: string) => Promise<boolean>
   /** Wait until a test id is present, or fail with what was on screen instead. */
@@ -315,6 +323,16 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
     press: async (key) => {
       await view.press(key)
     },
+    keys: async (keys) => {
+      for (const key of keys) {
+        // oxlint-disable-next-line no-await-in-loop -- one key at a time is what is under test.
+        if (key === 'Backspace') await view.press(key)
+        // oxlint-disable-next-line no-await-in-loop -- one key at a time is what is under test.
+        else await view.type(key)
+      }
+    },
+    value: async (testId) =>
+      await view.evaluate(`document.querySelector(${quote(selector(testId))}).value`),
     fill: async (testId, text) => {
       await reveal(selector(testId))
       await view.click(selector(testId))

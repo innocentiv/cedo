@@ -144,11 +144,6 @@ async function settledText(
   return await page.until(async () => (await page.text(testId)) ?? '', done, 3000)
 }
 
-/** What an input field holds right now — what the thumb sees, not what the app parsed. */
-async function fieldValue(page: Page, testId: string): Promise<unknown> {
-  return await page.evaluate(`document.querySelector('[data-testid="${testId}"]').value`)
-}
-
 /**
  * The rendered lines of every logged set, newest last. `innerText`, not `textContent`: the latter
  * runs "Set 1" into "8 × 60 kg" as "Set 18 × 60 kg", and a `toContain('8 × 60 kg')` over that also
@@ -159,17 +154,6 @@ async function loggedLines(page: Page): Promise<string[]> {
     `[...document.querySelectorAll('${LOGGED_SET}')].map((e) => e.innerText).join('\\n')`,
   )
   return typeof text === 'string' ? text.split('\n').map((line) => line.trim()) : []
-}
-
-/**
- * Types one key at a time, the way a thumb does, into whatever has focus. Never re-click a field
- * that is already focused to continue typing: the click moves the caret to where it landed.
- */
-async function typeKeys(page: Page, keys: readonly string[]): Promise<void> {
-  for (const key of keys) {
-    if (key === 'Backspace') await page.press(key)
-    else await page.type(key)
-  }
 }
 
 test(
@@ -207,13 +191,13 @@ test(
       // `fill` would insert "62.5" in one event and never pass through the half-typed "62." that
       // used to collapse to 62 under the cursor, turning the next "5" into 625 kg.
       await page.fill('log-entry-0-weight', '6')
-      await typeKeys(page, ['2', '.', '5'])
+      await page.keys(['2', '.', '5'])
       await page.click('[data-testid="log-entry-0-log"]')
       await page.waitFor('session-logs')
 
       // A comma is the decimal separator on an Italian, German or French keypad.
       await page.fill('log-entry-0-weight', '7')
-      await typeKeys(page, ['0', ',', '5'])
+      await page.keys(['0', ',', '5'])
       await page.click('[data-testid="log-entry-0-log"]')
 
       const lines = await loggedLines(page)
@@ -471,21 +455,21 @@ test(
       await openNewPlan(page, 'Plank')
 
       // A new entry prescribes 30 seconds: shown as a clock, and typed over as one.
-      expect(await fieldValue(page, 'plan-entry-0-0-duration')).toBe('0:30')
+      expect(await page.value('plan-entry-0-0-duration')).toBe('0:30')
       await page.click('[data-testid="plan-entry-0-0-duration"]')
-      await typeKeys(page, ['1', '3', '0'])
-      expect(await fieldValue(page, 'plan-entry-0-0-duration')).toBe('1:30')
+      await page.keys(['1', '3', '0'])
+      expect(await page.value('plan-entry-0-0-duration')).toBe('1:30')
       // A real backspace takes the last digit back, regrouping what is left: 13 seconds.
-      await typeKeys(page, ['Backspace'])
-      expect(await fieldValue(page, 'plan-entry-0-0-duration')).toBe('13')
-      await typeKeys(page, ['0'])
-      expect(await fieldValue(page, 'plan-entry-0-0-duration')).toBe('1:30')
+      await page.keys(['Backspace'])
+      expect(await page.value('plan-entry-0-0-duration')).toBe('13')
+      await page.keys(['0'])
+      expect(await page.value('plan-entry-0-0-duration')).toBe('1:30')
 
       await saveAndStart(page)
       expect(await page.text('log-entry-0-target')).toBe('Prescribed 1:30')
 
       await page.click('[data-testid="log-entry-0-duration"]')
-      await typeKeys(page, ['4', '5'])
+      await page.keys(['4', '5'])
       await page.click('[data-testid="log-entry-0-log"]')
       await page.until(
         async () => await loggedLines(page),
@@ -521,8 +505,8 @@ test(
 
       await openNewPlan(page)
       await page.click('[data-testid="plan-entry-0-0-weight"]')
-      await typeKeys(page, ['1', '3', '2', '.', '5'])
-      expect(await fieldValue(page, 'plan-entry-0-0-weight')).toBe('132.5')
+      await page.keys(['1', '3', '2', '.', '5'])
+      expect(await page.value('plan-entry-0-0-weight')).toBe('132.5')
       // A new rule adds 5 lb for someone who reads pounds — not the 5.51 that 2.5 kg would be.
       await page.click('[data-testid="plan-entry-0-0-progression-linear"]')
       expect(await page.text('plan-entry-0-0-progression-summary')).toBe('Linear, +5 lb')
@@ -546,7 +530,7 @@ test(
         (lines) => lines.includes('8 × 60.1 kg'),
       )
       expect(await page.text('log-entry-0-target')).toBe('Prescribed 8 × 60.1 kg')
-      expect(await fieldValue(page, 'log-entry-0-weight')).toBe('60.1')
+      expect(await page.value('log-entry-0-weight')).toBe('60.1')
     })
   },
   E2E_TIMEOUT_MS,
@@ -563,7 +547,7 @@ test(
       // so backspace then "4" made 14 sets.
       // A first tap selects the whole field; Backspace empties it, the second is a no-op.
       await page.click('[data-testid="plan-entry-0-0-sets"]')
-      await typeKeys(page, ['Backspace', 'Backspace', '4'])
+      await page.keys(['Backspace', 'Backspace', '4'])
       await page.click('[data-testid="save-plan"]')
       await page.waitFor('workouts-screen')
       await page.click('[data-testid^="workout-row-"]')
@@ -592,23 +576,23 @@ test(
       // A numeric field selects its text on focus, so wherever the click lands, Backspace empties
       // it.
       await page.click('[data-testid="plan-entry-0-0-warmups"]')
-      await typeKeys(page, ['Backspace', '5'])
+      await page.keys(['Backspace', '5'])
       await page.click('[data-testid="plan-entry-0-0-sets"]')
-      await typeKeys(page, ['Backspace', '2', '0'])
+      await page.keys(['Backspace', '2', '0'])
       await page.click('[data-testid="day-name-0"]')
-      expect(await fieldValue(page, 'plan-entry-0-0-sets')).toBe('15')
+      expect(await page.value('plan-entry-0-0-sets')).toBe('15')
       expect(await saveDisabled()).not.toBe('true')
 
       // A draft the schema would refuse says so in the footer, and cannot be saved. The name field
       // is a plain text input: the click left the caret wherever it landed, so go to the end and
       // delete "Day 1" key by key.
       await page.press('End')
-      await typeKeys(page, ['Backspace', 'Backspace', 'Backspace', 'Backspace', 'Backspace'])
+      await page.keys(['Backspace', 'Backspace', 'Backspace', 'Backspace', 'Backspace'])
       await page.waitFor('plan-issues')
       expect(await page.text('plan-issues')).toBe('Day 1, name: Cannot be empty')
       expect(await saveDisabled()).toBe('true')
 
-      await typeKeys(page, ['L', 'e', 'g', 's'])
+      await page.keys(['L', 'e', 'g', 's'])
       // Read once the render has caught up with the last key, not in the same tick.
       await page.until(
         async () => await page.exists('plan-issues'),
