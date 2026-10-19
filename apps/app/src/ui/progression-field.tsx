@@ -2,9 +2,10 @@ import {
   PROGRESSION_KINDS,
   type Progression,
   describeProgression,
-  DIMENSION_FIELDS,
+  fieldFor,
   formatWeight,
 } from '@cedo/contract'
+import { useWeightUnit } from '../lib/weight-unit.ts'
 import { Chips } from './chips.tsx'
 import { DimensionInput } from './dimension-input.tsx'
 import { CompactField, NumberInput } from './input.tsx'
@@ -51,6 +52,7 @@ export function ProgressionField({
   readonly onChange: (rule: Progression) => void
   readonly testID: string
 }): React.JSX.Element {
+  const unit = useWeightUnit()
   return (
     <Stack gap="xs">
       <Text variant="caption" tone="muted">
@@ -69,7 +71,7 @@ export function ProgressionField({
         {rule.kind === 'linear' || rule.kind === 'double' ? (
           <DimensionInput
             dimension="weight"
-            label={`Add ${DIMENSION_FIELDS.weight.unit()}`}
+            label={`Add ${fieldFor('weight', unit).unit()}`}
             value={rule.incrementG}
             onChange={(g) => {
               onChange({ ...rule, incrementG: g ?? 2500 })
@@ -124,7 +126,7 @@ export function ProgressionField({
       </Stack>
 
       <Text variant="caption" tone="faint" testID={`${testID}-progression-summary`}>
-        {describeProgression(rule, (g) => formatWeight(g))}
+        {describeProgression(rule, (g) => formatWeight(g, unit))}
       </Text>
     </Stack>
   )

@@ -1,6 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { MUSCLES, formatEffort } from '@cedo/contract'
 import type { ExerciseHistory, TrackingMode } from '@cedo/contract'
+import { useWeightUnit } from '../../../../src/lib/weight-unit.ts'
 import {
   Button,
   Card,
@@ -37,6 +38,7 @@ function RecentHistory({
   readonly tracking: TrackingMode
 }): React.JSX.Element {
   const router = useRouter()
+  const unit = useWeightUnit()
   return (
     <Stack gap="sm" testID="exercise-history">
       <Text variant="label" tone="muted">
@@ -54,7 +56,7 @@ function RecentHistory({
                 <ListRow
                   key={entry.sessionId}
                   title={new Date(entry.performedAt).toLocaleDateString()}
-                  subtitle={entry.sets.map((set) => formatEffort(set, tracking)).join(', ')}
+                  subtitle={entry.sets.map((set) => formatEffort(set, tracking, unit)).join(', ')}
                   onPress={() => {
                     router.push(`/today/session/${entry.sessionId}`)
                   }}

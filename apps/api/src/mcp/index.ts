@@ -1,5 +1,6 @@
 import { type AuthInfo, McpServer, createMcpHandler } from '@modelcontextprotocol/server'
 import { z } from 'zod'
+import { WeightUnit } from '@cedo/contract'
 import type { Caller } from '../plugins/auth.ts'
 import { VERSION } from '../version.ts'
 import { registerDiagnosticTools } from './tools/diagnostics.ts'
@@ -23,6 +24,7 @@ const CallerShape = z.object({
   userId: z.uuid(),
   username: z.string(),
   displayName: z.string(),
+  weightUnit: WeightUnit,
   personalGroupId: z.uuid(),
   groupIds: z.array(z.uuid()),
   editorGroupIds: z.array(z.uuid()),

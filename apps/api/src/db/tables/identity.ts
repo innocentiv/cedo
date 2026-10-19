@@ -9,7 +9,10 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { GROUP_KINDS, GROUP_ROLES } from '@cedo/contract'
+import { GROUP_KINDS, GROUP_ROLES, WEIGHT_UNITS } from '@cedo/contract'
+
+/** The contract's own list, so a unit added there is a migration here. */
+export const weightUnit = pgEnum('weight_unit', WEIGHT_UNITS)
 
 export const groupKind = pgEnum('group_kind', GROUP_KINDS)
 export const groupRole = pgEnum('group_role', GROUP_ROLES)
@@ -43,6 +46,8 @@ export const users = pgTable(
     username: text('username').notNull(),
     passwordHash: text('password_hash').notNull(),
     displayName: text('display_name').notNull(),
+    /** How this person reads and types weights. Display only: every weight is stored in grams. */
+    weightUnit: weightUnit('weight_unit').notNull().default('kg'),
     authProvider: authProvider('auth_provider').notNull().default('local'),
     externalId: text('external_id'),
     /**

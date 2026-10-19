@@ -1,5 +1,5 @@
 import type { TrackingMode } from './exercise.ts'
-import { formatDistance, formatDuration, formatWeight } from './units.ts'
+import { type WeightUnit, formatDistance, formatDuration, formatWeight } from './units.ts'
 
 /** The measured quantities a prescribed target, a logged set or a suggestion carries. */
 export interface Effort {
@@ -16,20 +16,30 @@ export interface Effort {
  * Every screen used to write `${reps ?? '—'} × ${weight ?? 'bodyweight'}` for itself, which
  * rendered a plank as "— × bodyweight" — hiding the duration that was its whole prescription — and
  * a barbell lift with no load yet as "@ bodyweight". With no mode, it renders what was measured.
+ * Weights read in the reader's `unit` — kg unless they chose lb.
  */
-export function formatEffort(effort: Effort, tracking?: TrackingMode): string {
-  const parts = [lift(effort, tracking), travel(effort)].filter((p) => p !== null)
+export function formatEffort(
+  effort: Effort,
+  tracking?: TrackingMode,
+  unit: WeightUnit = 'kg',
+): string {
+  const parts = [lift(effort, tracking, unit), travel(effort)].filter((p) => p !== null)
   return parts.length === 0 ? '—' : parts.join(' ')
 }
 
-function lift({ reps, weightG }: Effort, tracking: TrackingMode | undefined): string | null {
-  if (reps === null) return weightG === null ? null : formatWeight(weightG)
+function lift(
+  { reps, weightG }: Effort,
+  tracking: TrackingMode | undefined,
+  unit: WeightUnit,
+): string | null {
+  const weight = (grams: number) => formatWeight(grams, unit)
+  if (reps === null) return weightG === null ? null : weight(weightG)
   if (tracking === 'bodyweight_reps') {
     return weightG === null || weightG === 0
       ? `${reps} × bodyweight`
-      : `${reps} × bodyweight +${formatWeight(weightG)}`
+      : `${reps} × bodyweight +${weight(weightG)}`
   }
-  return weightG === null ? `${reps} reps` : `${reps} × ${formatWeight(weightG)}`
+  return weightG === null ? `${reps} reps` : `${reps} × ${weight(weightG)}`
 }
 
 function travel({ distanceMm, durationS }: Effort): string | null {

@@ -162,6 +162,13 @@ read from the contract's own `details` array. Anything that is not an `ApiError`
 network — is re-thrown into the console rather than flattened into "something went wrong", because
 hiding it would hide exactly what the client exists to catch.
 
+### A weight is read in the person's unit
+
+Every weight on screen is formatted and typed through `useWeightUnit()` — `formatEffort(…, unit)`,
+`formatWeight(g, unit)`, and `DimensionInput`, which asks for the field in that unit itself. Never a
+bare `formatWeight(g)`: that is kilograms, whatever the person chose in Settings. Storage is grams
+either way; `fieldFor('weight', 'lb')` types pounds and stores the grams they are.
+
 ### What a write makes stale is derived, not listed
 
 Every read declares, once, the source it is OF and the sources it EMBEDS — `READS` in

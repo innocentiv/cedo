@@ -263,6 +263,23 @@ describe('training review', () => {
     expect(history).toContain('6 × bodyweight +20 kg')
   })
 
+  /**
+   * The AI reads in the person's unit — it writes for them — while what it SENDS stays in grams,
+   * the unit every tool input is in. The unit is read with the token, so a change applies at once.
+   */
+  test('someone who reads pounds is written to in pounds', async () => {
+    const pat = await mintPat(alice)
+    const exerciseId = await createExercise(pat, 'Test Squat', 'quadriceps')
+    await callTool(pat, 'session_log', {
+      sets: [{ exerciseId, setIndex: 0, weightG: 100_000, reps: 5 }],
+    })
+    await alice.wire('/auth/me', { method: 'PATCH', body: JSON.stringify({ weightUnit: 'lb' }) })
+
+    const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
+    expect(history).toContain('5 × 220.46 lb')
+    expect(history).not.toContain('kg')
+  })
+
   /** Every effort reaches the AI as the app shows it. See `stalled.test.ts` for the history. */
   test('a stalled movement reads in its own terms, and volume as a weight', async () => {
     const pat = await mintPat(alice)

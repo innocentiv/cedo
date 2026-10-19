@@ -40,3 +40,19 @@ describe('formatEffort renders what the tracking mode measures', () => {
     expect(formatEffort({ ...none, reps: 12 })).toBe('12 reps')
   })
 })
+
+describe('in the reader’s unit', () => {
+  /** Stored in grams for everyone; a person who reads pounds reads pounds, in every mode. */
+  test('a lift, and weight added to bodyweight, read in pounds', () => {
+    expect(formatEffort({ ...none, reps: 8, weightG: 61_235 }, 'weight_reps', 'lb')).toBe(
+      '8 × 135 lb',
+    )
+    expect(formatEffort({ ...none, reps: 6, weightG: 9072 }, 'bodyweight_reps', 'lb')).toBe(
+      '6 × bodyweight +20 lb',
+    )
+  })
+
+  test('kilograms unless the reader chose otherwise', () => {
+    expect(formatEffort({ ...none, reps: 8, weightG: 60_000 }, 'weight_reps')).toBe('8 × 60 kg')
+  })
+})

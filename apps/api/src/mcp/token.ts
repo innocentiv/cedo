@@ -39,6 +39,7 @@ async function tokenRows(token: string) {
       userId: users.id,
       username: users.username,
       displayName: users.displayName,
+      weightUnit: users.weightUnit,
       personalGroupId: users.personalGroupId,
       groupId: groupMembers.groupId,
       role: groupMembers.role,

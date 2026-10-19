@@ -1,7 +1,8 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { exerciseName } from '../../../../src/lib/exercise-name.ts'
-import { formatEffort } from '@cedo/contract'
-import type { WorkoutDay, WorkoutEntry } from '@cedo/contract'
+import { formatEffort, prescriptionOf } from '@cedo/contract'
+import type { WeightUnit, WorkoutDay, WorkoutEntry } from '@cedo/contract'
+import { useWeightUnit } from '../../../../src/lib/weight-unit.ts'
 import {
   Button,
   Card,
@@ -15,19 +16,20 @@ import {
 import { useStartSession, useWorkout } from '../../../../src/api/queries.ts'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
 
-/** The prescription for an entry is its first working set. See docs/adr/0012. */
-function prescription(entry: WorkoutEntry): string {
-  const working = entry.sets.filter((s) => !s.isWarmup)
-  const first = working[0]
+/** How many working sets, and the prescription they share — `prescriptionOf`, as everywhere. */
+function prescription(entry: WorkoutEntry, unit: WeightUnit): string {
+  const first = prescriptionOf(entry)
   if (first === undefined) return 'no working sets'
-  const sets = `${working.length} set${working.length === 1 ? '' : 's'}`
-  return `${sets} · ${formatEffort(first.target, entry.exercise?.tracking)}`
+  const count = entry.sets.filter((s) => !s.isWarmup).length
+  const sets = `${count} set${count === 1 ? '' : 's'}`
+  return `${sets} · ${formatEffort(first.target, entry.exercise?.tracking, unit)}`
 }
 
 export default function WorkoutDetail(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const { data, isPending, error, refetch } = useWorkout(id ?? '')
+  const unit = useWeightUnit()
   const start = useStartSession()
   const { submit, busy, error: startError } = useSubmit()
 
@@ -96,7 +98,7 @@ export default function WorkoutDetail(): React.JSX.Element {
                     {exerciseName(entry.exercise)}
                   </Text>
                   <Text variant="caption" tone="muted">
-                    {prescription(entry)}
+                    {prescription(entry, unit)}
                     {entry.progression.kind === 'none' ? '' : ` · ${entry.progression.kind}`}
                   </Text>
                 </Stack>

@@ -1,4 +1,5 @@
 import { Elysia } from 'elysia'
+import type { WeightUnit } from '@cedo/contract'
 import { and, eq, gt } from 'drizzle-orm'
 import { db } from '../db/client.ts'
 import { groupMembers, sessions, users } from '../db/schema.ts'
@@ -17,6 +18,8 @@ import { bearerToken, hashToken } from '../lib/token.ts'
 export interface Caller extends AccessContext {
   readonly username: string
   readonly displayName: string
+  /** How they read weights — so what is written FOR them, MCP text included, is in their unit. */
+  readonly weightUnit: WeightUnit
   readonly personalGroupId: string
 }
 
@@ -31,6 +34,7 @@ export async function resolveCaller(
       userId: users.id,
       username: users.username,
       displayName: users.displayName,
+      weightUnit: users.weightUnit,
       personalGroupId: users.personalGroupId,
       groupId: groupMembers.groupId,
       role: groupMembers.role,
@@ -56,6 +60,7 @@ export interface IdentityRow {
   readonly userId: string
   readonly username: string
   readonly displayName: string
+  readonly weightUnit: WeightUnit
   readonly personalGroupId: string
 }
 

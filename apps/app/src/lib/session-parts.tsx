@@ -6,7 +6,8 @@ import type {
   WorkoutDay,
   WorkoutEntry,
 } from '@cedo/contract'
-import { formatEffort, prescriptionOf } from '@cedo/contract'
+import { type WeightUnit, formatEffort, prescriptionOf } from '@cedo/contract'
+import { useWeightUnit } from './weight-unit.ts'
 import { exerciseName } from './exercise-name.ts'
 import { Button, Card, ListRow, SetLogger, Stack, Text } from '../ui/index.ts'
 
@@ -18,9 +19,12 @@ import { Button, Card, ListRow, SetLogger, Stack, Text } from '../ui/index.ts'
  * `nextTarget` itself lives in the contract and is computed by the API — this only renders the
  * result, so the hint on this screen and the answer the MCP tool gives can never disagree.
  */
-export function hintFor(suggestion: ProgressionSuggestion | undefined): string | null {
+export function hintFor(
+  suggestion: ProgressionSuggestion | undefined,
+  unit: WeightUnit,
+): string | null {
   if (suggestion === undefined || !suggestion.changed) return null
-  return `Next time: ${formatEffort(suggestion.suggested, suggestion.tracking)}`
+  return `Next time: ${formatEffort(suggestion.suggested, suggestion.tracking, unit)}`
 }
 
 /**
@@ -50,6 +54,7 @@ export function LoggedSets({
   readonly editable: boolean
   readonly onRemove: (logId: string) => void
 }): React.JSX.Element | null {
+  const unit = useWeightUnit()
   if (logs.length === 0) return null
   return (
     <Card testID="session-logs">
@@ -61,7 +66,7 @@ export function LoggedSets({
           <ListRow
             key={log.id}
             title={`${exerciseName(log.exercise)} · set ${log.setIndex + 1}`}
-            subtitle={formatEffort(log, log.exercise?.tracking)}
+            subtitle={formatEffort(log, log.exercise?.tracking, unit)}
             trailing={editable ? 'Undo' : undefined}
             onPress={
               editable
@@ -146,6 +151,7 @@ export function PlannedDay({
   readonly busy: boolean
   readonly onLog: (entry: WorkoutEntry, values: Effort) => void
 }): React.JSX.Element {
+  const unit = useWeightUnit()
   return (
     <Stack gap="md">
       {day.entries.map((entry) => {
@@ -158,7 +164,7 @@ export function PlannedDay({
             exerciseName={exerciseName(entry.exercise)}
             tracking={entry.exercise?.tracking ?? 'weight_reps'}
             target={prescriptionOf(entry)?.target ?? null}
-            suggestion={hintFor(suggestions.get(entry.id))}
+            suggestion={hintFor(suggestions.get(entry.id), unit)}
             done={done}
             busy={busy}
             testID={`log-entry-${entry.index}`}

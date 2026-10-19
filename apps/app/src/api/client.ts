@@ -12,6 +12,7 @@ import {
   type GroupCreate,
   type LoginInput,
   Me,
+  type MeUpdate,
   type RegisterInput,
   GroupMember,
   GroupMembership,
@@ -83,11 +84,12 @@ function verbs(request: SendRequest) {
 
 type Verbs = ReturnType<typeof verbs>
 
-const auth = ({ GET, POST }: Verbs) => ({
+const auth = ({ GET, POST, PATCH }: Verbs) => ({
   register: async (body: RegisterInput) => await POST('/auth/register', AuthResult, body),
   login: async (body: LoginInput) => await POST('/auth/login', AuthResult, body),
   logout: async () => await POST('/auth/logout', Ok),
   me: async () => await GET('/auth/me', Me),
+  updateMe: async (body: MeUpdate) => await PATCH('/auth/me', Me, body),
 })
 
 const exercises = ({ GET, POST, PATCH, PUT, DELETE }: Verbs) => ({

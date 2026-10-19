@@ -15,6 +15,13 @@
       "when": 1792133092208,
       "tag": "0001_drop_redundant_child_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792396110715,
+      "tag": "0002_user_weight_unit",
+      "breakpoints": true
     }
   ]
 }

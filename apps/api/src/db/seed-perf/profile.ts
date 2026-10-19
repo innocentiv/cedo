@@ -229,11 +229,12 @@ export async function callerFor(userId: string): Promise<Caller> {
     user_id: string
     username: string
     display_name: string
+    weight_unit: 'kg' | 'lb'
     personal_group_id: string
     group_id: string | null
     role: 'editor' | 'reader' | null
   }>(sql`
-    select u.id::text as user_id, u.username, u.display_name,
+    select u.id::text as user_id, u.username, u.display_name, u.weight_unit::text as weight_unit,
            u.personal_group_id::text as personal_group_id,
            gm.group_id::text as group_id, gm.role
       from users u
@@ -248,6 +249,7 @@ export async function callerFor(userId: string): Promise<Caller> {
       userId: first.user_id,
       username: first.username,
       displayName: first.display_name,
+      weightUnit: first.weight_unit,
       personalGroupId: first.personal_group_id,
     },
     rows.map((r) => ({ groupId: r.group_id, role: r.role })),

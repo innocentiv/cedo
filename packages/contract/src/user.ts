@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { Id, NonEmptyString, Timestamp } from './primitives.ts'
+import { WeightUnit } from './units.ts'
 
 /**
  * Authentication is username + password, hashed with argon2id (`Bun.password`). There is no IAM.
@@ -31,6 +32,20 @@ export const User = z.object({
   createdAt: Timestamp,
 })
 export type User = z.output<typeof User>
+
+/**
+ * The signed-in person's own record: who they are, and how they read. Only ever their OWN — `User`
+ * is what a fellow group member sees, and how someone reads weights is nobody else's business.
+ */
+export const Account = User.extend({
+  /** How this person reads and types weights. Everything is stored in grams regardless. */
+  weightUnit: WeightUnit,
+})
+export type Account = z.output<typeof Account>
+
+/** `PATCH /auth/me` — what a person may change about themselves. */
+export const MeUpdate = z.strictObject({ weightUnit: WeightUnit })
+export type MeUpdate = z.output<typeof MeUpdate>
 
 export const RegisterInput = z.strictObject({
   username: Username,

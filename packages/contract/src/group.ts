@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { Id, NonEmptyString, Slug, Timestamp } from './primitives.ts'
-import { User, Username } from './user.ts'
+import { Account, User, Username } from './user.ts'
 
 /**
  * Everything ownable belongs to exactly one group. Every user gets a `personal` group created
@@ -55,7 +55,7 @@ export type GroupAddMember = z.output<typeof GroupAddMember>
 
 /** `GET /auth/me` — identity plus every group the caller can see, in one round trip. */
 export const Me = z.object({
-  user: User,
+  user: Account,
   groups: z.array(GroupMembership),
 })
 export type Me = z.output<typeof Me>

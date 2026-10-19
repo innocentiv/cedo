@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { DIMENSION_FIELDS, type Dimension, fieldsOf } from './dimension.ts'
+import { DIMENSION_FIELDS, type Dimension, fieldFor, fieldsOf } from './dimension.ts'
 import { TRACKING_MODES, type TrackingMode } from './exercise.ts'
 import { COUNT } from './typing.ts'
 
@@ -32,6 +32,27 @@ describe('typing a weight', () => {
     expect(weight.unit('weight_reps')).toBe('kg')
     // A progression increment has no mode: the plain unit.
     expect(weight.unit()).toBe('kg')
+  })
+})
+
+describe('typing a weight in pounds', () => {
+  const pounds = fieldFor('weight', 'lb')
+
+  /** A pound is not a whole number of grams: what was typed must be what reads back. */
+  test('typed in pounds, stored in grams, and read back as typed', () => {
+    expect(pounds.parse('135')).toEqual({ text: '135', value: 61_235 })
+    expect(pounds.toText(61_235)).toBe('135')
+    expect(pounds.toText(pounds.parse('2.5').value)).toBe('2.5')
+  })
+
+  test('the label says pounds, and added pounds on a bodyweight movement', () => {
+    expect(pounds.unit('weight_reps')).toBe('lb')
+    expect(pounds.unit('bodyweight_reps')).toBe('+lb')
+  })
+
+  test('a mode’s fields carry the person’s unit; every other dimension is unchanged', () => {
+    expect(fieldsOf('weight_reps', 'lb').map((f) => f.unit())).toEqual(['lb', 'reps'])
+    expect(fieldFor('duration', 'lb')).toBe(DIMENSION_FIELDS.duration)
   })
 })
 

@@ -6,6 +6,7 @@ import {
   fieldsOf,
   formatEffort,
 } from '@cedo/contract'
+import { useWeightUnit } from '../lib/weight-unit.ts'
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
 import { DimensionInput } from './dimension-input.tsx'
@@ -41,6 +42,7 @@ export function SetLogger({
   busy,
   testID,
 }: SetLoggerProps): React.JSX.Element {
+  const unit = useWeightUnit()
   // In base units throughout: the fields convert for display, so nothing here does arithmetic.
   const [effort, setEffort] = useState<Effort>({
     weightG: target?.weightG ?? null,
@@ -63,7 +65,7 @@ export function SetLogger({
 
         {target === null ? null : (
           <Text variant="caption" tone="muted" testID={`${testID}-target`}>
-            {`Prescribed ${formatEffort(target, tracking)}`}
+            {`Prescribed ${formatEffort(target, tracking, unit)}`}
           </Text>
         )}
 

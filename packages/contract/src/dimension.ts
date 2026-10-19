@@ -1,7 +1,7 @@
 import type { Effort } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
 import { CLOCK, COUNT, type Typing, typing } from './typing.ts'
-import { gToKg, kgToG, mToMm, mmToM } from './units.ts'
+import { type WeightUnit, gToKg, gToLb, kgToG, lbToG, mToMm, mmToM } from './units.ts'
 import type { WorkoutSetInput } from './workout.ts'
 
 /** The measurable quantities a set can carry. See GLOSSARY.md. */
@@ -45,7 +45,8 @@ export interface DimensionField extends Typing {
   readonly targetKey: TargetKey
   /**
    * The unit, as a field label. Only weight depends on the mode: on a bodyweight movement it is
-   * weight ADDED, `+kg`. Without a mode — a progression increment — it is the plain unit.
+   * weight ADDED, `+kg`. Without a mode — a progression increment — it is the plain unit. And only
+   * weight depends on the person: `fieldFor(dimension, unit)` gives it in their kg or lb.
    */
   readonly unit: (tracking?: TrackingMode) => string
 }
@@ -53,14 +54,31 @@ export interface DimensionField extends Typing {
 /** A prescribed set's measured targets — derived from the schema, so a rename there breaks here. */
 export type TargetKey = Exclude<Extract<keyof WorkoutSetInput, `target${string}`>, 'targetRpe'>
 
-export const DIMENSION_FIELDS: Readonly<Record<Dimension, DimensionField>> = {
-  weight: {
+/** Pounds as shown: to the hundredth, because grams are not a whole number of pounds. */
+const shownLb = (grams: number): number => Number(gToLb(grams).toFixed(2))
+
+/**
+ * Weight, typed in the person's unit and stored in grams either way. A pound is not a whole number
+ * of grams, so what is shown is rounded to the hundredth: 135 lb is stored as 61 235 g, and reads
+ * back as 135 — not as the 134.9997 those grams are.
+ */
+function weightField(unit: WeightUnit): DimensionField {
+  return {
     dimension: 'weight',
     key: 'weightG',
     targetKey: 'targetWeightG',
-    unit: (tracking) => (tracking === 'bodyweight_reps' ? '+kg' : 'kg'),
-    ...typing(true, kgToG, gToKg),
-  },
+    unit: (tracking) => (tracking === 'bodyweight_reps' ? `+${unit}` : unit),
+    ...(unit === 'kg' ? typing(true, kgToG, gToKg) : typing(true, lbToG, shownLb)),
+  }
+}
+
+const WEIGHT_FIELDS: Readonly<Record<WeightUnit, DimensionField>> = {
+  kg: weightField('kg'),
+  lb: weightField('lb'),
+}
+
+export const DIMENSION_FIELDS: Readonly<Record<Dimension, DimensionField>> = {
+  weight: WEIGHT_FIELDS.kg,
   reps: {
     dimension: 'reps',
     key: 'reps',
@@ -84,6 +102,13 @@ export const DIMENSION_FIELDS: Readonly<Record<Dimension, DimensionField>> = {
   },
 }
 
-/** The fields a mode measures, in the order every screen shows them. */
-export const fieldsOf = (tracking: TrackingMode): readonly DimensionField[] =>
-  DIMENSIONS_BY_TRACKING[tracking].map((dimension) => DIMENSION_FIELDS[dimension])
+/** One dimension's field, with weight in the person's unit. */
+export const fieldFor = (dimension: Dimension, unit: WeightUnit = 'kg'): DimensionField =>
+  dimension === 'weight' ? WEIGHT_FIELDS[unit] : DIMENSION_FIELDS[dimension]
+
+/** The fields a mode measures, in the order every screen shows them, weight in the person's unit. */
+export const fieldsOf = (
+  tracking: TrackingMode,
+  unit: WeightUnit = 'kg',
+): readonly DimensionField[] =>
+  DIMENSIONS_BY_TRACKING[tracking].map((dimension) => fieldFor(dimension, unit))

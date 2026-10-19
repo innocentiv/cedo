@@ -1,4 +1,5 @@
-import { DIMENSION_FIELDS, type Dimension, type TrackingMode } from '@cedo/contract'
+import { type Dimension, type TrackingMode, fieldFor } from '@cedo/contract'
+import { useWeightUnit } from '../lib/weight-unit.ts'
 import { CompactField, TypedNumber } from './input.tsx'
 
 export interface DimensionInputProps {
@@ -15,7 +16,7 @@ export interface DimensionInputProps {
 
 /**
  * One measured quantity, typed in its display unit and handed back in base units. The unit, the
- * label, the decimals and the conversion are all the contract's `DIMENSION_FIELDS`: the logger, the
+ * label, the decimals and the conversion are all the contract's (`fieldFor`): the logger, the
  * plan editor and the progression field used to decide them each for themselves, and disagreed.
  */
 export function DimensionInput({
@@ -26,7 +27,8 @@ export function DimensionInput({
   label,
   testID,
 }: DimensionInputProps): React.JSX.Element {
-  const field = DIMENSION_FIELDS[dimension]
+  // Weight in the person's own unit; every other dimension is the same for everyone.
+  const field = fieldFor(dimension, useWeightUnit())
   return (
     <CompactField label={label ?? field.unit(tracking)}>
       <TypedNumber value={value} onChange={onChange} typing={field} testID={testID} />

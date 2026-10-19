@@ -4,6 +4,7 @@ import {
   type AuthResult,
   type LoginInput,
   type Me,
+  type MeUpdate,
   type RegisterInput,
   type User,
 } from '@cedo/contract'
@@ -31,6 +32,15 @@ const toUser = (row: PublicUserRow): User => ({
   displayName: row.displayName,
   createdAt: row.createdAt.toISOString(),
 })
+
+/** The person's own columns — the public ones and their preferences. Never the password hash. */
+const ACCOUNT = {
+  id: users.id,
+  username: users.username,
+  displayName: users.displayName,
+  weightUnit: users.weightUnit,
+  createdAt: users.createdAt,
+}
 
 function expiry(days: number): Date {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000)
@@ -123,13 +133,7 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
 export async function login(input: LoginInput): Promise<AuthResult> {
   // The one query that legitimately reads password_hash. Nothing here reaches the wire.
   const [found] = await db
-    .select({
-      id: users.id,
-      username: users.username,
-      displayName: users.displayName,
-      createdAt: users.createdAt,
-      passwordHash: users.passwordHash,
-    })
+    .select({ ...ACCOUNT, passwordHash: users.passwordHash })
     .from(users)
     .where(eq(users.username, input.username))
     .limit(1)
@@ -153,25 +157,16 @@ export async function logout(token: string): Promise<void> {
 
 /** Delegates the group half to GroupService so the two never drift. */
 export async function me(caller: Caller): Promise<Me> {
-  const [row] = await db
-    .select({
-      id: users.id,
-      username: users.username,
-      displayName: users.displayName,
-      createdAt: users.createdAt,
-    })
-    .from(users)
-    .where(eq(users.id, caller.userId))
-    .limit(1)
+  const [row] = await db.select(ACCOUNT).from(users).where(eq(users.id, caller.userId)).limit(1)
   if (row === undefined) throw notFound('user')
-
   return {
-    user: {
-      id: row.id,
-      username: row.username,
-      displayName: row.displayName,
-      createdAt: row.createdAt.toISOString(),
-    },
+    user: { ...toUser(row), weightUnit: row.weightUnit },
     groups: await GroupService.list(caller),
   }
+}
+
+/** What a person may change about themselves — their weight unit — answered with who they now are. */
+export async function updateMe(caller: Caller, patch: MeUpdate): Promise<Me> {
+  await db.update(users).set({ weightUnit: patch.weightUnit }).where(eq(users.id, caller.userId))
+  return await me(caller)
 }

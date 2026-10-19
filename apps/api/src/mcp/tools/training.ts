@@ -40,7 +40,8 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       }),
       annotations: READ,
     },
-    async ({ weeks }) => text(reviewSummary(await trainingReview(caller, weeks), weeks)),
+    async ({ weeks }) =>
+      text(reviewSummary(await trainingReview(caller, weeks), weeks, caller.weightUnit)),
   )
 
   server.registerTool(
@@ -76,7 +77,8 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       inputSchema: z.object({ workoutId: z.uuid() }),
       annotations: READ,
     },
-    async ({ workoutId }) => text(workoutDetail(await WorkoutService.get(caller, workoutId))),
+    async ({ workoutId }) =>
+      text(workoutDetail(await WorkoutService.get(caller, workoutId), caller.weightUnit)),
   )
 
   server.registerTool(
@@ -124,7 +126,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ workoutId, days }) =>
       text(
-        `Saved.\n\n${workoutDetail(await WorkoutService.replacePlan(caller, workoutId, { days }))}`,
+        `Saved.\n\n${workoutDetail(await WorkoutService.replacePlan(caller, workoutId, { days }), caller.weightUnit)}`,
       ),
   )
 
@@ -155,7 +157,12 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       annotations: READ,
     },
     async ({ workoutId }) =>
-      text(suggestionLines(await ProgressionService.suggestForWorkout(caller, workoutId))),
+      text(
+        suggestionLines(
+          await ProgressionService.suggestForWorkout(caller, workoutId),
+          caller.weightUnit,
+        ),
+      ),
   )
 
   server.registerTool(
@@ -171,7 +178,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ exerciseId, limit }) => {
       const { history } = await import('../../modules/session/history.ts')
-      return text(historyLines(await history(caller, exerciseId, { limit })))
+      return text(historyLines(await history(caller, exerciseId, { limit }), caller.weightUnit))
     },
   )
 

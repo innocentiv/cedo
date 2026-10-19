@@ -1,5 +1,5 @@
 import { Elysia } from 'elysia'
-import { AuthResult, LoginInput, Me, RegisterInput } from '@cedo/contract'
+import { AuthResult, LoginInput, Me, MeUpdate, RegisterInput } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
 import { bearerToken } from '../../lib/token.ts'
 import * as AuthService from './service.ts'
@@ -33,4 +33,10 @@ export const authRoutes = new Elysia({ prefix: '/auth', tags: ['auth'] })
     auth: true,
     response: Me,
     detail: { summary: 'The caller and every group they belong to' },
+  })
+  .patch('/me', ({ caller, body }) => AuthService.updateMe(caller, body), {
+    auth: true,
+    body: MeUpdate,
+    response: Me,
+    detail: { summary: 'Change what a person may change about themselves: their weight unit' },
   })

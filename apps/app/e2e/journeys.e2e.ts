@@ -485,6 +485,45 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/**
+ * A person who reads pounds types and reads pounds everywhere, while every weight is still stored in
+ * grams. Chosen in Settings, then the app is RELOADED: the choice lives on the account, not on the
+ * device, so it comes back from the server.
+ */
+test(
+  'someone who reads pounds logs in pounds, and the set is stored in grams',
+  async () => {
+    await withApp('weight-in-pounds', async (page) => {
+      await register(page, unique('lb'))
+      await page.click('[data-testid="nav-settings"]')
+      await page.waitFor('settings-screen')
+      await page.click('[data-testid="weight-unit-lb"]')
+      // Saved on the account before the reload below, or the reload would race the request.
+      const mine = await page.client()
+      await page.until(
+        async () => (await mine.auth.me()).user.weightUnit,
+        (unit) => unit === 'lb',
+      )
+
+      await openNewPlan(page)
+      await saveAndStart(page)
+      await page.fill('log-entry-0-weight', '135')
+      await page.fill('log-entry-0-reps', '8')
+      await page.click('[data-testid="log-entry-0-log"]')
+      await page.until(
+        async () => await loggedLines(page),
+        (lines) => lines.includes('8 × 135 lb'),
+      )
+
+      const [latest] = (await mine.sessions.list({ limit: 1 })).items
+      if (latest === undefined) throw new Error('The session was not listed')
+      const { logs } = await mine.sessions.get(latest.id)
+      expect(logs.map((l) => l.weightG)).toEqual([61_235])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
 test(
   'emptying a field and typing a new number does not keep a digit of the old one',
   async () => {

@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { type QueryClient, useQueryClient } from '@tanstack/react-query'
-import type { LoginInput, Me, RegisterInput } from '@cedo/contract'
+import type { LoginInput, Me, RegisterInput, WeightUnit } from '@cedo/contract'
 import { ApiError, api, setAuthToken, setUnauthenticatedHandler } from '../api/http.ts'
 import { clearToken, readToken, writeToken } from './token-storage.ts'
 
@@ -19,6 +19,8 @@ interface AuthValue {
   readonly signIn: (input: LoginInput) => Promise<void>
   readonly register: (input: RegisterInput) => Promise<void>
   readonly signOut: () => Promise<void>
+  /** Saved to the account, so it follows them to every device — and to what the AI writes them. */
+  readonly setWeightUnit: (unit: WeightUnit) => Promise<void>
 }
 
 const AuthContext = createContext<AuthValue | null>(null)
@@ -101,6 +103,7 @@ function useSessionState(): {
   me: Me | null
   adopt: (token: string) => Promise<void>
   signOut: () => Promise<void>
+  setWeightUnit: (unit: WeightUnit) => Promise<void>
 } {
   const [status, setStatus] = useState<AuthStatus>('loading')
   const [me, setMe] = useState<Me | null>(null)
@@ -129,10 +132,14 @@ function useSessionState(): {
     queryClient.clear()
   }, [forget, queryClient])
 
+  const setWeightUnit = useCallback(async (weightUnit: WeightUnit) => {
+    setMe(await api.auth.updateMe({ weightUnit }))
+  }, [])
+
   useRestoreSession({ setStatus, setMe })
   useSignOutOnRejection(forget, queryClient)
 
-  return { status, me, adopt, signOut }
+  return { status, me, adopt, signOut, setWeightUnit }
 }
 
 export function AuthProvider({
@@ -140,7 +147,7 @@ export function AuthProvider({
 }: {
   readonly children: React.ReactNode
 }): React.JSX.Element {
-  const { status, me, adopt, signOut } = useSessionState()
+  const { status, me, adopt, signOut, setWeightUnit } = useSessionState()
 
   const value = useMemo<AuthValue>(
     () => ({
@@ -153,8 +160,9 @@ export function AuthProvider({
         await adopt((await api.auth.register(input)).token)
       },
       signOut,
+      setWeightUnit,
     }),
-    [status, me, adopt, signOut],
+    [status, me, adopt, signOut, setWeightUnit],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

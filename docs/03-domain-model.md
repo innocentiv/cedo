@@ -24,6 +24,11 @@ users ──< workout_sessions ──< set_logs >── exercises
 `exercises` and `workouts` hang off `groups` through `owner_group_id`. `workout_sessions` hangs off
 `users` directly — logs are personal and are never shared, favourited or transferred.
 
+`users.weight_unit` (`kg` | `lb`) is how a person reads and types weights. It changes no stored
+value — every weight is grams — only what is written for them: the app's screens and the AI's MCP
+text alike, which is why it lives on the account and travels on the caller. It is theirs alone: `Me`
+returns it (`Account`), and the `User` a fellow group member sees does not carry it.
+
 ## The ownable trait
 
 ```ts

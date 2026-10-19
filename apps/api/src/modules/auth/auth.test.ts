@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { ApiError, AuthResult, Me } from '@cedo/contract'
+import { ApiError, AuthResult, GroupMember, GroupMembership, Me } from '@cedo/contract'
+import { z } from 'zod'
 import { expectContract } from '../../test/contract.ts'
 import { TEST_PASSWORD, type TestApi, makeApi } from '../../test/harness.ts'
 
@@ -234,5 +235,56 @@ describe('error envelope', () => {
     const res = await h.wire('/no-such-route')
     expect(res.status).toBe(404)
     expect(expectContract(ApiError, res.body).error.code).toBe('not_found')
+  })
+})
+
+describe('how a person reads weights', () => {
+  test('kilograms until they choose otherwise, and pounds once they do', async () => {
+    const alice = await h.as('alice')
+    expect(expectContract(Me, (await alice.wire('/auth/me')).body).user.weightUnit).toBe('kg')
+
+    const changed = await alice.wire('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ weightUnit: 'lb' }),
+    })
+    expect(changed.status).toBe(200)
+    expect(expectContract(Me, changed.body).user.weightUnit).toBe('lb')
+    expect(expectContract(Me, (await alice.wire('/auth/me')).body).user.weightUnit).toBe('lb')
+  })
+
+  test('only kg or lb, and only for the signed-in person', async () => {
+    const alice = await h.as('alice')
+    const stone = await alice.wire('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ weightUnit: 'stone' }),
+    })
+    expect(stone.status).toBe(422)
+    expectContract(ApiError, stone.body)
+
+    const anonymous = await h.wire('/auth/me', {
+      method: 'PATCH',
+      body: JSON.stringify({ weightUnit: 'lb' }),
+    })
+    expect(anonymous.status).toBe(401)
+  })
+
+  /** A preference is the person's own: a fellow member is shown who they are, not how they read. */
+  test('a fellow group member never sees it', async () => {
+    const alice = await h.as('alice')
+    const bob = await h.as('bob')
+    await bob.wire('/auth/me', { method: 'PATCH', body: JSON.stringify({ weightUnit: 'lb' }) })
+    const squad = expectContract(
+      GroupMembership,
+      (await alice.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Squad' }) }))
+        .body,
+    )
+    await alice.wire(`/groups/${squad.id}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ username: 'bob', role: 'reader' }),
+    })
+
+    const members = await alice.wire(`/groups/${squad.id}/members`)
+    expectContract(z.array(GroupMember), members.body)
+    expect(JSON.stringify(members.body)).not.toContain('weightUnit')
   })
 })

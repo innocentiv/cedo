@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router'
 import { formatWeight } from '@cedo/contract'
 import type { WorkoutSessionSummary } from '@cedo/contract'
+import { useWeightUnit } from '../../../src/lib/weight-unit.ts'
 import {
   Button,
   Empty,
@@ -22,6 +23,7 @@ function History({
   readonly sessions: readonly WorkoutSessionSummary[]
 }): React.JSX.Element {
   const router = useRouter()
+  const unit = useWeightUnit()
   return (
     <Stack gap="sm">
       <Text variant="label" tone="muted">
@@ -39,7 +41,9 @@ function History({
             key={session.id}
             title={session.dayName ?? session.workoutName ?? 'Ad-hoc session'}
             subtitle={new Date(session.startedAt).toLocaleDateString()}
-            trailing={session.totalVolumeG === 0 ? undefined : formatWeight(session.totalVolumeG)}
+            trailing={
+              session.totalVolumeG === 0 ? undefined : formatWeight(session.totalVolumeG, unit)
+            }
             onPress={() => {
               router.push(`/today/session/${session.id}`)
             }}

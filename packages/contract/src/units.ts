@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 /**
  * THE ONLY FILE PERMITTED TO CONVERT UNITS.
  *
@@ -17,7 +19,10 @@ const MILLIMETRES_PER_CENTIMETRE = 10
 const SECONDS_PER_MINUTE = 60
 const SECONDS_PER_HOUR = 3600
 
-export type WeightUnit = 'kg' | 'lb'
+/** How a person reads and types a weight — their preference, `Account.weightUnit`. Grams either way. */
+export const WEIGHT_UNITS = ['kg', 'lb'] as const
+export const WeightUnit = z.enum(WEIGHT_UNITS)
+export type WeightUnit = z.output<typeof WeightUnit>
 
 export const kgToG = (kg: number): number => Math.round(kg * GRAMS_PER_KILOGRAM)
 export const gToKg = (g: number): number => g / GRAMS_PER_KILOGRAM

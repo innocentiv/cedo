@@ -4,7 +4,7 @@ import { ERROR_CODES, ErrorCode, HTTP_STATUS_BY_ERROR_CODE } from './error.ts'
 import { ExerciseCreate, ExerciseQuery, ExerciseUpdate } from './exercise.ts'
 import { MUSCLES, MUSCLE_SLUGS, MuscleSlug } from './muscle.ts'
 import { PaginationQuery } from './primitives.ts'
-import { RegisterInput } from './user.ts'
+import { MeUpdate, RegisterInput } from './user.ts'
 import { WorkoutPlanInput, WorkoutQuery, WorkoutUpdate } from './workout.ts'
 
 const validMuscles = [
@@ -209,5 +209,14 @@ describe('error envelope', () => {
   /** A 403 would confirm the resource exists. See docs/02-conventions.md. */
   test("there is deliberately no 'forbidden' code", () => {
     expect(ErrorCode.safeParse('forbidden').success).toBe(false)
+  })
+})
+
+describe('what a person may change about themselves', () => {
+  test('their weight unit, kg or lb, and nothing else', () => {
+    expect(MeUpdate.safeParse({ weightUnit: 'lb' }).success).toBe(true)
+    expect(MeUpdate.safeParse({ weightUnit: 'stone' }).success).toBe(false)
+    // Strict: a stray field is a mistake to report, not a silent no-op.
+    expect(MeUpdate.safeParse({ weightUnit: 'kg', displayName: 'x' }).success).toBe(false)
   })
 })
