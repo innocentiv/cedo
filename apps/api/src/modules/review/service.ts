@@ -10,6 +10,7 @@ import {
 } from '../../db/visible.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { adherenceOf } from './adherence.ts'
+import { muscleWorkOf } from './muscle-work.ts'
 
 /**
  * A READ MODEL for coaching, not new domain rules.
@@ -39,24 +40,18 @@ export interface TrainingReview {
   }[]
   /**
    * The work each muscle got, by its share of each exercise's load — this is what the muscle
-   * percentages are FOR — compared against the equivalent window immediately before.
-   *
-   * Measured in WORKING SETS: a set of a 70/30 exercise is 0.7 of a set for one muscle and 0.3 for
-   * the other. It used to be weight × reps alone, which a plank, a run or an unweighted pull-up
-   * cannot register: a muscle trained only by those read "0 kg", as if untrained. Sets count every
-   * tracking mode alike; weight × reps stays beside them as what was LIFTED, for loaded work.
+   * percentages are FOR — compared against the equivalent window immediately before. What is worth
+   * saying, not every muscle: the most worked, every declined muscle, and a count of the rest.
+   * See muscle-work.ts.
    */
   readonly muscleWork: {
-    readonly muscle: string
-    /**
-     * Working sets, each counted by this muscle's share of the exercise's load — so fractional: a
-     * set of a 70/30 exercise is 0.7 here. To one decimal; `changePct` compares the unrounded sums.
-     */
-    readonly weightedSets: number
-    /** Weight × reps, in grams — 0 for work that carries no load. */
-    readonly liftedG: number
-    readonly changePct: number | null
-  }[]
+    /** The muscles worked most in this window, at most `TOP_MUSCLES`, most first. */
+    readonly top: readonly MuscleWork[]
+    /** Declined muscles not already in `top`, the most sets lost first. See GLOSSARY.md. */
+    readonly declined: readonly MuscleWork[]
+    /** Muscles worked in either window that neither list names. */
+    readonly omitted: number
+  }
   /**
    * Exercises whose logged working sets have not moved. The signal for "change something". Each
    * carries the one effort it keeps repeating, and how its exercise is measured — so it reads as
@@ -67,6 +62,24 @@ export interface TrainingReview {
     readonly sessions: number
     readonly effort: Effort
   }[]
+}
+
+/**
+ * Measured in WORKING SETS: a set of a 70/30 exercise is 0.7 of a set for one muscle and 0.3 for
+ * the other. It used to be weight × reps alone, which a plank, a run or an unweighted pull-up
+ * cannot register: a muscle trained only by those read "0 kg", as if untrained. Sets count every
+ * tracking mode alike; weight × reps stays beside them as what was LIFTED, for loaded work.
+ */
+export interface MuscleWork {
+  readonly muscle: string
+  /**
+   * Working sets, each counted by this muscle's share of the exercise's load — so fractional: a
+   * set of a 70/30 exercise is 0.7 here. To one decimal; `changePct` compares the unrounded sums.
+   */
+  readonly weightedSets: number
+  /** Weight × reps, in grams — 0 for work that carries no load. */
+  readonly liftedG: number
+  readonly changePct: number | null
 }
 
 export async function trainingReview(caller: Caller, weeks: number): Promise<TrainingReview> {
@@ -169,44 +182,15 @@ async function workBetween(caller: Caller, from: Date, to: Date) {
     .groupBy(exerciseMuscles.muscleSlug)
 }
 
-const oneDecimal = (n: number): number => Math.round(n * 10) / 10
-
 async function muscleWork(
   caller: Caller,
   since: Date,
   previousSince: Date,
 ): Promise<TrainingReview['muscleWork']> {
-  const current = await workBetween(caller, since, new Date())
-  const previous = new Map(
-    (await workBetween(caller, previousSince, since)).map((r) => [r.muscle, r.sets]),
+  return muscleWorkOf(
+    await workBetween(caller, since, new Date()),
+    await workBetween(caller, previousSince, since),
   )
-
-  /**
-   * The UNION of both windows, not just the current one. Iterating `current` alone made a muscle
-   * trained hard last period and abandoned this one simply disappear — indistinguishable from never
-   * having been trained, and precisely the regression the comparison exists to surface.
-   */
-  const currentByMuscle = new Map(current.map((r) => [r.muscle, r]))
-  const muscles = new Set([...currentByMuscle.keys(), ...previous.keys()])
-
-  return [...muscles]
-    .map((muscle) => {
-      const now = currentByMuscle.get(muscle)
-      const sets = now?.sets ?? 0
-      const before = previous.get(muscle) ?? 0
-      return {
-        muscle,
-        weightedSets: oneDecimal(sets),
-        liftedG: Math.round(now?.lifted ?? 0),
-        changePct: before === 0 ? null : Math.round(((sets - before) / before) * 100),
-      }
-    })
-    .toSorted(
-      (a, b) =>
-        b.weightedSets - a.weightedSets ||
-        b.liftedG - a.liftedG ||
-        a.muscle.localeCompare(b.muscle),
-    )
 }
 
 /** A set's measured dimensions, as columns — every one `DIMENSION_FIELDS` knows. */

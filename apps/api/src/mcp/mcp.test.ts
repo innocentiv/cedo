@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test } from 'bun:test'
 import { z } from 'zod'
 import {
   Exercise,
+  MUSCLE_SLUGS,
   PersonalAccessTokenCreated,
   type TrackingMode,
   Workout,
@@ -11,6 +12,7 @@ import { createApp } from '../app.ts'
 import { seedLibrary } from '../db/seed.ts'
 import { expectContract } from '../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../test/harness.ts'
+import { reviewFixture } from '../modules/review/review-fixture.ts'
 
 /**
  * Drives the MCP server exactly as an AI client does: JSON-RPC over HTTP at /mcp, authenticated by
@@ -313,6 +315,49 @@ describe('training review', () => {
     expect(review).toContain('rectus_abdominis: 3 sets (no prior data)')
     // The weighted pull-up lifted its added 20 kg, 6 reps a set, three times over.
     expect(review).toContain('latissimus_dorsi: 3 sets, 360 kg lifted (no prior data)')
+    // Every muscle named, and none declined: neither line has anything to say.
+    expect(review).not.toContain('more muscle')
+    expect(review).not.toContain('Declined')
+  })
+
+  /**
+   * Regression: a muscle trained only in the period before had no sets now, so it sorted last, and
+   * the summary's cut to the twelve most-worked hid exactly the regression the comparison is for.
+   */
+  test('a muscle abandoned since the period before is still named, however many others worked', async () => {
+    const pat = await mintPat(alice)
+    const fixture = reviewFixture(alice)
+    const [abandoned, ...worked] = MUSCLE_SLUGS.slice(0, 14)
+    const sets = []
+    for (const muscle of worked) {
+      // oxlint-disable-next-line no-await-in-loop -- one exercise per muscle; their order is not under test.
+      const exerciseId = await fixture.anExercise({
+        name: muscle,
+        muscles: [{ muscle, loadPct: 100 }],
+      })
+      sets.push({ exerciseId, weightG: 50_000, reps: 5 })
+    }
+    const before = await fixture.anExercise({
+      name: 'Abandoned',
+      muscles: [{ muscle: abandoned ?? '', loadPct: 100 }],
+    })
+    // Five weeks back: inside the four weeks before the four reviewed.
+    await fixture.aSession(
+      [1, 2, 3].map(() => ({ exerciseId: before, weightG: 50_000, reps: 5 })),
+      35,
+    )
+    await fixture.aSession(sets)
+
+    const review = textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)
+    const lines = review.split('\n').map((l) => l.trim())
+    // Twelve of the thirteen worked are named, the thirteenth counted; the abandoned one under its
+    // own heading.
+    expect(lines).toContain('and 1 more muscle with less work.')
+    const declined = lines.indexOf(
+      'Declined sharply (half or less of their sets in the preceding 4 weeks):',
+    )
+    expect(declined).toBeGreaterThan(-1)
+    expect(lines[declined + 1]).toBe(`${abandoned}: 0 sets (-100%)`)
   })
 })
 

@@ -8,7 +8,7 @@ import type {
   WorkoutSummary,
 } from '@cedo/contract'
 import { formatDuration, formatEffort, formatWeight } from '@cedo/contract'
-import type { TrainingReview } from '../modules/review/service.ts'
+import type { MuscleWork, TrainingReview } from '../modules/review/service.ts'
 
 /**
  * Tool output is TEXT the model reads, and its size is the real cost of an MCP tool — not the
@@ -159,7 +159,7 @@ export function historyLines(history: ExerciseHistory, unit: WeightUnit): string
  * `quadriceps: 12 sets, 1537.5 kg lifted (+20%)`. Work with no load — a plank, a run — is its sets
  * alone: it used to read "0 kg", as if the muscle had not been trained.
  */
-function muscleLine(m: TrainingReview['muscleWork'][number], unit: WeightUnit): string {
+function muscleLine(m: MuscleWork, unit: WeightUnit): string {
   const sets = `${m.weightedSets} set${m.weightedSets === 1 ? '' : 's'}`
   const lifted = m.liftedG === 0 ? '' : `, ${formatWeight(m.liftedG, unit)} lifted`
   const change =
@@ -168,26 +168,51 @@ function muscleLine(m: TrainingReview['muscleWork'][number], unit: WeightUnit): 
 }
 
 /**
+ * The muscles the review chose, as it chose them: the most worked with a count of the rest, then
+ * the declined ones under their own heading — or no heading at all when there are none.
+ */
+function muscleSections(
+  work: TrainingReview['muscleWork'],
+  weeks: number,
+  unit: WeightUnit,
+): string[] {
+  if (work.top.length === 0 && work.declined.length === 0) return ['No working sets recorded.']
+  const sections: string[] = []
+  if (work.top.length > 0) {
+    const more =
+      work.omitted === 0
+        ? []
+        : [`and ${work.omitted} more muscle${work.omitted === 1 ? '' : 's'} with less work.`]
+    sections.push(
+      `Working sets by muscle, by its share of each exercise (vs the preceding ${weeks} weeks):\n  ${[
+        ...work.top.map((m) => muscleLine(m, unit)),
+        ...more,
+      ].join('\n  ')}`,
+    )
+  }
+  if (work.declined.length > 0) {
+    sections.push(
+      `Declined sharply (half or less of their sets in the preceding ${weeks} weeks):\n  ${work.declined
+        .map((m) => muscleLine(m, unit))
+        .join('\n  ')}`,
+    )
+  }
+  return sections
+}
+
+/**
  * The coaching summary. Lives here with its siblings rather than inline in the tool, because a tool
  * handler calls one service and formats the result — it does not BE the formatter.
  * See docs/07-mcp.md.
  */
-export function reviewSummary(review: TrainingReview, weeks: number, unit: WeightUnit): string {
-  const a = review.adherence
+export function reviewSummary(review: TrainingReview, unit: WeightUnit): string {
+  const { weeks, adherence: a } = review
 
   const days =
     review.dayBalance.length === 0
       ? 'No sessions were tied to a planned day (all ad hoc).'
       : `Planned days trained:\n  ${review.dayBalance
           .map((d) => `${d.workout} / ${d.day}: ${d.sessions}x`)
-          .join('\n  ')}`
-
-  const work =
-    review.muscleWork.length === 0
-      ? 'No working sets recorded.'
-      : `Working sets by muscle, by its share of each exercise (vs the preceding ${weeks} weeks):\n  ${review.muscleWork
-          .slice(0, 12)
-          .map((m) => muscleLine(m, unit))
           .join('\n  ')}`
 
   const stalled =
@@ -203,7 +228,7 @@ export function reviewSummary(review: TrainingReview, weeks: number, unit: Weigh
     '',
     days,
     '',
-    work,
+    muscleSections(review.muscleWork, weeks, unit).join('\n\n'),
     '',
     stalled,
   ].join('\n')

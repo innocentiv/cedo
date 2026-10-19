@@ -42,7 +42,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       annotations: READ,
     },
     async ({ weeks }) =>
-      text(reviewSummary(await trainingReview(caller, weeks), weeks, caller.weightUnit)),
+      text(reviewSummary(await trainingReview(caller, weeks), caller.weightUnit)),
   )
 
   server.registerTool(
