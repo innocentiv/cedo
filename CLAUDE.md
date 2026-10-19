@@ -67,6 +67,10 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   two indexes that were never chosen by the planner, both of which looked correct in the schema.
 - **A perf guard is worthless until you have watched it fail.** Drop the index against
   `cedo_test_perf`, or reintroduce the N+1, and confirm the message names the problem.
+- **To watch a `noSeqScan` guard fail, remove EVERY index path into the table, not one.** The
+  planner falls back to whatever is left: dropping `workout_entries_order_idx` left a join green on
+  the primary key, and dropping that left it green on the `(id, owner)` target. A guard that only
+  fails once all three are gone is still a real guard — but one index dropped proves nothing.
 - **An empty table makes every assertion about it vacuous, and uniform data is nearly as bad.** The
   first perf seed left `media` and the favourites tables empty (`Seq Scan on media (rows=0)` — passes,
   proves nothing), and gave every muscle the same number of exercises, which made a real index look
