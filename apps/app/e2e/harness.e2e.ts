@@ -29,7 +29,10 @@ test(
     const run = withApp('harness-uncaught', async (page) => {
       await page.goto('/login')
       await page.evaluate(`setTimeout(() => { throw new Error('shim-probe') }, 0)`)
-      await Bun.sleep(300)
+      await page.until(
+        async () => page.errors.length,
+        (n) => n > 0,
+      )
     })
     await expect(run).rejects.toThrow('shim-probe')
   },
@@ -70,7 +73,10 @@ test(
       await page.click('[data-testid="register-submit"]')
       await page.waitFor('today-screen')
       await page.goto(`/exercises/${crypto.randomUUID()}`)
-      await Bun.sleep(500)
+      await page.until(
+        async () => page.errors.length,
+        (n) => n > 0,
+      )
     })
     await expect(run).rejects.toThrow('No such exercise')
   },

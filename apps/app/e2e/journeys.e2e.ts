@@ -131,27 +131,6 @@ async function loggedLines(page: Page): Promise<string[]> {
 }
 
 /**
- * A screen's text once it satisfies `done`, polled for at most `withinMs` — far inside the 30-second
- * `staleTime`, so it cannot pass by waiting the cache out. For a background refetch, which has no
- * event to wait on: a fixed sleep either races it or wastes the run.
- */
-async function textOnceSettled(
-  page: Page,
-  testId: string,
-  done: (text: string) => boolean,
-  withinMs = 3000,
-): Promise<string> {
-  const deadline = Date.now() + withinMs
-  for (;;) {
-    // oxlint-disable-next-line no-await-in-loop -- polling: each read must follow the last.
-    const text = (await page.text(testId)) ?? ''
-    if (done(text) || Date.now() > deadline) return text
-    // oxlint-disable-next-line no-await-in-loop -- polling: each read must follow the last.
-    await Bun.sleep(100)
-  }
-}
-
-/**
  * Types one key at a time, the way a thumb does, into whatever has focus. Never re-click a field
  * that is already focused to continue typing: the click moves the caret to where it landed.
  */
@@ -243,10 +222,11 @@ test(
       // mounted, holding the history it fetched before the set existed.
       await page.click('[data-testid="nav-exercises"]')
       await page.waitFor('exercise-detail-screen')
-      const history = await textOnceSettled(
-        page,
-        'exercise-history',
+      // Far inside the 30-second staleTime, so this cannot pass by waiting the cache out.
+      const history = await page.until(
+        async () => (await page.text('exercise-history')) ?? '',
         (text) => !text.includes('Nothing logged yet'),
+        3000,
       )
       expect(history).not.toContain('Nothing logged yet')
     })
@@ -299,8 +279,11 @@ test(
       // The tab keeps its stack: back to the very plan seen above, cached before the rename.
       await page.click('[data-testid="nav-workouts"]')
       await page.waitFor('workout-detail-screen')
-      const plan = await textOnceSettled(page, 'workout-detail-screen', (text) =>
-        text.includes(after),
+      // Far inside the 30-second staleTime, so this cannot pass by waiting the cache out.
+      const plan = await page.until(
+        async () => (await page.text('workout-detail-screen')) ?? '',
+        (text) => text.includes(after),
+        3000,
       )
       expect(plan).toContain(after)
       expect(plan).not.toContain(before)
@@ -369,24 +352,29 @@ test(
       await openNewPlan(page)
       await saveAndStart(page)
 
-      const log = async () => {
+      const rows = async () =>
+        Number(
+          await page.evaluate(`document.querySelectorAll('[data-testid^="logged-set-"]').length`),
+        )
+      /** Logs a set, and waits until it is a row — the next set is numbered from the refreshed logs. */
+      const log = async (expected: number) => {
         await page.fill('log-entry-0-weight', '60')
         await page.click('[data-testid="log-entry-0-log"]')
-        await Bun.sleep(300)
+        await page.until(rows, (n) => n === expected)
       }
-      await log()
-      await log()
-      await log()
+      await log(1)
+      await log(2)
+      await log(3)
 
       // Undo set 2 — the second row — then log once more.
-      const rows = await page.evaluate(
+      const ids = await page.evaluate(
         `[...document.querySelectorAll('[data-testid^="logged-set-"]')].map((e) => e.dataset.testid)`,
       )
-      const second = Array.isArray(rows) ? rows[1] : undefined
+      const second = Array.isArray(ids) ? ids[1] : undefined
       if (typeof second !== 'string') throw new Error('expected three logged rows')
       await page.click(`[data-testid="${second}"]`)
-      await Bun.sleep(300)
-      await log()
+      await page.until(rows, (n) => n === 2)
+      await log(3)
 
       // A count would have numbered the new set 3, beside the existing set 3. Rows read
       // "Barbell Bench Press · set 1": the number is what follows the name.
@@ -500,10 +488,10 @@ test(
 
       await typeKeys(page, ['L', 'e', 'g', 's'])
       // Read once the render has caught up with the last key, not in the same tick.
-      for (let tries = 0; tries < 40 && (await page.exists('plan-issues')); tries += 1) {
-        await Bun.sleep(50)
-      }
-      expect(await page.exists('plan-issues')).toBe(false)
+      await page.until(
+        async () => await page.exists('plan-issues'),
+        (shown) => !shown,
+      )
       expect(await saveDisabled()).not.toBe('true')
     })
   },

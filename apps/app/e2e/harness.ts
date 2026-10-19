@@ -176,6 +176,16 @@ export interface Page {
    * fails for a reason that has nothing to do with what it is testing.
    */
   readonly waitForSelector: (css: string, timeoutMs?: number) => Promise<string>
+  /**
+   * Reads `read` until `done` holds, and returns that value; fails after `withinMs` with the last
+   * value seen. The one way to wait for something with no event of its own — a refetch, a re-render,
+   * a row appearing. A fixed sleep either races it or wastes the run, so journeys never sleep.
+   */
+  readonly until: <T>(
+    read: () => Promise<T>,
+    done: (value: T) => boolean,
+    withinMs?: number,
+  ) => Promise<T>
   readonly evaluate: (script: string) => Promise<unknown>
   /** The API as the page's signed-in user, from the test process — for setting up their data. */
   readonly client: () => Promise<ApiClient>
@@ -293,29 +303,48 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
     },
     exists: async (testId) =>
       (await view.evaluate(`!!document.querySelector(${quote(selector(testId))})`)) === true,
-    waitFor: async (testId, timeoutMs = 8000) => {
-      const deadline = Date.now() + timeoutMs
-      while (Date.now() < deadline) {
-        if (await page.exists(testId)) return
-        await Bun.sleep(150)
+    until: async (read, done, withinMs = 8000) => {
+      const deadline = Date.now() + withinMs
+      for (;;) {
+        // oxlint-disable-next-line no-await-in-loop -- polling: each read must follow the last.
+        const value = await read()
+        if (done(value)) return value
+        if (Date.now() > deadline) {
+          throw new Error(`Still waiting after ${withinMs}ms; last saw ${JSON.stringify(value)}`)
+        }
+        // oxlint-disable-next-line no-await-in-loop -- polling: each read must follow the last.
+        await Bun.sleep(100)
       }
-      const seen = await view.evaluate(
-        `Array.from(document.querySelectorAll('[data-testid]')).map(e => e.getAttribute('data-testid')).join(', ')`,
-      )
-      throw new Error(
-        `Timed out waiting for "${testId}". On screen: ${String(seen)}\n` +
-          (errors.length > 0 ? `Console errors so far:\n  ${errors.join('\n  ')}` : ''),
-      )
+    },
+    waitFor: async (testId, timeoutMs = 8000) => {
+      try {
+        await page.until(
+          async () => await page.exists(testId),
+          (shown) => shown,
+          timeoutMs,
+        )
+      } catch {
+        const seen = await view.evaluate(
+          `Array.from(document.querySelectorAll('[data-testid]')).map(e => e.getAttribute('data-testid')).join(', ')`,
+        )
+        throw new Error(
+          `Timed out waiting for "${testId}". On screen: ${String(seen)}\n` +
+            (errors.length > 0 ? `Console errors so far:\n  ${errors.join('\n  ')}` : ''),
+        )
+      }
     },
     waitForSelector: async (css, timeoutMs = 8000) => {
-      const deadline = Date.now() + timeoutMs
       const read = `document.querySelector(${quote(css)})?.getAttribute('data-testid') ?? null`
-      while (Date.now() < deadline) {
-        const found = await view.evaluate(read)
-        if (typeof found === 'string') return found
-        await Bun.sleep(150)
-      }
-      throw new Error(`Timed out waiting for an element matching ${css}.`)
+      const found = await page
+        .until(
+          async () => await view.evaluate(read),
+          (id) => typeof id === 'string',
+          timeoutMs,
+        )
+        .catch(() => {
+          throw new Error(`Timed out waiting for an element matching ${css}.`)
+        })
+      return String(found)
     },
     evaluate: async (script) => await view.evaluate(script),
     client: async () => {
