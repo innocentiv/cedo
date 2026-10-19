@@ -6,7 +6,7 @@ import {
   type FieldEvent,
   type Typing,
   editField,
-  fieldEdit,
+  fieldShowing,
   fieldText,
 } from './typing.ts'
 
@@ -16,7 +16,7 @@ import {
  * keystroke settles after the parent has answered, as a render does.
  */
 function field(typing: Typing, value: number | null, parent = (v: number | null) => v) {
-  let edit = fieldEdit(value)
+  let edit = fieldShowing(value)
   let selected = false
   const emitted: (number | null)[] = []
   const apply = (event: FieldEvent) => {
@@ -113,7 +113,7 @@ describe('a field being typed in', () => {
     expect(f.shown()).toBe('40')
   })
 
-  test('shows the value on focus, and on blur whatever the parent settled to', () => {
+  test('shows the value until typed in, and once left whatever the parent settled to', () => {
     const f = field(COUNT, 25, (v) => Math.min(v ?? 1, 20))
     f.focus()
     expect(f.shown()).toBe('25')
@@ -124,7 +124,7 @@ describe('a field being typed in', () => {
   })
 
   test('answers an event that changes nothing with the same state, so a render can bail out', () => {
-    const edit = fieldEdit(4)
+    const edit = fieldShowing(4)
     expect(editField(edit, { kind: 'settled' }, COUNT).edit).toBe(edit)
     expect(editField(edit, { kind: 'blur' }, COUNT).edit).toBe(edit)
     expect(editField(edit, { kind: 'value', value: 4 }, COUNT).edit).toBe(edit)

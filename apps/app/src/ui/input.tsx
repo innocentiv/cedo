@@ -3,10 +3,9 @@ import { StyleSheet, TextInput } from 'react-native'
 import {
   COUNT,
   type FieldEvent,
-  type FieldStep,
   type Typing,
   editField,
-  fieldEdit,
+  fieldShowing,
   fieldText,
 } from '@cedo/contract'
 import { CONTROL_HEIGHT, color, radius, space, type } from './tokens.ts'
@@ -117,11 +116,7 @@ export interface TypedNumberProps {
   readonly testID?: string | undefined
 }
 
-/**
- * The field every number is typed into. What the text MEANS is the contract's `Typing`
- * (`fieldFor`, `COUNT`, `CLOCK`); what stays on screen while it is typed is the contract's
- * `editField`. This only wires the input's events to it.
- */
+/** Wires a numeric input to the contract's `editField`, which holds every typing rule. */
 export function TypedNumber({
   value,
   onChange,
@@ -129,23 +124,22 @@ export function TypedNumber({
   placeholder,
   testID,
 }: TypedNumberProps): React.JSX.Element {
-  const [edit, setEdit] = useState(() => fieldEdit(value))
-  const step = (event: FieldEvent): FieldStep => {
-    const next = editField(edit, event, typing)
-    setEdit(next.edit)
-    return next
+  const [edit, setEdit] = useState(() => fieldShowing(value))
+  // From the latest state, not this render's: on native two events can land before a re-render.
+  const send = (event: FieldEvent): void => {
+    setEdit((current) => editField(current, event, typing).edit)
   }
-  if (value !== edit.value) step({ kind: 'value', value })
+  if (value !== edit.value) send({ kind: 'value', value })
   // A keystroke's window closes once the render it caused has committed.
   useEffect(() => {
-    if (edit.own) setEdit((current) => editField(current, { kind: 'settled' }, typing).edit)
+    if (edit.own) send({ kind: 'settled' })
   })
   return (
     <TextInput
       testID={testID}
       value={fieldText(edit, typing)}
       onBlur={() => {
-        step({ kind: 'blur' })
+        send({ kind: 'blur' })
       }}
       /**
        * Focusing a prefilled numeric field selects it, so typing REPLACES the prescribed value.
@@ -154,7 +148,10 @@ export function TypedNumber({
        */
       selectTextOnFocus
       onChangeText={(text) => {
-        const { emit } = step({ kind: 'type', text })
+        const event = { kind: 'type', text } as const
+        send(event)
+        // What a keystroke emits depends on its text alone, so this render's state answers it.
+        const { emit } = editField(edit, event, typing)
         if (emit !== undefined) onChange(emit)
       }}
       placeholder={placeholder}

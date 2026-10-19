@@ -144,7 +144,8 @@ export interface FieldStep {
   readonly emit?: number | null
 }
 
-export const fieldEdit = (value: number | null): FieldEdit => ({ value, text: null, own: false })
+/** A field showing `value`, not being typed in. */
+export const fieldShowing = (value: number | null): FieldEdit => ({ value, text: null, own: false })
 
 export const fieldText = (edit: FieldEdit, field: Typing): string =>
   edit.text ?? field.toText(edit.value)
@@ -154,18 +155,14 @@ export const fieldText = (edit: FieldEdit, field: Typing): string =>
  * so a component holding it in state does not render again for it.
  */
 export function editField(edit: FieldEdit, event: FieldEvent, field: Typing): FieldStep {
-  switch (event.kind) {
-    case 'blur':
-      return { edit: edit.text === null ? edit : { ...edit, text: null } }
-    case 'settled':
-      return { edit: edit.own ? { ...edit, own: false } : edit }
-    case 'type': {
-      const typed = field.parse(event.text)
-      return { edit: { ...edit, text: typed.text, own: true }, emit: typed.value }
-    }
-    case 'value':
-      break
+  if (event.kind === 'type') {
+    const typed = field.parse(event.text)
+    return { edit: { ...edit, text: typed.text, own: true }, emit: typed.value }
   }
-  if (event.value === edit.value) return { edit }
-  return { edit: { ...edit, value: event.value, text: edit.own ? edit.text : null } }
+  if (event.kind === 'value') {
+    if (event.value === edit.value) return { edit }
+    return { edit: { ...edit, value: event.value, text: edit.own ? edit.text : null } }
+  }
+  if (event.kind === 'settled') return { edit: edit.own ? { ...edit, own: false } : edit }
+  return { edit: edit.text === null ? edit : { ...edit, text: null } }
 }
