@@ -1,7 +1,7 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
+import { DomainError } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { requireCurator } from '../../modules/review/curation.ts'
 import { platformStatus, slowQueries } from '../../modules/review/diagnostics.ts'
 import { text } from '../format.ts'
 
@@ -27,8 +27,7 @@ export function registerDiagnosticTools(server: McpServer, caller: Caller, versi
       annotations: READ,
     },
     async () => {
-      await requireCurator(caller)
-      const status = await platformStatus(version)
+      const status = await platformStatus(caller, version)
 
       return text(
         [
@@ -62,9 +61,8 @@ export function registerDiagnosticTools(server: McpServer, caller: Caller, versi
       annotations: READ,
     },
     async ({ limit }) => {
-      await requireCurator(caller)
       try {
-        const rows = await slowQueries(limit)
+        const rows = await slowQueries(caller, limit)
         if (rows.length === 0) return text('No query statistics recorded yet.')
 
         return text(
@@ -76,7 +74,10 @@ export function registerDiagnosticTools(server: McpServer, caller: Caller, versi
             .join('\n\n'),
         )
       } catch (error: unknown) {
-        return text(error instanceof Error ? error.message : 'Query statistics are unavailable.')
+        // Only the "extension not installed" conflict is an answer. Anything else — a non-curator's
+        // 404 above all — stays an error, or the refusal reads as an ordinary result.
+        if (error instanceof DomainError && error.code === 'conflict') return text(error.message)
+        throw error
       }
     },
   )

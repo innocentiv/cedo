@@ -42,7 +42,13 @@ magnitude more tokens than `Barbell Back Squat (uuid) · quadriceps 45%, glute_m
 
 Every tool runs as a real user under the same ACL as the UI. There is no elevated path. Writing to
 the shared library requires being a **curator** — an editor of the seeded `cedo` group — which
-`requireCurator` enforces, and which answers `404`, not `403`.
+`requireCurator` enforces, and which answers `404`, not `403`. Put that check in the service the
+tool calls, as `review/diagnostics.ts` does, never in the tool: the HTTP route calls the same service,
+and a check in one adapter is a check the other forgot.
+
+A tool that turns an expected failure into a readable answer — "pg_stat_statements is not installed"
+— catches THAT failure only, by its code. A blanket `catch` also turns a refusal into an ordinary
+result, and the caller reads it as data.
 
 ## 5. Test it through the wire
 

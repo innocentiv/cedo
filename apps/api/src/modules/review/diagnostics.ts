@@ -3,9 +3,13 @@ import { z } from 'zod'
 import type { PlatformStatus, SlowQuery } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { conflict } from '../../lib/error.ts'
+import type { Caller } from '../../plugins/auth.ts'
+import { requireCurator } from './curation.ts'
 
 /**
- * Instance diagnostics, for a CURATOR only.
+ * Instance diagnostics, for a CURATOR only — checked here, inside each function, so the HTTP route
+ * and the MCP tool are one line each and no third surface can forget the check. A non-curator gets
+ * a 404, not a 403: whether an instance has a curator at all is not theirs to learn.
  *
  * The honest use for this is not local development — there you have psql, the source and the tests.
  * It is diagnosing a deployment nobody has a shell on: someone reports that it is slow on their NAS
@@ -29,7 +33,8 @@ const COUNTED = [
 const CountRow = z.object({ table: z.string(), rows: z.coerce.number() })
 const TextRow = z.object({ value: z.string() })
 
-export async function platformStatus(version: string): Promise<PlatformStatus> {
+export async function platformStatus(caller: Caller, version: string): Promise<PlatformStatus> {
+  await requireCurator(caller)
   const counts = await db.execute(
     sql.raw(
       COUNTED.map((t) => `select '${t}' as table, count(*)::text as rows from ${t}`).join(
@@ -92,7 +97,8 @@ const SlowQueryRow = z.object({
  * extension stores `$1` placeholders, never literal parameter values, so this cannot leak a user's
  * data. See docs/05-database.md.
  */
-export async function slowQueries(limit: number): Promise<SlowQuery[]> {
+export async function slowQueries(caller: Caller, limit: number): Promise<SlowQuery[]> {
+  await requireCurator(caller)
   const available = await db.execute(
     sql`select count(*)::text as value from pg_extension where extname = 'pg_stat_statements'`,
   )

@@ -400,17 +400,17 @@ describe('editing a plan', () => {
   })
 })
 
+/**
+ * Refused as an ERROR result, not as text that merely mentions it: the slow-query tool turns the
+ * "extension not installed" conflict into a readable answer, and once the curator check moved into
+ * the service, that same catch would have handed a non-curator an ordinary result.
+ */
 describe('diagnostics are curator-only', () => {
-  test('a normal user cannot read platform status', async () => {
+  test.each(['platform_status', 'db_slow_queries'])('a normal user is refused %s', async (tool) => {
     const pat = await mintPat(alice)
-    const result = await callTool(pat, 'platform_status')
-    expect(JSON.stringify(result.body)).toContain('curator access')
-  })
-
-  test('nor the slow query log', async () => {
-    const pat = await mintPat(alice)
-    const result = await callTool(pat, 'db_slow_queries')
-    expect(JSON.stringify(result.body)).toContain('curator access')
+    const { body } = await callTool(pat, tool)
+    expect(body.result?.isError).toBe(true)
+    expect(textOf(body)).toContain('curator access')
   })
 })
 
