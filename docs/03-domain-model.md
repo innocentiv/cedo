@@ -244,7 +244,7 @@ against a realistic data volume — see [adr/0018](adr/0018-n1-detection.md).
 | `users_external_idx` (unique, partial) | the IAM seam; only rows that have an `external_id` |
 | **`exercises_owner_name_idx`** on `(owner_group_id, name, id)` | `scope=mine` and `scope=group`, where the owner is a single equality: the whole list query in one index walk |
 | **`exercises_name_id_idx`** on `(name, id)` | `scope=all`, where the owner is an `IN` list and only the keyset columns can be walked in order |
-| `exercises_name_trgm_idx` (GIN, `pg_trgm`) | substring search over a five-figure library, and the library audit's near-duplicate lookup |
+| `exercises_name_trgm_idx` (GIN, `pg_trgm`, `fastupdate = off`) | substring search over a five-figure library, and the library audit's near-duplicate lookup — never behind a pending list |
 | `exercise_muscles_muscle_idx` | filtering the library by muscle |
 | **`workouts_owner_name_idx`** on `(owner_group_id, name, id)`, **`workouts_name_id_idx`** on `(name, id)` | the workout list, the same pair and the same reasons as the exercise ones |
 | `muscles_region_idx` | rendering the muscle picker in display order |

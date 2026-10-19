@@ -45,10 +45,18 @@ export const exercises = pgTable(
     // owner_group_id needs no index of its own: it is the left prefix of this one.
     index('exercises_owner_name_idx').on(t.ownerGroupId, t.name, t.id),
     index('exercises_name_id_idx').on(t.name, t.id),
-    index('exercises_name_trgm_idx').using('gin', sql`${t.name} gin_trgm_ops`),
+    index('exercises_name_trgm_idx')
+      .using('gin', sql`${t.name} gin_trgm_ops`)
+      .with({ fastupdate: false }),
   ],
 )
 ```
+
+A GIN index is `fastupdate = off` here. Its default parks new entries in a pending list that every
+lookup scans linearly until a vacuum flushes it — below the 4 MB that forces a flush, indefinitely —
+and a bulk import of exercises left name search at 5s instead of 0.3s. These tables are written
+rarely and searched constantly, so an index pays at write time instead. `db/trigram.test.ts`
+asserts it.
 
 Each index here exists for a query the perf suite measured — see `docs/03-domain-model.md` for why
 there is deliberately no bare `owner_group_id` index. A `.desc()` column that a query ORDERS BY must
