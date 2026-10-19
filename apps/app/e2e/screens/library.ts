@@ -1,0 +1,120 @@
+import type { Page } from '../harness.ts'
+
+/** The exercise library: its list, an exercise's detail, and the form that creates or edits one. */
+
+type FormScreen = 'exercise-new-screen' | 'exercise-edit-screen'
+
+const exerciseForm = (page: Page, screen: FormScreen) => ({
+  name: async (name: string): Promise<void> => {
+    await page.fill('exercise-name', name)
+  },
+  /** Picks a muscle and gives it a share of the load. */
+  load: async (muscle: string, percent: string): Promise<void> => {
+    await page.click(`[data-testid="muscle-option-${muscle}"]`)
+    await page.fill(`muscle-load-${muscle}`, percent)
+  },
+  /** The running total the form shows under the muscles. */
+  total: async (): Promise<string> => (await page.text('muscle-total')) ?? '',
+  attachVideo: async (url: string): Promise<void> => {
+    await page.fill('media-url', url)
+    await page.click('[data-testid="attach-media"]')
+    await page.waitForSelector('[data-testid^="media-row-"]')
+  },
+  /**
+   * Saves, and waits for the form to close. Closed, not gone: a tab keeps its stack mounted, so the
+   * form stays in the page — hidden — after going back to wherever it was opened from.
+   */
+  save: async (): Promise<void> => {
+    await page.click(`[data-testid="${screen}-save"]`)
+    await page.until(
+      async () =>
+        await page.evaluate(
+          `document.querySelector('[data-testid="${screen}"]')?.offsetParent != null`,
+        ),
+      (shown) => shown === false,
+    )
+  },
+  /** Saves a form the API will refuse, and returns the message it shows instead. */
+  saveRefused: async (): Promise<string> => {
+    await page.click(`[data-testid="${screen}-save"]`)
+    await page.waitFor(`${screen}-error`)
+    return (await page.text(`${screen}-error`)) ?? ''
+  },
+})
+
+/** The exercise detail screen — reached however the journey reached it. */
+export const exercise = (page: Page) => ({
+  historyText: async (): Promise<string> => {
+    await page.waitFor('exercise-history')
+    return (await page.text('exercise-history')) ?? ''
+  },
+  edit: async () => {
+    await page.waitFor('edit-exercise')
+    await page.click('[data-testid="edit-exercise"]')
+    await page.waitFor('exercise-edit-screen')
+    return exerciseForm(page, 'exercise-edit-screen')
+  },
+  /** Copies a shared exercise; lands in the editor for the copy. */
+  duplicate: async () => {
+    await page.waitFor('duplicate-exercise')
+    await page.click('[data-testid="duplicate-exercise"]')
+    await page.waitFor('exercise-edit-screen')
+    return exerciseForm(page, 'exercise-edit-screen')
+  },
+})
+
+export const library = (page: Page) => {
+  const newExercise = async () => {
+    await page.goto('/exercises/new')
+    await page.waitFor('exercise-new-screen')
+    return exerciseForm(page, 'exercise-new-screen')
+  }
+  const list = async (): Promise<void> => {
+    await page.goto('/exercises')
+    await page.waitFor('exercise-list')
+  }
+  const openRow = async () => {
+    const row = await page.waitForSelector('[data-testid^="exercise-row-"]')
+    await page.click(`[data-testid="${row}"]`)
+    await page.waitFor('exercise-detail-screen')
+    return exercise(page)
+  }
+  return {
+    newExercise,
+    /** One exercise loading one muscle fully, through the form. */
+    create: async (name: string, muscle: string): Promise<void> => {
+      const form = await newExercise()
+      await form.name(name)
+      await form.load(muscle, '100')
+      await form.save()
+    },
+    listText: async (): Promise<string> => {
+      await list()
+      return (await page.text('exercise-list')) ?? ''
+    },
+    openFirst: async () => {
+      await list()
+      return await openRow()
+    },
+    /** Searches the library tab as it stands — no reload — and opens the first match. */
+    find: async (name: string) => {
+      await page.waitFor('exercises-screen')
+      await page.fill('exercise-search', name)
+      return await openRow()
+    },
+    /** Filters the list by scope: `all`, `mine` or `favourites`. */
+    scope: async (scope: string): Promise<void> => {
+      await page.goto('/exercises')
+      await page.waitFor('exercise-scope')
+      await page.click(`[data-testid="exercise-scope-${scope}"]`)
+    },
+    emptyShown: async (): Promise<void> => {
+      await page.waitFor('exercises-empty')
+    },
+    /** The scope chips' row height, in CSS pixels. */
+    scopeHeight: async (): Promise<unknown> =>
+      await page.evaluate(
+        `document.querySelector('[data-testid="exercise-scope"]').getBoundingClientRect().height`,
+      ),
+  }
+}
