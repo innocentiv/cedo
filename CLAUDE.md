@@ -107,7 +107,8 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   click either races a slow API or wastes the run, and a hand-rolled loop is a third way of saying
   the same thing. `until` fails with the last value it saw, which is the diagnosis. Fixtures are
   typed calls from the test process (`page.client()`, `signUp`), awaited — never a `fetch`
-  evaluated in the page.
+  evaluated in the page. And a journey drives screens, never elements: test ids live in
+  `e2e/screens/`, and `journeys.test.ts` fails on one named in a journey.
 - **`e2e` and `shot` serve `apps/app/dist`, so both rebuild first.** They used not to, which meant
   editing a screen and running either tested the PREVIOUS bundle and passed. Use `e2e:only` to skip
   the rebuild when you know the bundle is current.
