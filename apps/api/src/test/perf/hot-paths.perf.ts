@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { HOT_PATHS, type Measurement, measure } from './hot-paths.ts'
-import { flushGinPendingPages, perfFixtures } from './harness.ts'
+import { perfFixtures } from './harness.ts'
+import { ginPendingPages } from '../../db/seed-perf/shape.ts'
 import {
   expectIndexUsed,
   expectNoSeqScan,
@@ -29,8 +30,8 @@ import * as exerciseService from '../../modules/exercise/service.ts'
  */
 
 const fixtures = await perfFixtures()
-/** Read before anything is measured — see `flushGinPendingPages`. */
-const ginPendingPages = await flushGinPendingPages()
+/** Counted before anything is measured, and left as it is — see `ginPendingPages`. */
+const pendingGinPages = await ginPendingPages()
 
 /** Measured once per path; all four assertions read the same measurement. */
 const measured = new Map<string, Measurement>()
@@ -55,11 +56,11 @@ test('the fixtures are at production volume', () => {
 /**
  * Regression: a fresh seed left the trigram index's GIN pending list full, so the library audit
  * missed its budget (5s) for the first two or three runs after every seed, then passed once
- * autovacuum flushed it. The seed must leave the database as it would settle; a non-zero count
- * here means it did not, and every timing below was measured against a state nobody runs in.
+ * autovacuum flushed it. The seed must leave the database as it would settle. A non-zero count
+ * means it did not — the timings below then fail too, and this says why.
  */
 test('the fixtures are in steady state: no GIN index has entries still pending', () => {
-  expect(ginPendingPages).toBe(0)
+  expect(pendingGinPages).toBe(0)
 })
 
 for (const path of HOT_PATHS) {

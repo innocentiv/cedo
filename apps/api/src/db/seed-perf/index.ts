@@ -64,7 +64,8 @@ export async function seedPerf(): Promise<PerfFixtures> {
   // production would get, which would make every assertion below meaningless. VACUUM as well, for
   // the same reason: a bulk load leaves GIN indexes with their new entries in a pending list that
   // every lookup scans linearly until autovacuum flushes it — the trigram scan took 5s instead of
-  // 0.3s for the first ~40s after every seed. The suite refuses a database left in that state.
+  // 0.3s for the first ~40s after every seed. The suite fails, naming the pending pages, on a
+  // database left in that state.
   await db.execute(sql`vacuum analyze`)
 
   return { small, large, sharedGroupId, curator, setLogCount: await countRows('set_logs') }

@@ -110,6 +110,28 @@ export const UNUSABLE_HASH = 'unusable'
 export const EQUIPMENT = `(array['Barbell','Dumbbell','Cable','Machine','Kettlebell','Bodyweight'])[1 + i % 6]`
 export const MOVEMENT = `(array['Bench Press','Row','Squat','Curl','Overhead Press','Fly','Extension','Lateral Raise','Pulldown','Deadlift'])[1 + i % 10]`
 
+/**
+ * Pages GIN indexes still hold in their pending lists — counted, NOT flushed (`pgstattuple`, which
+ * reads without changing anything), so a database left unsettled stays visibly unsettled, run after
+ * run, instead of being repaired by the very check that found it.
+ *
+ * A bulk load into a GIN index with `fastupdate` (the default) parks its entries in a pending list
+ * that EVERY lookup scans linearly until a vacuum flushes it. The 10,000-exercise curated library
+ * left 257 pages there, and the trigram scan took 5s instead of 0.3s until autovacuum caught up.
+ * The perf database only: the extension is created here, never in an application database.
+ */
+export async function ginPendingPages(): Promise<number> {
+  await db.execute(sql`create extension if not exists pgstattuple`)
+  return Number(
+    await scalar(sql`
+      select coalesce(sum((pgstatginindex(c.oid)).pending_pages), 0)::text
+        from pg_class c
+        join pg_am am on am.oid = c.relam
+       where am.amname = 'gin' and c.relkind = 'i'
+    `),
+  )
+}
+
 export async function countRows(table: 'set_logs' | 'muscles'): Promise<number> {
   return Number(await scalar(sql.raw(`select count(*)::text from ${table}`)))
 }

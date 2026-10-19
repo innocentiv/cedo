@@ -131,8 +131,8 @@ set logs, 10,000 shared exercises, 1,000 plans and 5,000 sessions. It is seeded 
 integration harness never touches it.
 
 It is seeded into the state it would SETTLE in, not the one a bulk load leaves: the seed ends with
-`VACUUM ANALYZE`, and the suite checks — before measuring anything — that no GIN index still has
-entries pending. A fresh bulk load parks a GIN index's new entries in a pending list every lookup
+`VACUUM ANALYZE`, and the suite counts — read-only, through `pgstattuple`, before measuring anything —
+the pages GIN indexes still hold pending, and fails if there are any. A fresh bulk load parks a GIN index's new entries in a pending list every lookup
 scans linearly; the library audit took 5s instead of 0.3s for the first runs after each seed, until
 autovacuum caught up, and a timing measured against that state describes nothing.
 
