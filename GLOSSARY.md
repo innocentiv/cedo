@@ -5,6 +5,24 @@ tables and invariants behind them are in `docs/03-domain-model.md`, and the two 
 
 ## Ownership and access
 
+**Group**:
+People who own things together. Every person has a personal group of their own, so "mine" and
+"shared" are the same mechanism.
+_Avoid_: team, organisation
+
+**Editor** / **Reader**:
+A member's role in a group: an editor can change what the group owns and who belongs to it; a
+reader can only read it.
+_Avoid_: admin, viewer, owner
+
+**Library**:
+The starter exercises every account can read, owned by the seeded `cedo` group.
+_Avoid_: catalogue, defaults
+
+**Curator**:
+An editor of the library's group, who may audit and tidy the library.
+_Avoid_: admin, moderator
+
 **Owning group**:
 The group an exercise or workout belongs to. It alone decides who may read or change the thing.
 _Avoid_: owner (as a user), author
@@ -29,6 +47,10 @@ Changeable by a caller, because they are an editor of the owning group.
 An exercise a plan or a log still refers to that the reader can no longer see. Its name is
 withheld, and nothing new can be logged against it.
 _Avoid_: deleted exercise, hidden exercise
+
+**Access token**:
+A credential a person makes for an AI to act as them, under exactly their permissions. Shown once.
+_Avoid_: API key, password
 
 **Visible relation**:
 The rows of an ownable, or of its children, that one caller may read. It is the only form in which
@@ -103,6 +125,33 @@ _Avoid_: units setting, locale
 
 ## Plans
 
+**Workout**:
+A named programme someone trains from — Push/Pull/Legs, a five-week block. It is an ownable: shared,
+transferred, duplicated, favourited as one.
+_Avoid_: routine, program, template
+
+**Plan**:
+A workout's days and entries — what the editor edits and replaces as a whole. "Start from a plan"
+means starting a session from one of its days.
+_Avoid_: schedule, layout
+
+**Day**:
+One training day of a workout's plan, holding its entries in order.
+_Avoid_: session (that is a day trained), split
+
+**Entry**:
+One exercise on a day: its prescription, its sets, and how it progresses.
+_Avoid_: slot, item, exercise (that is the movement itself)
+
+**Superset**:
+Entries of one day performed alternating, marked by a shared letter.
+_Avoid_: circuit, pairing
+
+**Progression rule**:
+How an entry's prescription advances from what was logged: none, linear, double, or linear in
+duration.
+_Avoid_: program, scheme
+
 **Prescription**:
 What an exercise in a plan asks for on every working set: one set of targets, shared by all of
 them. Progression advances it.
@@ -124,7 +173,7 @@ One visit to the gym: when it started and ended, and the sets logged in it. It m
 of a plan, or no plan at all. A session is in progress until it is finished, and finishing is final:
 a finished session takes no more sets, and none are undone. A person has at most one session in
 progress.
-_Avoid_: workout (that is the plan), training
+_Avoid_: workout (that is what a session follows), training
 
 **Set log**:
 One set as it was done: the exercise, its effort, and — when the session follows a plan — the plan
