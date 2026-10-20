@@ -198,7 +198,8 @@ workouts — also take a `scope`; sessions are personal, so `GET /sessions` filt
 | `favourites` | pinned by the caller |
 | `group` | one group; requires `groupId` |
 
-Query schemas must use `z.coerce` — query strings are always strings.
+Query schemas must use `z.coerce` — query strings are always strings — except for a boolean, which
+uses `z.stringbool()`: "false" is a non-empty string, and `z.coerce.boolean()` reads it as true.
 
 ## OpenAPI
 

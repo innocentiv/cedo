@@ -3,6 +3,7 @@ import {
   ApiError,
   Exercise,
   SessionStart,
+  SetLog,
   WorkoutSession,
   WorkoutSessionSummary,
   page,
@@ -53,7 +54,7 @@ async function aLoggedSet(sessionId: string): Promise<string> {
     exerciseId: exercise.id,
     reps: 8,
   })
-  return expectContract(WorkoutSession.shape.logs.element, res.body).id
+  return expectContract(SetLog, res.body).id
 }
 
 describe('finishing is final', () => {

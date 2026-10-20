@@ -1,12 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { exerciseName } from '../../../../src/lib/exercise-name.ts'
 import { formatPrescription } from '@cedo/contract'
-import type { WorkoutDay } from '@cedo/contract'
+import type { WorkoutDay, WorkoutSessionSummary } from '@cedo/contract'
 import { useWeightUnit } from '../../../../src/lib/weight-unit.ts'
 import {
   Button,
   Card,
   ErrorNotice,
+  Loaded,
   NavButton,
   Screen,
   Spinner,
@@ -20,13 +21,11 @@ export default function WorkoutDetail(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>()
   const router = useRouter()
   const { data, isPending, error, refetch } = useWorkout(id ?? '')
-  const unit = useWeightUnit()
   const start = useStartSession()
   const { submit, busy, error: startError } = useSubmit()
-  // One session is in progress at a time: while one is, a day offers it back rather than a start
-  // the server would refuse — and offers nothing until it is known whether one is.
+  // One session is in progress at a time: while one is, the plan offers it back rather than a start
+  // the server would refuse — and, until it is known whether one is, offers neither.
   const current = useSessions({ inProgress: true, limit: 1 })
-  const inProgress = current.data?.items[0]
 
   const begin = (day: WorkoutDay) => {
     void submit(async () => {
@@ -65,6 +64,43 @@ export default function WorkoutDetail(): React.JSX.Element {
       }
     >
       {startError === null ? null : <Text tone="danger">{startError}</Text>}
+      <Loaded query={current} testID="workout-current">
+        {({ items: [inProgress] }) => (
+          <Days
+            days={data.days}
+            inProgress={inProgress}
+            busy={busy}
+            onStart={begin}
+            onResume={(sessionId) => {
+              router.push(`/today/session/${sessionId}`)
+            }}
+          />
+        )}
+      </Loaded>
+    </Screen>
+  )
+}
+
+/**
+ * The plan's days, each with what can be done from it now: Start — or, while a session is in
+ * progress, nothing, and that session offered back above them.
+ */
+function Days({
+  days,
+  inProgress,
+  busy,
+  onStart,
+  onResume,
+}: {
+  readonly days: readonly WorkoutDay[]
+  readonly inProgress: WorkoutSessionSummary | undefined
+  readonly busy: boolean
+  readonly onStart: (day: WorkoutDay) => void
+  readonly onResume: (sessionId: string) => void
+}): React.JSX.Element {
+  const unit = useWeightUnit()
+  return (
+    <>
       {inProgress === undefined ? null : (
         <Card testID="workout-in-progress">
           <Stack gap="sm">
@@ -72,34 +108,33 @@ export default function WorkoutDetail(): React.JSX.Element {
             <Button
               title="Resume"
               onPress={() => {
-                router.push(`/today/session/${inProgress.id}`)
+                onResume(inProgress.id)
               }}
-              testID="resume-session"
+              testID="workout-resume"
             />
           </Stack>
         </Card>
       )}
-
-      {data.days.length === 0 ? (
+      {days.length === 0 ? (
         <Text tone="muted">This plan has no days yet.</Text>
       ) : (
-        data.days.map((day) => (
+        days.map((day) => (
           <Card key={day.id} testID={`workout-day-${day.index}`}>
             <Stack gap="md">
               <Stack direction="row" gap="sm" align="center">
                 <Stack grow>
                   <Text variant="heading">{day.name}</Text>
                 </Stack>
-                {current.data === undefined || inProgress !== undefined ? null : (
+                {inProgress === undefined ? (
                   <Button
                     title="Start"
                     onPress={() => {
-                      begin(day)
+                      onStart(day)
                     }}
                     busy={busy}
                     testID={`start-day-${day.index}`}
                   />
-                )}
+                ) : null}
               </Stack>
 
               {day.entries.map((entry) => (
@@ -118,6 +153,6 @@ export default function WorkoutDetail(): React.JSX.Element {
           </Card>
         ))
       )}
-    </Screen>
+    </>
   )
 }

@@ -101,7 +101,8 @@ Author once, in Zod, in `packages/contract`. Never redeclare a shape in the API,
 form. If the API needs a variant, derive it (`.pick()`, `.omit()`, `.extend()`) from the canonical
 schema rather than writing a parallel one.
 
-Query-parameter schemas must use `z.coerce` — query strings are always strings.
+Query-parameter schemas must use `z.coerce` — query strings are always strings — and a boolean
+`z.stringbool()`, because `z.coerce.boolean()` reads the string "false" as true.
 
 ## Async
 

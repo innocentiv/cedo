@@ -44,6 +44,11 @@ export async function start(caller: Caller, input: SessionStart): Promise<Workou
   return toSession(created, [])
 }
 
+/**
+ * `workoutId` and `dayId` are optional: walking into the gym and lifting without a plan uses the
+ * same tables and feeds the same history. When they ARE given, both must be visible and the day
+ * must belong to the workout — otherwise a session could reference someone else's plan.
+ */
 async function assertStartable(caller: Caller, input: SessionStart): Promise<void> {
   if (input.dayId !== null && input.workoutId === null) {
     throw invalid('A dayId without a workoutId does not identify a plan')

@@ -59,7 +59,7 @@ export const workouts = (page: Page) => {
     canStart: async (day: number): Promise<boolean> => await page.exists(`start-day-${day}`),
     /** Opens the session in progress from the plan. */
     resume: async (): Promise<void> => {
-      await page.click('[data-testid="resume-session"]')
+      await page.click('[data-testid="workout-resume"]')
       await session(page).shown()
     },
   }

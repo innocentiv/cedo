@@ -75,49 +75,44 @@ export default function Today(): React.JSX.Element {
 
   return (
     <Screen title="Today" testID="today-screen">
-      <Loaded query={current} testID="today-current">
-        {(inProgress) => (
-          <Loaded query={sessions} testID="today">
-            {(data) => {
-              const open = inProgress.items[0]
-              const past = data.items
-              return (
-                <Stack gap="lg">
-                  <FormError message={startError} testID="today-error" />
-                  {open === undefined ? (
-                    <Stack gap="sm" testID="today-start">
-                      <Text tone="muted">Nothing in progress.</Text>
-                      <NavButton title="Start from a plan" href="/workouts" variant="primary" />
-                      <Button
-                        title="Log without a plan"
-                        variant="secondary"
-                        onPress={startAdHoc}
-                        busy={busy}
-                        testID="start-adhoc"
-                      />
-                    </Stack>
-                  ) : (
-                    <Stack gap="sm" testID="today-resume">
-                      <Text variant="label" tone="accent">
-                        In progress
-                      </Text>
-                      <ListRow
-                        title={open.dayName ?? open.workoutName ?? 'Ad-hoc session'}
-                        subtitle={`${open.setCount} sets logged`}
-                        onPress={() => {
-                          router.push(`/today/session/${open.id}`)
-                        }}
-                        testID="resume-session"
-                      />
-                    </Stack>
-                  )}
-                  <History sessions={past} />
-                </Stack>
-              )
-            }}
-          </Loaded>
-        )}
-      </Loaded>
+      <Stack gap="lg">
+        <FormError message={startError} testID="today-error" />
+        {/* Each answered on its own: a history that fails does not hide the session to resume. */}
+        <Loaded query={current} testID="today-current">
+          {({ items: [open] }) =>
+            open === undefined ? (
+              <Stack gap="sm" testID="today-start">
+                <Text tone="muted">Nothing in progress.</Text>
+                <NavButton title="Start from a plan" href="/workouts" variant="primary" />
+                <Button
+                  title="Log without a plan"
+                  variant="secondary"
+                  onPress={startAdHoc}
+                  busy={busy}
+                  testID="start-adhoc"
+                />
+              </Stack>
+            ) : (
+              <Stack gap="sm" testID="today-resume">
+                <Text variant="label" tone="accent">
+                  In progress
+                </Text>
+                <ListRow
+                  title={open.dayName ?? open.workoutName ?? 'Ad-hoc session'}
+                  subtitle={`${open.setCount} sets logged`}
+                  onPress={() => {
+                    router.push(`/today/session/${open.id}`)
+                  }}
+                  testID="resume-session"
+                />
+              </Stack>
+            )
+          }
+        </Loaded>
+        <Loaded query={sessions} testID="today">
+          {(data) => <History sessions={data.items} />}
+        </Loaded>
+      </Stack>
     </Screen>
   )
 }

@@ -49,19 +49,24 @@ const sqlState = (e: unknown) =>
  * may sit on the error or on its `cause`.
  */
 export function isForeignKeyRefusal(error: unknown): boolean {
-  const cause = typeof error === 'object' && error !== null && 'cause' in error ? error.cause : null
-  return [sqlState(error), sqlState(cause)].some(
-    (code) => typeof code === 'string' && FOREIGN_KEY_REFUSALS.has(code),
-  )
+  return driverErrors(error).some((e) => {
+    const code = sqlState(e)
+    return typeof code === 'string' && FOREIGN_KEY_REFUSALS.has(code)
+  })
 }
+
+/** The error and its `cause`: Drizzle wraps the driver's, which carries the SQLSTATE. */
+const driverErrors = (error: unknown): unknown[] => [
+  error,
+  typeof error === 'object' && error !== null && 'cause' in error ? error.cause : null,
+]
 
 /**
  * A write Postgres refused over the unique index `index` — named, so a violation of another is not
  * mistaken for it. On the error or its `cause`, as with `isForeignKeyRefusal`.
  */
 export function isUniqueViolation(error: unknown, index: string): boolean {
-  const cause = typeof error === 'object' && error !== null && 'cause' in error ? error.cause : null
-  return [error, cause].some(
+  return driverErrors(error).some(
     (e) =>
       sqlState(e) === '23505' &&
       typeof e === 'object' &&

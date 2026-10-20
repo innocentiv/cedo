@@ -189,7 +189,7 @@ export const HOT_PATHS: readonly HotPath[] = [
   {
     name: 'GET /sessions?inProgress=true',
     why: "Today's first question: is a session in progress? One, found by the index that keeps it one — not by scanning a person's history for it.",
-    dimension: 'sessions the person has finished (6 vs 201)',
+    dimension: 'sessions the person has finished (5 vs 200)',
     maxQueries: 2,
     budgetMs: 60,
     noSeqScan: ['workout_sessions', 'set_logs'],

@@ -57,11 +57,6 @@ export const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutS
   logs: logs.map((l) => toLog(l.log, l.exercise, l.entryId)),
 })
 
-/**
- * `workoutId` and `dayId` are optional: walking into the gym and lifting without a plan uses the
- * same tables and feeds the same history. When they ARE given, both must be visible and the day
- * must belong to the workout — otherwise a session could reference someone else's plan.
- */
 /** Said by every write only a session in progress takes. */
 const FINISHED = 'That session has already been finished'
 
