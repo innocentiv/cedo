@@ -157,13 +157,30 @@ export const canAddEntry = (day: WorkoutDayInput): boolean =>
  * Why a draft would be refused on save, one line per problem, located by day and exercise — the
  * schema's own verdict, read before the request rather than after it. The editor prevents what it
  * can; this catches whatever it does not model, without restating a rule.
+ *
+ * And first, every entry whose exercise is not `visible` to the editor: an unavailable exercise,
+ * which the server refuses a plan for — a plan may only use exercises its owner can read. Required,
+ * so no editor can forget to say what it can see.
  */
-export function planIssues(plan: WorkoutPlanInput): string[] {
+export function planIssues(
+  plan: WorkoutPlanInput,
+  visible: { readonly has: (exerciseId: string) => boolean },
+): string[] {
+  const unavailable = plan.days.flatMap((day, d) =>
+    day.entries.flatMap((entry, e) =>
+      visible.has(entry.exerciseId)
+        ? []
+        : [`Day ${d + 1}, exercise ${e + 1}: Unavailable exercise — remove it to save`],
+    ),
+  )
   const result = WorkoutPlanInput.safeParse(plan)
-  if (result.success) return []
+  if (result.success) return unavailable
   // Every working set carries the same prescription, so one bad target is one problem — not one
   // line per set. The set's number is left out for the same reason.
-  return [...new Set(result.error.issues.map((issue) => `${where(issue.path)}${issue.message}`))]
+  return [
+    ...unavailable,
+    ...new Set(result.error.issues.map((issue) => `${where(issue.path)}${issue.message}`)),
+  ]
 }
 
 /**

@@ -57,7 +57,7 @@ export default function EditPlan(): React.JSX.Element {
    * The schema's verdict on the draft, read as it is edited rather than after a refused save. An
    * empty plan has its own hint below, so it is not listed twice.
    */
-  const issues = draft.length === 0 ? [] : planIssues(toPlanInput(draft))
+  const issues = draft.length === 0 ? [] : planIssues(toPlanInput(draft), byId)
 
   const save = () => {
     void submit(async () => {

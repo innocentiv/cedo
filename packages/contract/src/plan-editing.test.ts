@@ -133,13 +133,16 @@ describe('how big a plan may grow', () => {
 })
 
 describe('the issues a draft would be refused for', () => {
+  /** With every exercise in it visible: the schema's verdict alone. */
+  const issuesIn = (plan: WorkoutPlanInput) => planIssues(plan, { has: () => true })
+
   test('none for a plan the schema accepts', () => {
-    expect(planIssues({ days: [{ name: 'Day 1', entries: [bench] }] })).toEqual([])
+    expect(issuesIn({ days: [{ name: 'Day 1', entries: [bench] }] })).toEqual([])
   })
 
   test('each located by day and exercise', () => {
     const noWorkingSet = { ...bench, sets: bench.sets.map((s) => ({ ...s, isWarmup: true })) }
-    const issues = planIssues({
+    const issues = issuesIn({
       days: [
         { name: 'Day 1', entries: [bench] },
         { name: 'Day 2', entries: [bench, noWorkingSet] },
@@ -151,13 +154,13 @@ describe('the issues a draft would be refused for', () => {
   })
 
   test('a field’s problem names the field, in words a person can act on', () => {
-    expect(planIssues({ days: [{ name: '  ', entries: [bench] }] })).toEqual([
+    expect(issuesIn({ days: [{ name: '  ', entries: [bench] }] })).toEqual([
       'Day 1, name: Cannot be empty',
     ])
   })
 
   test('a plan-wide problem is not attributed to a day', () => {
-    expect(planIssues({ days: [] })).toEqual(['A plan needs at least one day'])
+    expect(issuesIn({ days: [] })).toEqual(['A plan needs at least one day'])
   })
 
   /**
@@ -166,7 +169,7 @@ describe('the issues a draft would be refused for', () => {
    */
   test('a bad target is named by its unit, in plain words, once for all the working sets', () => {
     const zeroReps = prescribe(bench, { targetReps: 0 })
-    expect(planIssues({ days: [{ name: 'Day 1', entries: [zeroReps] }] })).toEqual([
+    expect(issuesIn({ days: [{ name: 'Day 1', entries: [zeroReps] }] })).toEqual([
       'Day 1, exercise 1, reps: Must be more than 0',
     ])
   })
@@ -176,7 +179,7 @@ describe('the issues a draft would be refused for', () => {
     const plank = prescribe(newEntry({ id: crypto.randomUUID(), tracking: 'duration' }), {
       targetDurationS: 0,
     })
-    expect(planIssues({ days: [{ name: 'Day 1', entries: [plank] }] })).toEqual([
+    expect(issuesIn({ days: [{ name: 'Day 1', entries: [plank] }] })).toEqual([
       'Day 1, exercise 1, duration: Must be more than 0',
     ])
   })
@@ -191,7 +194,7 @@ describe('the issues a draft would be refused for', () => {
       isWarmup: false,
     }
     const crowded = { ...bench, sets: Array.from({ length: 21 }, () => set) }
-    expect(planIssues({ days: [{ name: 'Day 1', entries: [crowded] }] })).toEqual([
+    expect(issuesIn({ days: [{ name: 'Day 1', entries: [crowded] }] })).toEqual([
       'Day 1, exercise 1, sets: An exercise holds at most 20 sets',
     ])
   })
@@ -217,5 +220,26 @@ describe('a new rule', () => {
   test('choosing the kind it already is keeps its settings', () => {
     const tuned = { kind: 'linear', incrementG: 5000, afterSuccesses: 3 } as const
     expect(progressionOf('linear', tuned, 'lb')).toBe(tuned)
+  })
+})
+
+/** See GLOSSARY.md, "Unavailable exercise". */
+describe('an entry whose exercise is out of the editor’s reach', () => {
+  const plank = newEntry({ id: crypto.randomUUID(), tracking: 'duration' })
+
+  test('is an issue, located like any other: the server would refuse the save', () => {
+    const visible = new Set([bench.exerciseId])
+    expect(planIssues({ days: [{ name: 'Day 1', entries: [bench, plank] }] }, visible)).toEqual([
+      'Day 1, exercise 2: Unavailable exercise — remove it to save',
+    ])
+  })
+
+  test('once per entry, beside the schema’s own verdict', () => {
+    const noName = { name: ' ', entries: [plank, plank] }
+    expect(planIssues({ days: [noName] }, new Set())).toEqual([
+      'Day 1, exercise 1: Unavailable exercise — remove it to save',
+      'Day 1, exercise 2: Unavailable exercise — remove it to save',
+      'Day 1, name: Cannot be empty',
+    ])
   })
 })
