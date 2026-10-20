@@ -38,6 +38,26 @@ describe('what a write makes stale', () => {
     expect(sorted(background)).toEqual(['session', 'sessionList'])
   })
 
+  /**
+   * Membership decides what every read but the token list may answer: leaving a group takes its
+   * plans, its exercises and the names in your history with it. Left cached, a plan from a group
+   * just left stayed listed — and opening it said it does not exist.
+   */
+  test('joining or leaving a group refreshes everything membership can show or hide', () => {
+    const { awaited, background } = affectedBy('group')
+    expect(sorted(awaited)).toEqual(['groupMembers', 'groups'])
+    expect(sorted(background)).toEqual([
+      'exercise',
+      'exerciseHistory',
+      'exerciseList',
+      'progression',
+      'session',
+      'sessionList',
+      'workout',
+      'workoutList',
+    ])
+  })
+
   test('a token touches nothing but the token list', () => {
     expect(affectedBy('token')).toEqual({ awaited: ['tokens'], background: [] })
   })

@@ -24,24 +24,30 @@ export interface ReadSources {
 }
 
 export const READS = {
-  exerciseList: { of: 'exercise', embeds: [] },
-  exercise: { of: 'exercise', embeds: [] },
+  /**
+   * Every read but the token list embeds `group`: membership decides what it may answer. Leaving a
+   * group takes its plans and exercises with it, and the names they lent your history.
+   */
+  exerciseList: { of: 'exercise', embeds: ['group'] },
+  exercise: { of: 'exercise', embeds: ['group'] },
   /** Logged sets, by session. */
-  exerciseHistory: { of: 'exercise', embeds: ['session'] },
-  workoutList: { of: 'workout', embeds: [] },
+  exerciseHistory: { of: 'exercise', embeds: ['session', 'group'] },
+  workoutList: { of: 'workout', embeds: ['group'] },
   /** Every entry carries its whole exercise. */
-  workout: { of: 'workout', embeds: ['exercise'] },
+  workout: { of: 'workout', embeds: ['exercise', 'group'] },
   /** An exercise's name and tracking mode, judged against the caller's logged sessions. */
-  progression: { of: 'workout', embeds: ['exercise', 'session'] },
+  progression: { of: 'workout', embeds: ['exercise', 'session', 'group'] },
   /** Each session names its workout and day. */
-  sessionList: { of: 'session', embeds: ['workout'] },
+  sessionList: { of: 'session', embeds: ['workout', 'group'] },
   /**
    * Each logged set names its exercise and how it is measured. And the session points into its
    * plan — a workout, a day, an entry per set — which a plan save or delete can set to null.
    */
-  session: { of: 'session', embeds: ['exercise', 'workout'] },
+  session: { of: 'session', embeds: ['exercise', 'workout', 'group'] },
   tokens: { of: 'token', embeds: [] },
   groups: { of: 'group', embeds: [] },
+  /** A group's members, as the caller may see them. */
+  groupMembers: { of: 'group', embeds: [] },
 } as const satisfies Record<string, ReadSources>
 
 export type Read = keyof typeof READS

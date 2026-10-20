@@ -60,5 +60,6 @@ export const keys = {
   sessionList: (query: Record<string, unknown>) => ['sessionList', query] as const,
   session: (id: string) => ['session', id] as const,
   groups: ['groups'] as const,
+  groupMembers: (id: string) => ['groupMembers', id] as const,
   tokens: ['tokens'] as const,
 } as const satisfies { readonly [R in Read]: KeyOf<R> | ((...args: never[]) => KeyOf<R>) }
