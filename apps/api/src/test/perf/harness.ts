@@ -5,7 +5,6 @@ import {
   seedPerf,
 } from '../../db/seed-perf/index.ts'
 import { ensureDatabaseExists } from '../../db/ensure.ts'
-import { runMigrations } from '../../db/migrate.ts'
 
 /**
  * The performance suite runs against its own database at production volume, seeded once and reused.
@@ -32,17 +31,14 @@ export async function perfFixtures(): Promise<PerfFixtures> {
      * nothing. Treating that as a reason to reseed makes the suite self-healing; treating it as an
      * error made `bun run perf` unrunnable until someone worked out what had happened.
      */
+    /**
+     * Reused only when THIS seed built it — the migrations included (`seed-perf/marker.ts`). A
+     * migration that adds or rebuilds an index, precisely what this suite verifies, rebuilds the
+     * database: it was once measured against the old schema until someone remembered `perf:seed`,
+     * and the guard reported on an index that no longer existed in the code.
+     */
     const existing = await loadPerfFixtures().catch(() => null)
-    if (existing !== null) {
-      /**
-       * A reused database still gets the CURRENT schema. Without this, a migration that adds or
-       * rebuilds an index — precisely what this suite exists to verify — was measured against the
-       * old schema until someone remembered `perf:seed`, and the guard reported on an index that
-       * no longer existed in the code. Migrations are idempotent, so this is a no-op when current.
-       */
-      await runMigrations()
-      return existing
-    }
+    if (existing !== null) return existing
 
     console.log(
       `Seeding the performance database (${PERF_TARGET_SET_LOGS.toLocaleString('en')}+ set logs). ` +

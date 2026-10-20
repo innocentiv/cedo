@@ -178,8 +178,8 @@ walk in `ORDER BY` order so `LIMIT` stops at the page size. An index whose order
 query is still *used* — to find the rows — and then every matching row is sorted to return one page,
 so assertion 2 passes over exactly the cost the index was added to remove.
 
-A reused perf database is **migrated** on every run, so a migration that changes an index is
-measured against the new schema, not the one the database was seeded with.
+A migration that changes an index is measured against the new schema, freshly analyzed: the
+migrations are part of what the seed's marker hashes, so a new one rebuilds the perf database.
 
 ### What the planner is allowed to decide
 

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { join, relative } from 'node:path'
+import { join, resolve } from 'node:path'
 import { sql } from 'drizzle-orm'
 import { db } from '../client.ts'
 import { scalar } from './shape.ts'
@@ -31,15 +31,15 @@ export async function markSeeded(): Promise<void> {
 }
 
 /**
- * Whether THIS seed, finished, built the database. Throws when there is no marker at all, which the
- * caller treats as "not seeded".
+ * Whether THIS seed, finished, built the database. Throws when there is no marker, or one written
+ * before markers carried a version — both of which the caller treats as "not seeded".
  */
 export async function seededByThisSeed(): Promise<boolean> {
   const built = await scalar(sql`select seed_version from ${COMPLETED}`)
   return built !== null && built === (await seedVersion())
 }
 
-const ROOT = join(import.meta.dir, '../../../../..')
+const ROOT = resolve(import.meta.dir, '../../../../..')
 
 /** What the seed is built from: its own files, the muscles, and the migrations. */
 const SOURCES = [
@@ -60,17 +60,22 @@ export async function seedSources(): Promise<string[]> {
     .toSorted()
 }
 
-/** A hash over each file's path and contents: a rename, an edit or a new file each change it. */
+/**
+ * A hash over each file's path and contents, in order: a rename, an edit or a new file each change
+ * it. Each content is length-prefixed, so no two different sets of files hash alike.
+ */
 export async function versionOf(paths: readonly string[], root = ROOT): Promise<string> {
+  const contents = await Promise.all(
+    paths.map(async (path) => await Bun.file(join(root, path)).text()),
+  )
   const hash = createHash('sha256')
-  for (const path of paths) {
-    hash.update(relative(root, join(root, path)))
-    hash.update('\0')
-    // oxlint-disable-next-line no-await-in-loop -- in order: the hash is over the sequence.
-    hash.update(await Bun.file(join(root, path)).text())
-    hash.update('\0')
-  }
+  paths.forEach((path, i) => {
+    const content = contents[i] ?? ''
+    hash.update(`${path}\0${content.length}\0${content}`)
+  })
   return hash.digest('hex')
 }
 
-export const seedVersion = async (): Promise<string> => await versionOf(await seedSources())
+export async function seedVersion(): Promise<string> {
+  return await versionOf(await seedSources())
+}
