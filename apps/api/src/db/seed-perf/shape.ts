@@ -1,4 +1,5 @@
 import { sql } from 'drizzle-orm'
+import { DEFAULT_GROUP_SLUG } from '@cedo/contract'
 import { db } from '../client.ts'
 import type { Caller } from '../../plugins/auth.ts'
 
@@ -161,6 +162,10 @@ export async function scalar(query: ReturnType<typeof sql>): Promise<string | nu
   if (first === undefined) return null
   return Object.values(first)[0] ?? null
 }
+
+/** The shared group a seed made, or null when there is none. */
+export const loadSharedGroup = async (): Promise<string | null> =>
+  await scalar(sql`select id::text from groups where slug = ${DEFAULT_GROUP_SLUG}`)
 
 export async function required(query: ReturnType<typeof sql>, what: string): Promise<string> {
   const value = await scalar(query)

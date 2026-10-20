@@ -144,9 +144,11 @@ problem — a sequential scan over 500 rows takes microseconds and every test pa
 
 So T4 runs against its own database (`cedo_test_perf`, selected by `CEDO_PERF=1`) holding 250,000
 set logs, 10,000 shared exercises, 1,000 plans and 5,000 sessions. It is seeded once and reused; the
-integration harness never touches it. "Seeded" means the seed FINISHED: its last step writes a
+integration harness never touches it. "Seeded" means THIS seed FINISHED: its last step writes a
 marker (`perf_seed_completed`) and its first removes it, so a seed interrupted part way is rebuilt
-rather than reused — a half-built library once failed the trigram guards for want of rows.
+rather than reused — a half-built library once failed the trigram guards for want of rows. The
+marker holds a hash of what built the database (`seed-perf/marker.ts`), so editing the seed, the
+muscles or a migration rebuilds it on the next run; `perf:seed` is only for forcing one.
 
 It is seeded into the state it would SETTLE in, not the one a bulk load leaves: the seed ends with
 `VACUUM ANALYZE`, and the suite counts — read-only, through `pgstattuple`, before measuring anything —

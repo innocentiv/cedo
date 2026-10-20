@@ -158,7 +158,9 @@ Four rules govern it:
   bulk load leaves empty, and flushes any GIN pending list (above). The suite counts what is still
   pending, read-only (`pgstattuple`, in the perf database only), and fails on any.
 - **It ends with a marker.** `perf_seed_completed` is dropped first and created last, so a seed
-  interrupted part way is rebuilt, not reused.
+  interrupted part way is rebuilt, not reused. It records which seed built the database — a hash of
+  the seed's files, the muscles and the migrations (`seed-perf/marker.ts`) — so a changed seed is
+  rebuilt on the next run too, never measured against the old data.
 
 It is also, with the perf suite's own probes beside it, the one place raw SQL is correct. Everything
 the application runs goes through Drizzle.

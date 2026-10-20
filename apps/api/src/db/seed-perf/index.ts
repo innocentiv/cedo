@@ -1,10 +1,9 @@
 import { sql } from 'drizzle-orm'
-import { DEFAULT_GROUP_SLUG } from '@cedo/contract'
 import { closeDatabase, db } from '../client.ts'
 import { ensureDatabaseExists } from '../ensure.ts'
 import { seedMuscles } from '../seed.ts'
 import { runMigrations } from '../migrate.ts'
-import { PERF_TARGET_SET_LOGS, type PerfFixtures, countRows, scalar } from './shape.ts'
+import { PERF_TARGET_SET_LOGS, type PerfFixtures, countRows, loadSharedGroup } from './shape.ts'
 import {
   seedBackgroundSessions,
   seedBackgroundUsers,
@@ -18,6 +17,7 @@ import {
 } from './volume.ts'
 import { loadProfile, seedProfile } from './profile.ts'
 import { loadCurator, seedCuratedLibrary } from './curated.ts'
+import { clearMarker, markSeeded, seededByThisSeed } from './marker.ts'
 
 /**
  * A realistic-volume database, for `bun run perf` only.
@@ -39,19 +39,10 @@ import { loadCurator, seedCuratedLibrary } from './curated.ts'
 export { PERF_TARGET_SET_LOGS, PERF_VOLUME } from './shape.ts'
 export type { PerfFixtures, PerfProfile } from './shape.ts'
 
-/**
- * Written as the seed's LAST step, and removed as its first: the one thing that says the database
- * holds a whole seed. Without it, a seed interrupted after the curator was created but before its
- * library — or before the final VACUUM ANALYZE — was reused as if complete, and the suite blamed the
- * plans: an audit over an empty library "did not use the trigram index", a read "scanned
- * sequentially" for want of statistics.
- */
-const COMPLETED = sql.identifier('perf_seed_completed')
-
 export async function seedPerf(): Promise<PerfFixtures> {
   await ensureDatabaseExists()
   await runMigrations()
-  await db.execute(sql`drop table if exists ${COMPLETED}`)
+  await clearMarker()
   await truncateAll()
   await seedMuscles()
 
@@ -76,7 +67,7 @@ export async function seedPerf(): Promise<PerfFixtures> {
   // pending list — none today, since every GIN index is `fastupdate = off`, but the trigram index
   // once held 257 pages here and searched at 5s instead of 0.3s.
   await db.execute(sql`vacuum analyze`)
-  await db.execute(sql`create table ${COMPLETED} as select now() as completed_at`)
+  await markSeeded()
 
   return { small, large, sharedGroupId, curator, setLogCount: await countRows('set_logs') }
 }
@@ -86,12 +77,9 @@ export async function seedPerf(): Promise<PerfFixtures> {
  * in about a second instead of rebuilding a quarter of a million rows.
  */
 export async function loadPerfFixtures(): Promise<PerfFixtures | null> {
-  // Throws when the marker table is missing, which the caller treats as "not seeded".
-  if ((await scalar(sql`select completed_at::text from ${COMPLETED}`)) === null) return null
+  if (!(await seededByThisSeed())) return null
 
-  const sharedGroupId = await scalar(
-    sql`select id::text from groups where slug = ${DEFAULT_GROUP_SLUG}`,
-  )
+  const sharedGroupId = await loadSharedGroup()
   if (sharedGroupId === null) return null
 
   const setLogCount = await countRows('set_logs')
