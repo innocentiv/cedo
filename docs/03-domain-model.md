@@ -193,7 +193,16 @@ the plan got there — saved, duplicated or transferred (`assertPlanCanUse` in
 Visibility can still change afterwards — a membership is removed, an exercise is transferred away —
 so the read path is the second line of defence: an entry whose exercise the caller cannot see reads
 as `exercise: null`, its prescription still legible and nothing about the exercise leaked. That is
-the "Unavailable exercise" the UI shows.
+the "Unavailable exercise" the UI shows, and three rules follow from it, the same in the app and over
+MCP:
+
+- **Its efforts read as measured.** Its tracking mode is withheld with its name, so
+  `formatEffort(effort, null, unit)` says what was measured and guesses nothing: `6 × 20 kg`, never
+  "bodyweight +20 kg".
+- **Nothing more can be logged against it.** The server refuses the set; the session shows the
+  entry's prescription and count, and no inputs.
+- **A plan cannot be saved while it uses one** — rule (1) above. The editor's footer names the entry
+  (`planIssues`, given what the editor can see) and Save waits until it is removed.
 
 ### Logs
 

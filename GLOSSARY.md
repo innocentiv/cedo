@@ -25,6 +25,12 @@ Readable by a caller, because they belong to the owning group in any role.
 **Editable**:
 Changeable by a caller, because they are an editor of the owning group.
 
+**Unavailable exercise**:
+An exercise a plan or a log still refers to that the reader can no longer see. Its name and what
+it measures are withheld, so its efforts read as measured; nothing new can be logged against it,
+and no plan can be saved using it.
+_Avoid_: deleted exercise, hidden exercise
+
 **Visible relation**:
 The rows of an ownable, or of its children, that one caller may read. It is the only form in which
 a read sees them.
