@@ -156,6 +156,16 @@ What the replace checks before touching anything, all inside its transaction:
 
 Either way a rejected replace leaves the previous plan exactly as it was. A test asserts that.
 
+## A read answers the question its screen asks
+
+When a screen needs several resources to decide one thing, the API decides it, once, from the
+visible relations: a screen cannot tell "out of reach" from "failed to load", and the server never
+has to. `GET /sessions/:id` answers `SessionDetail` — the session with the plan it follows, `null`,
+`{ reachable: false }`, or the day with each entry's exercise and working sets done — from the same
+relations its logs are numbered by. Writes still answer the plain `WorkoutSession`: the session's
+cache entry is invalidated after them, not overwritten. The day costs a fixed seven queries
+whatever the plan's size (`n1.test.ts`, and the perf hot path).
+
 ## The route list lives in the spec, not here
 
 `/openapi` is generated from the same Zod schemas the routes validate with, so it cannot drift.

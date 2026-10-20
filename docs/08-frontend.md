@@ -10,7 +10,7 @@ small as it is.
 
 > A screen **may**: call the hooks in `src/api/queries.ts` (never `api.*` or `fetch` directly),
 > render UI primitives, hold form state, and call pure helpers from `@cedo/contract`
-> (`formatEffort`, `formatWeight`, `nextSetIndex`, `planInputFrom`).
+> (`formatEffort`, `formatWeight`, `formatPrescription`, `planInputFrom`).
 >
 > A screen **may not**: perform unit arithmetic, sum muscle loads, decide progressions, hand-format
 > measurements, or branch on domain rules. If a screen needs a rule, the rule belongs in the
@@ -21,6 +21,12 @@ small as it is.
 
 Every behaviour is proven on the backend (`docs/10-testing.md`). If a screen grows logic worth
 testing, that is the signal it belongs somewhere else.
+
+A screen that would join several reads to decide one thing asks for the answer instead. The live
+session screen joined the session, its workout and its progression, and took a plan it failed to
+FETCH for one out of reach — offering the logger of a session without a plan, whose next set went
+into the wrong series. `GET /sessions/:id` now answers with the plan as the reader can reach it
+(`SessionPlan`), each entry's done count included, and the screen renders that.
 
 ## The dependency boundary
 
