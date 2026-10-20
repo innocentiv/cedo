@@ -137,8 +137,13 @@ export const SessionStart = z.strictObject({
 })
 export type SessionStart = z.output<typeof SessionStart>
 
+/**
+ * Finishing is final: `endedAt` is set once, on a session in progress, and never cleared — there is
+ * no reopening a session. Notes stay editable: a note on a past session is a journal, not a change to
+ * what was logged. See GLOSSARY.md, "Session".
+ */
 export const SessionUpdate = z.strictObject({
-  endedAt: Timestamp.nullable().optional(),
+  endedAt: Timestamp.optional(),
   notes: z.string().max(4000).nullable().optional(),
 })
 export type SessionUpdate = z.output<typeof SessionUpdate>
@@ -214,6 +219,12 @@ export const workingSetsDone = (
 export const SessionQuery = PaginationQuery.extend({
   workoutId: Id.optional(),
   since: Timestamp.optional(),
+  /**
+   * Only the session in progress (`true`) — there is at most one — or only finished ones (`false`).
+   * `stringbool`, not `coerce.boolean`: a query string's "false" is a non-empty string, which
+   * coercion reads as true.
+   */
+  inProgress: z.stringbool().optional(),
 })
 export type SessionQuery = z.output<typeof SessionQuery>
 

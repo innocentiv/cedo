@@ -55,6 +55,22 @@ export function isForeignKeyRefusal(error: unknown): boolean {
   )
 }
 
+/**
+ * A write Postgres refused over the unique index `index` — named, so a violation of another is not
+ * mistaken for it. On the error or its `cause`, as with `isForeignKeyRefusal`.
+ */
+export function isUniqueViolation(error: unknown, index: string): boolean {
+  const cause = typeof error === 'object' && error !== null && 'cause' in error ? error.cause : null
+  return [error, cause].some(
+    (e) =>
+      sqlState(e) === '23505' &&
+      typeof e === 'object' &&
+      e !== null &&
+      'constraint_name' in e &&
+      e.constraint_name === index,
+  )
+}
+
 export function toApiError(error: DomainError): { status: number; body: ApiError } {
   return {
     status: HTTP_STATUS_BY_ERROR_CODE[error.code],

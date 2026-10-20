@@ -21,7 +21,7 @@ import { seedLibrary } from '../../db/seed.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
-import * as SessionService from './service.ts'
+import { logWhole } from './start.ts'
 
 const Page = page(WorkoutSessionSummary)
 
@@ -80,6 +80,22 @@ async function aPlannedWorkout(user: TestUser, exerciseId: string): Promise<Work
 
 const startSession = async (user: TestUser, body: Record<string, unknown> = {}) =>
   await user.wire('/sessions', { method: 'POST', body: JSON.stringify(body) })
+
+/** Finishes a session — so the next can start: one is in progress at a time. */
+const finishSession = async (user: TestUser, id: string): Promise<void> => {
+  const res = await user.wire(`/sessions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ endedAt: new Date().toISOString() }),
+  })
+  expect(res.status).toBe(200)
+}
+
+/** A session started and finished — one of several a test needs. */
+const aFinishedSession = async (user: TestUser): Promise<WorkoutSession> => {
+  const session = expectContract(WorkoutSession, (await startSession(user)).body)
+  await finishSession(user, session.id)
+  return session
+}
 
 describe('starting a session', () => {
   test('ad hoc, with no plan at all', async () => {
@@ -291,7 +307,7 @@ describe('logging a whole session at once', () => {
   test('reads its sets back in the order they were sent, and ends after the last', async () => {
     const squat = await anExercise(alice, 'Squat')
     const bench = await anExercise(alice, 'Bench Press')
-    const logged = await SessionService.logWhole(
+    const logged = await logWhole(
       alice.caller,
       SessionLogInput.parse({
         sets: [
@@ -341,8 +357,8 @@ describe('sessions are private', () => {
   })
 
   test("another user's sessions never appear in the list", async () => {
-    await startSession(alice)
-    await startSession(alice)
+    await aFinishedSession(alice)
+    await aFinishedSession(alice)
     expect(expectContract(Page, (await bob.wire('/sessions')).body).items).toHaveLength(0)
     expect(expectContract(Page, (await alice.wire('/sessions')).body).items).toHaveLength(2)
   })
@@ -370,9 +386,9 @@ describe('the session list', () => {
   })
 
   test('is newest first', async () => {
-    const first = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const first = await aFinishedSession(alice)
     await Bun.sleep(5)
-    const second = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const second = await aFinishedSession(alice)
 
     const listed = expectContract(Page, (await alice.wire('/sessions')).body)
     expect(listed.items.map((s) => s.id)).toEqual([second.id, first.id])
@@ -386,7 +402,7 @@ describe('the session list', () => {
   test('pages through every session exactly once, even within one millisecond', async () => {
     const ids: string[] = []
     for (let i = 0; i < 4; i++) {
-      ids.push(expectContract(WorkoutSession, (await startSession(alice)).body).id)
+      ids.push((await aFinishedSession(alice)).id)
     }
     const micros = ['.123456', '.123200', '.123999', '.123000']
     for (const [i, id] of ids.entries()) {
@@ -442,6 +458,7 @@ describe('exercise history', () => {
         method: 'POST',
         body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps }),
       })
+      await finishSession(alice, session.id)
       await Bun.sleep(5)
     }
 
@@ -676,7 +693,7 @@ describe('numbering sets', () => {
   test('a whole session is numbered per series in the order sent, warm-ups included', async () => {
     const squat = await anExercise(alice, 'Squat')
     const bench = await anExercise(alice, 'Bench Press')
-    const logged = await SessionService.logWhole(
+    const logged = await logWhole(
       alice.caller,
       SessionLogInput.parse({
         sets: [

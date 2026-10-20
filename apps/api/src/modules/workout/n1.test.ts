@@ -16,6 +16,14 @@ beforeEach(async () => {
   alice = await h.as('alice')
 })
 
+/** Finishes a session, so the next can start: one is in progress at a time. */
+async function finish(id: string): Promise<void> {
+  await alice.wire(`/sessions/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ endedAt: new Date().toISOString() }),
+  })
+}
+
 async function exerciseIds(count: number): Promise<string[]> {
   const ids: string[] = []
   for (let i = 0; i < count; i++) {
@@ -155,6 +163,7 @@ describe('reads do not N+1', () => {
         method: 'POST',
         body: JSON.stringify({ exerciseId, reps: 8, weightG: 60_000 }),
       })
+      await finish(id)
     }
 
     await logOne()
@@ -184,10 +193,13 @@ describe('reads do not N+1', () => {
       return expectContract(WorkoutSession, res.body).id
     }
 
+    // Each finished once read: one session is in progress at a time.
     const small = await sessionOn(await planned(1, 1, ids))
     const smallCount = await withQueryCount(() => getSession(alice.caller, small))
+    await finish(small)
     const large = await sessionOn(await planned(6, 8, ids))
     const largeCount = await withQueryCount(() => getSession(alice.caller, large))
+    await finish(large)
 
     const entries = (read: typeof smallCount.result) =>
       read.plan?.reachable === true ? read.plan.day.entries.length : 0

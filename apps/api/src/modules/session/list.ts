@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import type { Page, SessionQuery, WorkoutSessionSummary } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
@@ -21,6 +21,11 @@ async function page(caller: Caller, query: SessionQuery) {
   if (query.workoutId !== undefined) conditions.push(eq(workoutSessions.workoutId, query.workoutId))
   if (query.since !== undefined)
     conditions.push(sql`${workoutSessions.startedAt} >= ${query.since}`)
+  if (query.inProgress !== undefined) {
+    conditions.push(
+      query.inProgress ? isNull(workoutSessions.endedAt) : isNotNull(workoutSessions.endedAt),
+    )
+  }
   /**
    * Keyset on (started_at, id) descending, which is exactly workout_sessions_user_time_idx —
    * including the id column, so the index serves the ordering and the walk stops at the page size.

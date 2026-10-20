@@ -15,6 +15,13 @@ interface ExerciseSpec {
   readonly muscles?: readonly { readonly muscle: string; readonly loadPct: number }[]
 }
 
+async function finish(user: TestUser, sessionId: string): Promise<void> {
+  await user.wire(`/sessions/${sessionId}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ endedAt: new Date().toISOString() }),
+  })
+}
+
 export function reviewFixture(user: TestUser) {
   return {
     anExercise: async ({
@@ -45,10 +52,13 @@ export function reviewFixture(user: TestUser) {
           body: JSON.stringify(set),
         })
       }
+      // Finished, as past training is — and so the next can start: one is in progress at a time.
+      await finish(user, session.id)
       if (daysAgo > 0) {
+        const startedAt = new Date(Date.now() - daysAgo * 86_400_000)
         await db
           .update(workoutSessions)
-          .set({ startedAt: new Date(Date.now() - daysAgo * 86_400_000) })
+          .set({ startedAt, endedAt: new Date(startedAt.getTime() + 3_600_000) })
           .where(eq(workoutSessions.id, session.id))
       }
     },

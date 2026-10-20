@@ -8,6 +8,7 @@ import {
   smallint,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
 import { exercises } from './exercise.ts'
@@ -55,6 +56,14 @@ export const workoutSessions = pgTable(
       t.id.desc().nullsFirst(),
     ),
     index('workout_sessions_workout_idx').on(t.workoutId),
+    /**
+     * One session in progress per person — the database's own rule, so two starts arriving
+     * together cannot both win, as a check-then-insert lets them. Also what the session in progress
+     * is found by (`inProgress`). See GLOSSARY.md, "Session".
+     */
+    uniqueIndex('workout_sessions_in_progress_idx')
+      .on(t.userId)
+      .where(sql`${t.endedAt} is null`),
   ],
 )
 

@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { SessionLogInput, WorkoutCreate, WorkoutPlanInput, planInputFrom } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
-import * as SessionService from '../../modules/session/service.ts'
+import { logWhole } from '../../modules/session/start.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
 import { trainingReview } from '../../modules/review/service.ts'
 import {
@@ -198,7 +198,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       annotations: WRITE,
     },
     async (input) => {
-      const session = await SessionService.logWhole(caller, input)
+      const session = await logWhole(caller, input)
       return text(`Logged session ${session.id} with ${session.logs.length} set(s).`)
     },
   )

@@ -2,19 +2,17 @@ import { and, asc, eq, sql } from 'drizzle-orm'
 import type {
   LogSetInput,
   LoggedExercise,
-  SessionLogInput,
-  SessionStart,
   SessionUpdate,
   SetLog,
   WorkoutSession,
 } from '@cedo/contract'
-import { db } from '../../db/client.ts'
+import { type Transaction, db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
-import { visibleExercises, visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
-import { conflict, invalid, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
+import { visibleExercises } from '../../db/visible.ts'
+import { conflict, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { assertLoggable } from './loggable.ts'
-import { nextNumber, numberedInOrder } from './numbering.ts'
+import { nextNumber } from './numbering.ts'
 import { planEntries } from '../workout/plan.ts'
 
 /**
@@ -49,7 +47,7 @@ interface LoggedRow {
   readonly entryId: string | null
 }
 
-const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutSession => ({
+export const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutSession => ({
   id: row.id,
   workoutId: row.workoutId,
   dayId: row.dayId,
@@ -64,78 +62,8 @@ const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutSession 
  * same tables and feeds the same history. When they ARE given, both must be visible and the day
  * must belong to the workout — otherwise a session could reference someone else's plan.
  */
-export async function start(caller: Caller, input: SessionStart): Promise<WorkoutSession> {
-  await assertStartable(caller, input)
-
-  const [created] = await db
-    .insert(workoutSessions)
-    .values({ userId: caller.userId, workoutId: input.workoutId, dayId: input.dayId })
-    .returning()
-  if (created === undefined) throw new Error('Could not start the session')
-
-  return toSession(created, [])
-}
-
-async function assertStartable(caller: Caller, input: SessionStart): Promise<void> {
-  if (input.dayId !== null && input.workoutId === null) {
-    throw invalid('A dayId without a workoutId does not identify a plan')
-  }
-
-  if (input.workoutId !== null) {
-    const workouts = visibleWorkouts(caller)
-    const [found] = await db
-      .select({ id: workouts.id })
-      .from(workouts)
-      .where(eq(workouts.id, input.workoutId))
-      .limit(1)
-    if (found === undefined) throw notFound('workout')
-  }
-
-  if (input.dayId !== null && input.workoutId !== null) {
-    const days = visibleWorkoutDays(caller)
-    const [day] = await db
-      .select({ id: days.id })
-      .from(days)
-      .where(and(eq(days.id, input.dayId), eq(days.workoutId, input.workoutId)))
-      .limit(1)
-    if (day === undefined) throw notFound('day')
-  }
-}
-
-// One INSERT shares one `now()`, and `get` orders logs by `logged_at` then `set_index`, so equal
-// timestamps read back interleaved — squat 1, bench 1, squat 2. `logWhole` spaces them instead.
-const nowPlusMicros = (n: number) => sql<Date>`now() + ${n}::integer * interval '1 microsecond'`
-
-/**
- * A whole, finished session in ONE transaction — `session_log` over MCP. Everything is validated
- * before anything is written, so one bad set logs nothing and a retry cannot duplicate the rest.
- * The statement count does not grow with the number of sets. Sets keep the order sent.
- */
-export async function logWhole(caller: Caller, input: SessionLogInput): Promise<WorkoutSession> {
-  await assertStartable(caller, input)
-  await assertLoggable(caller, input.workoutId, input.sets)
-
-  const id = await db.transaction(async (tx) => {
-    const [created] = await tx
-      .insert(workoutSessions)
-      .values({
-        userId: caller.userId,
-        workoutId: input.workoutId,
-        dayId: input.dayId,
-        notes: input.notes,
-        endedAt: nowPlusMicros(input.sets.length),
-      })
-      .returning({ id: workoutSessions.id })
-    if (created === undefined) throw new Error('Could not record the session')
-    const rows = numberedInOrder(input.sets).map((set, i) =>
-      Object.assign(set, { sessionId: created.id, loggedAt: nowPlusMicros(i) }),
-    )
-    await tx.insert(setLogs).values(rows).catch(rethrowMissingEntry)
-    return created.id
-  })
-
-  return await read(caller, id)
-}
+/** Said by every write only a session in progress takes. */
+const FINISHED = 'That session has already been finished'
 
 export async function update(
   caller: Caller,
@@ -150,10 +78,7 @@ export async function update(
        * refused any session shorter than the skew — and a refusal is not what anyone wants here.
        * An ISO string, never a JS Date: raw `sql` bypasses the column encoder.
        */
-      endedAt:
-        patch.endedAt === null
-          ? null
-          : sql<Date>`greatest(${patch.endedAt}::timestamptz, ${workoutSessions.startedAt})`,
+      endedAt: sql<Date>`greatest(${patch.endedAt}::timestamptz, ${workoutSessions.startedAt})`,
     }),
     ...(patch.notes !== undefined && { notes: patch.notes }),
   }
@@ -165,14 +90,35 @@ export async function update(
    */
   if (Object.keys(columns).length === 0) return await read(caller, id)
 
-  const written = await db
-    .update(workoutSessions)
-    .set(columns)
-    .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
-    .returning({ id: workoutSessions.id })
-  if (written.length === 0) throw notFound('session')
+  await db.transaction(async (tx) => {
+    // Finishing is final, and once: only a session in progress is finished. Notes are not a
+    // change to what was logged, so they need neither the lock nor a session in progress.
+    if (patch.endedAt !== undefined) await lockInProgress(tx, caller, id)
+    const written = await tx
+      .update(workoutSessions)
+      .set(columns)
+      .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
+      .returning({ id: workoutSessions.id })
+    if (written.length === 0) throw notFound('session')
+  })
 
   return await read(caller, id)
+}
+
+/**
+ * Locks the caller's session for a write only a session in progress takes — a set, an undo, its
+ * finish — and refuses one already finished. Locked, then checked: read without the lock, a finish
+ * landing between the check and the write let a set into a session that was already over, or out
+ * of one. See GLOSSARY.md, "Session".
+ */
+async function lockInProgress(tx: Transaction, caller: Caller, id: string): Promise<void> {
+  const [locked] = await tx
+    .select({ endedAt: workoutSessions.endedAt })
+    .from(workoutSessions)
+    .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
+    .for('update')
+  if (locked === undefined) throw notFound('session')
+  if (locked.endedAt !== null) throw conflict(FINISHED)
 }
 
 /** A session and its logs, as the caller sees them. Read on its own, it is `plan.ts`'s `get`. */
@@ -231,19 +177,8 @@ export async function logSet(
   const exercises = await assertLoggable(caller, session.workoutId, [input])
 
   return await db.transaction(async (tx) => {
-    /**
-     * Locked, then checked: read without a lock, a finish landing between the check and the insert
-     * put a set into a session that was already over. `workout_id` never changes after a session
-     * starts, so the validation above does not need the lock.
-     */
-    const [locked] = await tx
-      .select({ endedAt: workoutSessions.endedAt })
-      .from(workoutSessions)
-      .where(eq(workoutSessions.id, sessionId))
-      .for('update')
-    // Gone since the ownership read (`undefined`) is a 404, not "already finished".
-    if (locked === undefined) throw notFound('session')
-    if (locked.endedAt !== null) throw conflict('That session has already been finished')
+    // `workout_id` never changes after a session starts, so the validation above needs no lock.
+    await lockInProgress(tx, caller, sessionId)
 
     const setIndex = await nextNumber(tx, caller, { id: sessionId, ...session }, input)
     const [created] = await tx
@@ -262,22 +197,19 @@ export async function logSet(
  * does not lock. The foreign key then refuses the insert; that is the same "No such entry" the
  * check would have given a moment later, not a 500. The transaction rolls back either way.
  */
-function rethrowMissingEntry(error: unknown): never {
+export function rethrowMissingEntry(error: unknown): never {
   if (isForeignKeyRefusal(error)) throw notFound('entry')
   throw error
 }
 
+/** An undo: only of a session in progress — finishing is final, and nothing is undone after it. */
 export async function removeLog(caller: Caller, sessionId: string, logId: string): Promise<void> {
-  const [session] = await db
-    .select({ id: workoutSessions.id })
-    .from(workoutSessions)
-    .where(and(ownedBy(caller), eq(workoutSessions.id, sessionId)))
-    .limit(1)
-  if (session === undefined) throw notFound('session')
-
-  const deleted = await db
-    .delete(setLogs)
-    .where(and(eq(setLogs.id, logId), eq(setLogs.sessionId, sessionId)))
-    .returning({ id: setLogs.id })
-  if (deleted.length === 0) throw notFound('log')
+  await db.transaction(async (tx) => {
+    await lockInProgress(tx, caller, sessionId)
+    const deleted = await tx
+      .delete(setLogs)
+      .where(and(eq(setLogs.id, logId), eq(setLogs.sessionId, sessionId)))
+      .returning({ id: setLogs.id })
+    if (deleted.length === 0) throw notFound('log')
+  })
 }

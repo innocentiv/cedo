@@ -29,6 +29,13 @@
       "when": 1792447713869,
       "tag": "0003_trigram_index_no_pending_list",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792529207621,
+      "tag": "0004_one_session_in_progress",
+      "breakpoints": true
     }
   ]
 }

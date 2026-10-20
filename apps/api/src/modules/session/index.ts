@@ -16,6 +16,7 @@ import {
 } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
 import { get as getSession } from './plan.ts'
+import { start as startSession } from './start.ts'
 import * as HistoryService from './history.ts'
 import { list as listSessions } from './list.ts'
 import * as SessionService from './service.ts'
@@ -30,7 +31,7 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
     response: page(WorkoutSessionSummary),
     detail: { summary: 'Session history, newest first. Summaries only — no per-set detail.' },
   })
-  .post('/', ({ caller, body }) => SessionService.start(caller, body), {
+  .post('/', ({ caller, body }) => startSession(caller, body), {
     body: SessionStart,
     response: WorkoutSession,
     detail: { summary: 'Start a session, from a workout day or ad hoc' },
