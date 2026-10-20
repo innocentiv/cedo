@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query'
 import type {
   Exercise,
-  ExerciseCreate,
+  ExerciseInput,
   ExerciseHistory,
   ExerciseQuery,
   ExerciseUpdate,
@@ -146,7 +146,7 @@ function useWriteTo<TInput, TResult>(
 }
 
 export const useCreateExercise = () =>
-  useWriteTo('exercise', async (input: ExerciseCreate) => await api.exercises.create(input))
+  useWriteTo('exercise', async (input: ExerciseInput) => await api.exercises.create(input))
 
 export const useUpdateExercise = (id: string) =>
   useWriteTo('exercise', async (input: ExerciseUpdate) => await api.exercises.update(id, input))

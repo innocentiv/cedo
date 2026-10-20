@@ -1,4 +1,11 @@
-import type { Exercise, ExerciseCreate, ExerciseQuery, ExerciseUpdate, Page } from '@cedo/contract'
+import {
+  type Exercise,
+  type ExerciseCreate,
+  type ExerciseQuery,
+  type ExerciseUpdate,
+  type Page,
+  exerciseInputFrom,
+} from '@cedo/contract'
 import { assertEditorOf } from '../../db/ownable.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
@@ -58,21 +65,7 @@ export async function duplicate(caller: Caller, id: string, toGroupId?: string):
   const target = toGroupId ?? caller.personalGroupId
   assertEditorOf(caller, target)
 
-  const source = await get(caller, id)
-  return await create(
-    caller,
-    {
-      name: source.name,
-      tracking: source.tracking,
-      description: source.description,
-      instructions: source.instructions,
-      equipment: source.equipment,
-      isUnilateral: source.isUnilateral,
-      muscles: source.muscles,
-      mediaIds: source.mediaIds,
-    },
-    target,
-  )
+  return await create(caller, exerciseInputFrom(await get(caller, id)), target)
 }
 
 export async function transfer(caller: Caller, id: string, toGroupId: string): Promise<Exercise> {

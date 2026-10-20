@@ -101,6 +101,18 @@ export const Exercise = z.object({
 })
 export type Exercise = z.output<typeof Exercise>
 
+/** What a request body is: fields with a default may be left out, and the server fills them. */
+export type ExerciseInput = z.input<typeof ExerciseCreate>
+
+/**
+ * An exercise as the input that would make it again — to duplicate it, or to edit it whole. Derived
+ * from the schema's own fields, not listed: duplicating and the edit form each spelled the fields
+ * out, and a field added to the schema would have been dropped by both without a word. Workouts
+ * have the same in `planInputFrom`.
+ */
+export const exerciseInputFrom = (exercise: Exercise): ExerciseCreate =>
+  z.object(exerciseFields).parse(exercise)
+
 /** The ownable list query, plus the muscle an exercise loads. */
 export const ExerciseQuery = withGroupRule(
   OwnableQueryFields.extend({ muscle: MuscleSlug.optional() }),

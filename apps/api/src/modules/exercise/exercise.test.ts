@@ -1,5 +1,13 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { ApiError, Exercise, Media, Workout, WorkoutSession, page } from '@cedo/contract'
+import {
+  ApiError,
+  Exercise,
+  Media,
+  Workout,
+  WorkoutSession,
+  exerciseInputFrom,
+  page,
+} from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
@@ -259,6 +267,23 @@ describe('duplicate and transfer', () => {
     const after = expectContract(Exercise, (await bob.wire(`/exercises/${original.id}`)).body)
     expect(after.canEdit).toBe(false)
     expect(after.name).toBe(original.name)
+  })
+
+  /** Every field an exercise is made from comes with it — the ones that are not the default too. */
+  test('a copy is made from everything the original was', async () => {
+    const original = await created(alice, {
+      name: 'Single-arm Row',
+      description: 'One side at a time.',
+      instructions: 'Brace on the bench.',
+      equipment: 'Dumbbell',
+      isUnilateral: true,
+    })
+    const copy = expectContract(
+      Exercise,
+      (await alice.wire(`/exercises/${original.id}/duplicate`, { method: 'POST', body: '{}' }))
+        .body,
+    )
+    expect(exerciseInputFrom(copy)).toEqual(exerciseInputFrom(original))
   })
 })
 

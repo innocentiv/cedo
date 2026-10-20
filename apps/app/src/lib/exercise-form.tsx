@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import {
   type Exercise,
-  type ExerciseCreate,
+  type ExerciseInput,
   type Media,
   type MuscleLoad,
   TRACKING_MODES,
   type TrackingMode,
+  exerciseInputFrom,
 } from '@cedo/contract'
 import { Button, Chips, Field, FormError, Input, MusclePicker, Screen } from '../ui/index.ts'
 import { MediaLinks } from './media-links.tsx'
@@ -27,7 +28,7 @@ const TRACKING_OPTIONS = TRACKING_MODES.map((value) => ({
 export interface ExerciseFormProps {
   readonly title: string
   readonly initial?: Exercise | undefined
-  readonly onSave: (input: ExerciseCreate) => Promise<void>
+  readonly onSave: (input: ExerciseInput) => Promise<void>
   readonly testID: string
 }
 
@@ -55,13 +56,15 @@ export function ExerciseForm({
 
   const save = () => {
     void submit(async () => {
+      // From the exercise as it is, when editing one: what the form has no control for — whether
+      // it is done one side at a time — is carried, not restated; creating, the schema defaults it.
       await onSave({
+        ...(initial === undefined ? {} : exerciseInputFrom(initial)),
         name,
         tracking,
         description,
         instructions,
         equipment: equipment.trim() === '' ? null : equipment.trim(),
-        isUnilateral: initial?.isUnilateral ?? false,
         muscles,
         mediaIds: media.map((m) => m.id),
       })
