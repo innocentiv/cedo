@@ -84,3 +84,17 @@ hand the AI both the message and a picture.
   notice and TanStack Query logs nothing, so the route sweep passed over screens whose every request
   failed. The app's `QueryCache.onError` sends every failed read except a 401 to `console.error`,
   and `harness.e2e.ts` pins that a 404 read fails the run.
+
+## Amended (2026-10-21): the app's plain modules may be unit-tested
+
+Behaviour the app owns and no backend can — who is signed in on this device: the stored token,
+restoring it at startup, a late 401 for the previous person's token, a keychain that throws — had no
+tier at all. It lived in React effects, so a unit test needed a fake DOM, which this record rejects;
+and it is not reproducible in the WebView harness without test hooks in production code. Two of its
+rules were fixed with no test (52260d8).
+
+So it moved into a plain module, `apps/app/src/auth/session.ts`, which imports neither React nor
+React Native, and is unit-tested beside it with `bun test`, a fake keychain and a fake API. **That is
+the line:** a module of the app that imports neither may be unit-tested; a component may not. The
+rejection of component tests above stands, and so does the rule that domain behaviour belongs in the
+contract or a service — this tier is for the app's own state, not a second home for domain rules.

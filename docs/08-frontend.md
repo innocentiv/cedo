@@ -230,10 +230,11 @@ error that points nowhere near the cause.
 
 ### A rejected credential ends the session
 
-`transport.ts` calls the adapter's handler whenever the API answers `unauthenticated`, a token was
-actually sent, **and** it is still the one in use — a late 401 for a previous user's token must not
-sign the next one out. `AuthProvider` registers one, through `http.ts`, that clears the session and
-returns to login.
+`transport.ts` reports every `unauthenticated` answer to a request that sent a token, with the token
+it sent; the session (`src/auth/session.ts`, made once in `http.ts`) signs out only if that is still
+the token in use — a late 401 for a previous user's token must not sign the next one out. The
+provider, subscribed to the session, clears the query cache and the router returns to login. Every
+rule about who is signed in is in that module, unit-tested (`session.test.ts`).
 
 Without it a token revoked elsewhere — signed out on another device, or simply expired after a month
 — left every screen showing "Authentication required" with no way back to the login form. The guard
@@ -243,7 +244,8 @@ exercise the restore-on-startup path instead, which is a different thing that al
 ### Where the token lives
 
 `src/auth/token-storage.ts` branches on `Platform.OS`: the OS keychain on native, `localStorage` on
-web, with `expo-secure-store` imported lazily so the web bundle never evaluates it.
+web, with `expo-secure-store` imported lazily so the web bundle never evaluates it. The session takes
+it as its `TokenStore`, so its tests use a fake one and never touch either.
 
 **It branches rather than using a `.web.ts` file split, and that is not a style choice.** Metro picks
 platform variants by extension, and this repo imports with explicit `.ts` extensions everywhere,
@@ -256,9 +258,9 @@ no third-party scripts; moving to an httpOnly cookie touches this file and the l
 
 ### Auth status is three-state
 
-`'loading' | 'signed-in' | 'signed-out'`. On first paint the stored token has not been read yet, and
-a router that treats "not known yet" as "signed out" flashes the login screen at a returning user
-for one frame before bouncing them back.
+`'loading' | 'signed-in' | 'signed-out'` — the session's `snapshot()`. On first paint the stored
+token has not been read yet, and a router that treats "not known yet" as "signed out" flashes the
+login screen at a returning user for one frame before bouncing them back.
 
 ## The web build is a SPA, not prerendered
 
