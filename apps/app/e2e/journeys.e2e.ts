@@ -921,3 +921,64 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+/** A shared group, run from the app: made, given a member by username, and rid of them again. */
+test(
+  'a group takes a member by username, refuses one that does not exist, and lets them go',
+  async () => {
+    const owner = unique('own')
+    await withApp('group-members', async (page) => {
+      const app = screens(page)
+      await app.auth.register(owner)
+      const friend = unique('fr')
+      await signUp(friend)
+
+      await app.groups.open()
+      await app.groups.create('Squad')
+      await app.groups.openGroup('Squad')
+      // Its only editor: it cannot leave until there is another.
+      expect(await app.groups.canLeave()).toBe(false)
+
+      await app.groups.addMember(friend, 'reader')
+      expect((await app.groups.members()).toSorted()).toEqual(
+        [`${friend}: reader`, `${owner}: editor`].toSorted(),
+      )
+      expect(await app.groups.addMemberRefused(`${friend}zz`)).toContain('No such user')
+
+      await app.groups.remove(friend)
+      expect(await app.groups.members()).toEqual([`${owner}: editor`])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * Leaving takes what the group showed you with it — from lists already on screen, refreshed long
+ * before they would have gone stale, because every read that membership decides embeds the group.
+ */
+test(
+  'leaving a group takes its plans out of the list you already had open',
+  async () => {
+    const athlete = unique('lv')
+    await withApp('leave-group', async (page) => {
+      const app = screens(page)
+      await app.auth.register(athlete)
+
+      const coach = await signUp(`${athlete}c`)
+      const squad = await coach.api.groups.create({ name: 'Squad' })
+      await coach.api.groups.addMember(squad.id, { username: athlete, role: 'reader' })
+      const plan = await coach.api.workouts.create({ name: 'Coached', notes: null })
+      await coach.api.workouts.transfer(plan.id, { toGroupId: squad.id })
+
+      expect(await app.workouts.listed('all')).toEqual(['Coached'])
+      await app.groups.open()
+      await app.groups.openGroup('Squad')
+      await app.groups.leave()
+      expect(await app.groups.names()).not.toContain('Squad')
+
+      await app.nav.tab('workouts')
+      await page.until(app.workouts.showing, (names) => names.length === 0, BEFORE_STALE_MS)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)

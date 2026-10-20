@@ -87,6 +87,13 @@ export const workouts = (page: Page) => {
     listed: async (scope: OwnableScope): Promise<string[]> => {
       await page.goto('/workouts')
       await page.click(`[data-testid="workout-scope-${scope}"]`)
+      return await workouts(page).showing()
+    },
+    /**
+     * The plans the list shows where it stands — no reload, so a journey can watch a cached list
+     * change — once it has answered: rows, or "No plans yet".
+     */
+    showing: async (): Promise<string[]> => {
       const names = await page.until(
         async () =>
           await page.evaluate(

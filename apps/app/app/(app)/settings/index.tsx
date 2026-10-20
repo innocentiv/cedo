@@ -10,6 +10,7 @@ import {
   Stack,
   Text,
 } from '../../../src/ui/index.ts'
+import { useGroups } from '../../../src/api/queries.ts'
 import { useAuth } from '../../../src/auth/auth-provider.tsx'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 import { useWeightUnit } from '../../../src/lib/weight-unit.ts'
@@ -21,6 +22,7 @@ const UNIT_OPTIONS: readonly ChipOption<WeightUnit>[] = [
 
 export default function Settings(): React.JSX.Element {
   const { me, signOut, setWeightUnit } = useAuth()
+  const groups = useGroups()
   const { submit, error } = useSubmit()
   const unit = useWeightUnit()
 
@@ -51,10 +53,17 @@ export default function Settings(): React.JSX.Element {
         <Stack gap="sm">
           <ListRow
             title="Groups"
-            subtitle={me === null ? undefined : `${me.groups.length} you belong to`}
+            // The groups read, not the sign-in's snapshot of them: creating or leaving one
+            // refreshes this, and nothing refreshes that.
+            subtitle={groups.data === undefined ? undefined : `${groups.data.length} you belong to`}
             testID="settings-groups"
           />
-          <NavButton title="Manage groups" href="/settings/groups" variant="secondary" />
+          <NavButton
+            title="Manage groups"
+            href="/settings/groups"
+            variant="secondary"
+            testID="manage-groups"
+          />
         </Stack>
 
         <Stack gap="sm">

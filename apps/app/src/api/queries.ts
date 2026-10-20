@@ -11,6 +11,9 @@ import type {
   ExerciseHistory,
   ExerciseQuery,
   ExerciseUpdate,
+  GroupAddMember,
+  GroupCreate,
+  GroupMember,
   GroupMembership,
   LogSetInput,
   Media,
@@ -109,6 +112,14 @@ export function useSession(id: string): UseQueryResult<SessionDetail> {
 
 export function useGroups(): UseQueryResult<GroupMembership[]> {
   return useQuery({ queryKey: keys.groups, queryFn: async () => await api.groups.list() })
+}
+
+export function useGroupMembers(id: string): UseQueryResult<GroupMember[]> {
+  return useQuery({
+    queryKey: keys.groupMembers(id),
+    queryFn: async () => await api.groups.members(id),
+    enabled: id !== '',
+  })
 }
 
 export function useTokens(): UseQueryResult<PersonalAccessToken[]> {
@@ -232,6 +243,22 @@ export const useCreateToken = () =>
 
 export const useRevokeToken = () =>
   useWriteTo('token', async (id: string) => await api.tokens.revoke(id))
+
+export const useCreateGroup = () =>
+  useWriteTo('group', async (input: GroupCreate) => await api.groups.create(input))
+
+export const useAddMember = (groupId: string) =>
+  useWriteTo('group', async (input: GroupAddMember) => await api.groups.addMember(groupId, input))
+
+export const useRemoveMember = (groupId: string) =>
+  useWriteTo('group', async (userId: string) => await api.groups.removeMember(groupId, userId))
+
+/**
+ * Removing yourself: what the group showed you is yours to read no more, its members included —
+ * so, like a delete, they are not asked for again by the screen still showing them.
+ */
+export const useLeaveGroup = (myUserId: string) =>
+  useDeleteOf('group', async (groupId) => await api.groups.removeMember(groupId, myUserId))
 
 /**
  * Makes nothing stale, so it refreshes nothing: a link is an exercise's media only once the

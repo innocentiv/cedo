@@ -50,7 +50,7 @@ app/(app)/_layout.tsx        the signed-in shell: bottom bar on phone, sidebar o
 app/(app)/today/            index · session/[id]        the live logging screen
 app/(app)/workouts/         index · [id]/index · [id]/edit
 app/(app)/exercises/        index · new · [id]/index · [id]/edit
-app/(app)/settings/         index · groups · tokens
+app/(app)/settings/         index · groups/index · groups/[id] · tokens
 
 src/ui/                      the entire visual vocabulary
 src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts
@@ -206,8 +206,13 @@ screen's picture is stale, because someone else's write changed it. `useWriteTo`
 the write was OF, the reads it would have awaited; when nothing has moved, it is a cheap re-read.
 Not the ones that embed it, because nothing was written. A session whose plan the lifter had just
 lost to a coach's edit used to keep showing it for the whole `staleTime`, inviting the same refused
-set again. Membership itself is not a source any read embeds: the app writes no group, so a
-membership changes only by someone else's hand, and reaches the screen this way.
+set again.
+
+Every read but the token list embeds `group`, because membership decides what it may answer:
+leaving a group takes its plans, its exercises, and the names they lent your history. A group write
+in the app — create, add, remove, leave — refreshes the groups and their members, and everything
+else behind them. Someone else removing you still reaches the screen only the refused way above, as
+it must: nothing in this app was written.
 
 A delete (`useDeleteOf('workout', remove)`) refreshes none of the reads keyed by the id it deletes —
 `[read, id]` is the thing itself — after it succeeds, or when it answers 404 because someone else
