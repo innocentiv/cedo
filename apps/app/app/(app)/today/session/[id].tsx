@@ -101,8 +101,7 @@ export default function LiveSession(): React.JSX.Element {
   const id = sessionId ?? ''
 
   const session = useSession(id)
-  // Hints for the day's entries — so only when there is a day the reader can reach: asked of a plan
-  // out of reach, progression answers "No such workout".
+  // Hints are for the day's entries, so they are asked for only when there is a day to show.
   const plan = session.data?.plan
   const progression = useProgression(
     plan?.reachable === true ? (session.data?.workoutId ?? '') : '',

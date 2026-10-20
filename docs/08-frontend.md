@@ -10,7 +10,7 @@ small as it is.
 
 > A screen **may**: call the hooks in `src/api/queries.ts` (never `api.*` or `fetch` directly),
 > render UI primitives, hold form state, and call pure helpers from `@cedo/contract`
-> (`formatEffort`, `formatWeight`, `formatPrescription`, `planInputFrom`).
+> (`formatEffort`, `formatWeight`, `formatPrescription`, `workingSetsDone`, `planInputFrom`).
 >
 > A screen **may not**: perform unit arithmetic, sum muscle loads, decide progressions, hand-format
 > measurements, or branch on domain rules. If a screen needs a rule, the rule belongs in the

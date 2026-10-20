@@ -5,6 +5,7 @@ import {
   GroupMembership,
   PersonalAccessTokenCreated,
   Workout,
+  SessionDetail,
   WorkoutSession,
   WorkoutSessionSummary,
   page,
@@ -45,6 +46,8 @@ interface World {
   readonly bobsWorkoutId: string
   readonly alicesWorkoutId: string
   readonly alicesSessionId: string
+  /** On her own plan, which stays hers: its day still names Bob's exercise while she can see it. */
+  readonly alicesOwnSessionId: string
   readonly alicesPat: string
 }
 
@@ -123,12 +126,27 @@ async function buildWorld(): Promise<World> {
     await post(alice, `/sessions/${session.id}`, { endedAt: new Date().toISOString() }, 'PATCH')
   }
 
+  const ownDay = expectContract(Workout, (await alice.wire(`/workouts/${alicesWorkoutId}`)).body)
+    .days[0]
+  const alicesOwnSessionId = expectContract(
+    WorkoutSession,
+    await post(alice, '/sessions', { workoutId: alicesWorkoutId, dayId: ownDay?.id }),
+  ).id
+
   const alicesPat = expectContract(
     PersonalAccessTokenCreated,
     await post(alice, '/tokens', { name: 'claude' }),
   ).token
 
-  return { crewId, bobsExerciseId, bobsWorkoutId, alicesWorkoutId, alicesSessionId, alicesPat }
+  return {
+    crewId,
+    bobsExerciseId,
+    bobsWorkoutId,
+    alicesWorkoutId,
+    alicesSessionId,
+    alicesOwnSessionId,
+    alicesPat,
+  }
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -260,9 +278,14 @@ const ROUTES: Record<string, Case> = {
   },
   'GET /sessions/': { named: true, read: async () => await http('/sessions') },
   'GET /sessions/:id': {
-    // Her own session stays hers, and each log names its exercise — while she can still see it.
+    // Her own session stays hers, and each log names its exercise — while she can still see it. So
+    // does the day it follows: Bob's plan out of reach after, her own plan's entry unavailable.
     named: true,
-    read: async (w) => await http(`/sessions/${w.alicesSessionId}`),
+    read: async (w) =>
+      await all([
+        http(`/sessions/${w.alicesSessionId}`),
+        http(`/sessions/${w.alicesOwnSessionId}`),
+      ]),
   },
   // Curator-only, and Alice is no curator: she is refused before and after.
   'GET /admin/status': { named: false, read: async () => await http('/admin/status') },
@@ -384,7 +407,7 @@ test('losing a group takes back every name it showed, on every read path', async
   const allowedBefore = await Promise.all(gated.map(async ([, c]) => await c.allowed?.(w)))
   expect(gated.filter((_, i) => allowedBefore[i] !== true).map(([name]) => name)).toEqual([])
   const loggedBefore = expectContract(
-    WorkoutSession,
+    SessionDetail,
     (await alice.wire(`/sessions/${w.alicesSessionId}`)).body,
   ).logs
   expect(loggedBefore.map((l) => l.exercise?.name)).toEqual(['Bobs Secret Lift'])
@@ -416,16 +439,22 @@ test('losing a group takes back every name it showed, on every read path', async
     (await alice.wire('/sessions')).body,
   )
   expect(sessionsAfter.items.map((s) => s.id)).toEqual(sessionsBefore.items.map((s) => s.id))
+  // Bob's plan is out of reach; her own plan, and its day, are still hers to name.
   expect(sessionsAfter.items.map((s) => [s.workoutName, s.dayName])).toEqual(
-    sessionsAfter.items.map(() => [null, null]),
+    sessionsAfter.items.map((s) =>
+      s.id === w.alicesOwnSessionId ? ['Alices Own Plan', 'Her Own Day'] : [null, null],
+    ),
   )
 
   // And each of her logs is still listed — a LEFT join onto the visible exercises — with the
   // exercise it names gone, not the log itself.
-  const loggedAfter = expectContract(
-    WorkoutSession,
+  const sessionAfter = expectContract(
+    SessionDetail,
     (await alice.wire(`/sessions/${w.alicesSessionId}`)).body,
-  ).logs
+  )
+  const loggedAfter = sessionAfter.logs
   expect(loggedAfter.map((l) => l.id)).toEqual(loggedBefore.map((l) => l.id))
   expect(loggedAfter.map((l) => l.exercise)).toEqual([null])
+  // The plan it followed is Bob's, and out of her reach now — said, not guessed from a failed read.
+  expect(sessionAfter.plan).toEqual({ reachable: false })
 })

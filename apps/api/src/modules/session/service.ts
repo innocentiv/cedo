@@ -175,7 +175,7 @@ export async function update(
   return await read(caller, id)
 }
 
-/** A session and its logs, as the caller sees them. Read on its own, it is `detail.ts`'s `get`. */
+/** A session and its logs, as the caller sees them. Read on its own, it is `plan.ts`'s `get`. */
 export async function read(caller: Caller, id: string): Promise<WorkoutSession> {
   const [row] = await db
     .select()

@@ -1,19 +1,26 @@
-import { type SessionDetail, type SessionPlan, type SetLog, workingSetsDone } from '@cedo/contract'
+import {
+  type SessionDetail,
+  type SessionPlan,
+  type WorkoutSession,
+  workingSetsDone,
+} from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydrateDay } from '../workout/plan.ts'
 import { read } from './service.ts'
 
-/** A session read on its own: its logs as the caller sees them, and the plan it follows. */
+/**
+ * The plan a session follows, as its reader can reach it — read with the session on its own
+ * (`GET /sessions/:id`). See `SessionPlan`.
+ */
 
-/** A session with the plan it follows, as the caller can reach it — see `planOf`. */
+/** A session with the plan it follows. */
 export async function get(caller: Caller, id: string): Promise<SessionDetail> {
   const session = await read(caller, id)
-  return Object.assign(session, { plan: await planOf(caller, session, session.logs) })
+  return { ...session, plan: await planOf(caller, session) }
 }
 
 /**
- * The plan a session follows, as the caller can reach it: none, out of reach, or the day — each
- * entry with the working sets done in its series. See `SessionPlan`.
+ * None, out of reach, or the day — each entry with the working sets done in its series.
  *
  * Decided from the same visible relations the session's logs are read and numbered by: `logs`
  * carry `entryId: null` exactly when their entry is out of reach, so an entry's done count and the
@@ -21,18 +28,15 @@ export async function get(caller: Caller, id: string): Promise<SessionDetail> {
  * of its own, and took a plan it failed to FETCH for one out of reach — logging the next set into
  * the wrong series.
  */
-export async function planOf(
-  caller: Caller,
-  session: { readonly workoutId: string | null; readonly dayId: string | null },
-  logs: readonly SetLog[],
-): Promise<SessionPlan> {
+async function planOf(caller: Caller, session: WorkoutSession): Promise<SessionPlan> {
   if (session.workoutId === null || session.dayId === null) return null
   const day = await hydrateDay(caller, session.workoutId, session.dayId)
   if (day === null) return { reachable: false }
+  // Rows hydrated for this read alone: annotated in place, not copied.
   const entries = day.entries.map((entry) =>
-    Object.assign({}, entry, {
-      done: workingSetsDone(logs, { entryId: entry.id, exerciseId: entry.exerciseId }),
+    Object.assign(entry, {
+      done: workingSetsDone(session.logs, { entryId: entry.id, exerciseId: entry.exerciseId }),
     }),
   )
-  return { reachable: true, day: Object.assign({}, day, { entries }) }
+  return { reachable: true, day: { ...day, entries } }
 }

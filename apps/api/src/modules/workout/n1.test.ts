@@ -5,7 +5,7 @@ import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 import * as ProgressionService from '../progression/service.ts'
 import { history } from '../session/history.ts'
-import { get as getSession } from '../session/detail.ts'
+import { get as getSession } from '../session/plan.ts'
 import * as WorkoutService from './service.ts'
 
 let h: TestApi
@@ -194,7 +194,15 @@ describe('reads do not N+1', () => {
     expect(entries(smallCount.result)).toBe(1)
     expect(entries(largeCount.result)).toBe(8)
     expect(largeCount.count).toBe(smallCount.count)
-    // The session, its logs, and the day's reads: day, entries, sets, and the four for exercises.
-    expect(largeCount.count).toBeLessThanOrEqual(9)
+
+    // The day costs a fixed seven over a session that follows none: day, entries, sets, and the
+    // four exercise reads.
+    const adHoc = expectContract(
+      WorkoutSession,
+      (await alice.wire('/sessions', { method: 'POST', body: '{}' })).body,
+    ).id
+    const adHocCount = await withQueryCount(() => getSession(alice.caller, adHoc))
+    expect(adHocCount.result.plan).toBeNull()
+    expect(largeCount.count).toBe(adHocCount.count + 7)
   })
 })

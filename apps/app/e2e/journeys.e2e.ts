@@ -208,59 +208,54 @@ test(
   'losing access to a group plan does not hide your own session, or the way to finish it',
   async () => {
     const athlete = unique('ath')
-    await withApp(
-      'session-after-losing-plan',
-      async (page) => {
-        const app = screens(page)
-        await app.auth.register(athlete)
+    // No console error allowed: the screen reads the plan's reach from the session, and never
+    // fetches the lost plan itself — a fetch that once failed into the wrong series.
+    await withApp('session-after-losing-plan', async (page) => {
+      const app = screens(page)
+      await app.auth.register(athlete)
 
-        // A coach shares a plan through a group with the athlete in it.
-        const coach = await signUp(`${athlete}c`)
-        const squad = await coach.api.groups.create({ name: 'Squad' })
-        await coach.api.groups.addMember(squad.id, { username: athlete, role: 'reader' })
-        const [squat] = (await coach.api.exercises.list({ q: 'Back Squat', limit: 1 })).items
-        if (squat === undefined) throw new Error('The seeded library has no Back Squat')
-        const plan = await coach.api.workouts.create({ name: 'Coached', notes: null })
-        await coach.api.workouts.replacePlan(
-          plan.id,
-          WorkoutPlanInput.parse({
-            days: [
-              { name: 'Legs', entries: [{ exerciseId: squat.id, sets: [{ targetReps: 5 }] }] },
-            ],
-          }),
-        )
-        await coach.api.workouts.transfer(plan.id, { toGroupId: squad.id })
-        const { user: me } = await (await page.client()).auth.me()
+      // A coach shares a plan through a group with the athlete in it.
+      const coach = await signUp(`${athlete}c`)
+      const squad = await coach.api.groups.create({ name: 'Squad' })
+      await coach.api.groups.addMember(squad.id, { username: athlete, role: 'reader' })
+      const [squat] = (await coach.api.exercises.list({ q: 'Back Squat', limit: 1 })).items
+      if (squat === undefined) throw new Error('The seeded library has no Back Squat')
+      const plan = await coach.api.workouts.create({ name: 'Coached', notes: null })
+      await coach.api.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [{ name: 'Legs', entries: [{ exerciseId: squat.id, sets: [{ targetReps: 5 }] }] }],
+        }),
+      )
+      await coach.api.workouts.transfer(plan.id, { toGroupId: squad.id })
+      const { user: me } = await (await page.client()).auth.me()
 
-        // The athlete trains from it.
-        await page.goto('/workouts')
-        await app.workouts.openFirst()
-        await app.workouts.startDay(0)
-        await app.session.entry(0).fill('weight', '100')
-        await app.session.entry(0).log()
+      // The athlete trains from it.
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await app.workouts.startDay(0)
+      await app.session.entry(0).fill('weight', '100')
+      await app.session.entry(0).log()
 
-        // …and is then removed from the group — finished when this returns, so nothing to wait out.
-        await coach.api.groups.removeMember(squad.id, me.id)
+      // …and is then removed from the group — finished when this returns, so nothing to wait out.
+      await coach.api.groups.removeMember(squad.id, me.id)
 
-        await app.session.reopen()
-        await app.session.logsShown()
-        expect(await app.session.canFinish()).toBe(true)
-        expect(await app.session.text()).toContain('unavailable')
-        // The squat logged against the lost plan still counts: the session goes on as one without a
-        // plan, not with "0 done" above "set 1" and a second "set 1" to come.
-        const squats = app.session.adhoc(squat.id)
-        expect(await squats.done()).toBe('1 done')
-        await squats.fill('weight', '100')
-        await squats.fill('reps', '5')
-        await squats.log()
-        await page.until(
-          async () => await app.session.loggedLines(),
-          (lines) => lines.includes('Barbell Back Squat · set 2'),
-        )
-      },
-      // No console error allowed: the screen reads the plan's reach from the session, and never
-      // fetches the lost plan itself — a fetch that once failed into the wrong series.
-    )
+      await app.session.reopen()
+      await app.session.logsShown()
+      expect(await app.session.canFinish()).toBe(true)
+      expect(await app.session.text()).toContain('unavailable')
+      // The squat logged against the lost plan still counts: the session goes on as one without a
+      // plan, not with "0 done" above "set 1" and a second "set 1" to come.
+      const squats = app.session.adhoc(squat.id)
+      expect(await squats.done()).toBe('1 done')
+      await squats.fill('weight', '100')
+      await squats.fill('reps', '5')
+      await squats.log()
+      await page.until(
+        async () => await app.session.loggedLines(),
+        (lines) => lines.includes('Barbell Back Squat · set 2'),
+      )
+    })
   },
   E2E_TIMEOUT_MS,
 )

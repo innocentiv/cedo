@@ -88,6 +88,7 @@ export type WorkoutSession = z.output<typeof WorkoutSession>
 export const SessionEntry = WorkoutEntry.extend({ done: z.int().nonnegative() })
 export type SessionEntry = z.output<typeof SessionEntry>
 
+/** The day a session follows: the plan's day, each entry with its done count. */
 export const SessionDay = WorkoutDay.extend({ entries: z.array(SessionEntry) })
 export type SessionDay = z.output<typeof SessionDay>
 

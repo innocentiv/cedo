@@ -15,7 +15,7 @@ import {
   page,
 } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
-import { get as getSession } from './detail.ts'
+import { get as getSession } from './plan.ts'
 import * as HistoryService from './history.ts'
 import { list as listSessions } from './list.ts'
 import * as SessionService from './service.ts'
