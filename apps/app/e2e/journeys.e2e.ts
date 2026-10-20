@@ -88,7 +88,7 @@ test(
       expect(await app.session.loggedLines()).toContain('8 × 60 kg')
 
       await app.session.finish()
-      await app.workouts.detailText()
+      await app.workouts.shown()
     })
   },
   E2E_TIMEOUT_MS,
@@ -146,6 +146,7 @@ test(
       // The tab keeps its stack, so this returns to the very detail screen seen above — still
       // mounted, holding the history it fetched before the set existed.
       await app.nav.tab('exercises')
+      await app.exercise.shown()
       const history = await page.until(
         async () => await app.exercise.historyText(),
         (text) => !text.includes('Nothing logged yet'),
@@ -186,9 +187,11 @@ test(
       const form = await exercise.edit()
       await form.name(after)
       await form.save()
+      await exercise.shown()
 
       // The tab keeps its stack: back to the very plan seen above, cached before the rename.
       await app.nav.tab('workouts')
+      await app.workouts.shown()
       const plan = await page.until(
         async () => await app.workouts.detailText(),
         (text) => text.includes(after),
@@ -240,12 +243,13 @@ test(
         await coach.api.groups.removeMember(squad.id, me.id)
 
         await app.session.reopen()
+        await app.session.logsShown()
+        expect(await app.session.canFinish()).toBe(true)
+        expect(await app.session.text()).toContain('unavailable')
         // The squat logged against the lost plan still counts: the session goes on as one without a
         // plan, not with "0 done" above "set 1" and a second "set 1" to come.
         const squats = app.session.adhoc(squat.id)
         expect(await squats.done()).toBe('1 done')
-        expect(await app.session.canFinish()).toBe(true)
-        expect(await app.session.text()).toContain('unavailable')
         await squats.fill('weight', '100')
         await squats.fill('reps', '5')
         await squats.log()
@@ -270,19 +274,23 @@ test(
       await app.planEditor.saveAndStart()
 
       const bench = app.session.entry(0)
-      const log = async () => {
+      const rows = async () => (await app.session.loggedIds()).length
+      /** Logs a set, and waits until there are exactly `expected` rows. */
+      const log = async (expected: number) => {
         await bench.fill('weight', '60')
         await bench.log()
+        await page.until(rows, (n) => n === expected)
       }
-      await log()
-      await log()
-      await log()
+      await log(1)
+      await log(2)
+      await log(3)
 
       // Undo set 2 — the second row — then log once more.
       const second = (await app.session.loggedIds())[1]
       if (second === undefined) throw new Error('expected three logged rows')
       await app.session.undo(second)
-      await log()
+      await page.until(rows, (n) => n === 2)
+      await log(3)
 
       // A count would have numbered the new set 3, beside the existing set 3. Rows read
       // "Barbell Bench Press · set 1": the number is what follows the name.

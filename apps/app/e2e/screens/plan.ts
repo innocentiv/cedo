@@ -1,4 +1,6 @@
 import type { Page } from '../harness.ts'
+import { picker } from './picker.ts'
+import { session } from './session.ts'
 
 /** Plans: the list, a plan's detail, and the editor. */
 
@@ -20,22 +22,30 @@ const planEntry = (page: Page, id: string) => ({
     await page.text(`${id}-progression-summary`),
 })
 
-export const workouts = (page: Page) => ({
-  /** Opens the first plan in the list on screen. */
-  openFirst: async (): Promise<void> => {
-    const row = await page.waitForSelector('[data-testid^="workout-row-"]')
-    await page.click(`[data-testid="${row}"]`)
+/** The plans list, and a plan's detail. */
+export const workouts = (page: Page) => {
+  const shown = async (): Promise<void> => {
     await page.waitFor('workout-detail-screen')
-  },
-  detailText: async (): Promise<string> => {
-    await page.waitFor('workout-detail-screen')
-    return (await page.text('workout-detail-screen')) ?? ''
-  },
-  startDay: async (day: number): Promise<void> => {
-    await page.click(`[data-testid="start-day-${day}"]`)
-    await page.waitFor('session-screen')
-  },
-})
+  }
+  return {
+    /** Opens the first plan in the list on screen. */
+    openFirst: async (): Promise<void> => {
+      const row = await page.waitForSelector('[data-testid^="workout-row-"]')
+      await page.click(`[data-testid="${row}"]`)
+      await shown()
+    },
+    /** Waits for a plan's detail. */
+    shown,
+    detailText: async (): Promise<string> => {
+      await shown()
+      return (await page.text('workout-detail-screen')) ?? ''
+    },
+    startDay: async (day: number): Promise<void> => {
+      await page.click(`[data-testid="start-day-${day}"]`)
+      await session(page).shown()
+    },
+  }
+}
 
 export const planEditor = (page: Page) => {
   const save = async (): Promise<void> => {
@@ -60,13 +70,9 @@ export const planEditor = (page: Page) => {
       await page.click('[data-testid="add-day"]')
       await page.waitFor('plan-day-0')
       await page.click('[data-testid="add-entry-0"]')
-
-      await page.waitFor('exercise-picker')
-      await page.fill('picker-search', exercise)
-      const picked = await page.waitForSelector('[data-testid^="picker-row-"]')
-      await page.click(`[data-testid="${picked}"]`)
+      const exerciseId = await picker(page).pick(exercise)
       await page.waitFor('plan-entry-0-0')
-      return picked.replace('picker-row-', '')
+      return exerciseId
     },
     entry: (day: number, index: number) => planEntry(page, `plan-entry-${day}-${index}`),
     /** Taps a day's name: a plain text input, so the caret lands where the tap did. */

@@ -1,4 +1,5 @@
 import type { Page } from '../harness.ts'
+import { nav } from './nav.ts'
 
 /**
  * Signing up and in, through the screens. Each driver in this folder owns its screen's test ids and
@@ -21,7 +22,7 @@ export const auth = (page: Page) => ({
     await page.fill('register-display-name', username)
     await page.fill('register-password', PASSWORD)
     await page.click('[data-testid="register-submit"]')
-    await page.waitFor('today-screen')
+    await nav(page).onToday()
   },
 
   /** Waits for the login screen — where a forgotten credential sends you. */

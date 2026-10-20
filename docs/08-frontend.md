@@ -298,8 +298,8 @@ The harness reveals a target before touching it (`scrollIntoView`, then click) a
 selector whose id is not known ahead of time. Both exist because their absence produced failures
 about viewport geometry and query timing rather than about the app.
 
-Adding a screen: give every element a `testID`, add it to the sweep in `e2e/routes.e2e.ts`, and run
-`bun run e2e`. The harness fails on any console error without a single hand-written assertion, so
+Adding a screen: give every element a `testID`, add it to the sweep in `e2e/routes.e2e.ts` and, for
+a journey, to its driver in `e2e/screens/`, and run `bun run e2e`. The harness fails on any console error without a single hand-written assertion, so
 the sweep is coverage rather than a set of expectations. See `docs/10-testing.md`.
 
 ## One rule is calibrated differently here

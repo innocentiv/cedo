@@ -1,17 +1,19 @@
 import type { Page } from '../harness.ts'
+import { picker } from './picker.ts'
 
 /** A session being trained: its loggers, the sets logged so far, and finishing it. */
 
 type Dimension = 'weight' | 'reps' | 'duration' | 'distance'
 
-/** Every logged-set row on screen. */
-const LOGGED_SET = '[data-testid^="logged-set-"]'
+/**
+ * Every logged-set row SHOWN. A tab keeps its stack mounted, so the same session can be in the page
+ * twice — once hidden — and counting both would read every set double.
+ */
+const VISIBLE_ROWS = `[...document.querySelectorAll('[data-testid^="logged-set-"]')].filter((e) => e.offsetParent != null)`
 
 /** The logged-set rows, in order, by test id. */
 async function loggedIds(page: Page): Promise<string[]> {
-  const ids = await page.evaluate(
-    `[...document.querySelectorAll('${LOGGED_SET}')].map((e) => e.dataset.testid)`,
-  )
+  const ids = await page.evaluate(`${VISIBLE_ROWS}.map((e) => e.dataset.testid)`)
   if (!Array.isArray(ids) || !ids.every((id): id is string => typeof id === 'string')) {
     throw new Error(`Could not read the logged sets: ${JSON.stringify(ids)}`)
   }
@@ -38,7 +40,11 @@ const logger = (page: Page, id: string) => ({
     await page.waitFor(`${id}-done`)
     return await page.text(`${id}-done`)
   },
-  /** Logs a set, and waits until it is a row: the next one is numbered from the refreshed logs. */
+  /**
+   * Logs a set, and waits until it is a row: the next one is numbered from the refreshed logs. The
+   * rows before are counted from the same session read the logger is drawn from, so a logger on
+   * screen has its rows on screen too.
+   */
   log: async (): Promise<void> => {
     const before = (await loggedIds(page)).length
     await page.click(`[data-testid="${id}-log"]`)
@@ -50,8 +56,11 @@ const logger = (page: Page, id: string) => ({
 })
 
 export const session = (page: Page) => {
-  const path = async (): Promise<string> => String(await page.evaluate('location.pathname'))
+  const shown = async (): Promise<void> => {
+    await page.waitFor('session-screen')
+  }
   return {
+    shown,
     entry: (index: number) => logger(page, `log-entry-${index}`),
     adhoc: (exerciseId: string) => logger(page, `adhoc-${exerciseId}`),
 
@@ -60,29 +69,27 @@ export const session = (page: Page) => {
       await page.goto('/today')
       await page.waitFor('start-adhoc')
       await page.click('[data-testid="start-adhoc"]')
-      await page.waitFor('session-screen')
+      await page.waitFor('session-adhoc')
     },
     /** Picks an exercise into a session without a plan; returns its id once its logger shows. */
     addExercise: async (search: string): Promise<string> => {
       await page.click('[data-testid="adhoc-add-exercise"]')
-      await page.waitFor('exercise-picker')
-      await page.fill('picker-search', search)
-      const picked = await page.waitForSelector('[data-testid^="picker-row-"]')
-      const exerciseId = picked.replace('picker-row-', '')
-      await page.click(`[data-testid="${picked}"]`)
+      const exerciseId = await picker(page).pick(search)
       await page.waitFor(`adhoc-${exerciseId}`)
       return exerciseId
     },
 
-    /** The session's own address, to come back to it by URL. */
-    path,
-    /** Navigates to the session by URL — a reload, a shared link, coming back to the tab. */
+    /** Navigates to the session by its URL — a reload, a shared link, coming back to the tab. */
     reopen: async (): Promise<void> => {
-      await page.goto(await path())
-      await page.waitFor('session-screen')
+      await page.goto(String(await page.evaluate('location.pathname')))
+      await shown()
     },
     text: async (): Promise<string> => (await page.text('session-screen')) ?? '',
 
+    /** Waits until the sets logged so far are on screen. */
+    logsShown: async (): Promise<void> => {
+      await page.waitFor('session-logs')
+    },
     loggedIds: async (): Promise<string[]> => await loggedIds(page),
     /**
      * The rendered lines of every logged set, newest last. `innerText`, not `textContent`: the
@@ -90,22 +97,16 @@ export const session = (page: Page) => {
      * over that also passes for 88 reps — the very bug the assertion existed to catch.
      */
     loggedLines: async (): Promise<string[]> => {
-      const text = await page.evaluate(
-        `[...document.querySelectorAll('${LOGGED_SET}')].map((e) => e.innerText).join('\\n')`,
-      )
+      const text = await page.evaluate(`${VISIBLE_ROWS}.map((e) => e.innerText).join('\\n')`)
       return typeof text === 'string' ? text.split('\n').map((line) => line.trim()) : []
     },
-    /** Undoes a logged set by its row's id, and waits until the row is gone. */
+    /** Undoes a logged set by its row's id. */
     undo: async (rowId: string): Promise<void> => {
-      const before = (await loggedIds(page)).length
       await page.click(`[data-testid="${rowId}"]`)
-      await page.until(
-        async () => (await loggedIds(page)).length,
-        (rows) => rows < before,
-      )
     },
 
     canFinish: async (): Promise<boolean> => await page.exists('finish-session'),
+    /** Finishes the session; where that goes depends on where it was reached from. */
     finish: async (): Promise<void> => {
       await page.waitFor('finish-session')
       await page.click('[data-testid="finish-session"]')

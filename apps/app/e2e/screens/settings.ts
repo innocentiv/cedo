@@ -1,11 +1,12 @@
 import type { Page } from '../harness.ts'
+import { nav } from './nav.ts'
 
 /** Settings: the weight unit, and access tokens. */
 
 export const settings = (page: Page) => ({
   /** Chooses a unit from the Settings tab, and waits until the account has saved it. */
   chooseUnit: async (unit: 'kg' | 'lb'): Promise<void> => {
-    await page.click('[data-testid="nav-settings"]')
+    await nav(page).tab('settings')
     await page.waitFor('settings-screen')
     await page.click(`[data-testid="weight-unit-${unit}"]`)
     const mine = await page.client()

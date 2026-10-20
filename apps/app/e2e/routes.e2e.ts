@@ -6,7 +6,7 @@ import {
   stopSharedApi,
   withApp,
 } from './harness.ts'
-import { auth } from './screens/auth.ts'
+import { auth, unique } from './screens/auth.ts'
 
 /**
  * Every route renders, and nothing explodes.
@@ -57,7 +57,7 @@ test(
   'registering signs you in and lands on Today',
   async () => {
     await withApp('register', async (page) => {
-      await auth(page).register(`e2e${Date.now().toString(36)}`)
+      await auth(page).register(unique('e2e'))
       expect(await page.text('today-screen')).toContain('Today')
     })
   },
@@ -68,7 +68,7 @@ test(
   'every signed-in route renders without a console error',
   async () => {
     await withApp('route-sweep', async (page) => {
-      await auth(page).register(`sweep${Date.now().toString(36)}`)
+      await auth(page).register(unique('sweep'))
       for (const [route, id] of ROUTES) {
         await page.goto(route)
         await page.waitFor(id)
@@ -85,7 +85,7 @@ test(
     await withApp(
       'tablet-shell',
       async (page) => {
-        await auth(page).register(`tab${Date.now().toString(36)}`)
+        await auth(page).register(unique('tab'))
         await page.goto('/today')
         await page.waitFor('shell-tablet')
       },
@@ -99,7 +99,7 @@ test(
   'signing out returns to login',
   async () => {
     await withApp('sign-out', async (page) => {
-      await auth(page).register(`out${Date.now().toString(36)}`)
+      await auth(page).register(unique('out'))
       await page.goto('/settings')
       await page.waitFor('sign-out')
       await page.click('[data-testid="sign-out"]')

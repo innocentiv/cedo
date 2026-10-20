@@ -49,7 +49,8 @@ stretched across 1280px, and unselectable text on the one value a user must copy
 ## 5. Add it to the sweep
 
 A route with no id goes in `ROUTES` in `apps/app/e2e/routes.e2e.ts`. Anything needing real data gets
-a journey in `journeys.e2e.ts`.
+a journey in `journeys.e2e.ts` — driving the screen through its driver in `apps/app/e2e/screens/`,
+which you add or extend with the screen's test ids. A journey never names one itself.
 
 ```bash
 bun run e2e     # foreground only — a backgrounded run reports false failures

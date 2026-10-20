@@ -117,13 +117,15 @@ finished when it returns. Never a `fetch` evaluated inside the page: untyped, id
 strings, and easily fired without being awaited.
 
 A journey drives the app through **screen drivers** (`apps/app/e2e/screens/`, gathered by
-`screens(page)`): one per screen, each owning that screen's test ids and waits, so a journey says
-what a person does — `app.session.entry(0).log()` — and asserts what they see. A test id lives in
-exactly one driver: renamed, it breaks one line, not every journey that passes through the screen.
-`e2e/journeys.test.ts` fails if a journey touches an element itself; it may still navigate
-(`goto`), wait (`until`), type into what has focus (`keys`, `press`) and set up data (`client`).
-A driver's wait is for what the person would see: a form that saved is no longer SHOWN, but it is
-still in the page — a tab keeps its stack mounted.
+`screens(page)`): a driver per screen, grouped by area, each owning that screen's test ids and
+waits, so a journey says what a person does — `app.session.entry(0).log()` — and asserts what they
+see. Among the drivers a test id lives in exactly one: renamed, it breaks one line, not every
+journey that passes through the screen. (The route sweep is the exception by design — a table of
+routes and the screen each shows.) `e2e/journeys.test.ts` fails if a journey touches an element
+itself; it may still navigate (`goto`), wait (`until`), type into what has focus (`keys`, `press`)
+and set up data (`client`). A driver's wait is for what the person would see: a form that saved is
+no longer SHOWN, but it is still in the page — a tab keeps its stack mounted — and the same goes for
+counting rows.
 
 ## T4 — performance
 

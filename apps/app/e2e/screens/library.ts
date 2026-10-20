@@ -22,17 +22,24 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
   },
   /**
    * Saves, and waits for the form to close. Closed, not gone: a tab keeps its stack mounted, so the
-   * form stays in the page — hidden — after going back to wherever it was opened from.
+   * form stays in the page — hidden — after going back to wherever it was opened from. Every copy,
+   * not the first: another tab's stack may hold a hidden one already. A save the API refuses fails
+   * with the form's own message.
    */
   save: async (): Promise<void> => {
     await page.click(`[data-testid="${screen}-save"]`)
-    await page.until(
+    const state = await page.until(
       async () =>
-        await page.evaluate(
-          `document.querySelector('[data-testid="${screen}"]')?.offsetParent != null`,
-        ),
-      (shown) => shown === false,
+        await page.evaluate(`(() => {
+          const shown = (id) => [...document.querySelectorAll('[data-testid="' + id + '"]')]
+            .find((e) => e.offsetParent != null)
+          const error = shown('${screen}-error')
+          if (error) return 'refused: ' + error.textContent
+          return shown('${screen}') ? 'open' : 'closed'
+        })()`),
+      (seen) => seen !== 'open',
     )
+    if (state !== 'closed') throw new Error(`Saving the exercise form was ${String(state)}`)
   },
   /** Saves a form the API will refuse, and returns the message it shows instead. */
   saveRefused: async (): Promise<string> => {
@@ -44,6 +51,9 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
 
 /** The exercise detail screen — reached however the journey reached it. */
 export const exercise = (page: Page) => ({
+  shown: async (): Promise<void> => {
+    await page.waitFor('exercise-detail-screen')
+  },
   historyText: async (): Promise<string> => {
     await page.waitFor('exercise-history')
     return (await page.text('exercise-history')) ?? ''
@@ -76,8 +86,9 @@ export const library = (page: Page) => {
   const openRow = async () => {
     const row = await page.waitForSelector('[data-testid^="exercise-row-"]')
     await page.click(`[data-testid="${row}"]`)
-    await page.waitFor('exercise-detail-screen')
-    return exercise(page)
+    const detail = exercise(page)
+    await detail.shown()
+    return detail
   }
   return {
     newExercise,
