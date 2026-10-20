@@ -187,6 +187,17 @@ export const HOT_PATHS: readonly HotPath[] = [
     run: async (fixtures, size) => await listSessions(fixtures.large.caller, { limit: PAGE[size] }),
   },
   {
+    name: 'GET /sessions?inProgress=true',
+    why: "Today's first question: is a session in progress? One, found by the index that keeps it one — not by scanning a person's history for it.",
+    dimension: 'sessions the person has finished (6 vs 201)',
+    maxQueries: 2,
+    budgetMs: 60,
+    noSeqScan: ['workout_sessions', 'set_logs'],
+    indexes: ['workout_sessions_in_progress_idx'],
+    run: async (fixtures, size) =>
+      await listSessions(pick(fixtures, size).caller, { limit: 1, inProgress: true }),
+  },
+  {
     name: 'GET /sessions (next page)',
     why: 'Scrolling history. The cursor must seek into the index, not re-sort everything before it.',
     dimension: 'page size (5 vs 50)',
