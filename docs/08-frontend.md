@@ -54,7 +54,7 @@ app/(app)/settings/         index · groups · tokens
 
 src/ui/                      the entire visual vocabulary
 src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts
-src/auth/                    auth-provider.tsx, token-storage.ts
+src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
 src/lib/                     use-submit.ts, plan-draft.ts, forms and pickers
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts
 ```
@@ -232,9 +232,10 @@ error that points nowhere near the cause.
 
 `transport.ts` reports every `unauthenticated` answer to a request that sent a token, with the token
 it sent; the session (`src/auth/session.ts`, made once in `http.ts`) signs out only if that is still
-the token in use — a late 401 for a previous user's token must not sign the next one out. The
-provider, subscribed to the session, clears the query cache and the router returns to login. Every
-rule about who is signed in is in that module, unit-tested (`session.test.ts`).
+the token in use — a late 401 for a previous user's token must not sign the next one out. Every rule
+about who is signed in is in that module, unit-tested (`session.test.ts`). The provider subscribes to
+it, and clears the query cache whenever it says signed out — the one line of it in React, since the
+cache is the root layout's.
 
 Without it a token revoked elsewhere — signed out on another device, or simply expired after a month
 — left every screen showing "Authentication required" with no way back to the login form. The guard

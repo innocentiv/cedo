@@ -37,26 +37,58 @@ function aStore(token: string | null = null): TokenStore & { held: () => string 
   }
 }
 
-/** An API that knows `who` by their token. */
-function anAuth(who: Record<string, Me>, token: () => string | null): SessionAuth {
+/**
+ * An API that knows `who` by their token — and, refusing one, reports it as the transport does:
+ * `rejected(token)` first, then the error.
+ */
+function anAuth(
+  who: Record<string, Me>,
+  token: () => string | null,
+  onRejected: (sent: string) => Promise<void>,
+): SessionAuth {
+  const known = async (): Promise<Me> => {
+    const sent = token()
+    const found = who[sent ?? '']
+    if (found !== undefined) return found
+    if (sent !== null) await onRejected(sent)
+    throw rejected()
+  }
   return {
-    me: async () => {
-      const known = who[token() ?? '']
-      if (known === undefined) throw rejected()
-      return known
-    },
+    me: known,
     logout: async () => null,
     updateMe: async ({ weightUnit }) => {
-      const known = who[token() ?? '']
-      if (known === undefined) throw rejected()
-      return { ...known, user: { ...known.user, weightUnit } }
+      const found = await known()
+      return { ...found, user: { ...found.user, weightUnit } }
     },
   }
 }
 
 function aSession(store: TokenStore, who: Record<string, Me> = {}) {
-  const session = createSession({ store, auth: () => anAuth(who, session.token) })
+  const session = createSession({
+    store,
+    auth: () => anAuth(who, session.token, session.rejected),
+  })
   return session
+}
+
+/** A promise settled from outside: an answer still in flight until the test says otherwise. */
+function inFlight<T>(): { promise: Promise<T>; settle: (value: T) => void } {
+  let settle: (value: T) => void = () => null
+  const promise = new Promise<T>((resolve) => {
+    settle = resolve
+  })
+  return { promise, settle }
+}
+
+/** Runs `run`, and returns what it said on the console — the spy restored however it ends. */
+async function errorsDuring(run: () => Promise<void>): Promise<unknown[][]> {
+  const errors = spyOn(console, 'error').mockImplementation(() => null)
+  try {
+    await run()
+    return [...errors.mock.calls]
+  } finally {
+    errors.mockRestore()
+  }
 }
 
 describe('restoring a session at startup', () => {
@@ -78,14 +110,11 @@ describe('restoring a session at startup', () => {
   /** Reopened weeks later: an expired token is the ordinary case, cleared without a word. */
   test('with a token the server has forgotten, signed out and cleared — quietly', async () => {
     const store = aStore('stale')
-    const errors = spyOn(console, 'error').mockImplementation(() => null)
     const session = aSession(store)
-    await session.restore()
+    expect(await errorsDuring(session.restore)).toEqual([])
     expect(session.snapshot().status).toBe('signed-out')
     expect(store.held()).toBeNull()
     expect(session.token()).toBeNull()
-    expect(errors).not.toHaveBeenCalled()
-    errors.mockRestore()
   })
 
   /** Regression (52260d8): an unguarded read left the app on the boot spinner forever. */
@@ -94,12 +123,49 @@ describe('restoring a session at startup', () => {
       ...aStore(),
       read: async () => await Promise.reject(new Error('keychain locked')),
     }
-    const errors = spyOn(console, 'error').mockImplementation(() => null)
     const session = aSession(store)
-    await session.restore()
+    expect(await errorsDuring(session.restore)).not.toEqual([])
     expect(session.snapshot().status).toBe('signed-out')
-    expect(errors).toHaveBeenCalled()
-    errors.mockRestore()
+  })
+
+  /** Overtaken while asking the server who the stored token is: the answer is the old person's. */
+  test('overtaken by a sign-in while asking who it is, changes nothing', async () => {
+    const asking = inFlight<Me>()
+    const asked = inFlight<null>()
+    const bob = me('bob')
+    const session = createSession({
+      store: aStore('a'),
+      auth: () => ({
+        me: async () => {
+          if (session.token() !== 'a') return bob
+          asked.settle(null)
+          return await asking.promise
+        },
+        logout: async () => null,
+        updateMe: async () => bob,
+      }),
+    })
+    const restoring = session.restore()
+    // Past the keychain: the server is being asked who 'a' is.
+    await asked.promise
+    await session.adopt('b')
+    asking.settle(me('alice'))
+    await restoring
+    expect(session.snapshot()).toEqual({ status: 'signed-in', me: bob })
+  })
+
+  test('signed out while it was still reading, stays signed out', async () => {
+    const reading = inFlight<string | null>()
+    const session = aSession(
+      { ...aStore(), read: async () => await reading.promise },
+      { a: me('alice') },
+    )
+    const restoring = session.restore()
+    await session.signOut()
+    reading.settle('a')
+    await restoring
+    expect(session.snapshot()).toEqual({ status: 'signed-out', me: null })
+    expect(session.token()).toBeNull()
   })
 
   /** While the keychain is still being read, there is no credential to send — not even an empty one. */
@@ -157,7 +223,7 @@ describe('signing in and out', () => {
     const session = createSession({
       store,
       auth: () => ({
-        ...anAuth({ a: me('alice') }, session.token),
+        ...anAuth({ a: me('alice') }, session.token, session.rejected),
         logout: async () => await Promise.reject(new Error('offline')),
       }),
     })
@@ -180,12 +246,96 @@ describe('signing in and out', () => {
   })
 })
 
+describe('an answer for someone no longer signed in', () => {
+  test('signing in, then out before the server answered: still signed out', async () => {
+    const asking = inFlight<Me>()
+    const session = createSession({
+      store: aStore(),
+      auth: () => ({
+        me: async () => await asking.promise,
+        logout: async () => null,
+        updateMe: async () => me('x'),
+      }),
+    })
+    const signingIn = session.adopt('a')
+    await session.signOut()
+    asking.settle(me('alice'))
+    await signingIn
+    expect(session.snapshot()).toEqual({ status: 'signed-out', me: null })
+    expect(session.token()).toBeNull()
+  })
+
+  test("a weight unit answered for the previous person does not rewrite the next one's", async () => {
+    const saving = inFlight<Me>()
+    const alice = me('alice')
+    const bob = me('bob')
+    const session = createSession({
+      store: aStore(),
+      auth: () => ({
+        me: async () => (session.token() === 'a' ? alice : bob),
+        logout: async () => null,
+        updateMe: async () => await saving.promise,
+      }),
+    })
+    await session.adopt('a')
+    const updating = session.setWeightUnit('lb')
+    await session.signOut()
+    await session.adopt('b')
+    saving.settle({ ...alice, user: { ...alice.user, weightUnit: 'lb' } })
+    await updating
+    expect(session.snapshot()).toEqual({ status: 'signed-in', me: bob })
+  })
+})
+
+describe('forgetting', () => {
+  /** A keychain whose clear is in flight until the test settles it, saying when it began. */
+  function aSlowKeychain() {
+    const clearing = inFlight<null>()
+    const began = inFlight<null>()
+    const store = {
+      ...aStore(),
+      clear: async () => {
+        began.settle(null)
+        await clearing.promise
+      },
+    }
+    return { store, began: began.promise, finish: () => clearing.settle(null) }
+  }
+
+  /** A sign-in that follows must not find the old token still in the keychain. */
+  test('says signed out only once the keychain is clear', async () => {
+    const keychain = aSlowKeychain()
+    const session = aSession(keychain.store, { a: me('alice') })
+    await session.adopt('a')
+    const signingOut = session.signOut()
+    await keychain.began
+    expect(session.token()).toBeNull()
+    expect(session.snapshot().status).toBe('signed-in')
+    keychain.finish()
+    await signingOut
+    expect(session.snapshot().status).toBe('signed-out')
+  })
+
+  test('a sign-in while the keychain was clearing is not undone', async () => {
+    const keychain = aSlowKeychain()
+    const bob = me('bob')
+    const session = aSession(keychain.store, { a: me('alice'), b: bob })
+    await session.adopt('a')
+    const signingOut = session.signOut()
+    await keychain.began
+    await session.adopt('b')
+    keychain.finish()
+    await signingOut
+    expect(session.snapshot()).toEqual({ status: 'signed-in', me: bob })
+  })
+})
+
 describe('a credential the server rejects', () => {
   test('signs out and clears, when it is the one in use', async () => {
     const store = aStore()
     const session = aSession(store, { a: me('alice') })
     await session.adopt('a')
-    session.rejected('a')
+    await session.rejected('a')
     expect(session.snapshot().status).toBe('signed-out')
     expect(store.held()).toBeNull()
   })
@@ -197,7 +347,7 @@ describe('a credential the server rejects', () => {
     await session.adopt('a')
     await session.signOut()
     await session.adopt('b')
-    session.rejected('a')
+    await session.rejected('a')
     expect(session.snapshot()).toEqual({ status: 'signed-in', me: bob })
   })
 })

@@ -1,6 +1,7 @@
 # 0017 — `Bun.WebView` for UI verification; no component tests
 
-**Status:** Accepted (2026-08-23), corrected (2026-08-24)
+**Status:** Accepted (2026-08-23), corrected (2026-08-24), amended (2026-10-21: the app's plain
+modules may be unit-tested — see the end)
 
 ## Context
 

@@ -31,7 +31,7 @@ async function secureStore(): Promise<typeof SecureStore> {
   return await import('expo-secure-store')
 }
 
-export async function readToken(): Promise<string | null> {
+async function readToken(): Promise<string | null> {
   if (!isWeb) return await (await secureStore()).getItemAsync(KEY)
   try {
     return globalThis.localStorage?.getItem(KEY) ?? null
@@ -40,7 +40,7 @@ export async function readToken(): Promise<string | null> {
   }
 }
 
-export async function writeToken(token: string): Promise<void> {
+async function writeToken(token: string): Promise<void> {
   if (!isWeb) {
     await (await secureStore()).setItemAsync(KEY, token)
     return
@@ -52,7 +52,7 @@ export async function writeToken(token: string): Promise<void> {
   }
 }
 
-export async function clearToken(): Promise<void> {
+async function clearToken(): Promise<void> {
   if (!isWeb) {
     await (await secureStore()).deleteItemAsync(KEY)
     return

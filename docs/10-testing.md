@@ -20,7 +20,7 @@ after any change under `apps/app`, and `perf` before a release or after touching
 **All behaviour is tested on the backend.** The UI holds no domain logic, so there is nothing in it
 worth a behaviour test; every rule lives either in `@cedo/contract` (T1) or in a service (T2). This
 is why T3 can be three assertions per route instead of a test suite of its own, and why the frontend
-never needs a test dependency. See `docs/01-architecture.md`.
+needs no component-test dependency. See `docs/01-architecture.md`.
 
 The one exception is behaviour the app owns and no backend can: **who is signed in on this device**
 — the stored token, restoring it, a late 401, a keychain that throws. It lives in a plain module

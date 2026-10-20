@@ -2,9 +2,8 @@ import type { Me, WeightUnit } from '@cedo/contract'
 import { ApiError } from '../api/errors.ts'
 
 /**
- * Who is signed in, and every rule about it — outside React, so each is unit-tested with a fake
- * keychain and a fake API (session.test.ts). They lived in three effects and two module-level
- * variables, and two of them were fixed with no test at all.
+ * Who is signed in on this device, and every rule about it — outside React, so each is unit-tested
+ * with a fake keychain and a fake API (session.test.ts). See the amendment to ADR-0017.
  *
  * `status` is a three-state, not a boolean: on first paint the stored token has not been read yet,
  * and a router that treats "unknown" as "signed out" bounces a returning user to the login screen
@@ -49,7 +48,7 @@ export interface Session {
    * request made with the previous person's token, answering after a new sign-in, used to sign the
    * new person straight out.
    */
-  readonly rejected: (sentToken: string) => void
+  readonly rejected: (sentToken: string) => Promise<void>
 }
 
 const SIGNED_OUT: SessionSnapshot = { status: 'signed-out', me: null }
@@ -60,14 +59,15 @@ interface Held {
   readonly subscribe: (listener: () => void) => () => void
   readonly token: () => string | null
   /**
-   * Bumped by every change of who is signed in, so a restore still reading when someone signs in
-   * — or out — finds it has been overtaken, and changes nothing.
+   * Bumped by every change of who is signed in, so an answer arriving for an earlier one — a
+   * restore still reading, a sign-in or an update still in flight — finds it has been overtaken,
+   * and changes nothing.
    */
   readonly generation: () => number
   /** A new generation, the token untouched: a restore beginning overtakes any before it. */
   readonly begin: () => number
   readonly set: (next: SessionSnapshot) => void
-  /** A new holder of the session — or none: `forget`. Either way, any restore is overtaken. */
+  /** Holds `token` from now on — a new generation, overtaking anything still in flight. */
   readonly take: (token: string) => void
   /** Drops the local session: an explicit sign-out, a rejected credential, a failed restore. */
   readonly forget: () => Promise<void>
@@ -102,18 +102,21 @@ function hold(store: TokenStore): Held {
       current = token
     },
     forget: async () => {
+      // No token is sent from now on; the keychain is cleared before the screens say signed out,
+      // so a sign-in that follows cannot find the old token still there. One that will not let go
+      // (native) is said, not thrown: the session ends either way — it used to strand the boot
+      // spinner on a failed restore.
       generation += 1
+      const forgetting = generation
       current = null
-      set(SIGNED_OUT)
-      // Forgetting must not fail on a keychain that will not let go: the session ends either way.
       await store.clear().catch((error: unknown) => {
         console.error(error)
       })
+      if (forgetting === generation) set(SIGNED_OUT)
     },
   }
 }
 
-/** At startup: the stored token, if the server still knows it. */
 async function restoreFrom(held: Held, store: TokenStore, auth: () => SessionAuth): Promise<void> {
   const started = held.begin()
   const overtaken = () => started !== held.generation()
@@ -160,8 +163,11 @@ export function createSession({
     },
     adopt: async (token) => {
       held.take(token)
+      const adopting = held.generation()
       await store.write(token)
-      held.set({ status: 'signed-in', me: await auth().me() })
+      const identity = await auth().me()
+      // Signed out — or in as someone else — while this was in flight: it is not theirs any more.
+      if (adopting === held.generation()) held.set({ status: 'signed-in', me: identity })
     },
     signOut: async () => {
       // Best effort: a network failure must not trap someone in a shell they cannot use.
@@ -171,11 +177,13 @@ export function createSession({
       await held.forget()
     },
     setWeightUnit: async (weightUnit) => {
+      const updating = held.generation()
       const updated = await auth().updateMe({ weightUnit })
-      if (held.snapshot().status === 'signed-in') held.set({ status: 'signed-in', me: updated })
+      // The answer is the previous person's if someone else signed in while it was in flight.
+      if (updating === held.generation()) held.set({ status: 'signed-in', me: updated })
     },
-    rejected: (sentToken) => {
-      if (sentToken === held.token()) void held.forget()
+    rejected: async (sentToken) => {
+      if (sentToken === held.token()) await held.forget()
     },
   }
 }

@@ -61,7 +61,13 @@ export const session = createSession({ store: tokenStore, auth: () => api.auth }
 
 /** Every call the app makes, as the signed-in user. */
 export const api = createApi(
-  transport({ baseUrl: base, token: session.token, onUnauthenticated: session.rejected }),
+  transport({
+    baseUrl: base,
+    token: session.token,
+    onUnauthenticated: (sentToken) => {
+      void session.rejected(sentToken)
+    },
+  }),
 )
 
 export { ApiError, ContractDriftError } from './errors.ts'

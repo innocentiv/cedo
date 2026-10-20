@@ -17,6 +17,40 @@
   },
   "overrides": [
     {
+      "files": ["src/**/*.test.ts", "src/**/*.test.tsx"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "@cedo/api",
+                  "@cedo/api/*",
+                  "**/apps/api/*",
+                  "../../api/*",
+                  "../../../api/*"
+                ],
+                "message": "apps/app must never import from apps/api. The only shared surface is @cedo/contract. See docs/01-architecture.md."
+              },
+              {
+                "group": [
+                  "react",
+                  "react-dom",
+                  "react-native",
+                  "react-native-*",
+                  "@testing-library/*",
+                  "happy-dom",
+                  "**/*.tsx"
+                ],
+                "message": "An app unit test tests a plain module — one importing neither React nor React Native. Components are never unit-tested: see the amendment to docs/adr/0017-webview-for-ui-verification.md."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": ["src/api/errors.ts"],
       "rules": {
         "max-classes-per-file": "off"
