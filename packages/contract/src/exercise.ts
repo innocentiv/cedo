@@ -105,13 +105,26 @@ export type Exercise = z.output<typeof Exercise>
 export type ExerciseInput = z.input<typeof ExerciseCreate>
 
 /**
- * An exercise as the input that would make it again — to duplicate it, or to edit it whole. Derived
- * from the schema's own fields, not listed: duplicating and the edit form each spelled the fields
- * out, and a field added to the schema would have been dropped by both without a word. Workouts
- * have the same in `planInputFrom`.
+ * An exercise as the input that would make it again — to duplicate it, or to edit it whole. The one
+ * place this mapping lives, as `planInputFrom` is for workouts: duplicating and the edit form each
+ * spelled the fields out, and a field added to the schema would have been dropped by both without
+ * a word. Here it cannot be: `satisfies` holds the list to the schema's own fields, so a field added
+ * to `exerciseFields` does not compile until it is carried — and one removed, until it is not.
+ *
+ * Copied, not parsed: an exercise read back may no longer pass today's rules (a name saved under an
+ * older limit), and duplicating it must not fail for that.
  */
 export const exerciseInputFrom = (exercise: Exercise): ExerciseCreate =>
-  z.object(exerciseFields).parse(exercise)
+  ({
+    name: exercise.name,
+    tracking: exercise.tracking,
+    description: exercise.description,
+    instructions: exercise.instructions,
+    equipment: exercise.equipment,
+    isUnilateral: exercise.isUnilateral,
+    muscles: exercise.muscles,
+    mediaIds: exercise.mediaIds,
+  }) satisfies Record<keyof typeof exerciseFields, unknown>
 
 /** The ownable list query, plus the muscle an exercise loads. */
 export const ExerciseQuery = withGroupRule(

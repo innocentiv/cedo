@@ -5,7 +5,7 @@ import { Exercise, ExerciseCreate, exerciseInputFrom } from './exercise.ts'
 const exercise = Exercise.parse({
   id: crypto.randomUUID(),
   name: 'Single-arm Row',
-  tracking: 'weight_reps',
+  tracking: 'bodyweight_reps',
   description: 'Row one side at a time.',
   instructions: 'Brace on the bench.',
   equipment: 'Dumbbell',

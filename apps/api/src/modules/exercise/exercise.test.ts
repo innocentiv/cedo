@@ -271,18 +271,32 @@ describe('duplicate and transfer', () => {
 
   /** Every field an exercise is made from comes with it — the ones that are not the default too. */
   test('a copy is made from everything the original was', async () => {
+    const link = await alice.wire('/media/link', {
+      method: 'POST',
+      body: JSON.stringify({ url: 'https://youtu.be/dQw4w9WgXcQ', title: 'Form' }),
+    })
+    const mediaId = expectContract(Media, link.body).id
+    // Every field away from its default, so one the copy dropped would show.
     const original = await created(alice, {
-      name: 'Single-arm Row',
+      name: 'Single-arm Pull-up',
+      tracking: 'bodyweight_reps',
       description: 'One side at a time.',
-      instructions: 'Brace on the bench.',
-      equipment: 'Dumbbell',
+      instructions: 'Brace on the bar.',
+      equipment: 'Rings',
       isUnilateral: true,
+      mediaIds: [mediaId],
     })
     const copy = expectContract(
       Exercise,
       (await alice.wire(`/exercises/${original.id}/duplicate`, { method: 'POST', body: '{}' }))
         .body,
     )
+    expect(copy).toMatchObject({
+      tracking: 'bodyweight_reps',
+      equipment: 'Rings',
+      isUnilateral: true,
+      mediaIds: [mediaId],
+    })
     expect(exerciseInputFrom(copy)).toEqual(exerciseInputFrom(original))
   })
 })
