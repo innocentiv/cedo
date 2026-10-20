@@ -163,7 +163,11 @@ export default function LiveSession(): React.JSX.Element {
         />
       }
     >
-      {error === null ? null : <Text tone="danger">{error}</Text>}
+      {error === null ? null : (
+        <Text tone="danger" testID="session-error">
+          {error}
+        </Text>
+      )}
       {plan?.reachable === false && !ended ? <PlanUnavailable /> : null}
 
       {ended ? (

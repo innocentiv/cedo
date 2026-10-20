@@ -31,7 +31,8 @@ import type {
   WorkoutSessionSummary,
   WorkoutSummary,
 } from '@cedo/contract'
-import { affectedBy } from '@cedo/contract'
+import { type Read, affectedBy } from '@cedo/contract'
+import { ApiError } from './errors.ts'
 import { api } from './http.ts'
 import { keys } from './query-client.ts'
 
@@ -133,14 +134,30 @@ function useWriteTo<TInput, TResult>(
   run: (input: TInput) => Promise<TResult>,
 ): UseMutationResult<TResult, Error, TInput> {
   const queryClient = useQueryClient()
+  const reread = async (reads: readonly Read[]): Promise<void> => {
+    await Promise.all(
+      reads.map(async (read) => queryClient.invalidateQueries({ queryKey: [read] })),
+    )
+  }
   return useMutation({
     mutationFn: run,
     onSuccess: async () => {
       const { awaited, background } = affectedBy(source)
       for (const read of background) void queryClient.invalidateQueries({ queryKey: [read] })
-      await Promise.all(
-        awaited.map(async (read) => queryClient.invalidateQueries({ queryKey: [read] })),
-      )
+      await reread(awaited)
+    },
+    /**
+     * A write refused because what it names is gone or out of reach, or has moved on — finished on
+     * another device — says this screen's picture is stale: someone else's write changed it. Read
+     * again what the write was OF, which tells the screen the new picture; nothing was written, so
+     * nothing embedding it changed because of this write. Left alone, a session whose plan the
+     * lifter had just lost kept showing it for the cache's whole window, inviting the same refused
+     * set again.
+     */
+    onError: async (error) => {
+      if (error instanceof ApiError && (error.code === 'not_found' || error.code === 'conflict')) {
+        await reread(affectedBy(source).awaited)
+      }
     },
   })
 }

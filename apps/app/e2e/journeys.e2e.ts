@@ -748,3 +748,51 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+/**
+ * A write refused because what it names is gone or out of reach says the screen's picture is
+ * stale. The athlete is removed from the group mid-session, on the coach's device: the screen still
+ * shows the plan, the next set against it is refused — and the session used to keep showing the plan
+ * for the cache's whole window, inviting the same refused set again.
+ */
+test(
+  'a set refused against a plan lost mid-session shows the plan as unavailable at once',
+  async () => {
+    const athlete = unique('lost')
+    await withApp('refused-set-refreshes', async (page) => {
+      const app = screens(page)
+      await app.auth.register(athlete)
+
+      const coach = await signUp(`${athlete}c`)
+      const squad = await coach.api.groups.create({ name: 'Squad' })
+      await coach.api.groups.addMember(squad.id, { username: athlete, role: 'reader' })
+      const [squat] = (await coach.api.exercises.list({ q: 'Back Squat', limit: 1 })).items
+      if (squat === undefined) throw new Error('The seeded library has no Back Squat')
+      const plan = await coach.api.workouts.create({ name: 'Coached', notes: null })
+      await coach.api.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [{ name: 'Legs', entries: [{ exerciseId: squat.id, sets: [{ targetReps: 5 }] }] }],
+        }),
+      )
+      await coach.api.workouts.transfer(plan.id, { toGroupId: squad.id })
+      const { user: me } = await (await page.client()).auth.me()
+
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await app.workouts.startDay(0)
+      await app.session.entry(0).fill('weight', '100')
+
+      // Removed on the coach's device: nothing on this screen has changed.
+      await coach.api.groups.removeMember(squad.id, me.id)
+      expect(await app.session.entry(0).logRefused()).toContain('No such entry')
+
+      await page.until(
+        async () => await app.session.text(),
+        (text) => text.includes('unavailable'),
+        BEFORE_STALE_MS,
+      )
+    })
+  },
+  E2E_TIMEOUT_MS,
+)

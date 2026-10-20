@@ -39,6 +39,12 @@ const logger = (page: Page, id: string) => ({
   canLog: async (): Promise<boolean> => await page.exists(`${id}-log`),
   /** Whether it is shown as an unavailable exercise. */
   unavailable: async (): Promise<boolean> => await page.exists(`${id}-unavailable`),
+  /** Taps Log for a set the server will refuse, and returns what the screen says instead. */
+  logRefused: async (): Promise<string | null> => {
+    await page.click(`[data-testid="${id}-log"]`)
+    await page.waitFor('session-error')
+    return await page.text('session-error')
+  },
   /** "2 done". */
   done: async (): Promise<string | null> => {
     await page.waitFor(`${id}-done`)
