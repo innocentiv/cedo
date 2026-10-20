@@ -49,6 +49,22 @@ export const exercise = (page: Page) => ({
     await page.waitFor('exercise-edit-screen')
     return exerciseForm(page, 'exercise-edit-screen')
   },
+  /** Deletes it, asked twice, and waits to be back where it was opened from. */
+  delete: async (): Promise<void> => {
+    await page.click('[data-testid="exercise-delete"]')
+    await page.click('[data-testid="exercise-delete-confirm"]')
+    await page.until(
+      async () => await page.shown('exercise-detail-screen'),
+      (shown) => !shown,
+    )
+  },
+  /** Asks to delete it, and returns what the screen says it was refused for. */
+  deleteRefused: async (): Promise<string | null> => {
+    await page.click('[data-testid="exercise-delete"]')
+    await page.click('[data-testid="exercise-delete-confirm"]')
+    await page.waitFor('exercise-detail-error')
+    return await page.text('exercise-detail-error')
+  },
   /** Copies a shared exercise; lands in the editor for the copy. */
   duplicate: async () => {
     await page.waitFor('duplicate-exercise')

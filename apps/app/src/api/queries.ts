@@ -135,24 +135,36 @@ export function useTokens(): UseQueryResult<PersonalAccessToken[]> {
 function useWriteTo<TInput, TResult>(
   source: Source,
   run: (input: TInput) => Promise<TResult>,
+  gone?: (input: TInput) => readonly (readonly unknown[])[],
 ): UseMutationResult<TResult, Error, TInput> {
   const queryClient = useQueryClient()
-  const reread = async (reads: readonly Read[]): Promise<void> => {
+  /**
+   * Every cached read of `reads` — but none `gone` names: a thing just deleted is not asked for
+   * again, by the screen still showing it, which would be told it does not exist and say so on the
+   * console. They are left to be collected once nothing shows them.
+   */
+  const refresh = async (reads: readonly Read[], skipped: readonly string[] = []) => {
     await Promise.all(
-      reads.map(async (read) => queryClient.invalidateQueries({ queryKey: [read] })),
+      reads.map(async (read) =>
+        queryClient.invalidateQueries({
+          queryKey: [read],
+          predicate: (query) => !skipped.includes(JSON.stringify(query.queryKey)),
+        }),
+      ),
     )
   }
   return useMutation({
     mutationFn: run,
-    onSuccess: async () => {
+    onSuccess: async (_result, input) => {
+      const skipped = (gone?.(input) ?? []).map((key) => JSON.stringify(key))
       const { awaited, background } = affectedBy(source)
-      for (const read of background) void queryClient.invalidateQueries({ queryKey: [read] })
-      await reread(awaited)
+      void refresh(background, skipped)
+      await refresh(awaited, skipped)
     },
     // Not awaited: the refusal reaches the form at once, and the re-read follows it.
     onError: (error) => {
       if (error instanceof ApiError && (error.code === 'not_found' || error.code === 'conflict')) {
-        void reread(affectedBy(source).awaited)
+        void refresh(affectedBy(source).awaited)
       }
     },
   })
@@ -165,7 +177,11 @@ export const useUpdateExercise = (id: string) =>
   useWriteTo('exercise', async (input: ExerciseUpdate) => await api.exercises.update(id, input))
 
 export const useDeleteExercise = () =>
-  useWriteTo('exercise', async (id: string) => await api.exercises.remove(id))
+  useWriteTo(
+    'exercise',
+    async (id: string) => await api.exercises.remove(id),
+    (id) => [keys.exercise(id), keys.exerciseHistory(id)],
+  )
 
 export const useFavouriteExercise = () =>
   useWriteTo(
@@ -186,7 +202,11 @@ export const useReplacePlan = (id: string) =>
   )
 
 export const useDeleteWorkout = () =>
-  useWriteTo('workout', async (id: string) => await api.workouts.remove(id))
+  useWriteTo(
+    'workout',
+    async (id: string) => await api.workouts.remove(id),
+    (id) => [keys.workout(id), keys.progression(id)],
+  )
 
 export const useFavouriteWorkout = () =>
   useWriteTo(

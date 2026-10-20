@@ -4,6 +4,7 @@
  */
 export { Button, type ButtonVariant } from './button.tsx'
 export { Card, ListRow } from './card.tsx'
+export { ConfirmButton } from './confirm-button.tsx'
 export { type ChipOption, Chips } from './chips.tsx'
 export { DayEditor } from './day-editor.tsx'
 export { EntryEditor } from './entry-editor.tsx'

@@ -5,6 +5,7 @@ import { nav } from './nav.ts'
 import { planEditor, workouts } from './plan.ts'
 import { session } from './session.ts'
 import { settings } from './settings.ts'
+import { today } from './today.ts'
 
 export { unique } from './auth.ts'
 
@@ -22,4 +23,5 @@ export const screens = (page: Page) => ({
   workouts: workouts(page),
   session: session(page),
   settings: settings(page),
+  today: today(page),
 })

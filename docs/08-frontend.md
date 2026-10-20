@@ -90,6 +90,7 @@ Two constraints found by building it:
 | `Stack` | every layout. There is no other container |
 | `Text` | all text. Variants `title` / `heading` / `body` / `label` / `caption` / `mono` |
 | `Button`, `NavButton` | actions, and actions that navigate |
+| `ConfirmButton` | every action that cannot be taken back — delete, remove, leave. Asked twice, in the app's own UI, never a browser dialog |
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput` |
 | `Card`, `ListRow` | the one row shape every list uses |
 | `Chips` | one choice from a short flat set — list scopes, tracking mode, progression kind |
@@ -206,6 +207,12 @@ Not the ones that embed it, because nothing was written. A session whose plan th
 lost to a coach's edit used to keep showing it for the whole `staleTime`, inviting the same refused
 set again. Membership itself is not a source any read embeds: the app writes no group, so a
 membership changes only by someone else's hand, and reaches the screen this way.
+
+A delete also names what it leaves `gone` — `useWriteTo('workout', remove, (id) => [keys.workout(id),
+…])` — and the refresh skips those keys. The detail screen that deleted the thing is still mounted
+when the refresh runs; it asked for the thing again, was told it does not exist, and said so on the
+console, which fails every e2e journey. Removing the query does not help: the mounted observer
+recreates it and asks anyway. Skipped keys are collected once the screen that shows them is gone.
 
 A new read is a row in `READS` and a key in `keys`, whose type refuses one without the other and a
 key that does not start with its read's name. The contract's T1 tests state each embedding as

@@ -6,6 +6,7 @@ import { useWeightUnit } from '../../../../src/lib/weight-unit.ts'
 import {
   Button,
   Card,
+  ConfirmButton,
   ErrorNotice,
   Loaded,
   NavButton,
@@ -14,7 +15,14 @@ import {
   Stack,
   Text,
 } from '../../../../src/ui/index.ts'
-import { useSessions, useStartSession, useWorkout } from '../../../../src/api/queries.ts'
+import {
+  useDeleteWorkout,
+  useFavouriteWorkout,
+  useSessions,
+  useStartSession,
+  useWorkout,
+} from '../../../../src/api/queries.ts'
+import { useGoBack } from '../../../../src/lib/use-go-back.ts'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
 
 export default function WorkoutDetail(): React.JSX.Element {
@@ -22,6 +30,9 @@ export default function WorkoutDetail(): React.JSX.Element {
   const router = useRouter()
   const { data, isPending, error, refetch } = useWorkout(id ?? '')
   const start = useStartSession()
+  const favourite = useFavouriteWorkout()
+  const remove = useDeleteWorkout()
+  const goBack = useGoBack('/workouts')
   const { submit, busy, error: startError } = useSubmit()
   // One session is in progress at a time: while one is, the plan offers it back rather than a start
   // the server would refuse — and, until it is known whether one is, offers neither.
@@ -64,6 +75,16 @@ export default function WorkoutDetail(): React.JSX.Element {
       }
     >
       {startError === null ? null : <Text tone="danger">{startError}</Text>}
+      <Button
+        title={data.isFavourite ? 'Pinned ★' : 'Pin'}
+        variant="secondary"
+        onPress={() => {
+          void submit(async () => {
+            await favourite.mutateAsync({ id: data.id, on: !data.isFavourite })
+          })
+        }}
+        testID="workout-pin"
+      />
       <Loaded query={current} testID="workout-current">
         {({ items: [inProgress] }) => (
           <Days
@@ -77,6 +98,20 @@ export default function WorkoutDetail(): React.JSX.Element {
           />
         )}
       </Loaded>
+      {data.canEdit ? (
+        // The sessions trained from it stay in history, no longer pointing at a plan.
+        <ConfirmButton
+          title="Delete workout"
+          busy={busy}
+          onConfirm={() => {
+            void submit(async () => {
+              await remove.mutateAsync(data.id)
+              goBack()
+            })
+          }}
+          testID="workout-delete"
+        />
+      ) : null}
     </Screen>
   )
 }

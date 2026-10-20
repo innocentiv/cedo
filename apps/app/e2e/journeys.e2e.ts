@@ -797,3 +797,76 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+/** A plan you made can be deleted; what you trained from it is yours for good. */
+test(
+  'a deleted workout leaves the sessions trained from it in history',
+  async () => {
+    await withApp('delete-workout', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('del'))
+      await app.planEditor.create()
+      await app.planEditor.saveAndStart()
+      await app.session.entry(0).fill('weight', '60')
+      await app.session.entry(0).log()
+      await app.session.finish()
+
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await app.workouts.delete()
+
+      expect(await app.workouts.listed('all')).toEqual([])
+      // Its day is gone with it, so the session reads as one without a plan — but it is there.
+      expect(await app.today.history()).toEqual(['Ad-hoc session'])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
+  'an exercise a plan uses is not deleted, and says why; one nothing uses is',
+  async () => {
+    await withApp('delete-exercise', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('dex'))
+      const used = unique('Used ')
+      const spare = unique('Spare ')
+      await app.library.create(used, 'quadriceps')
+      await app.library.create(spare, 'quadriceps')
+      const usedId = await app.planEditor.create(used)
+      await app.planEditor.save()
+
+      await page.goto(`/exercises/${usedId}`)
+      await app.exercise.shown()
+      expect(await app.exercise.deleteRefused()).toContain('used by a plan')
+
+      await page.goto('/exercises')
+      const exercise = await app.library.find(spare)
+      await exercise.delete()
+      const listed = await app.library.listText()
+      expect(listed).toContain(used)
+      expect(listed).not.toContain(spare)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/** The Pinned filter could only ever be empty: nothing pinned a workout. */
+test(
+  'a pinned workout is listed under Pinned',
+  async () => {
+    await withApp('pin-workout', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('pin'))
+      await app.planEditor.create()
+      await app.planEditor.save()
+      expect(await app.workouts.listed('favourites')).toEqual([])
+
+      await app.workouts.listed('all')
+      await app.workouts.openFirst()
+      await app.workouts.pin()
+      expect(await app.workouts.listed('favourites')).toEqual(['Push Day'])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)

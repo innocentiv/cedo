@@ -57,6 +57,36 @@ export const workouts = (page: Page) => {
       await page.waitFor('workout-in-progress')
     },
     canStart: async (day: number): Promise<boolean> => await page.exists(`start-day-${day}`),
+    /** Pins the plan, and waits until it says so. */
+    pin: async (): Promise<void> => {
+      await page.click('[data-testid="workout-pin"]')
+      await page.until(
+        async () => await page.text('workout-pin'),
+        (title) => title?.includes('Pinned') === true,
+      )
+    },
+    /** Deletes the plan, asked twice, and waits to be back where it was opened from. */
+    delete: async (): Promise<void> => {
+      await page.click('[data-testid="workout-delete"]')
+      await page.click('[data-testid="workout-delete-confirm"]')
+      await page.until(
+        async () => await page.shown('workout-detail-screen'),
+        (open) => !open,
+      )
+    },
+    /** The plans listed under a scope — `all`, `mine`, or `favourites` (shown as Pinned). */
+    listed: async (scope: string): Promise<string[]> => {
+      await page.goto('/workouts')
+      await page.click(`[data-testid="workout-scope-${scope}"]`)
+      const names = await page.until(
+        async () =>
+          await page.evaluate(
+            `document.querySelector('[data-testid="workouts-empty"]') ? [] : document.querySelector('[data-testid="workout-list"]') ? [...document.querySelectorAll('[data-testid^="workout-row-"]')].map((e) => e.innerText.split('\\n')[0].trim()) : null`,
+          ),
+        (seen) => Array.isArray(seen),
+      )
+      return Array.isArray(names) ? names.map(String) : []
+    },
     /** Opens the session in progress from the plan. */
     resume: async (): Promise<void> => {
       await page.click('[data-testid="workout-resume"]')

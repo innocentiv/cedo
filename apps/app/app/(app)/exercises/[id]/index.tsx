@@ -1,10 +1,11 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { MUSCLES, formatEffort } from '@cedo/contract'
-import type { ExerciseHistory, TrackingMode } from '@cedo/contract'
+import type { Exercise, ExerciseHistory, TrackingMode } from '@cedo/contract'
 import { useWeightUnit } from '../../../../src/lib/weight-unit.ts'
 import {
   Button,
   Card,
+  ConfirmButton,
   ErrorNotice,
   FormError,
   ListRow,
@@ -17,11 +18,13 @@ import {
   Text,
 } from '../../../../src/ui/index.ts'
 import {
+  useDeleteExercise,
   useDuplicateExercise,
   useExercise,
   useExerciseHistory,
   useFavouriteExercise,
 } from '../../../../src/api/queries.ts'
+import { useGoBack } from '../../../../src/lib/use-go-back.ts'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
 
 const muscleName = (slug: string): string => MUSCLES.find((m) => m.slug === slug)?.name ?? slug
@@ -77,6 +80,8 @@ export default function ExerciseDetail(): React.JSX.Element {
   const history = useExerciseHistory(id ?? '')
   const favourite = useFavouriteExercise()
   const duplicate = useDuplicateExercise()
+  const remove = useDeleteExercise()
+  const goBack = useGoBack('/exercises')
   const { submit, busy, error: copyError } = useSubmit()
 
   if (error !== null) {
@@ -140,41 +145,65 @@ export default function ExerciseDetail(): React.JSX.Element {
 
         {data.description === '' ? null : <Text tone="muted">{data.description}</Text>}
 
-        <Card testID="exercise-muscles">
-          <Stack gap="xs">
-            <Text variant="label" tone="muted">
-              Muscles
-            </Text>
-            {data.muscles.map((m) => (
-              <Text key={m.muscle}>{`${muscleName(m.muscle)} · ${m.loadPct}%`}</Text>
-            ))}
-          </Stack>
-        </Card>
-
-        {data.instructions === '' ? null : (
-          <Card testID="exercise-instructions">
-            <Stack gap="xs">
-              <Text variant="label" tone="muted">
-                How to
-              </Text>
-              <Text>{data.instructions}</Text>
-            </Stack>
-          </Card>
-        )}
-
-        {data.media.length === 0 ? null : (
-          <Stack gap="sm" testID="exercise-media">
-            <Text variant="label" tone="muted">
-              Media
-            </Text>
-            {data.media.map((m) => (
-              <ListRow key={m.id} title={m.title === '' ? m.url : m.title} subtitle={m.kind} />
-            ))}
-          </Stack>
-        )}
+        <About exercise={data} />
 
         <RecentHistory query={history} tracking={data.tracking} />
+
+        {data.canEdit ? (
+          // Refused while a plan or a logged set still uses it: the screen says so, above.
+          <ConfirmButton
+            title="Delete exercise"
+            busy={busy}
+            onConfirm={() => {
+              void submit(async () => {
+                await remove.mutateAsync(data.id)
+                goBack()
+              })
+            }}
+            testID="exercise-delete"
+          />
+        ) : null}
       </Stack>
     </Screen>
+  )
+}
+
+/** What the exercise is: the muscles it loads, how to do it, and media showing it. */
+function About({ exercise }: { readonly exercise: Exercise }): React.JSX.Element {
+  return (
+    <>
+      <Card testID="exercise-muscles">
+        <Stack gap="xs">
+          <Text variant="label" tone="muted">
+            Muscles
+          </Text>
+          {exercise.muscles.map((m) => (
+            <Text key={m.muscle}>{`${muscleName(m.muscle)} · ${m.loadPct}%`}</Text>
+          ))}
+        </Stack>
+      </Card>
+
+      {exercise.instructions === '' ? null : (
+        <Card testID="exercise-instructions">
+          <Stack gap="xs">
+            <Text variant="label" tone="muted">
+              How to
+            </Text>
+            <Text>{exercise.instructions}</Text>
+          </Stack>
+        </Card>
+      )}
+
+      {exercise.media.length === 0 ? null : (
+        <Stack gap="sm" testID="exercise-media">
+          <Text variant="label" tone="muted">
+            Media
+          </Text>
+          {exercise.media.map((m) => (
+            <ListRow key={m.id} title={m.title === '' ? m.url : m.title} subtitle={m.kind} />
+          ))}
+        </Stack>
+      )}
+    </>
   )
 }
