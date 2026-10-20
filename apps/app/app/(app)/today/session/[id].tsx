@@ -23,7 +23,6 @@ import {
   useRemoveLog,
   useSession,
   useUpdateSession,
-  useWorkout,
 } from '../../../../src/api/queries.ts'
 import { ExercisePicker } from '../../../../src/lib/exercise-picker.tsx'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
@@ -102,19 +101,18 @@ export default function LiveSession(): React.JSX.Element {
   const id = sessionId ?? ''
 
   const session = useSession(id)
-  const workoutId = session.data?.workoutId ?? ''
-  const workout = useWorkout(workoutId)
-  const progression = useProgression(workoutId)
+  // Hints for the day's entries — so only when there is a day the reader can reach: asked of a plan
+  // out of reach, progression answers "No such workout".
+  const plan = session.data?.plan
+  const progression = useProgression(
+    plan?.reachable === true ? (session.data?.workoutId ?? '') : '',
+  )
   const logSet = useLogSet(id)
   const removeLog = useRemoveLog(id)
   const finish = useUpdateSession(id)
   const { submit, busy, error } = useSubmit()
   const record = useRecordSet(logSet, submit)
 
-  const day = useMemo(
-    () => workout.data?.days.find((d) => d.id === session.data?.dayId),
-    [workout.data, session.data],
-  )
   const suggestions = useMemo(
     () => new Map((progression.data ?? []).map((s) => [s.entryId, s])),
     [progression.data],
@@ -131,18 +129,13 @@ export default function LiveSession(): React.JSX.Element {
   if (session.isPending) return <Spinner testID="session-loading" />
 
   /**
-   * A live planned session waits for its plan: rendering on "no day found" alone showed the ad-hoc
-   * logger while the plan was still loading. A FAILED plan is said, inline, but never replaces the
-   * screen — the session is the user's own, and losing access to a group plan (CLAUDE.md:
-   * visibility is not permanent) must not hide their logged sets or the way to finish. A finished
-   * session needs no plan at all. A failed background refetch keeps `data`, so it changes nothing.
+   * The plan the session follows, as the server says the reader can reach it (`SessionPlan`) — never
+   * decided here. The screen used to fetch the plan itself and took a FAILED fetch for one out of
+   * reach, offering the logger of a session without a plan: the next set went into the wrong series.
+   * A plan out of reach is said, inline, but never replaces the screen: the session is the user's
+   * own, and losing access to a group plan must not hide their logged sets or the way to finish.
    */
-  const live = session.data.endedAt === null
-  const planned = session.data.workoutId !== null && session.data.dayId !== null
-  if (live && planned && workout.data === undefined && workout.error === null) {
-    return <Spinner testID="session-loading" />
-  }
-  const planError = live && planned && workout.data === undefined ? workout.error : null
+  const day = plan?.reachable === true ? plan.day : undefined
 
   if (adHoc.picking) {
     return <ExercisePicker onCancel={adHoc.stopPicking} onPick={adHoc.choose} />
@@ -172,7 +165,7 @@ export default function LiveSession(): React.JSX.Element {
       }
     >
       {error === null ? null : <Text tone="danger">{error}</Text>}
-      {planError === null ? null : <PlanUnavailable reason={planError.message} />}
+      {plan?.reachable === false && !ended ? <PlanUnavailable /> : null}
 
       {ended ? (
         <Text tone="muted" testID="session-finished">
@@ -189,7 +182,6 @@ export default function LiveSession(): React.JSX.Element {
       ) : (
         <PlannedDay
           day={day}
-          logs={logs}
           suggestions={suggestions}
           busy={logSet.isPending}
           onLog={record.planned}

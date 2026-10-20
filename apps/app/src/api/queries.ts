@@ -27,7 +27,7 @@ import type {
   WorkoutCreate,
   WorkoutPlanInput,
   WorkoutQuery,
-  WorkoutSession,
+  SessionDetail,
   WorkoutSessionSummary,
   WorkoutSummary,
 } from '@cedo/contract'
@@ -98,7 +98,7 @@ export function useSessions(
   })
 }
 
-export function useSession(id: string): UseQueryResult<WorkoutSession> {
+export function useSession(id: string): UseQueryResult<SessionDetail> {
   return useQuery({
     queryKey: keys.session(id),
     queryFn: async () => await api.sessions.get(id),

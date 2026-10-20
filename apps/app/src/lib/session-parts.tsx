@@ -1,9 +1,9 @@
 import type {
   Effort,
   ProgressionSuggestion,
+  SessionDay,
   SessionExercise,
   SetLog,
-  WorkoutDay,
   WorkoutEntry,
 } from '@cedo/contract'
 import { type WeightUnit, formatEffort, prescriptionOf, workingSetsDone } from '@cedo/contract'
@@ -28,13 +28,15 @@ export function hintFor(
 }
 
 /**
- * The plan behind a session failed to load — usually because the user lost access to its group.
- * Said in one line, above a session that stays fully usable: the session is theirs either way.
+ * The plan behind a session is out of the reader's reach — they left the group it lives in, as the
+ * server decides it (`SessionPlan`). Said in one line, above a session that stays fully usable: the
+ * session is theirs either way.
  */
-export function PlanUnavailable({ reason }: { readonly reason: string }): React.JSX.Element {
+export function PlanUnavailable(): React.JSX.Element {
   return (
     <Text tone="danger" testID="session-plan-unavailable">
-      {`The plan behind this session is unavailable (${reason}). Your sets are kept, and you can still log and finish.`}
+      The plan behind this session is unavailable. Your sets are kept, and you can still log and
+      finish.
     </Text>
   )
 }
@@ -137,16 +139,17 @@ export function AdHoc({
   )
 }
 
-/** The prescribed day, one logger per entry, showing what was planned against what has been done. */
+/**
+ * The prescribed day, one logger per entry, showing what was planned against what has been done —
+ * each entry's done count the server's, counted in the series it numbers by.
+ */
 export function PlannedDay({
   day,
-  logs,
   suggestions,
   busy,
   onLog,
 }: {
-  readonly day: WorkoutDay
-  readonly logs: readonly SetLog[]
+  readonly day: SessionDay
   readonly suggestions: ReadonlyMap<string, ProgressionSuggestion>
   readonly busy: boolean
   readonly onLog: (entry: WorkoutEntry, values: Effort) => void
@@ -155,7 +158,6 @@ export function PlannedDay({
   return (
     <Stack gap="md">
       {day.entries.map((entry) => {
-        const done = workingSetsDone(logs, { entryId: entry.id, exerciseId: entry.exerciseId })
         return (
           <SetLogger
             key={entry.id}
@@ -165,7 +167,7 @@ export function PlannedDay({
             tracking={entry.exercise?.tracking ?? null}
             target={prescriptionOf(entry)?.target ?? null}
             suggestion={hintFor(suggestions.get(entry.id), unit)}
-            done={done}
+            done={entry.done}
             busy={busy}
             testID={`log-entry-${entry.index}`}
             onLog={(values) => {

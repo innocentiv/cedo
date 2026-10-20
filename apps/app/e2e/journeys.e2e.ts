@@ -258,7 +258,8 @@ test(
           (lines) => lines.includes('Barbell Back Squat · set 2'),
         )
       },
-      { allowErrors: [/No such workout/u] },
+      // No console error allowed: the screen reads the plan's reach from the session, and never
+      // fetches the lost plan itself — a fetch that once failed into the wrong series.
     )
   },
   E2E_TIMEOUT_MS,

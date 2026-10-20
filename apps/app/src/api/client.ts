@@ -21,6 +21,7 @@ import {
   type PersonalAccessTokenCreate,
   PersonalAccessTokenCreated,
   ProgressionSuggestion,
+  SessionDetail,
   type SessionQuery,
   type SessionStart,
   type SessionUpdate,
@@ -136,7 +137,7 @@ const workouts = ({ GET, POST, PATCH, PUT, DELETE }: Verbs) => ({
 const sessions = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
   list: async (query: Partial<SessionQuery> = {}) =>
     await GET('/sessions', page(WorkoutSessionSummary), asQuery(query)),
-  get: async (id: string) => await GET(`/sessions/${id}`, WorkoutSession),
+  get: async (id: string) => await GET(`/sessions/${id}`, SessionDetail),
   start: async (body: SessionStart) => await POST('/sessions', WorkoutSession, body),
   update: async (id: string, body: SessionUpdate) =>
     await PATCH(`/sessions/${id}`, WorkoutSession, body),
