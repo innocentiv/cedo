@@ -637,3 +637,87 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+/**
+ * An unavailable exercise: the plan is still yours, one of its exercises no longer is. Its logger
+ * offered weight-and-reps fields — to a plank — and a Log button the server refused; its editor
+ * offered the same fields, and a Save the server refused. See GLOSSARY.md, "Unavailable exercise".
+ */
+test(
+  'an exercise lost from your own plan reads as measured, and cannot be logged or saved',
+  async () => {
+    const athlete = unique('una')
+    await withApp('unavailable-exercise', async (page) => {
+      const app = screens(page)
+      await app.auth.register(athlete)
+
+      // A coach's group shares a timed plank with the athlete, who builds a plan around it.
+      const coach = await signUp(`${athlete}c`)
+      const squad = await coach.api.groups.create({ name: 'Squad' })
+      await coach.api.groups.addMember(squad.id, { username: athlete, role: 'reader' })
+      const plank = await coach.api.exercises.create(
+        ExerciseCreate.parse({
+          name: 'Coached Plank',
+          tracking: 'duration',
+          muscles: [{ muscle: 'rectus_abdominis', loadPct: 100 }],
+        }),
+      )
+      await coach.api.exercises.transfer(plank.id, { toGroupId: squad.id })
+      const mine = await page.client()
+      const [bench] = (await mine.exercises.list({ q: 'Bench', limit: 1 })).items
+      if (bench === undefined) throw new Error('The seeded library has no bench press')
+      const plan = await mine.workouts.create({ name: 'Mine', notes: null })
+      await mine.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [
+            {
+              name: 'Day 1',
+              entries: [
+                { exerciseId: plank.id, sets: [{ targetDurationS: 60 }] },
+                { exerciseId: bench.id, sets: [{ targetReps: 8, targetWeightG: 60_000 }] },
+              ],
+            },
+          ],
+        }),
+      )
+
+      // …and leaves the group. The plan is still theirs; the plank is not.
+      const { user: me } = await mine.auth.me()
+      await coach.api.groups.removeMember(squad.id, me.id)
+
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await app.workouts.startDay(0)
+      const lost = app.session.entry(0)
+      await lost.shown()
+      expect(await lost.unavailable()).toBe(true)
+      expect(await lost.canLog()).toBe(false)
+      // As measured: a minute, which is what was prescribed whatever the exercise was.
+      expect(await lost.target()).toBe('Prescribed 1:00')
+      expect(await app.session.entry(1).canLog()).toBe(true)
+
+      await app.planEditor.open(plan.id)
+      const entry = app.planEditor.entry(0, 0)
+      expect(await entry.unavailable()).toBe(true)
+      expect(await entry.target()).toBe('1 set · 1:00')
+      const issues = await page.until(
+        async () => await app.planEditor.issues(),
+        (shown) => shown !== null,
+      )
+      expect(issues).toBe('Day 1, exercise 1: Unavailable exercise — remove it to save')
+      expect(await app.planEditor.canSave()).toBe(false)
+
+      await entry.remove()
+      await page.until(
+        async () => await app.planEditor.issues(),
+        (shown) => shown === null,
+      )
+      expect(await app.planEditor.canSave()).toBe(true)
+      await app.planEditor.save()
+      const saved = await mine.workouts.get(plan.id)
+      expect(saved.days[0]?.entries.map((e) => e.exerciseId)).toEqual([bench.id])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)

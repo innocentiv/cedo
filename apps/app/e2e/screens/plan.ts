@@ -20,6 +20,13 @@ const planEntry = (page: Page, id: string) => ({
   },
   progressionSummary: async (): Promise<string | null> =>
     await page.text(`${id}-progression-summary`),
+  /** Its sets and prescription, for an entry shown read-only. */
+  target: async (): Promise<string | null> => await page.text(`${id}-target`),
+  /** Whether it is shown as an unavailable exercise. */
+  unavailable: async (): Promise<boolean> => await page.exists(`${id}-unavailable`),
+  remove: async (): Promise<void> => {
+    await page.click(`[data-testid="${id}-remove"]`)
+  },
 })
 
 /** The plans list, and a plan's detail. */
@@ -48,11 +55,19 @@ export const workouts = (page: Page) => {
 }
 
 export const planEditor = (page: Page) => {
+  /**
+   * Saves, and waits for the editor to close — back to wherever it was opened from: the list, for a
+   * new plan; Today, for one opened by its address. Closed, not gone: a tab keeps its stack mounted.
+   */
   const save = async (): Promise<void> => {
     await page.click('[data-testid="save-plan"]')
-    // Saving returns to wherever the editor was opened from — the list, since a new plan goes
-    // straight into the editor.
-    await page.waitFor('workouts-screen')
+    await page.until(
+      async () =>
+        await page.evaluate(
+          `[...document.querySelectorAll('[data-testid="plan-edit-screen"]')].some((e) => e.offsetParent != null)`,
+        ),
+      (shown) => shown === false,
+    )
   }
   return {
     /**
@@ -73,6 +88,11 @@ export const planEditor = (page: Page) => {
       const exerciseId = await picker(page).pick(exercise)
       await page.waitFor('plan-entry-0-0')
       return exerciseId
+    },
+    /** An existing plan, opened in the editor by its address. */
+    open: async (workoutId: string): Promise<void> => {
+      await page.goto(`/workouts/${workoutId}/edit`)
+      await page.waitFor('plan-edit-screen')
     },
     entry: (day: number, index: number) => planEntry(page, `plan-entry-${day}-${index}`),
     /** Taps a day's name: a plain text input, so the caret lands where the tap did. */

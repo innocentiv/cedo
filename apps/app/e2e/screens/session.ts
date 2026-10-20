@@ -35,6 +35,10 @@ const logger = (page: Page, id: string) => ({
   value: async (dimension: Dimension): Promise<unknown> => await page.value(`${id}-${dimension}`),
   /** "Prescribed 8 × 60 kg". */
   target: async (): Promise<string | null> => await page.text(`${id}-target`),
+  /** Whether it offers a Log button at all. */
+  canLog: async (): Promise<boolean> => await page.exists(`${id}-log`),
+  /** Whether it is shown as an unavailable exercise. */
+  unavailable: async (): Promise<boolean> => await page.exists(`${id}-unavailable`),
   /** "2 done". */
   done: async (): Promise<string | null> => {
     await page.waitFor(`${id}-done`)
