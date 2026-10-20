@@ -39,11 +39,9 @@ const logger = (page: Page, id: string) => ({
   canLog: async (): Promise<boolean> => await page.exists(`${id}-log`),
   /** Whether it is shown as an unavailable exercise. */
   unavailable: async (): Promise<boolean> => await page.exists(`${id}-unavailable`),
-  /** Taps Log for a set the server will refuse, and returns what the screen says instead. */
-  logRefused: async (): Promise<string | null> => {
+  /** Taps Log for a set the server will refuse: the screen says why (`session.error`). */
+  attemptLog: async (): Promise<void> => {
     await page.click(`[data-testid="${id}-log"]`)
-    await page.waitFor('session-error')
-    return await page.text('session-error')
   },
   /** "2 done". */
   done: async (): Promise<string | null> => {
@@ -95,6 +93,13 @@ export const session = (page: Page) => {
       await shown()
     },
     text: async (): Promise<string> => (await page.text('session-screen')) ?? '',
+    /** What the screen says a write was refused for, once it says it. */
+    error: async (): Promise<string | null> => {
+      await page.waitFor('session-error')
+      return await page.text('session-error')
+    },
+    /** Whether the screen says the plan behind the session is out of reach. */
+    planUnavailable: async (): Promise<boolean> => await page.exists('session-plan-unavailable'),
 
     /** Waits until the sets logged so far are on screen. */
     logsShown: async (): Promise<void> => {

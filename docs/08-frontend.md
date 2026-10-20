@@ -198,9 +198,10 @@ could see. Renaming an exercise left the open plan, its progression and a live s
 old name for the whole `staleTime`. Query keys are flat — `[read, ...args]` — for the same reason: a
 key nested under another was refreshed with it by accident, which is a dependency written nowhere.
 
-A write the server REFUSES because what it names is gone or out of reach (404), or has moved on
-(409 — finished on another device), says the screen's picture is stale, because someone else's write
-changed it. `useWriteTo` then reads again what the write was OF, the reads it would have awaited.
+A write the server REFUSES because what it names is gone or out of reach (404), or conflicts with
+what is stored (409 — finished on another device, a session already in progress), may mean the
+screen's picture is stale, because someone else's write changed it. `useWriteTo` then reads again what
+the write was OF, the reads it would have awaited; when nothing has moved, it is a cheap re-read.
 Not the ones that embed it, because nothing was written. A session whose plan the lifter had just
 lost to a coach's edit used to keep showing it for the whole `staleTime`, inviting the same refused
 set again. Membership itself is not a source any read embeds: the app writes no group, so a

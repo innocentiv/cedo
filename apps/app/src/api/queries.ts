@@ -121,8 +121,11 @@ export function useTokens(): UseQueryResult<PersonalAccessToken[]> {
  * source are awaited, because the next write reads them — the live session numbers the next set
  * from the refreshed logs. Reads that only embed it are marked stale at once and refetch behind.
  *
- * There is deliberately no `onError`.
+ * A refused write — gone, out of reach, or a conflict with what is stored — reads again what it
+ * was OF, and nothing more: someone else's write may have moved the screen's picture on, and it is
+ * a cheap re-read when it has not. See docs/08-frontend.md.
  *
+ * Nothing reports a failure here — there is deliberately no `onError` that logs or swallows one.
  * A blanket handler cannot tell a failure nobody is watching from one a form is already showing —
  * it logged every rejected validation, including the ones `useSubmit` renders, and turned an
  * expected 422 into a failed e2e run. The rule instead: **every caller awaits `mutateAsync` inside
@@ -146,17 +149,10 @@ function useWriteTo<TInput, TResult>(
       for (const read of background) void queryClient.invalidateQueries({ queryKey: [read] })
       await reread(awaited)
     },
-    /**
-     * A write refused because what it names is gone or out of reach, or has moved on — finished on
-     * another device — says this screen's picture is stale: someone else's write changed it. Read
-     * again what the write was OF, which tells the screen the new picture; nothing was written, so
-     * nothing embedding it changed because of this write. Left alone, a session whose plan the
-     * lifter had just lost kept showing it for the cache's whole window, inviting the same refused
-     * set again.
-     */
-    onError: async (error) => {
+    // Not awaited: the refusal reaches the form at once, and the re-read follows it.
+    onError: (error) => {
       if (error instanceof ApiError && (error.code === 'not_found' || error.code === 'conflict')) {
-        await reread(affectedBy(source).awaited)
+        void reread(affectedBy(source).awaited)
       }
     },
   })

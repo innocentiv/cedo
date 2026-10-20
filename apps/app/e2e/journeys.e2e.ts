@@ -785,11 +785,12 @@ test(
 
       // Removed on the coach's device: nothing on this screen has changed.
       await coach.api.groups.removeMember(squad.id, me.id)
-      expect(await app.session.entry(0).logRefused()).toContain('No such entry')
+      await app.session.entry(0).attemptLog()
+      expect(await app.session.error()).toContain('No such entry')
 
       await page.until(
-        async () => await app.session.text(),
-        (text) => text.includes('unavailable'),
+        async () => await app.session.planUnavailable(),
+        (shown) => shown,
         BEFORE_STALE_MS,
       )
     })
