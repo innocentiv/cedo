@@ -238,6 +238,15 @@ had, and a constraint over `(session, exercise, entry, set_index)` made the plan
 number is never rewritten to make room, so either can leave two "set 1"s in that session's history
 of the exercise, and nothing new is ever numbered into one.
 
+**A session is in progress until it is finished, and finishing is final.** `ended_at` is set once,
+on a session in progress, and never cleared; logging a set, undoing one and finishing all take the
+session's row lock and refuse a finished session, so none can interleave with a finish. Notes stay
+editable — a journal, not a change to what was logged. And **one session is in progress per
+person**: `start` refuses a second, and a partial unique index on `user_id where ended_at is null`
+holds it for starts that race, which a check alone does not. `session_log` writes a whole session
+already finished, so it is never in progress at all. The session in progress is found by that index
+(`GET /sessions?inProgress=true`), not by scanning a person's history for it.
+
 ## Index plan
 
 Each of these exists because a specific query needs it. `bun run perf` proves each is actually used
@@ -263,6 +272,7 @@ against a realistic data volume — see [adr/0018](adr/0018-n1-detection.md).
 | `set_logs_session_idx`, `set_logs_entry_idx` | a session's own sets; a prescribed set's history |
 | `workout_sessions_user_time_idx` on `(user_id, started_at desc nulls first, id desc nulls first)` | the session list, newest first — `id` included because the keyset cursor is a row comparison; `nulls first` because that is what `ORDER BY … DESC` means, and a mismatch turns the walk into a sort |
 | `workout_sessions_workout_idx` | sessions belonging to a workout |
+| `workout_sessions_in_progress_idx` (unique, partial: `ended_at is null`) on `user_id` | one session in progress per person, and finding it |
 | `sessions_user_idx`, `pats_user_idx` | listing or revoking a user's credentials |
 
 ### Why the list needs two index shapes
