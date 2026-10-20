@@ -9,6 +9,7 @@ import type {
 } from '@cedo/contract'
 import { formatDuration, formatEffort, formatWeight } from '@cedo/contract'
 import type { MuscleWork, TrainingReview } from '../modules/review/service.ts'
+import { AT_LEAST_SESSIONS } from '../modules/review/stalled.ts'
 
 /**
  * Tool output is TEXT the model reads, and its size is the real cost of an MCP tool — not the
@@ -219,7 +220,7 @@ export function reviewSummary(review: TrainingReview, unit: WeightUnit): string 
   const stalled =
     review.stalled.length === 0
       ? 'Nothing looks stalled.'
-      : `Stalled (the same top set, 3+ sessions running):\n  ${review.stalled.map((s) => stalledLine(s, unit)).join('\n  ')}`
+      : `Stalled (the same top set, ${AT_LEAST_SESSIONS}+ sessions running):\n  ${review.stalled.map((s) => stalledLine(s, unit)).join('\n  ')}`
 
   return [
     `Last ${weeks} weeks: ${a.sessions} sessions (${a.perWeek}/week).`,

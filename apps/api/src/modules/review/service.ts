@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lt, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, lt, sql } from 'drizzle-orm'
 import type { Effort, LoggedExercise } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
@@ -187,19 +187,15 @@ async function workBetween(caller: Caller, from: Date, to: Date) {
     .groupBy(exerciseMuscles.muscleSlug)
 }
 
-/**
- * The caller's working sets in the window, each with its exercise as they can still see it — an
- * INNER join onto the visible relation: an exercise can stop being visible after it was logged,
- * when a shared group loses them as a member, and there is nothing useful to say about a movement
- * whose name they cannot read. Omitted, matching `progression/service.ts`. Judged in ./stalled.ts.
- */
+/** What has stalled, judged in ./stalled.ts over each exercise's latest sessions. */
 async function stalled(caller: Caller, since: Date): Promise<TrainingReview['stalled']> {
   const ranked = latestSessions(caller, since)
   const rows = await db
     .select()
     .from(ranked)
     .where(sql`${ranked.rank} <= ${STALL_DEPTH}`)
-    .orderBy(desc(ranked.startedAt))
+    // Newest session first, each session's sets together and in the order logged.
+    .orderBy(desc(ranked.startedAt), desc(ranked.sessionId), asc(ranked.setIndex))
   return stalledOf(
     rows.map((r) => ({
       exerciseId: r.exerciseId,
@@ -216,9 +212,15 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
 }
 
 /**
- * The caller's working sets in the window, each ranked by how recent its session is among that
- * exercise's — so the loader keeps only the latest `STALL_DEPTH`, capped in SQL with a window
- * function as progression's load is: two years of a main lift reads ten sessions, not all.
+ * The caller's working sets in the window, each with its exercise as they can still see it — an
+ * INNER join onto the visible relation: an exercise can stop being visible after it was logged,
+ * when a shared group loses them as a member, and there is nothing useful to say about a movement
+ * whose name they cannot read. Omitted, matching `progression/service.ts`.
+ *
+ * Each set is ranked by how recent its session is among that exercise's, so the loader keeps only
+ * the latest `STALL_DEPTH` — capped in SQL with a window function, as progression's load is: two
+ * years of a main lift reads ten sessions, not all. Ranked by start and then by id, so two sessions
+ * started in the same instant still take two ranks, and the cap is exact.
  */
 function latestSessions(caller: Caller, since: Date) {
   const exercises = visibleExercises(caller)
@@ -233,7 +235,8 @@ function latestSessions(caller: Caller, since: Date) {
       weightG: setLogs.weightG,
       durationS: setLogs.durationS,
       distanceMm: setLogs.distanceMm,
-      rank: sql<number>`dense_rank() over (partition by ${exercises.id} order by ${workoutSessions.startedAt} desc)`.as(
+      setIndex: setLogs.setIndex,
+      rank: sql<number>`dense_rank() over (partition by ${exercises.id} order by ${workoutSessions.startedAt} desc, ${setLogs.sessionId} desc)`.as(
         'rank',
       ),
     })

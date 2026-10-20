@@ -54,8 +54,8 @@ function travel({ distanceMm, durationS }: Effort): string | null {
 }
 
 /**
- * A session's best working set, as its tracking mode ranks efforts — what "the same top set" in a
- * stall compares, and what a progress chart would plot:
+ * A session's best working set, as its tracking mode ranks efforts (`compareEfforts`) — what a
+ * stall compares. See GLOSSARY.md, "Top set":
  *
  * - a lift: the heaviest weight, then the most reps at it;
  * - bodyweight: the most added weight (none is nothing added), then the most reps;
@@ -65,12 +65,26 @@ function travel({ distanceMm, durationS }: Effort): string | null {
  * A dimension not measured counts as least. Of equal sets, the first. Undefined for no sets.
  */
 export function topSet(sets: readonly Effort[], tracking: TrackingMode): Effort | undefined {
-  const rank = RANKS[tracking]
   let best: Effort | undefined
   for (const set of sets) {
-    if (best === undefined || outranks(rank(set), rank(best))) best = set
+    if (best === undefined || compareEfforts(set, best, tracking) > 0) best = set
   }
   return best
+}
+
+/**
+ * How two efforts rank in a tracking mode: positive when `a` is better, zero when the mode measures
+ * them alike — a pull-up with no added weight and one with "+0 kg" are the same effort — negative
+ * when worse. A dimension the mode does not measure plays no part.
+ */
+export function compareEfforts(a: Effort, b: Effort, tracking: TrackingMode): number {
+  const rank = RANKS[tracking]
+  const [ra, rb] = [rank(a), rank(b)]
+  for (const [i, value] of ra.entries()) {
+    const other = rb[i] ?? LEAST
+    if (value !== other) return value > other ? 1 : -1
+  }
+  return 0
 }
 
 const LEAST = Number.NEGATIVE_INFINITY
@@ -82,12 +96,4 @@ const RANKS: Readonly<Record<TrackingMode, (effort: Effort) => readonly number[]
   duration: (e) => [e.durationS ?? LEAST],
   // Faster is a shorter time: negated, so higher is better here too; no time at all ranks last.
   distance_duration: (e) => [e.distanceMm ?? LEAST, e.durationS === null ? LEAST : -e.durationS],
-}
-
-function outranks(a: readonly number[], b: readonly number[]): boolean {
-  for (const [i, value] of a.entries()) {
-    const other = b[i] ?? LEAST
-    if (value !== other) return value > other
-  }
-  return false
 }

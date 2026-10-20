@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { type Effort, formatEffort, topSet } from './effort.ts'
+import { type Effort, compareEfforts, formatEffort, topSet } from './effort.ts'
 
 const none = { reps: null, weightG: null, durationS: null, distanceMm: null }
 
@@ -120,5 +120,18 @@ describe('the top set', () => {
       set({ reps: 5, weightG: 40_000 }),
     )
     expect(topSet([], 'weight_reps')).toBeUndefined()
+  })
+
+  test('efforts the mode measures alike are the same: no added weight is "+0 kg"', () => {
+    expect(compareEfforts(set({ reps: 8 }), set({ reps: 8, weightG: 0 }), 'bodyweight_reps')).toBe(
+      0,
+    )
+    // A dimension the mode does not measure plays no part.
+    expect(
+      compareEfforts(set({ durationS: 60 }), set({ durationS: 60, reps: 3 }), 'duration'),
+    ).toBe(0)
+    expect(compareEfforts(set({ reps: 9 }), set({ reps: 8, weightG: 0 }), 'bodyweight_reps')).toBe(
+      1,
+    )
   })
 })
