@@ -1,5 +1,6 @@
 import { Platform } from 'react-native'
 import type * as SecureStore from 'expo-secure-store'
+import type { TokenStore } from './session.ts'
 
 /**
  * Where the session token lives: the OS keychain on native, `localStorage` on web.
@@ -62,3 +63,6 @@ export async function clearToken(): Promise<void> {
     // If it could not be written it cannot have been stored.
   }
 }
+
+/** The keychain, as the session reads and writes it. */
+export const tokenStore: TokenStore = { read: readToken, write: writeToken, clear: clearToken }

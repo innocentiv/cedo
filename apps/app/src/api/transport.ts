@@ -34,10 +34,10 @@ export interface TransportConfig {
   /** The credential to send now, if any. */
   readonly token: () => string | null
   /**
-   * The API rejected the credential that was sent, and it is still the one in use — a late 401 for
-   * a previous user's token must not sign the next one out.
+   * The API rejected the credential that was sent — handed over, so whoever holds the session can
+   * tell a late 401 for a previous person's token from one for its own.
    */
-  readonly onUnauthenticated?: () => void
+  readonly onUnauthenticated?: (sentToken: string) => void
 }
 
 function queryString(query: QueryInput | undefined): string {
@@ -80,9 +80,7 @@ export function transport(config: TransportConfig): SendRequest {
       const failure = await toApiError(response, path)
       // Only when a credential was actually sent: a 401 from the login route means "wrong
       // password", which the form must show rather than the shell reacting to.
-      if (failure.code === 'unauthenticated' && sent !== null && sent === config.token()) {
-        config.onUnauthenticated?.()
-      }
+      if (failure.code === 'unauthenticated' && sent !== null) config.onUnauthenticated?.(sent)
       throw failure
     }
 

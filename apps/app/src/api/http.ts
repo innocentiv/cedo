@@ -1,6 +1,8 @@
 import { Platform } from 'react-native'
 import { createApi } from './client.ts'
 import { transport } from './transport.ts'
+import { createSession } from '../auth/session.ts'
+import { tokenStore } from '../auth/token-storage.ts'
 
 /**
  * The app's adapter for the client: where the API is, the session's credential, and what happens
@@ -49,36 +51,17 @@ export function apiUrl(path: string): string {
   return `${base()}${path.startsWith('/') ? path : `/${path}`}`
 }
 
-/** Set by the auth provider. A module-level holder so every call site does not thread it through. */
-let bearer: string | null = null
-
-export function setAuthToken(token: string | null): void {
-  bearer = token
-}
-
 /**
- * Called when the API rejects the credential we are holding.
- *
- * A token can be revoked or expire mid-session — from the settings screen on another device, or
- * simply by sitting unopened for a month. Without this the app keeps a token the server has
- * forgotten and every screen fills with "Authentication required" and no way out. The auth provider
- * registers a handler that signs out and returns to the login screen.
+ * Who is signed in: the one session, which every request sends the token of. A credential the
+ * server rejects mid-session — revoked on another device, or expired after a month unopened —
+ * signs it out, rather than leaving every screen with "Authentication required" and no way back to
+ * the login form. Its rules are in ../auth/session.ts.
  */
-let onUnauthenticated: (() => void) | null = null
-
-export function setUnauthenticatedHandler(handler: (() => void) | null): void {
-  onUnauthenticated = handler
-}
+export const session = createSession({ store: tokenStore, auth: () => api.auth })
 
 /** Every call the app makes, as the signed-in user. */
 export const api = createApi(
-  transport({
-    baseUrl: base,
-    token: () => bearer,
-    onUnauthenticated: () => {
-      onUnauthenticated?.()
-    },
-  }),
+  transport({ baseUrl: base, token: session.token, onUnauthenticated: session.rejected }),
 )
 
 export { ApiError, ContractDriftError } from './errors.ts'
