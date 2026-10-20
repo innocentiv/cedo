@@ -78,7 +78,7 @@ export const workoutLine = (workout: WorkoutSummary): string =>
  */
 const setLine = (
   set: Workout['days'][number]['entries'][number]['sets'][number],
-  tracking: TrackingMode | undefined,
+  tracking: TrackingMode | null,
   unit: WeightUnit,
 ): string => {
   const rpe = set.target.rpe === null ? '' : ` @ RPE ${set.target.rpe}`
@@ -100,7 +100,7 @@ export function workoutDetail(workout: Workout, unit: WeightUnit): string {
       const name = entry.exercise?.name ?? '[unavailable exercise]'
       return [
         `  - ${name}${superset}${rest}${rule}   [entry ${entry.id}]`,
-        ...entry.sets.map((set) => `      ${setLine(set, entry.exercise?.tracking, unit)}`),
+        ...entry.sets.map((set) => `      ${setLine(set, entry.exercise?.tracking ?? null, unit)}`),
       ].join('\n')
     })
     return [`Day ${day.index + 1}: ${day.name}`, ...entries].join('\n')

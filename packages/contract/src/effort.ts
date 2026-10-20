@@ -15,13 +15,17 @@ export interface Effort {
  *
  * Every screen used to write `${reps ?? '—'} × ${weight ?? 'bodyweight'}` for itself, which
  * rendered a plank as "— × bodyweight" — hiding the duration that was its whole prescription — and
- * a barbell lift with no load yet as "@ bodyweight". With no mode, it renders what was measured.
- * Weights read in the reader's `unit`, which every caller must pass: a kilogram default would be
- * the one screen that forgot.
+ * a barbell lift with no load yet as "@ bodyweight". Weights read in the reader's `unit`, which
+ * every caller must pass: a kilogram default would be the one screen that forgot.
+ *
+ * The mode is required too, and `null` only when it is not known — an unavailable exercise, whose
+ * mode is withheld with its name. Then it renders what was measured and guesses nothing: `6 × 20 kg`
+ * may have been a weighted pull-up. Optional, it was the one argument a new read model could leave
+ * out without a word, and four did.
  */
 export function formatEffort(
   effort: Effort,
-  tracking: TrackingMode | undefined,
+  tracking: TrackingMode | null,
   unit: WeightUnit,
 ): string {
   const parts = [lift(effort, tracking, unit), travel(effort)].filter((p) => p !== null)
@@ -30,7 +34,7 @@ export function formatEffort(
 
 function lift(
   { reps, weightG }: Effort,
-  tracking: TrackingMode | undefined,
+  tracking: TrackingMode | null,
   unit: WeightUnit,
 ): string | null {
   const weight = (grams: number) => formatWeight(grams, unit)

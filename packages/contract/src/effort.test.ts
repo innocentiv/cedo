@@ -36,10 +36,22 @@ describe('formatEffort renders what the tracking mode measures', () => {
     expect(formatEffort(none, 'duration', 'kg')).toBe('—')
   })
 
-  test('with no mode known, it renders whatever was measured', () => {
-    expect(formatEffort({ ...none, reps: 8, weightG: 60_000 }, undefined, 'kg')).toBe('8 × 60 kg')
-    expect(formatEffort({ ...none, durationS: 45 }, undefined, 'kg')).toBe('0:45')
-    expect(formatEffort({ ...none, reps: 12 }, undefined, 'kg')).toBe('12 reps')
+  /**
+   * An unavailable exercise: its mode is withheld with its name, so its effort reads as measured —
+   * `6 × 20 kg` may have been a weighted pull-up, and claiming "bodyweight +20 kg" or a 20 kg lift
+   * would both be a guess. See GLOSSARY.md, "Unavailable exercise".
+   */
+  test('with no mode known, it renders whatever was measured, and guesses nothing', () => {
+    expect(formatEffort({ ...none, reps: 8, weightG: 60_000 }, null, 'kg')).toBe('8 × 60 kg')
+    expect(formatEffort({ ...none, reps: 6, weightG: 20_000 }, null, 'kg')).toBe('6 × 20 kg')
+    expect(formatEffort({ ...none, durationS: 45 }, null, 'kg')).toBe('0:45')
+    expect(formatEffort({ ...none, reps: 12 }, null, 'kg')).toBe('12 reps')
+  })
+
+  /** Checked by `tsc`, not at run time: a reader that forgot the mode does not compile. */
+  test('the mode cannot be left out — unknown is said, as null', () => {
+    // @ts-expect-error -- `undefined` is not a mode, nor a way of saying there is none.
+    expect(formatEffort({ ...none, reps: 8 }, undefined, 'kg')).toBe('8 reps')
   })
 })
 

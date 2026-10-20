@@ -22,7 +22,7 @@ function prescription(entry: WorkoutEntry, unit: WeightUnit): string {
   if (first === undefined) return 'no working sets'
   const count = entry.sets.filter((s) => !s.isWarmup).length
   const sets = `${count} set${count === 1 ? '' : 's'}`
-  return `${sets} · ${formatEffort(first.target, entry.exercise?.tracking, unit)}`
+  return `${sets} · ${formatEffort(first.target, entry.exercise?.tracking ?? null, unit)}`
 }
 
 export default function WorkoutDetail(): React.JSX.Element {

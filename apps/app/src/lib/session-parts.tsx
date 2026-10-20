@@ -66,7 +66,7 @@ export function LoggedSets({
           <ListRow
             key={log.id}
             title={`${exerciseName(log.exercise)} · set ${log.setIndex + 1}`}
-            subtitle={formatEffort(log, log.exercise?.tracking, unit)}
+            subtitle={formatEffort(log, log.exercise?.tracking ?? null, unit)}
             trailing={editable ? 'Undo' : undefined}
             onPress={
               editable
