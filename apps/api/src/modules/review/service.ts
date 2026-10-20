@@ -1,5 +1,5 @@
-import { and, asc, desc, eq, gte, lt, sql } from 'drizzle-orm'
-import { DIMENSION_FIELDS, type Effort, type LoggedExercise } from '@cedo/contract'
+import { and, desc, eq, gte, lt, sql } from 'drizzle-orm'
+import type { Effort, LoggedExercise } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import {
@@ -11,6 +11,7 @@ import {
 import type { Caller } from '../../plugins/auth.ts'
 import { adherenceOf } from './adherence.ts'
 import { muscleWorkOf } from './muscle-work.ts'
+import { stalledOf } from './stalled.ts'
 
 /**
  * A READ MODEL for coaching, not new domain rules.
@@ -185,65 +186,27 @@ async function workBetween(caller: Caller, from: Date, to: Date) {
     .groupBy(exerciseMuscles.muscleSlug)
 }
 
-/** A set's measured dimensions, as columns — every one `DIMENSION_FIELDS` knows. */
-const effortColumns = sql.join(
-  Object.values(DIMENSION_FIELDS).map((field) => setLogs[field.key]),
-  sql`, `,
-)
-
 /**
- * Progress is a change in ANY measured dimension. `count(distinct weight_g)` was 0 for every
- * bodyweight and duration exercise, because `count(distinct NULL)` is 0, so a pull-up going
- * 8 -> 10 -> 12 reps read as stalled; the tuple that fixed it left out distance, and a run going
- * further each week did too. Built from the dimension table, so none can be missed.
- *
- * Still crude: one failed rep on a last set is a second effort, so "not stalled".
- */
-const oneEffort = sql`count(distinct (${effortColumns})) <= 1`
-
-/** `mapWith(Number)` would type a nullable aggregate as `number` while it stays null at runtime. */
-const numberOrNull = (value: string | null) => (value === null ? null : Number(value))
-
-/**
- * The one effort a stalled exercise repeats. `max()` of each column IS that effort, because only
- * groups with a single distinct effort are kept (`oneEffort`). Null for a dimension the movement
- * does not log — and Drizzle does not run `mapWith` on a SQL NULL, so it arrives as null, never
- * NaN: assuming NaN once let `Math.round(null)` report a stalled pull-up as "0kg".
- *
- * Listed by hand where `effortColumns` is derived, because a derived object would lose each
- * column's type; `satisfies` is what keeps it whole — a dimension is a key of `Effort`, so a new
- * one fails here until it is added. These objects are shared by every call: `mapWith` mutates in
- * place, so never call it on them again.
- */
-const repeatedEffort = {
-  reps: sql<number | null>`max(${setLogs.reps})`.mapWith(numberOrNull),
-  weightG: sql<number | null>`max(${setLogs.weightG})`.mapWith(numberOrNull),
-  durationS: sql<number | null>`max(${setLogs.durationS})`.mapWith(numberOrNull),
-  distanceMm: sql<number | null>`max(${setLogs.distanceMm})`.mapWith(numberOrNull),
-} satisfies Record<keyof Effort, unknown>
-
-/**
- * An exercise trained at least three times whose working sets have not changed. Deliberately
- * judged on what was LOGGED, not on the prescription: a plan can say anything, the logs say what
- * actually happened.
+ * The caller's working sets in the window, each with its exercise as they can still see it — an
+ * INNER join onto the visible relation: an exercise can stop being visible after it was logged,
+ * when a shared group loses them as a member, and there is nothing useful to say about a movement
+ * whose name they cannot read. Omitted, matching `progression/service.ts`. Judged in ./stalled.ts.
  */
 async function stalled(caller: Caller, since: Date): Promise<TrainingReview['stalled']> {
   const exercises = visibleExercises(caller)
-  const sessions = sql<number>`count(distinct ${setLogs.sessionId})`.mapWith(Number)
-  return await db
+  const rows = await db
     .select({
-      exercise: { name: exercises.name, tracking: exercises.tracking },
-      sessions,
-      effort: repeatedEffort,
+      exerciseId: exercises.id,
+      name: exercises.name,
+      tracking: exercises.tracking,
+      sessionId: setLogs.sessionId,
+      reps: setLogs.reps,
+      weightG: setLogs.weightG,
+      durationS: setLogs.durationS,
+      distanceMm: setLogs.distanceMm,
     })
     .from(setLogs)
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
-    /**
-     * INNER, onto the visible relation. Own logs are not enough: an exercise can stop being visible
-     * after it was logged, when a shared group loses the caller as a member. Omitted rather than
-     * redacted, matching `progression/service.ts` — there is nothing useful to say about a
-     * movement whose name the caller cannot read, and this output goes to an AI over MCP.
-     */
     .innerJoin(exercises, eq(exercises.id, setLogs.exerciseId))
     .where(
       and(
@@ -252,16 +215,18 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
         gte(workoutSessions.startedAt, since),
       ),
     )
-    /**
-     * By ID, not by name. Duplicate names are the NORMAL case here — `library_audit` exists because
-     * "Bench Press" next to "Barbell Bench Press" is the expected library failure, and duplicating
-     * a shared exercise into your own group produces an identical name by construction. Grouped on
-     * the text, two sessions on the shared copy and two on your own became one row with
-     * `sessions: 4`, clearing the `>= 3` threshold it never should have reached and telling the AI
-     * a movement had stalled that was never trained three times. `name` and `tracking` are listed
-     * too: a visible relation is a subquery, so Postgres cannot see that its `id` is a key.
-     */
-    .groupBy(exercises.id, exercises.name, exercises.tracking)
-    .having(and(sql`${sessions} >= 3`, oneEffort))
-    .orderBy(asc(exercises.name))
+    .orderBy(desc(workoutSessions.startedAt))
+  return stalledOf(
+    rows.map((r) => ({
+      exerciseId: r.exerciseId,
+      exercise: { name: r.name, tracking: r.tracking },
+      sessionId: r.sessionId,
+      effort: {
+        reps: r.reps,
+        weightG: r.weightG,
+        durationS: r.durationS,
+        distanceMm: r.distanceMm,
+      },
+    })),
+  )
 }
