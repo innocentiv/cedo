@@ -162,7 +162,7 @@ export function PlannedDay({
             // An entry whose exercise the caller can no longer see arrives as null, deliberately.
             // See docs/03-domain-model.md.
             exerciseName={exerciseName(entry.exercise)}
-            tracking={entry.exercise?.tracking ?? 'weight_reps'}
+            tracking={entry.exercise?.tracking ?? null}
             target={prescriptionOf(entry)?.target ?? null}
             suggestion={hintFor(suggestions.get(entry.id), unit)}
             done={done}

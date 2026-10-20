@@ -15,7 +15,8 @@ import { Text } from './text.tsx'
 
 export interface SetLoggerProps {
   readonly exerciseName: string
-  readonly tracking: TrackingMode
+  /** Null for an unavailable exercise: nothing more can be logged against it. */
+  readonly tracking: TrackingMode | null
   /** What the plan prescribes for this set, if it came from one. */
   readonly target: SetTarget | null
   /** What the progression rule suggests for NEXT time, when it differs from the target. */
@@ -31,6 +32,10 @@ export interface SetLoggerProps {
  *
  * Which inputs appear is decided by the exercise's `tracking` mode, which the contract defines —
  * the screen does not guess from whether a weight happens to be null. See docs/08-frontend.md.
+ *
+ * An unavailable exercise has no mode to decide them, and the server refuses a set logged against
+ * it: it shows what was prescribed and done, as measured, and no inputs at all. It used to get
+ * weight-and-reps fields and a Log button that could only fail. See GLOSSARY.md.
  */
 export function SetLogger({
   exerciseName,
@@ -75,31 +80,61 @@ export function SetLogger({
           </Text>
         )}
 
-        {/* Which fields, in which order, labelled how: the contract's, as in the plan editor. */}
-        <Stack direction="row" gap="sm">
-          {fieldsOf(tracking).map((field) => (
-            <DimensionInput
-              key={field.dimension}
-              dimension={field.dimension}
-              tracking={tracking}
-              value={effort[field.key]}
-              onChange={(value) => {
-                setEffort((current) => ({ ...current, [field.key]: value }))
-              }}
-              testID={`${testID}-${field.dimension}`}
-            />
-          ))}
-        </Stack>
-
-        <Button
-          title="Log set"
-          onPress={() => {
-            onLog(effort)
-          }}
-          busy={busy}
-          testID={`${testID}-log`}
-        />
+        {tracking === null ? (
+          <Text variant="caption" tone="muted" testID={`${testID}-unavailable`}>
+            Out of your reach: nothing more can be logged against it.
+          </Text>
+        ) : (
+          <Inputs
+            tracking={tracking}
+            effort={effort}
+            onChange={setEffort}
+            busy={busy}
+            onLog={() => {
+              onLog(effort)
+            }}
+            testID={testID}
+          />
+        )}
       </Stack>
     </Card>
+  )
+}
+
+/** The next set's fields — which, in which order, labelled how: the contract's — and Log. */
+function Inputs({
+  tracking,
+  effort,
+  onChange,
+  busy,
+  onLog,
+  testID,
+}: {
+  readonly tracking: TrackingMode
+  readonly effort: Effort
+  readonly onChange: (update: (current: Effort) => Effort) => void
+  readonly busy: boolean
+  readonly onLog: () => void
+  readonly testID: string
+}): React.JSX.Element {
+  return (
+    <>
+      <Stack direction="row" gap="sm">
+        {fieldsOf(tracking).map((field) => (
+          <DimensionInput
+            key={field.dimension}
+            dimension={field.dimension}
+            tracking={tracking}
+            value={effort[field.key]}
+            onChange={(value) => {
+              onChange((current) => ({ ...current, [field.key]: value }))
+            }}
+            testID={`${testID}-${field.dimension}`}
+          />
+        ))}
+      </Stack>
+
+      <Button title="Log set" onPress={onLog} busy={busy} testID={`${testID}-log`} />
+    </>
   )
 }

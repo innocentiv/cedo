@@ -7,6 +7,7 @@ import { Card } from './card.tsx'
 import { EntryEditor } from './entry-editor.tsx'
 import { Field, Input } from './input.tsx'
 import { Stack } from './stack.tsx'
+import { UnavailableEntry } from './unavailable-entry.tsx'
 
 export interface DayEditorProps {
   readonly day: DayDraft
@@ -58,21 +59,35 @@ export function DayEditor({
           </Stack>
         </Field>
 
-        {day.entries.map((entry, entryIndex) => (
-          <EntryEditor
-            key={`entry-${index}-${entryIndex}`}
-            entry={entry}
-            exerciseName={exerciseName(library.get(entry.exerciseId))}
-            tracking={library.get(entry.exerciseId)?.tracking ?? 'weight_reps'}
-            testID={`plan-entry-${index}-${entryIndex}`}
-            onChange={(next) => {
-              setEntries(replaceAt(day.entries, entryIndex, next))
-            }}
-            onRemove={() => {
-              setEntries(removeAt(day.entries, entryIndex))
-            }}
-          />
-        ))}
+        {day.entries.map((entry, entryIndex) => {
+          const exercise = library.get(entry.exerciseId)
+          const testID = `plan-entry-${index}-${entryIndex}`
+          const removeEntry = () => {
+            setEntries(removeAt(day.entries, entryIndex))
+          }
+          // An exercise the editor cannot see is unavailable: no mode, so no target inputs.
+          return exercise === undefined ? (
+            <UnavailableEntry
+              key={`entry-${index}-${entryIndex}`}
+              entry={entry}
+              exerciseName={exerciseName(exercise)}
+              onRemove={removeEntry}
+              testID={testID}
+            />
+          ) : (
+            <EntryEditor
+              key={`entry-${index}-${entryIndex}`}
+              entry={entry}
+              exerciseName={exercise.name}
+              tracking={exercise.tracking}
+              testID={testID}
+              onChange={(next) => {
+                setEntries(replaceAt(day.entries, entryIndex, next))
+              }}
+              onRemove={removeEntry}
+            />
+          )
+        })}
 
         <Button
           title="Add exercise"
