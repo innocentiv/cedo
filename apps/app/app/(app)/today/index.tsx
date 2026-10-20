@@ -59,7 +59,10 @@ function History({
 
 export default function Today(): React.JSX.Element {
   const router = useRouter()
-  const sessions = useSessions({ limit: 20 })
+  // Two questions, both the server's to answer: the session in progress — there is at most one, and
+  // it may be older than any page of history — and the finished ones.
+  const current = useSessions({ inProgress: true, limit: 1 })
+  const sessions = useSessions({ inProgress: false, limit: 20 })
   const start = useStartSession()
   const { submit, busy, error: startError } = useSubmit()
 
@@ -72,44 +75,48 @@ export default function Today(): React.JSX.Element {
 
   return (
     <Screen title="Today" testID="today-screen">
-      <Loaded query={sessions} testID="today">
-        {(data) => {
-          const open = data.items.find((s) => s.endedAt === null)
-          const past = data.items.filter((s) => s.endedAt !== null)
-          return (
-            <Stack gap="lg">
-              <FormError message={startError} testID="today-error" />
-              {open === undefined ? (
-                <Stack gap="sm" testID="today-start">
-                  <Text tone="muted">Nothing in progress.</Text>
-                  <NavButton title="Start from a plan" href="/workouts" variant="primary" />
-                  <Button
-                    title="Log without a plan"
-                    variant="secondary"
-                    onPress={startAdHoc}
-                    busy={busy}
-                    testID="start-adhoc"
-                  />
+      <Loaded query={current} testID="today-current">
+        {(inProgress) => (
+          <Loaded query={sessions} testID="today">
+            {(data) => {
+              const open = inProgress.items[0]
+              const past = data.items
+              return (
+                <Stack gap="lg">
+                  <FormError message={startError} testID="today-error" />
+                  {open === undefined ? (
+                    <Stack gap="sm" testID="today-start">
+                      <Text tone="muted">Nothing in progress.</Text>
+                      <NavButton title="Start from a plan" href="/workouts" variant="primary" />
+                      <Button
+                        title="Log without a plan"
+                        variant="secondary"
+                        onPress={startAdHoc}
+                        busy={busy}
+                        testID="start-adhoc"
+                      />
+                    </Stack>
+                  ) : (
+                    <Stack gap="sm" testID="today-resume">
+                      <Text variant="label" tone="accent">
+                        In progress
+                      </Text>
+                      <ListRow
+                        title={open.dayName ?? open.workoutName ?? 'Ad-hoc session'}
+                        subtitle={`${open.setCount} sets logged`}
+                        onPress={() => {
+                          router.push(`/today/session/${open.id}`)
+                        }}
+                        testID="resume-session"
+                      />
+                    </Stack>
+                  )}
+                  <History sessions={past} />
                 </Stack>
-              ) : (
-                <Stack gap="sm" testID="today-resume">
-                  <Text variant="label" tone="accent">
-                    In progress
-                  </Text>
-                  <ListRow
-                    title={open.dayName ?? open.workoutName ?? 'Ad-hoc session'}
-                    subtitle={`${open.setCount} sets logged`}
-                    onPress={() => {
-                      router.push(`/today/session/${open.id}`)
-                    }}
-                    testID="resume-session"
-                  />
-                </Stack>
-              )}
-              <History sessions={past} />
-            </Stack>
-          )
-        }}
+              )
+            }}
+          </Loaded>
+        )}
       </Loaded>
     </Screen>
   )

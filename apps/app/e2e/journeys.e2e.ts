@@ -717,3 +717,34 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+/**
+ * One session in progress at a time. A plan used to offer Start beside a session already in
+ * progress, and the API opened a second one; Today then resumed whichever it found first.
+ */
+test(
+  'a session in progress is resumed from its plan, not started twice',
+  async () => {
+    await withApp('resume-from-plan', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('res'))
+      await app.planEditor.create()
+      await app.planEditor.saveAndStart()
+      await app.session.entry(0).fill('weight', '60')
+      await app.session.entry(0).log()
+
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await app.workouts.inProgressShown()
+      expect(await app.workouts.canStart(0)).toBe(false)
+
+      // Back into the very session: its set is there.
+      await app.workouts.resume()
+      await page.until(
+        async () => await app.session.loggedLines(),
+        (lines) => lines.includes('8 × 60 kg'),
+      )
+    })
+  },
+  E2E_TIMEOUT_MS,
+)

@@ -13,7 +13,7 @@ import {
   Stack,
   Text,
 } from '../../../../src/ui/index.ts'
-import { useStartSession, useWorkout } from '../../../../src/api/queries.ts'
+import { useSessions, useStartSession, useWorkout } from '../../../../src/api/queries.ts'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
 
 export default function WorkoutDetail(): React.JSX.Element {
@@ -23,6 +23,10 @@ export default function WorkoutDetail(): React.JSX.Element {
   const unit = useWeightUnit()
   const start = useStartSession()
   const { submit, busy, error: startError } = useSubmit()
+  // One session is in progress at a time: while one is, a day offers it back rather than a start
+  // the server would refuse — and offers nothing until it is known whether one is.
+  const current = useSessions({ inProgress: true, limit: 1 })
+  const inProgress = current.data?.items[0]
 
   const begin = (day: WorkoutDay) => {
     void submit(async () => {
@@ -61,6 +65,20 @@ export default function WorkoutDetail(): React.JSX.Element {
       }
     >
       {startError === null ? null : <Text tone="danger">{startError}</Text>}
+      {inProgress === undefined ? null : (
+        <Card testID="workout-in-progress">
+          <Stack gap="sm">
+            <Text tone="muted">A session is in progress. Finish it before starting another.</Text>
+            <Button
+              title="Resume"
+              onPress={() => {
+                router.push(`/today/session/${inProgress.id}`)
+              }}
+              testID="resume-session"
+            />
+          </Stack>
+        </Card>
+      )}
 
       {data.days.length === 0 ? (
         <Text tone="muted">This plan has no days yet.</Text>
@@ -72,14 +90,16 @@ export default function WorkoutDetail(): React.JSX.Element {
                 <Stack grow>
                   <Text variant="heading">{day.name}</Text>
                 </Stack>
-                <Button
-                  title="Start"
-                  onPress={() => {
-                    begin(day)
-                  }}
-                  busy={busy}
-                  testID={`start-day-${day.index}`}
-                />
+                {current.data === undefined || inProgress !== undefined ? null : (
+                  <Button
+                    title="Start"
+                    onPress={() => {
+                      begin(day)
+                    }}
+                    busy={busy}
+                    testID={`start-day-${day.index}`}
+                  />
+                )}
               </Stack>
 
               {day.entries.map((entry) => (

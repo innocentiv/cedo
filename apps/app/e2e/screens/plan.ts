@@ -52,6 +52,16 @@ export const workouts = (page: Page) => {
       await page.click(`[data-testid="start-day-${day}"]`)
       await session(page).shown()
     },
+    /** Waits for the plan to say a session is in progress — in place of its Start buttons. */
+    inProgressShown: async (): Promise<void> => {
+      await page.waitFor('workout-in-progress')
+    },
+    canStart: async (day: number): Promise<boolean> => await page.exists(`start-day-${day}`),
+    /** Opens the session in progress from the plan. */
+    resume: async (): Promise<void> => {
+      await page.click('[data-testid="resume-session"]')
+      await session(page).shown()
+    },
   }
 }
 
