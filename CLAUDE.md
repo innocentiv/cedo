@@ -28,7 +28,10 @@ is designed to prevent.
 6. **All measurements are stored as integers in base units** (`weight_g`, `distance_mm`,
    `duration_s`). Conversion happens only in `packages/contract/src/units.ts`.
 7. **All behaviour is tested on the backend.** UI code stays trivially thin and holds no domain
-   logic. See `docs/10-testing.md`.
+   logic. The one exception is state only the app owns — who is signed in on this device — which
+   lives in a plain module (`apps/app/src/auth/session.ts`, no React, no React Native) and is
+   unit-tested beside it. Components are never unit-tested; lint refuses it. See
+   `docs/10-testing.md` and the amendment to `docs/adr/0017-webview-for-ui-verification.md`.
 
 ## Commands
 
@@ -60,6 +63,13 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   too clean after adding files, re-run with `--force`.
 - **Prove a regression test fails against the unfixed code.** One "passing" race test here was
   measured to false-pass one run in seven; it needed five rounds to be trustworthy.
+- **With guards in a row, remove each one and watch its own test fail.** A test meant for the second
+  guard can pass on the first: the session's "overtaken while asking `/auth/me`" and the stall rule's
+  "progress in the latest session" both did, green with the very guard they named deleted.
+- **A race through the in-process harness may never race.** Six `start`s sent through `wire` never
+  overlapped, so a test of the one-session-in-progress index passed with the index dropped; thirty
+  calls to the service at once made 26 sessions. Drive the service directly, and drop the guard to
+  see it fail.
 - **Run `/code-review` at each milestone boundary, before building on top.** Two reviews in this
   session found 30 real defects between them, including an ACL invariant violation and a design flaw
   that would have broken every image in the UI.
