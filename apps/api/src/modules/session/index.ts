@@ -9,11 +9,13 @@ import {
   SessionStart,
   SessionUpdate,
   SetLog,
+  SessionDetail,
   WorkoutSession,
   WorkoutSessionSummary,
   page,
 } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
+import { get as getSession } from './detail.ts'
 import * as HistoryService from './history.ts'
 import { list as listSessions } from './list.ts'
 import * as SessionService from './service.ts'
@@ -33,9 +35,10 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
     response: WorkoutSession,
     detail: { summary: 'Start a session, from a workout day or ad hoc' },
   })
-  .get('/:id', ({ caller, params: { id } }) => SessionService.get(caller, id), {
+  .get('/:id', ({ caller, params: { id } }) => getSession(caller, id), {
     params,
-    response: WorkoutSession,
+    response: SessionDetail,
+    detail: { summary: 'A session, with the plan it follows as the caller can reach it' },
   })
   .patch('/:id', ({ caller, params: { id }, body }) => SessionService.update(caller, id, body), {
     params,

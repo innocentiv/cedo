@@ -134,10 +134,49 @@ export async function logWhole(caller: Caller, input: SessionLogInput): Promise<
     return created.id
   })
 
-  return await get(caller, id)
+  return await read(caller, id)
 }
 
-export async function get(caller: Caller, id: string): Promise<WorkoutSession> {
+export async function update(
+  caller: Caller,
+  id: string,
+  patch: SessionUpdate,
+): Promise<WorkoutSession> {
+  const columns = {
+    ...(patch.endedAt !== undefined && {
+      /**
+       * Never before the start, clamped in SQL against the row's own `started_at`. The app finishes
+       * with the PHONE's clock while `started_at` is the database's, so rejecting an earlier end
+       * refused any session shorter than the skew — and a refusal is not what anyone wants here.
+       * An ISO string, never a JS Date: raw `sql` bypasses the column encoder.
+       */
+      endedAt:
+        patch.endedAt === null
+          ? null
+          : sql<Date>`greatest(${patch.endedAt}::timestamptz, ${workoutSessions.startedAt})`,
+    }),
+    ...(patch.notes !== undefined && { notes: patch.notes }),
+  }
+
+  /**
+   * An empty patch is valid input — `SessionUpdate` has only optional fields — but Drizzle throws
+   * "No values to set" on `.set({})`, which surfaces as a 500. Exercise and workout updates escape
+   * this only because they always touch `updated_at`; `workout_sessions` has no such column.
+   */
+  if (Object.keys(columns).length === 0) return await read(caller, id)
+
+  const written = await db
+    .update(workoutSessions)
+    .set(columns)
+    .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
+    .returning({ id: workoutSessions.id })
+  if (written.length === 0) throw notFound('session')
+
+  return await read(caller, id)
+}
+
+/** A session and its logs, as the caller sees them. Read on its own, it is `detail.ts`'s `get`. */
+export async function read(caller: Caller, id: string): Promise<WorkoutSession> {
   const [row] = await db
     .select()
     .from(workoutSessions)
@@ -176,44 +215,6 @@ export async function get(caller: Caller, id: string): Promise<WorkoutSession> {
       entryId: l.entryId,
     })),
   )
-}
-
-export async function update(
-  caller: Caller,
-  id: string,
-  patch: SessionUpdate,
-): Promise<WorkoutSession> {
-  const columns = {
-    ...(patch.endedAt !== undefined && {
-      /**
-       * Never before the start, clamped in SQL against the row's own `started_at`. The app finishes
-       * with the PHONE's clock while `started_at` is the database's, so rejecting an earlier end
-       * refused any session shorter than the skew — and a refusal is not what anyone wants here.
-       * An ISO string, never a JS Date: raw `sql` bypasses the column encoder.
-       */
-      endedAt:
-        patch.endedAt === null
-          ? null
-          : sql<Date>`greatest(${patch.endedAt}::timestamptz, ${workoutSessions.startedAt})`,
-    }),
-    ...(patch.notes !== undefined && { notes: patch.notes }),
-  }
-
-  /**
-   * An empty patch is valid input — `SessionUpdate` has only optional fields — but Drizzle throws
-   * "No values to set" on `.set({})`, which surfaces as a 500. Exercise and workout updates escape
-   * this only because they always touch `updated_at`; `workout_sessions` has no such column.
-   */
-  if (Object.keys(columns).length === 0) return await get(caller, id)
-
-  const written = await db
-    .update(workoutSessions)
-    .set(columns)
-    .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
-    .returning({ id: workoutSessions.id })
-  if (written.length === 0) throw notFound('session')
-
-  return await get(caller, id)
 }
 
 export async function logSet(

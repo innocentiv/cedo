@@ -5,6 +5,7 @@ import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 import * as ProgressionService from '../progression/service.ts'
 import { history } from '../session/history.ts'
+import { get as getSession } from '../session/detail.ts'
 import * as WorkoutService from './service.ts'
 
 let h: TestApi
@@ -169,5 +170,31 @@ describe('reads do not N+1', () => {
     expect(many.result.sessions).toHaveLength(15)
     expect(many.count).toBe(one.count)
     expect(many.count).toBeLessThanOrEqual(2)
+  })
+
+  /** A live session reads the day it follows: the cost of a day, not of the plan it is in. */
+  test('a session costs the same following a 1-entry day as an 8-entry day of a 6-day plan', async () => {
+    const ids = await exerciseIds(12)
+    const sessionOn = async (workoutId: string) => {
+      const day = (await WorkoutService.get(alice.caller, workoutId)).days[0]
+      const res = await alice.wire('/sessions', {
+        method: 'POST',
+        body: JSON.stringify({ workoutId, dayId: day?.id }),
+      })
+      return expectContract(WorkoutSession, res.body).id
+    }
+
+    const small = await sessionOn(await planned(1, 1, ids))
+    const smallCount = await withQueryCount(() => getSession(alice.caller, small))
+    const large = await sessionOn(await planned(6, 8, ids))
+    const largeCount = await withQueryCount(() => getSession(alice.caller, large))
+
+    const entries = (read: typeof smallCount.result) =>
+      read.plan?.reachable === true ? read.plan.day.entries.length : 0
+    expect(entries(smallCount.result)).toBe(1)
+    expect(entries(largeCount.result)).toBe(8)
+    expect(largeCount.count).toBe(smallCount.count)
+    // The session, its logs, and the day's reads: day, entries, sets, and the four for exercises.
+    expect(largeCount.count).toBeLessThanOrEqual(9)
   })
 })

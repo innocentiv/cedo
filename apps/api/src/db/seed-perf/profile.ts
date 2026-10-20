@@ -1,4 +1,4 @@
-import { sql } from 'drizzle-orm'
+import { type SQL, sql } from 'drizzle-orm'
 import type { WeightUnit } from '@cedo/contract'
 import { db } from '../client.ts'
 import { mintToken } from '../../lib/token.ts'
@@ -110,9 +110,13 @@ async function seedProfileHistory(
   shape: Shape,
   sharedGroupId: string,
 ): Promise<void> {
+  // Each follows a day of the plan, in turn — as training from one does — so reading a session
+  // reads its day too. Without one, the session read was measured on the path no plan takes.
+  const dayOf = (n: SQL) => sql`(select id from workout_days where workout_id = ${workoutId}::uuid
+                                  order by index offset ${n} limit 1)`
   await db.execute(sql`
-    insert into workout_sessions (user_id, workout_id, started_at, ended_at)
-    select ${userId}::uuid, ${workoutId}::uuid,
+    insert into workout_sessions (user_id, workout_id, day_id, started_at, ended_at)
+    select ${userId}::uuid, ${workoutId}::uuid, ${dayOf(sql`s % ${shape.days}`)},
            now() - ((s * 2) || ' days')::interval,
            now() - ((s * 2) || ' days')::interval + interval '65 minutes'
       from generate_series(1, ${shape.sessions}) s
@@ -121,8 +125,9 @@ async function seedProfileHistory(
   // One session left open, and it is filled by the same statement as the rest, so the write path
   // is measured against a session that already holds work rather than an empty one.
   await db.execute(sql`
-    insert into workout_sessions (user_id, workout_id, started_at, notes)
-    values (${userId}::uuid, ${workoutId}::uuid, now() - interval '20 minutes', 'In progress.')
+    insert into workout_sessions (user_id, workout_id, day_id, started_at, notes)
+    values (${userId}::uuid, ${workoutId}::uuid, ${dayOf(sql`0`)}, now() - interval '20 minutes',
+            'In progress.')
   `)
   await fillLogs({
     sessions: sql`select id, started_at from workout_sessions where user_id = ${userId}::uuid`,

@@ -44,9 +44,14 @@ export function planEntries(caller: Caller, workoutId: string | null) {
     .as('plan_entries')
 }
 
-async function readEntries(caller: Caller, workoutId: string) {
+/** The plan's entries in plan order — of one day, when `dayId` names one. */
+async function readEntries(caller: Caller, workoutId: string, dayId: string | null) {
   const entries = planEntries(caller, workoutId)
-  return await db.select().from(entries).orderBy(asc(entries.dayIndex), asc(entries.index))
+  return await db
+    .select()
+    .from(entries)
+    .where(dayId === null ? undefined : eq(entries.dayId, dayId))
+    .orderBy(asc(entries.dayIndex), asc(entries.index))
 }
 
 type PlanEntryRow = Awaited<ReturnType<typeof readEntries>>[number]
@@ -68,7 +73,29 @@ type PlanEntryRow = Awaited<ReturnType<typeof readEntries>>[number]
  * safe: a plan the caller cannot read has no days to return.
  */
 export async function hydratePlan(caller: Caller, workoutId: string): Promise<WorkoutDay[]> {
-  const loaded = await loadPlan(caller, workoutId)
+  return await hydrate(caller, workoutId, null)
+}
+
+/**
+ * One day of a plan, as the caller can reach it — the day a session follows — or null when they
+ * cannot: the plan is in a group they have left, or the day is gone. The same reads as
+ * `hydratePlan`, narrowed to the day, so its cost does not grow with the rest of the plan.
+ */
+export async function hydrateDay(
+  caller: Caller,
+  workoutId: string,
+  dayId: string,
+): Promise<WorkoutDay | null> {
+  const [day] = await hydrate(caller, workoutId, dayId)
+  return day ?? null
+}
+
+async function hydrate(
+  caller: Caller,
+  workoutId: string,
+  dayId: string | null,
+): Promise<WorkoutDay[]> {
+  const loaded = await loadPlan(caller, workoutId, dayId)
   if (loaded === null) return []
   const { days, entries, sets, exerciseById } = loaded
 
@@ -86,16 +113,21 @@ export async function hydratePlan(caller: Caller, workoutId: string): Promise<Wo
 }
 
 /** The four reads. Separated so the assembly above stays readable. */
-async function loadPlan(caller: Caller, workoutId: string) {
+async function loadPlan(caller: Caller, workoutId: string, dayId: string | null) {
   const visibleDays = visibleWorkoutDays(caller)
   const days = await db
     .select()
     .from(visibleDays)
-    .where(eq(visibleDays.workoutId, workoutId))
+    .where(
+      and(
+        eq(visibleDays.workoutId, workoutId),
+        dayId === null ? undefined : eq(visibleDays.id, dayId),
+      ),
+    )
     .orderBy(asc(visibleDays.index))
   if (days.length === 0) return null
 
-  const entries = await readEntries(caller, workoutId)
+  const entries = await readEntries(caller, workoutId, dayId)
 
   const visibleSets = visibleWorkoutSets(caller)
   const sets =

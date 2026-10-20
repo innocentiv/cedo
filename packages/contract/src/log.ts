@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { LoggedDistanceMm, LoggedDurationS, LoggedReps, LoggedWeightG, Rpe } from './measurement.ts'
 import { Exercise, TrackingMode } from './exercise.ts'
 import { Id, PaginationQuery, Timestamp } from './primitives.ts'
+import { WorkoutDay, WorkoutEntry } from './workout.ts'
 
 /**
  * What actually happened, as opposed to what was prescribed.
@@ -82,6 +83,37 @@ export const WorkoutSession = z.object({
   logs: z.array(SetLog),
 })
 export type WorkoutSession = z.output<typeof WorkoutSession>
+
+/** An entry of the day a session follows, and the working sets done in its series so far. */
+export const SessionEntry = WorkoutEntry.extend({ done: z.int().nonnegative() })
+export type SessionEntry = z.output<typeof SessionEntry>
+
+export const SessionDay = WorkoutDay.extend({ entries: z.array(SessionEntry) })
+export type SessionDay = z.output<typeof SessionDay>
+
+/**
+ * The plan a session follows, as its reader can reach it — decided by the server, from the same
+ * visible relations it numbers sets by:
+ *
+ * - `null`: it follows no day — started without one, or its day has since been removed;
+ * - `reachable: false`: it follows a day the reader can no longer see — they left the group it
+ *   lives in. Its sets count as logged without a plan, and the session goes on as one;
+ * - `reachable: true`: the day, each entry with its exercise (null when unavailable) and done count.
+ *
+ * Decided here, not by a screen joining its own reads: a screen that failed to FETCH the plan took
+ * that for a plan out of reach, and logged the next set into the wrong series.
+ */
+export const SessionPlan = z
+  .discriminatedUnion('reachable', [
+    z.object({ reachable: z.literal(false) }),
+    z.object({ reachable: z.literal(true), day: SessionDay }),
+  ])
+  .nullable()
+export type SessionPlan = z.output<typeof SessionPlan>
+
+/** A session as read on its own: with the plan it follows. Writes answer the plain session. */
+export const SessionDetail = WorkoutSession.extend({ plan: SessionPlan })
+export type SessionDetail = z.output<typeof SessionDetail>
 
 /** List rows omit the logs, which are only needed when a single session is opened. */
 export const WorkoutSessionSummary = WorkoutSession.omit({ logs: true }).extend({

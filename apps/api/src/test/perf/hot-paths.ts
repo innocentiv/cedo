@@ -4,6 +4,7 @@ import { resolveCaller } from '../../plugins/auth.ts'
 import * as exerciseService from '../../modules/exercise/service.ts'
 import * as workoutService from '../../modules/workout/service.ts'
 import * as sessionService from '../../modules/session/service.ts'
+import { get as getSession } from '../../modules/session/detail.ts'
 import { list as listSessions } from '../../modules/session/list.ts'
 import { history } from '../../modules/session/history.ts'
 import { suggestForWorkout } from '../../modules/progression/service.ts'
@@ -206,16 +207,17 @@ export const HOT_PATHS: readonly HotPath[] = [
   },
   {
     name: 'GET /sessions/:id',
-    why: 'Read back during a live workout. Must not issue one query per logged set.',
-    dimension: 'logged sets (9 vs 60)',
-    maxQueries: 2,
+    why: 'Read back during a live workout, with the day it follows. Must not issue one query per logged set, nor per entry of the day.',
+    dimension: 'logged sets (9 vs 60), and the entries of the day followed',
+    // The session and its logs; then the day, its entries, their sets, and the four exercise reads.
+    maxQueries: 9,
     budgetMs: 60,
-    // Its logs LEFT JOIN the plan's entries, which reach the days: neither may be scanned.
-    noSeqScan: ['set_logs', 'exercises', 'workout_entries', 'workout_days'],
+    // Its logs LEFT JOIN the plan's entries, which reach the days, and its day reads their sets.
+    noSeqScan: ['set_logs', 'exercises', 'workout_entries', 'workout_days', 'workout_sets'],
     indexes: ['set_logs_session_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
-      return await sessionService.get(profile.caller, profile.sessionId)
+      return await getSession(profile.caller, profile.sessionId)
     },
   },
   {
