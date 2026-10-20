@@ -135,20 +135,22 @@ export function useTokens(): UseQueryResult<PersonalAccessToken[]> {
 function useWriteTo<TInput, TResult>(
   source: Source,
   run: (input: TInput) => Promise<TResult>,
-  gone?: (input: TInput) => readonly (readonly unknown[])[],
+  deletes?: (input: TInput) => string,
 ): UseMutationResult<TResult, Error, TInput> {
   const queryClient = useQueryClient()
   /**
-   * Every cached read of `reads` — but none `gone` names: a thing just deleted is not asked for
-   * again, by the screen still showing it, which would be told it does not exist and say so on the
-   * console. They are left to be collected once nothing shows them.
+   * Every cached read of `reads` — but none keyed by what the write deletes. `[read, id]` is the
+   * thing itself: just deleted, or already gone (404), it is not asked for again by the screen
+   * still showing it, which would be told it does not exist and say so on the console. Derived from
+   * the key shape, not listed per delete, so a new read keyed by the id is skipped without being
+   * remembered. Left to be collected once nothing shows it.
    */
-  const refresh = async (reads: readonly Read[], skipped: readonly string[] = []) => {
+  const refresh = async (reads: readonly Read[], deleted: string | undefined) => {
     await Promise.all(
       reads.map(async (read) =>
         queryClient.invalidateQueries({
           queryKey: [read],
-          predicate: (query) => !skipped.includes(JSON.stringify(query.queryKey)),
+          predicate: (query) => deleted === undefined || query.queryKey[1] !== deleted,
         }),
       ),
     )
@@ -156,19 +158,23 @@ function useWriteTo<TInput, TResult>(
   return useMutation({
     mutationFn: run,
     onSuccess: async (_result, input) => {
-      const skipped = (gone?.(input) ?? []).map((key) => JSON.stringify(key))
+      const deleted = deletes?.(input)
       const { awaited, background } = affectedBy(source)
-      void refresh(background, skipped)
-      await refresh(awaited, skipped)
+      void refresh(background, deleted)
+      await refresh(awaited, deleted)
     },
     // Not awaited: the refusal reaches the form at once, and the re-read follows it.
-    onError: (error) => {
+    onError: (error, input) => {
       if (error instanceof ApiError && (error.code === 'not_found' || error.code === 'conflict')) {
-        void refresh(affectedBy(source).awaited)
+        void refresh(affectedBy(source).awaited, deletes?.(input))
       }
     },
   })
 }
+
+/** A delete of `source` by id: the reads keyed by that id are not refreshed — see `useWriteTo`. */
+const useDeleteOf = (source: Source, remove: (id: string) => Promise<unknown>) =>
+  useWriteTo(source, remove, (id: string) => id)
 
 export const useCreateExercise = () =>
   useWriteTo('exercise', async (input: ExerciseInput) => await api.exercises.create(input))
@@ -177,11 +183,7 @@ export const useUpdateExercise = (id: string) =>
   useWriteTo('exercise', async (input: ExerciseUpdate) => await api.exercises.update(id, input))
 
 export const useDeleteExercise = () =>
-  useWriteTo(
-    'exercise',
-    async (id: string) => await api.exercises.remove(id),
-    (id) => [keys.exercise(id), keys.exerciseHistory(id)],
-  )
+  useDeleteOf('exercise', async (id) => await api.exercises.remove(id))
 
 export const useFavouriteExercise = () =>
   useWriteTo(
@@ -202,11 +204,7 @@ export const useReplacePlan = (id: string) =>
   )
 
 export const useDeleteWorkout = () =>
-  useWriteTo(
-    'workout',
-    async (id: string) => await api.workouts.remove(id),
-    (id) => [keys.workout(id), keys.progression(id)],
-  )
+  useDeleteOf('workout', async (id) => await api.workouts.remove(id))
 
 export const useFavouriteWorkout = () =>
   useWriteTo(

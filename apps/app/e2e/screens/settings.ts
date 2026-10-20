@@ -28,4 +28,18 @@ export const settings = (page: Page) => ({
     await page.waitFor('token-list')
     return (await page.text('token-list')) ?? ''
   },
+  /** Revokes the token named `name`, asked twice, and waits until it is listed no more. */
+  revokeToken: async (name: string): Promise<void> => {
+    const row = await page.evaluate(
+      `[...document.querySelectorAll('[data-testid^="token-row-"]')].find((e) => e.innerText.split('\\n')[0].trim() === ${JSON.stringify(name)})?.dataset.testid ?? null`,
+    )
+    if (typeof row !== 'string') throw new Error(`No token named ${name} is listed`)
+    const revoke = row.replace('token-row-', 'token-revoke-')
+    await page.click(`[data-testid="${revoke}"]`)
+    await page.click(`[data-testid="${revoke}-confirm"]`)
+    await page.until(
+      async () => await page.exists(row),
+      (listed) => !listed,
+    )
+  },
 })

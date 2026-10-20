@@ -1,3 +1,4 @@
+import type { OwnableScope } from '@cedo/contract'
 import type { Page } from '../harness.ts'
 import { closed } from './form.ts'
 import { picker } from './picker.ts'
@@ -74,8 +75,16 @@ export const workouts = (page: Page) => {
         (open) => !open,
       )
     },
-    /** The plans listed under a scope — `all`, `mine`, or `favourites` (shown as Pinned). */
-    listed: async (scope: string): Promise<string[]> => {
+    /** Asks to delete it, and returns what it says beside Delete it was refused for. */
+    deleteRefused: async (): Promise<string | null> => {
+      await page.click('[data-testid="workout-delete"]')
+      await page.click('[data-testid="workout-delete-confirm"]')
+      await page.waitFor('workout-delete-error')
+      await page.waitFor('workout-delete')
+      return await page.text('workout-delete-error')
+    },
+    /** The plans listed under a scope — `favourites` is shown as Pinned. */
+    listed: async (scope: OwnableScope): Promise<string[]> => {
       await page.goto('/workouts')
       await page.click(`[data-testid="workout-scope-${scope}"]`)
       const names = await page.until(

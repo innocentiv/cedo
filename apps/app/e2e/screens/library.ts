@@ -1,3 +1,4 @@
+import type { OwnableScope } from '@cedo/contract'
 import type { Page } from '../harness.ts'
 import { closed } from './form.ts'
 
@@ -58,12 +59,16 @@ export const exercise = (page: Page) => ({
       (shown) => !shown,
     )
   },
-  /** Asks to delete it, and returns what the screen says it was refused for. */
+  /**
+   * Asks to delete it, and returns what it says beside Delete it was refused for — once it asks
+   * again: armed after a refusal, the next tap would send the same delete unasked.
+   */
   deleteRefused: async (): Promise<string | null> => {
     await page.click('[data-testid="exercise-delete"]')
     await page.click('[data-testid="exercise-delete-confirm"]')
-    await page.waitFor('exercise-detail-error')
-    return await page.text('exercise-detail-error')
+    await page.waitFor('exercise-delete-error')
+    await page.waitFor('exercise-delete')
+    return await page.text('exercise-delete-error')
   },
   /** Copies a shared exercise; lands in the editor for the copy. */
   duplicate: async () => {
@@ -114,8 +119,8 @@ export const library = (page: Page) => {
       await page.fill('exercise-search', name)
       return await openRow()
     },
-    /** Filters the list by scope: `all`, `mine` or `favourites`. */
-    scope: async (scope: string): Promise<void> => {
+    /** Filters the list by scope. */
+    scope: async (scope: OwnableScope): Promise<void> => {
       await page.goto('/exercises')
       await page.waitFor('exercise-scope')
       await page.click(`[data-testid="exercise-scope-${scope}"]`)

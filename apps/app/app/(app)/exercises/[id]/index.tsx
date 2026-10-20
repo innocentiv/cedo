@@ -12,6 +12,7 @@ import {
   Loaded,
   type QueryLike,
   NavButton,
+  PinButton,
   Screen,
   Spinner,
   Stack,
@@ -82,7 +83,10 @@ export default function ExerciseDetail(): React.JSX.Element {
   const duplicate = useDuplicateExercise()
   const remove = useDeleteExercise()
   const goBack = useGoBack('/exercises')
+  // One submission each, so a refusal shows beside what was refused, and only that is busy.
   const { submit, busy, error: copyError } = useSubmit()
+  const pinning = useSubmit()
+  const deleting = useSubmit()
 
   if (error !== null) {
     return (
@@ -132,11 +136,12 @@ export default function ExerciseDetail(): React.JSX.Element {
     >
       <Stack gap="md">
         <FormError message={copyError} testID="exercise-detail-error" />
-        <Button
-          title={data.isFavourite ? 'Pinned ★' : 'Pin'}
-          variant="secondary"
-          onPress={() => {
-            void submit(async () => {
+        <PinButton
+          pinned={data.isFavourite}
+          busy={pinning.busy}
+          error={pinning.error}
+          onToggle={() => {
+            void pinning.submit(async () => {
               await favourite.mutateAsync({ id: data.id, on: !data.isFavourite })
             })
           }}
@@ -150,12 +155,13 @@ export default function ExerciseDetail(): React.JSX.Element {
         <RecentHistory query={history} tracking={data.tracking} />
 
         {data.canEdit ? (
-          // Refused while a plan or a logged set still uses it: the screen says so, above.
+          // Refused while a plan or a logged set still uses it, and says so beside the button.
           <ConfirmButton
             title="Delete exercise"
-            busy={busy}
-            onConfirm={() => {
-              void submit(async () => {
+            busy={deleting.busy}
+            error={deleting.error}
+            onConfirm={async () => {
+              await deleting.submit(async () => {
                 await remove.mutateAsync(data.id)
                 goBack()
               })

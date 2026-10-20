@@ -811,13 +811,46 @@ test(
       await app.session.entry(0).log()
       await app.session.finish()
 
+      // Today's history is read, and stays cached in its tab, before the plan is deleted.
       await page.goto('/workouts')
+      await app.nav.tab('today')
+      expect(await app.today.history()).toEqual(['Day 1'])
+      await app.nav.tab('workouts')
       await app.workouts.openFirst()
       await app.workouts.delete()
 
+      // Its day is gone with it, so the session reads as one without a plan — but it is there,
+      // in the history already on screen, refreshed long before it would have gone stale.
+      await app.nav.tab('today')
+      await page.until(
+        app.today.history,
+        (titles) => titles.join() === 'Ad-hoc session',
+        BEFORE_STALE_MS,
+      )
       expect(await app.workouts.listed('all')).toEqual([])
-      // Its day is gone with it, so the session reads as one without a plan — but it is there.
-      expect(await app.today.history()).toEqual(['Ad-hoc session'])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/** Deleted on another device while this one still showed it: said beside Delete, not thrown. */
+test(
+  'deleting a workout already deleted elsewhere says so',
+  async () => {
+    await withApp('delete-workout-gone', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('gone'))
+      await app.planEditor.create()
+      await app.planEditor.save()
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+
+      const mine = await page.client()
+      const [plan] = (await mine.workouts.list({})).items
+      if (plan === undefined) throw new Error('The plan was not listed')
+      await mine.workouts.remove(plan.id)
+
+      expect(await app.workouts.deleteRefused()).toContain('No such workout')
     })
   },
   E2E_TIMEOUT_MS,
@@ -862,10 +895,28 @@ test(
       await app.planEditor.save()
       expect(await app.workouts.listed('favourites')).toEqual([])
 
-      await app.workouts.listed('all')
+      await page.goto('/workouts')
       await app.workouts.openFirst()
       await app.workouts.pin()
       expect(await app.workouts.listed('favourites')).toEqual(['Push Day'])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/** A revoked token cannot be brought back, so Revoke asks twice — and then it is gone. */
+test(
+  'a revoked token is listed no more',
+  async () => {
+    await withApp('revoke-token', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('rev'))
+      await app.settings.createToken('laptop')
+      await app.settings.createToken('phone')
+      await app.settings.revokeToken('laptop')
+      const listed = await app.settings.tokenListText()
+      expect(listed).toContain('phone')
+      expect(listed).not.toContain('laptop')
     })
   },
   E2E_TIMEOUT_MS,

@@ -3,6 +3,7 @@ import type { PersonalAccessToken } from '@cedo/contract'
 import {
   Button,
   Card,
+  ConfirmButton,
   Empty,
   Field,
   FormError,
@@ -32,31 +33,48 @@ function Secret({ token }: { readonly token: string }): React.JSX.Element {
   )
 }
 
+/** A token, and Revoke — asked twice: a client using it loses access, and nothing gives it back. */
+function TokenRow({ token }: { readonly token: PersonalAccessToken }): React.JSX.Element {
+  const revoke = useRevokeToken()
+  // Through `submit`, so a failed revoke SAYS so. Believing a credential is dead when it is still
+  // live is the one mistake this screen must not let someone make.
+  const { submit, busy, error } = useSubmit()
+  return (
+    <Stack gap="xs">
+      <ListRow
+        title={token.name}
+        subtitle={
+          token.lastUsedAt === null
+            ? 'Never used'
+            : `Last used ${new Date(token.lastUsedAt).toLocaleDateString()}`
+        }
+        testID={`token-row-${token.id}`}
+      />
+      <ConfirmButton
+        title="Revoke"
+        busy={busy}
+        error={error}
+        onConfirm={async () => {
+          await submit(async () => {
+            await revoke.mutateAsync(token.id)
+          })
+        }}
+        testID={`token-revoke-${token.id}`}
+      />
+    </Stack>
+  )
+}
+
 function TokenList({
   tokens,
-  onRevoke,
 }: {
   readonly tokens: readonly PersonalAccessToken[]
-  readonly onRevoke: (id: string) => void
 }): React.JSX.Element {
   if (tokens.length === 0) return <Empty title="No tokens yet" testID="tokens-empty" />
   return (
     <Stack gap="sm" testID="token-list">
       {tokens.map((token) => (
-        <ListRow
-          key={token.id}
-          title={token.name}
-          subtitle={
-            token.lastUsedAt === null
-              ? 'Never used'
-              : `Last used ${new Date(token.lastUsedAt).toLocaleDateString()}`
-          }
-          trailing="Revoke"
-          onPress={() => {
-            onRevoke(token.id)
-          }}
-          testID={`token-row-${token.id}`}
-        />
+        <TokenRow key={token.id} token={token} />
       ))}
     </Stack>
   )
@@ -65,7 +83,6 @@ function TokenList({
 export default function Tokens(): React.JSX.Element {
   const tokens = useTokens()
   const create = useCreateToken()
-  const revoke = useRevokeToken()
   const { submit, busy, error } = useSubmit()
   const [name, setName] = useState('')
   const [secret, setSecret] = useState<string | null>(null)
@@ -88,18 +105,7 @@ export default function Tokens(): React.JSX.Element {
       {secret === null ? null : <Secret token={secret} />}
 
       <Loaded query={tokens} testID="tokens">
-        {(data) => (
-          <TokenList
-            tokens={data}
-            onRevoke={(id) => {
-              // Through `submit`, so a failed revoke SAYS so. Believing a credential is dead when
-              // it is still live is the one mistake this screen must not let someone make.
-              void submit(async () => {
-                await revoke.mutateAsync(id)
-              })
-            }}
-          />
-        )}
+        {(data) => <TokenList tokens={data} />}
       </Loaded>
 
       <Field label="New token">

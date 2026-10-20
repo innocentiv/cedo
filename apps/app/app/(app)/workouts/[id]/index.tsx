@@ -10,6 +10,7 @@ import {
   ErrorNotice,
   Loaded,
   NavButton,
+  PinButton,
   Screen,
   Spinner,
   Stack,
@@ -33,7 +34,11 @@ export default function WorkoutDetail(): React.JSX.Element {
   const favourite = useFavouriteWorkout()
   const remove = useDeleteWorkout()
   const goBack = useGoBack('/workouts')
+  // One submission each: pinning must not show the delete as busy, nor a refused delete as a
+  // refused start.
   const { submit, busy, error: startError } = useSubmit()
+  const pinning = useSubmit()
+  const deleting = useSubmit()
   // One session is in progress at a time: while one is, the plan offers it back rather than a start
   // the server would refuse — and, until it is known whether one is, offers neither.
   const current = useSessions({ inProgress: true, limit: 1 })
@@ -75,11 +80,12 @@ export default function WorkoutDetail(): React.JSX.Element {
       }
     >
       {startError === null ? null : <Text tone="danger">{startError}</Text>}
-      <Button
-        title={data.isFavourite ? 'Pinned ★' : 'Pin'}
-        variant="secondary"
-        onPress={() => {
-          void submit(async () => {
+      <PinButton
+        pinned={data.isFavourite}
+        busy={pinning.busy}
+        error={pinning.error}
+        onToggle={() => {
+          void pinning.submit(async () => {
             await favourite.mutateAsync({ id: data.id, on: !data.isFavourite })
           })
         }}
@@ -102,9 +108,10 @@ export default function WorkoutDetail(): React.JSX.Element {
         // The sessions trained from it stay in history, no longer pointing at a plan.
         <ConfirmButton
           title="Delete workout"
-          busy={busy}
-          onConfirm={() => {
-            void submit(async () => {
+          busy={deleting.busy}
+          error={deleting.error}
+          onConfirm={async () => {
+            await deleting.submit(async () => {
               await remove.mutateAsync(data.id)
               goBack()
             })
