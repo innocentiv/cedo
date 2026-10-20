@@ -1,10 +1,11 @@
 import { and, count, eq, inArray, or } from 'drizzle-orm'
-import type {
-  Group,
-  GroupAddMember,
-  GroupCreate,
-  GroupMember,
-  GroupMembership,
+import {
+  DEFAULT_GROUP_SLUG,
+  type Group,
+  type GroupAddMember,
+  type GroupCreate,
+  type GroupMember,
+  type GroupMembership,
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupMembers, groups, users } from '../../db/schema.ts'
@@ -33,6 +34,18 @@ export function slugify(name: string): string {
   const suffix = crypto.randomUUID().slice(0, 8)
   return base === '' ? `group-${suffix}` : `${base}-${suffix}`
 }
+
+/**
+ * The starter library keeps every account: each reads it from registration on, and a shared group's
+ * plans may use its exercises for that reason (docs/03-domain-model.md) — someone gone from it
+ * would be left with plans they cannot read.
+ */
+const isStarterLibrary = (group: typeof groups.$inferSelect): boolean =>
+  group.slug === DEFAULT_GROUP_SLUG
+
+/** Whose members change through the API at all: a shared group, other than the starter library. */
+const takesMembers = (group: typeof groups.$inferSelect): boolean =>
+  group.kind === 'shared' && !isStarterLibrary(group)
 
 const toGroup = (row: typeof groups.$inferSelect): Group => ({
   id: row.id,
@@ -85,6 +98,9 @@ export async function list(caller: Caller): Promise<GroupMembership[]> {
       createdAt: group.createdAt,
       role: r.role,
       memberCount: memberCount(r.group.id, r.role),
+      canManage: r.role === 'editor' && takesMembers(r.group),
+      canLeave:
+        takesMembers(r.group) && !(r.role === 'editor' && countOf(r.group.id, 'editor') === 1),
     }
   })
 }
@@ -101,7 +117,14 @@ export async function create(caller: Caller, input: GroupCreate): Promise<GroupM
     await tx
       .insert(groupMembers)
       .values({ groupId: created.id, userId: caller.userId, role: 'editor' })
-    return { ...toGroup(created), role: 'editor' as const, memberCount: 1 }
+    // Its only editor: it manages the group, and cannot leave it until it has another.
+    return {
+      ...toGroup(created),
+      role: 'editor' as const,
+      memberCount: 1,
+      canManage: true,
+      canLeave: false,
+    }
   })
 }
 
@@ -197,8 +220,21 @@ export async function addMember(
   }
 }
 
+/**
+ * An editor removes a member; any member removes themselves — leaving. Removing anyone else as a
+ * reader is refused as if there were no group, as adding is.
+ */
 export async function removeMember(caller: Caller, groupId: string, userId: string): Promise<void> {
-  if (!caller.editorGroupIds.includes(groupId)) throw notFound('group')
+  const leaving = userId === caller.userId
+  if (!(leaving ? caller.groupIds : caller.editorGroupIds).includes(groupId)) {
+    throw notFound('group')
+  }
+
+  const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1)
+  if (group === undefined) throw notFound('group')
+  if (isStarterLibrary(group)) {
+    throw conflict('Nobody leaves the starter library: every account reads it, and plans use it')
+  }
 
   /**
    * The count and the delete must be atomic. Two editors removing each other simultaneously would

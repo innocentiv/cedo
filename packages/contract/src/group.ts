@@ -28,10 +28,21 @@ export const Group = z.object({
 })
 export type Group = z.output<typeof Group>
 
-/** A group as seen by the current user, carrying their own role in it. */
+/**
+ * A group as seen by the current user, carrying their own role in it, and what they may do with it
+ * — said by the server, as `canEdit` is for what they own, so a client offers only what will be
+ * accepted and holds none of the rules.
+ */
 export const GroupMembership = Group.extend({
   role: GroupRole,
   memberCount: z.int().nonnegative(),
+  /** Add members and remove them: an editor of a shared group other than the starter library. */
+  canManage: z.boolean(),
+  /**
+   * Remove themselves: any member of a shared group other than the starter library, unless they
+   * are its last editor.
+   */
+  canLeave: z.boolean(),
 })
 export type GroupMembership = z.output<typeof GroupMembership>
 

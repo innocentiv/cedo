@@ -66,8 +66,15 @@ The seeded `cedo` group (`kind: 'shared'`) carries the starter library; every us
 
 **Who can see a group's members:** an editor sees all of them; a reader sees the editors and
 themselves. Because everyone reads the library, "any member sees every member" made `GET
-/groups/:id/members` a list of every account on the instance. `memberCount` is still shown to every
-member — it is a number, not an identity.
+/groups/:id/members` a list of every account on the instance. `memberCount` counts the same members
+the caller can list.
+
+**Who changes a group's members:** an editor adds and removes them; any member removes themselves —
+leaving, on the same route — unless they are its last editor, since a group with no editor cannot
+be administered again. A personal group takes no members. The starter library keeps every account:
+the rule below lets a shared group's plans use its exercises because every account reads it, so
+nobody leaves it, and no curator removes anyone from it. `GroupMembership` carries `canManage` and
+`canLeave`, so a client offers only what the server will accept.
 
 ### The ACL invariant
 

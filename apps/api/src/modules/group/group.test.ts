@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { z } from 'zod'
 import { ApiError, GroupMember, GroupMembership } from '@cedo/contract'
+import { db } from '../../db/client.ts'
+import { groupMembers } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
@@ -287,5 +289,118 @@ describe('membership', () => {
 
     await alice.wire(`/groups/${squad.id}/members/${bob.userId}`, { method: 'DELETE' })
     expect((await bob.wire(`/groups/${squad.id}/members`)).status).toBe(404)
+  })
+})
+
+const addMember = (by: TestUser, groupId: string, username: string, role: 'editor' | 'reader') =>
+  by.wire(`/groups/${groupId}/members`, {
+    method: 'POST',
+    body: JSON.stringify({ username, role }),
+  })
+
+const removeMember = (by: TestUser, groupId: string, userId: string) =>
+  by.wire(`/groups/${groupId}/members/${userId}`, { method: 'DELETE' })
+
+const groupsOf = async (user: TestUser) =>
+  expectContract(z.array(GroupMembership), (await user.wire('/groups')).body)
+
+/** Editor of the seeded starter library: a curator. See docs/07-mcp.md. */
+async function promote(user: TestUser): Promise<void> {
+  await db
+    .insert(groupMembers)
+    .values({ groupId: h.groupId, userId: user.userId, role: 'editor' })
+    .onConflictDoUpdate({
+      target: [groupMembers.groupId, groupMembers.userId],
+      set: { role: 'editor' },
+    })
+}
+
+describe('leaving', () => {
+  /** Leaving is removing yourself — on the same route, and not only an editor's to do. */
+  test('a reader leaves a group, and it is theirs no more', async () => {
+    const squad = expectContract(GroupMembership, (await createGroup(alice, 'Squad')).body)
+    await addMember(alice, squad.id, 'bob', 'reader')
+
+    expect((await removeMember(bob, squad.id, bob.userId)).status).toBe(200)
+    expect((await groupsOf(bob)).map((g) => g.id)).not.toContain(squad.id)
+    expect((await bob.wire(`/groups/${squad.id}/members`)).status).toBe(404)
+  })
+
+  test('an editor leaves once another editor exists', async () => {
+    const squad = expectContract(GroupMembership, (await createGroup(alice, 'Squad')).body)
+    await addMember(alice, squad.id, 'bob', 'editor')
+    expect((await removeMember(bob, squad.id, bob.userId)).status).toBe(200)
+  })
+
+  test('the last editor cannot leave', async () => {
+    const squad = expectContract(GroupMembership, (await createGroup(alice, 'Squad')).body)
+    await addMember(alice, squad.id, 'bob', 'reader')
+    const res = await removeMember(alice, squad.id, alice.userId)
+    expect(res.status).toBe(409)
+    expect(JSON.stringify(res.body)).toContain('at least one editor')
+  })
+
+  /** Leaving is yours alone: a reader removing anyone else is refused as if there were no group. */
+  test('a reader cannot remove another member', async () => {
+    const squad = expectContract(GroupMembership, (await createGroup(alice, 'Squad')).body)
+    await addMember(alice, squad.id, 'bob', 'reader')
+    const carol = await h.as('carol')
+    await addMember(alice, squad.id, carol.username, 'reader')
+
+    expect((await removeMember(bob, squad.id, carol.userId)).status).toBe(404)
+    expect((await removeMember(bob, squad.id, alice.userId)).status).toBe(404)
+    expect((await groupsOf(carol)).map((g) => g.id)).toContain(squad.id)
+  })
+
+  /**
+   * Every account reads the starter library from registration on, and a shared group's plans may
+   * use any of its exercises for that reason (docs/03-domain-model.md). A member gone from it would
+   * be left with plans they cannot read — by their own hand, or a curator's.
+   */
+  test('nobody leaves the starter library, or is removed from it', async () => {
+    const left = await removeMember(bob, h.groupId, bob.userId)
+    expect(left.status).toBe(409)
+    expect(JSON.stringify(left.body)).toContain('starter library')
+
+    await promote(alice)
+    expect((await removeMember(alice, h.groupId, bob.userId)).status).toBe(409)
+    expect((await groupsOf(bob)).map((g) => g.id)).toContain(h.groupId)
+  })
+})
+
+/**
+ * What a member may do with each group, said by the server — as `canEdit` is for what they own — so
+ * the app offers only what will be accepted, and holds none of the rules.
+ */
+describe('what a member may do with a group', () => {
+  const mayOf = async (user: TestUser, groupId: string) => {
+    const group = (await groupsOf(user)).find((g) => g.id === groupId)
+    return { canManage: group?.canManage, canLeave: group?.canLeave }
+  }
+
+  test('their personal group: neither managed nor left', async () => {
+    expect(await mayOf(alice, alice.personalGroupId)).toEqual({
+      canManage: false,
+      canLeave: false,
+    })
+  })
+
+  test('the starter library: neither managed nor left, by a reader or a curator', async () => {
+    expect(await mayOf(bob, h.groupId)).toEqual({ canManage: false, canLeave: false })
+    await promote(alice)
+    expect(await mayOf(alice, h.groupId)).toEqual({ canManage: false, canLeave: false })
+  })
+
+  test('a shared group: its editors manage it, and any member but the last editor leaves', async () => {
+    const squad = expectContract(GroupMembership, (await createGroup(alice, 'Squad')).body)
+    expect(squad).toMatchObject({ canManage: true, canLeave: false })
+
+    await addMember(alice, squad.id, 'bob', 'reader')
+    expect(await mayOf(alice, squad.id)).toEqual({ canManage: true, canLeave: false })
+    expect(await mayOf(bob, squad.id)).toEqual({ canManage: false, canLeave: true })
+
+    const carol = await h.as('carol')
+    await addMember(alice, squad.id, carol.username, 'editor')
+    expect(await mayOf(alice, squad.id)).toEqual({ canManage: true, canLeave: true })
   })
 })

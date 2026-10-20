@@ -103,8 +103,9 @@ CEDO_ADMIN_USERNAME=valerio
 ```
 
 The seed promotes that account to editor on every boot. Register the account first, then restart —
-the server logs a clear warning if the name does not exist yet. Additional curators are added
-through the ordinary group-members endpoint.
+the server logs a clear warning if the name does not exist yet. It is the only way to make a
+curator: every account is already a reader of the library, there is no role change, and its members
+do not change through the API at all (`docs/03-domain-model.md`).
 
 **Why this matters:** without it, nobody can edit the shared library at all. The system account owns
 those rows but is not a member of the group, and registration only ever grants `reader`.
