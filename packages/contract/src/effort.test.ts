@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { formatEffort } from './effort.ts'
+import { type Effort, formatEffort, topSet } from './effort.ts'
 
 const none = { reps: null, weightG: null, durationS: null, distanceMm: null }
 
@@ -70,5 +70,55 @@ describe('in the reader’s unit', () => {
     expect(formatEffort({ ...none, reps: 8, weightG: 60_000 }, 'weight_reps', 'kg')).toBe(
       '8 × 60 kg',
     )
+  })
+})
+
+/** A session's best working set, as its tracking mode ranks efforts. See `topSet`. */
+describe('the top set', () => {
+  const set = (effort: Partial<Effort>): Effort => ({ ...none, ...effort })
+
+  test('a lift: the heaviest weight, then the most reps at it', () => {
+    const sets = [
+      set({ reps: 10, weightG: 60_000 }),
+      set({ reps: 5, weightG: 80_000 }),
+      set({ reps: 6, weightG: 80_000 }),
+    ]
+    expect(topSet(sets, 'weight_reps')).toEqual(set({ reps: 6, weightG: 80_000 }))
+  })
+
+  test('bodyweight: the most added weight — none is nothing added — then the most reps', () => {
+    const sets = [
+      set({ reps: 12 }),
+      set({ reps: 6, weightG: 10_000 }),
+      set({ reps: 8, weightG: 0 }),
+    ]
+    expect(topSet(sets, 'bodyweight_reps')).toEqual(set({ reps: 6, weightG: 10_000 }))
+    expect(topSet([set({ reps: 12 }), set({ reps: 8, weightG: 0 })], 'bodyweight_reps')).toEqual(
+      set({ reps: 12 }),
+    )
+  })
+
+  test('a hold: the longest', () => {
+    expect(topSet([set({ durationS: 45 }), set({ durationS: 60 })], 'duration')).toEqual(
+      set({ durationS: 60 }),
+    )
+  })
+
+  test('a run: the farthest, then the fastest over it', () => {
+    const sets = [
+      set({ distanceMm: 5_000_000, durationS: 1500 }),
+      set({ distanceMm: 5_000_000, durationS: 1400 }),
+      set({ distanceMm: 3_000_000, durationS: 600 }),
+    ]
+    expect(topSet(sets, 'distance_duration')).toEqual(
+      set({ distanceMm: 5_000_000, durationS: 1400 }),
+    )
+  })
+
+  test('a dimension not measured counts as least, and no sets have no top set', () => {
+    expect(topSet([set({ reps: 8 }), set({ reps: 5, weightG: 40_000 })], 'weight_reps')).toEqual(
+      set({ reps: 5, weightG: 40_000 }),
+    )
+    expect(topSet([], 'weight_reps')).toBeUndefined()
   })
 })

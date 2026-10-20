@@ -1,4 +1,4 @@
-import { DIMENSION_FIELDS, type Effort, type LoggedExercise } from '@cedo/contract'
+import { DIMENSION_FIELDS, type Effort, type LoggedExercise, topSet } from '@cedo/contract'
 import type { TrainingReview } from './service.ts'
 
 /**
@@ -15,37 +15,48 @@ export interface WorkingSet {
   readonly effort: Effort
 }
 
-/** An exercise is judged on at least this many sessions of it. */
+/** A stall is at least this many sessions running with the same top set. */
 const AT_LEAST_SESSIONS = 3
+
+/**
+ * The most recent sessions of an exercise read — and so the longest run a stall reports. Capped in
+ * SQL by the loader, where the rows are selected, so the read does not grow with history.
+ */
+export const STALL_DEPTH = 10
 
 /** The effort as a value two sets can be compared by: every dimension, so none can be missed. */
 const keyOf = (effort: Effort): string =>
   JSON.stringify(Object.values(DIMENSION_FIELDS).map((field) => effort[field.key]))
 
 /**
- * Stalled: logged in at least three sessions, every working set the same effort. Judged on what
- * was LOGGED, not on a prescription: a plan can say anything, the logs say what happened.
+ * Stalled: the exercise's latest sessions, three or more running, share one top set — its best
+ * working set, as its tracking mode ranks efforts (`topSet`). The top set, not every set: a rep
+ * missed on a back-off set is not progress, and used to hide the stall. Judged on what was LOGGED,
+ * not on a prescription — a plan can say anything — so an exercise logged without one can stall
+ * too. `sets` arrive newest session first, at most `STALL_DEPTH` sessions of each exercise.
  */
 export function stalledOf(sets: readonly WorkingSet[]): TrainingReview['stalled'] {
   const byExercise = new Map<
     string,
-    { exercise: LoggedExercise; sessions: Set<string>; efforts: Map<string, Effort> }
+    { exercise: LoggedExercise; sessions: Map<string, Effort[]> }
   >()
   for (const set of sets) {
     const seen = byExercise.get(set.exerciseId) ?? {
       exercise: set.exercise,
-      sessions: new Set<string>(),
-      efforts: new Map<string, Effort>(),
+      sessions: new Map<string, Effort[]>(),
     }
-    seen.sessions.add(set.sessionId)
-    seen.efforts.set(keyOf(set.effort), set.effort)
+    seen.sessions.set(set.sessionId, [...(seen.sessions.get(set.sessionId) ?? []), set.effort])
     byExercise.set(set.exerciseId, seen)
   }
   return [...byExercise.values()]
-    .flatMap(({ exercise, sessions, efforts }) => {
-      const [effort] = efforts.values()
-      return sessions.size >= AT_LEAST_SESSIONS && efforts.size === 1 && effort !== undefined
-        ? [{ exercise, sessions: sessions.size, effort }]
+    .flatMap(({ exercise, sessions }) => {
+      const tops = [...sessions.values()].map((efforts) => topSet(efforts, exercise.tracking))
+      const [latest] = tops
+      if (latest === undefined) return []
+      const run = tops.findIndex((top) => top === undefined || keyOf(top) !== keyOf(latest))
+      const sessionsRunning = run === -1 ? tops.length : run
+      return sessionsRunning >= AT_LEAST_SESSIONS
+        ? [{ exercise, sessions: sessionsRunning, effort: latest }]
         : []
     })
     .toSorted((a, b) => a.exercise.name.localeCompare(b.exercise.name))

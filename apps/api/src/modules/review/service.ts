@@ -11,7 +11,7 @@ import {
 import type { Caller } from '../../plugins/auth.ts'
 import { adherenceOf } from './adherence.ts'
 import { muscleWorkOf } from './muscle-work.ts'
-import { stalledOf } from './stalled.ts'
+import { STALL_DEPTH, stalledOf } from './stalled.ts'
 
 /**
  * A READ MODEL for coaching, not new domain rules.
@@ -54,12 +54,13 @@ export interface TrainingReview {
     readonly omitted: number
   }
   /**
-   * Exercises whose logged working sets have not moved. The signal for "change something". Each
-   * carries the one effort it keeps repeating, and how its exercise is measured — so it reads as
+   * Exercises that have stalled: the signal for "change something". See GLOSSARY.md, "Stalled".
+   * Each carries the top set it keeps repeating, and how its exercise is measured — so it reads as
    * the app shows it: `6 × bodyweight +20 kg`, not a 20 kg lift; `1:00` for a plank, not nothing.
    */
   readonly stalled: {
     readonly exercise: LoggedExercise
+    /** How many sessions running, the latest included, have shared that top set — at most ten. */
     readonly sessions: number
     readonly effort: Effort
   }[]
@@ -193,29 +194,12 @@ async function workBetween(caller: Caller, from: Date, to: Date) {
  * whose name they cannot read. Omitted, matching `progression/service.ts`. Judged in ./stalled.ts.
  */
 async function stalled(caller: Caller, since: Date): Promise<TrainingReview['stalled']> {
-  const exercises = visibleExercises(caller)
+  const ranked = latestSessions(caller, since)
   const rows = await db
-    .select({
-      exerciseId: exercises.id,
-      name: exercises.name,
-      tracking: exercises.tracking,
-      sessionId: setLogs.sessionId,
-      reps: setLogs.reps,
-      weightG: setLogs.weightG,
-      durationS: setLogs.durationS,
-      distanceMm: setLogs.distanceMm,
-    })
-    .from(setLogs)
-    .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
-    .innerJoin(exercises, eq(exercises.id, setLogs.exerciseId))
-    .where(
-      and(
-        eq(workoutSessions.userId, caller.userId),
-        eq(setLogs.isWarmup, false),
-        gte(workoutSessions.startedAt, since),
-      ),
-    )
-    .orderBy(desc(workoutSessions.startedAt))
+    .select()
+    .from(ranked)
+    .where(sql`${ranked.rank} <= ${STALL_DEPTH}`)
+    .orderBy(desc(ranked.startedAt))
   return stalledOf(
     rows.map((r) => ({
       exerciseId: r.exerciseId,
@@ -229,4 +213,39 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
       },
     })),
   )
+}
+
+/**
+ * The caller's working sets in the window, each ranked by how recent its session is among that
+ * exercise's — so the loader keeps only the latest `STALL_DEPTH`, capped in SQL with a window
+ * function as progression's load is: two years of a main lift reads ten sessions, not all.
+ */
+function latestSessions(caller: Caller, since: Date) {
+  const exercises = visibleExercises(caller)
+  return db
+    .select({
+      exerciseId: exercises.id,
+      name: exercises.name,
+      tracking: exercises.tracking,
+      sessionId: setLogs.sessionId,
+      startedAt: workoutSessions.startedAt,
+      reps: setLogs.reps,
+      weightG: setLogs.weightG,
+      durationS: setLogs.durationS,
+      distanceMm: setLogs.distanceMm,
+      rank: sql<number>`dense_rank() over (partition by ${exercises.id} order by ${workoutSessions.startedAt} desc)`.as(
+        'rank',
+      ),
+    })
+    .from(setLogs)
+    .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
+    .innerJoin(exercises, eq(exercises.id, setLogs.exerciseId))
+    .where(
+      and(
+        eq(workoutSessions.userId, caller.userId),
+        eq(setLogs.isWarmup, false),
+        gte(workoutSessions.startedAt, since),
+      ),
+    )
+    .as('ranked')
 }

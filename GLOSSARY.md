@@ -80,6 +80,17 @@ A muscle that got half or less of the working sets per muscle it got in the prec
 same length, having had at least two.
 _Avoid_: dropped muscle, abandoned muscle
 
+**Top set**:
+A session's best working set of one exercise, as its tracking mode ranks efforts: the heaviest
+lift, then the most reps at it; the most weight added to bodyweight; the longest hold; the farthest
+run, then the fastest over it.
+_Avoid_: best set, max set
+
+**Stalled**:
+An exercise whose latest sessions — three or more running — share one top set: what was logged has
+stopped moving. Judged on the logs, not on a plan, so an exercise logged without one can stall too.
+_Avoid_: plateaued, stuck
+
 **Weight lifted**:
 Weight × reps over working sets — what a session lifted. Work that carries no load (a plank, a run,
 an unweighted pull-up) adds nothing to it, so it is never the measure of whether a muscle trained.

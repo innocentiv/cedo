@@ -52,3 +52,42 @@ function travel({ distanceMm, durationS }: Effort): string | null {
   const distance = formatDistance(distanceMm)
   return durationS === null ? distance : `${distance} in ${formatDuration(durationS)}`
 }
+
+/**
+ * A session's best working set, as its tracking mode ranks efforts — what "the same top set" in a
+ * stall compares, and what a progress chart would plot:
+ *
+ * - a lift: the heaviest weight, then the most reps at it;
+ * - bodyweight: the most added weight (none is nothing added), then the most reps;
+ * - a hold: the longest;
+ * - a run: the farthest, then the fastest over it.
+ *
+ * A dimension not measured counts as least. Of equal sets, the first. Undefined for no sets.
+ */
+export function topSet(sets: readonly Effort[], tracking: TrackingMode): Effort | undefined {
+  const rank = RANKS[tracking]
+  let best: Effort | undefined
+  for (const set of sets) {
+    if (best === undefined || outranks(rank(set), rank(best))) best = set
+  }
+  return best
+}
+
+const LEAST = Number.NEGATIVE_INFINITY
+
+/** Higher is better, compared dimension by dimension in order. */
+const RANKS: Readonly<Record<TrackingMode, (effort: Effort) => readonly number[]>> = {
+  weight_reps: (e) => [e.weightG ?? LEAST, e.reps ?? LEAST],
+  bodyweight_reps: (e) => [e.weightG ?? 0, e.reps ?? LEAST],
+  duration: (e) => [e.durationS ?? LEAST],
+  // Faster is a shorter time: negated, so higher is better here too; no time at all ranks last.
+  distance_duration: (e) => [e.distanceMm ?? LEAST, e.durationS === null ? LEAST : -e.durationS],
+}
+
+function outranks(a: readonly number[], b: readonly number[]): boolean {
+  for (const [i, value] of a.entries()) {
+    const other = b[i] ?? LEAST
+    if (value !== other) return value > other
+  }
+  return false
+}

@@ -136,10 +136,13 @@ function describeTarget(
   return effort === '—' ? 'no target set' : effort
 }
 
-/** In its exercise's own terms, like every other effort here: no unit arithmetic of its own. */
+/**
+ * `Bench Press: 4 sessions at 8 × 60 kg` — the top set those sessions share, in its exercise's own
+ * terms, like every other effort here: no unit arithmetic of its own.
+ */
 function stalledLine(s: TrainingReview['stalled'][number], unit: WeightUnit): string {
   const effort = formatEffort(s.effort, s.exercise.tracking, unit)
-  return `${s.exercise.name}: ${s.sessions} sessions${effort === '—' ? '' : `, every set ${effort}`}`
+  return `${s.exercise.name}: ${s.sessions} sessions${effort === '—' ? '' : ` at ${effort}`}`
 }
 
 /** An exercise's recent sessions, one line each: `2026-10-14: w10 × 20 kg, 8 × 60 kg`. */
@@ -216,7 +219,7 @@ export function reviewSummary(review: TrainingReview, unit: WeightUnit): string 
   const stalled =
     review.stalled.length === 0
       ? 'Nothing looks stalled.'
-      : `Stalled (no improvement across 3+ sessions):\n  ${review.stalled.map((s) => stalledLine(s, unit)).join('\n  ')}`
+      : `Stalled (the same top set, 3+ sessions running):\n  ${review.stalled.map((s) => stalledLine(s, unit)).join('\n  ')}`
 
   return [
     `Last ${weeks} weeks: ${a.sessions} sessions (${a.perWeek}/week).`,
