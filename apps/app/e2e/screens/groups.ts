@@ -13,9 +13,14 @@ const shownRows = async (page: Page, prefix: string): Promise<Record<string, str
 }
 
 export const groups = (page: Page) => {
-  /** The groups listed, by name. */
-  const names = async (): Promise<string[]> =>
-    Object.values(await shownRows(page, 'group-row-')).map((lines) => lines[0] ?? '')
+  /** The groups listed, by name — once the list is shown, never before. */
+  const names = async (): Promise<string[]> => {
+    await page.until(
+      async () => await page.shown('group-list'),
+      (open) => open,
+    )
+    return Object.values(await shownRows(page, 'group-row-')).map((lines) => lines[0] ?? '')
+  }
 
   /** Each member shown, as `username: role`. */
   const members = async (): Promise<string[]> => {

@@ -7,25 +7,27 @@ import {
   Chips,
   ConfirmButton,
   Empty,
+  ErrorNotice,
   Field,
   FormError,
   Input,
   ListRow,
   Loaded,
   Screen,
+  Spinner,
   Stack,
   Text,
-} from '../../../../src/ui/index.ts'
+} from '../../../../../src/ui/index.ts'
 import {
   useAddMember,
   useGroupMembers,
   useGroups,
   useLeaveGroup,
   useRemoveMember,
-} from '../../../../src/api/queries.ts'
-import { useAuth } from '../../../../src/auth/auth-provider.tsx'
-import { useGoBack } from '../../../../src/lib/use-go-back.ts'
-import { useSubmit } from '../../../../src/lib/use-submit.ts'
+} from '../../../../../src/api/queries.ts'
+import { useAuth } from '../../../../../src/auth/auth-provider.tsx'
+import { useGoBack } from '../../../../../src/lib/use-go-back.ts'
+import { useSubmit } from '../../../../../src/lib/use-submit.ts'
 
 const ROLE_OPTIONS: readonly ChipOption<GroupRole>[] = [
   { value: 'reader', label: 'Reader' },
@@ -38,21 +40,30 @@ const ROLE_OPTIONS: readonly ChipOption<GroupRole>[] = [
  */
 export default function GroupDetail(): React.JSX.Element {
   const { id = '' } = useLocalSearchParams<{ id: string }>()
-  const groups = useGroups()
-  return (
-    <Loaded query={groups} testID="group">
-      {(mine) => {
-        const group = mine.find((g) => g.id === id)
-        return group === undefined ? (
-          <Screen testID="group-detail-screen">
-            <Empty title="Not a group of yours" testID="group-gone" />
-          </Screen>
-        ) : (
-          <Group group={group} />
-        )
-      }}
-    </Loaded>
-  )
+  const { data, isPending, error, refetch } = useGroups()
+
+  if (error !== null) {
+    return (
+      <Screen testID="group-detail-screen">
+        <ErrorNotice
+          message={error.message}
+          onRetry={() => {
+            void refetch()
+          }}
+        />
+      </Screen>
+    )
+  }
+  if (isPending) return <Spinner testID="group-loading" />
+  const group = data.find((g) => g.id === id)
+  if (group === undefined) {
+    return (
+      <Screen testID="group-detail-screen">
+        <Empty title="Not a group of yours" testID="group-gone" />
+      </Screen>
+    )
+  }
+  return <Group group={group} />
 }
 
 function Group({ group }: { readonly group: GroupMembership }): React.JSX.Element {
@@ -79,6 +90,7 @@ function Group({ group }: { readonly group: GroupMembership }): React.JSX.Elemen
                 key={member.user.id}
                 groupId={group.id}
                 member={member}
+                // Yourself you do not remove: you leave, below, if the server says you may.
                 removable={group.canManage && member.user.id !== myId}
               />
             ))}

@@ -931,7 +931,9 @@ test(
       const app = screens(page)
       await app.auth.register(owner)
       const friend = unique('fr')
+      const coEditor = unique('co')
       await signUp(friend)
+      await signUp(coEditor)
 
       await app.groups.open()
       await app.groups.create('Squad')
@@ -947,6 +949,10 @@ test(
 
       await app.groups.remove(friend)
       expect(await app.groups.members()).toEqual([`${owner}: editor`])
+
+      // A second editor, and the first may leave.
+      await app.groups.addMember(coEditor, 'editor')
+      await page.until(app.groups.canLeave, (offered) => offered)
     })
   },
   E2E_TIMEOUT_MS,

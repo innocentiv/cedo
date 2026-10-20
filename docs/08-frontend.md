@@ -50,7 +50,7 @@ app/(app)/_layout.tsx        the signed-in shell: bottom bar on phone, sidebar o
 app/(app)/today/            index · session/[id]        the live logging screen
 app/(app)/workouts/         index · [id]/index · [id]/edit
 app/(app)/exercises/        index · new · [id]/index · [id]/edit
-app/(app)/settings/         index · groups/index · groups/[id] · tokens
+app/(app)/settings/         index · groups/index · groups/[id]/index · tokens
 
 src/ui/                      the entire visual vocabulary
 src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts
@@ -213,6 +213,11 @@ leaving a group takes its plans, its exercises, and the names they lent your his
 in the app — create, add, remove, leave — refreshes the groups and their members, and everything
 else behind them. Someone else removing you still reaches the screen only the refused way above, as
 it must: nothing in this app was written.
+
+Leaving is `useDeleteOf('group', …)`: the group's own members are not asked for again by the screen
+that left. Nothing else is skipped, on purpose. A plan from that group still open in another tab is
+asked for again and says it does not exist — which, for you, it no longer does. Skipping it would
+leave the plan on screen, inviting writes the server now refuses.
 
 A delete (`useDeleteOf('workout', remove)`) refreshes none of the reads keyed by the id it deletes —
 `[read, id]` is the thing itself — after it succeeds, or when it answers 404 because someone else

@@ -71,9 +71,10 @@ the caller can list.
 
 **Who changes a group's members:** an editor adds and removes them; any member removes themselves —
 leaving, on the same route — unless they are its last editor, since a group with no editor cannot
-be administered again. A personal group takes no members. The starter library keeps every account:
-the rule below lets a shared group's plans use its exercises because every account reads it, so
-nobody leaves it, and no curator removes anyone from it. `GroupMembership` carries `canManage` and
+be administered again. A personal group is its owner's alone: nobody joins or leaves it. The
+starter library keeps every account: the rule below lets a shared group's plans use its exercises
+because every account reads it, so nobody leaves it, and no curator adds or removes anyone — its
+members do not change through the API at all. `GroupMembership` carries `canManage` and
 `canLeave`, so a client offers only what the server will accept.
 
 ### The ACL invariant

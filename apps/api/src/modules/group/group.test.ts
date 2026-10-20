@@ -363,8 +363,25 @@ describe('leaving', () => {
     expect(JSON.stringify(left.body)).toContain('starter library')
 
     await promote(alice)
-    expect((await removeMember(alice, h.groupId, bob.userId)).status).toBe(409)
+    const removed = await removeMember(alice, h.groupId, bob.userId)
+    expect(removed.status).toBe(409)
+    expect(JSON.stringify(removed.body)).toContain('starter library')
     expect((await groupsOf(bob)).map((g) => g.id)).toContain(h.groupId)
+  })
+
+  /** Its members do not change through the API at all: a curator adding is refused as such. */
+  test('a curator adds nobody to the starter library', async () => {
+    await promote(alice)
+    const added = await addMember(alice, h.groupId, 'bob', 'editor')
+    expect(added.status).toBe(409)
+    expect(JSON.stringify(added.body)).toContain('starter library')
+  })
+
+  /** Refused for what it is — not as "a group must keep at least one editor". */
+  test('nobody leaves their personal group', async () => {
+    const res = await removeMember(alice, alice.personalGroupId, alice.userId)
+    expect(res.status).toBe(409)
+    expect(JSON.stringify(res.body)).toContain('personal group')
   })
 })
 

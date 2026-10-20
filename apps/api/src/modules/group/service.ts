@@ -6,6 +6,7 @@ import {
   type GroupCreate,
   type GroupMember,
   type GroupMembership,
+  type GroupRole,
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupMembers, groups, users } from '../../db/schema.ts'
@@ -35,17 +36,44 @@ export function slugify(name: string): string {
   return base === '' ? `group-${suffix}` : `${base}-${suffix}`
 }
 
-/**
- * The starter library keeps every account: each reads it from registration on, and a shared group's
- * plans may use its exercises for that reason (docs/03-domain-model.md) — someone gone from it
- * would be left with plans they cannot read.
- */
-const isStarterLibrary = (group: typeof groups.$inferSelect): boolean =>
-  group.slug === DEFAULT_GROUP_SLUG
+type GroupRow = typeof groups.$inferSelect
 
-/** Whose members change through the API at all: a shared group, other than the starter library. */
-const takesMembers = (group: typeof groups.$inferSelect): boolean =>
-  group.kind === 'shared' && !isStarterLibrary(group)
+/**
+ * Why a group's members do not change through the API, or null when they do. A personal group is
+ * its owner's alone. The starter library keeps every account: each reads it from registration on,
+ * and a shared group's plans may use its exercises for that reason (docs/03-domain-model.md) —
+ * someone gone from it would be left with plans they cannot read.
+ *
+ * The one statement of the rule: `list` says it as `canManage` and `canLeave`, and both member
+ * writes refuse with it.
+ */
+const keepsItsMembers = (group: GroupRow): string | null => {
+  if (group.kind === 'personal')
+    return 'A personal group is its owner’s alone: nobody joins or leaves it'
+  if (group.slug === DEFAULT_GROUP_SLUG) {
+    return 'The starter library keeps every account: nobody joins it, leaves it or is removed from it'
+  }
+  return null
+}
+
+/** The group, if its members change through the API; refused with the reason otherwise. */
+async function changingMembersOf(groupId: string): Promise<GroupRow> {
+  const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1)
+  if (group === undefined) throw notFound('group')
+  const kept = keepsItsMembers(group)
+  if (kept !== null) throw conflict(kept)
+  return group
+}
+
+/** What a member may do with a group — what the member writes below will accept. */
+const mayOf = (group: GroupRow, role: GroupRole, editors: number) => {
+  const changes = keepsItsMembers(group) === null
+  return {
+    canManage: changes && role === 'editor',
+    // The last editor stays: a group with no editor cannot be administered again.
+    canLeave: changes && !(role === 'editor' && editors === 1),
+  }
+}
 
 const toGroup = (row: typeof groups.$inferSelect): Group => ({
   id: row.id,
@@ -90,6 +118,7 @@ export async function list(caller: Caller): Promise<GroupMembership[]> {
   return rows.map((r) => {
     const group = toGroup(r.group)
     group satisfies Group
+    const may = mayOf(r.group, r.role, countOf(r.group.id, 'editor'))
     return {
       id: group.id,
       slug: group.slug,
@@ -98,9 +127,8 @@ export async function list(caller: Caller): Promise<GroupMembership[]> {
       createdAt: group.createdAt,
       role: r.role,
       memberCount: memberCount(r.group.id, r.role),
-      canManage: r.role === 'editor' && takesMembers(r.group),
-      canLeave:
-        takesMembers(r.group) && !(r.role === 'editor' && countOf(r.group.id, 'editor') === 1),
+      canManage: may.canManage,
+      canLeave: may.canLeave,
     }
   })
 }
@@ -117,13 +145,11 @@ export async function create(caller: Caller, input: GroupCreate): Promise<GroupM
     await tx
       .insert(groupMembers)
       .values({ groupId: created.id, userId: caller.userId, role: 'editor' })
-    // Its only editor: it manages the group, and cannot leave it until it has another.
     return {
       ...toGroup(created),
       role: 'editor' as const,
       memberCount: 1,
-      canManage: true,
-      canLeave: false,
+      ...mayOf(created, 'editor', 1),
     }
   })
 }
@@ -182,9 +208,7 @@ export async function addMember(
   // Not-an-editor and does-not-exist are the same answer, so membership is never leaked.
   if (!caller.editorGroupIds.includes(groupId)) throw notFound('group')
 
-  const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1)
-  if (group === undefined) throw notFound('group')
-  if (group.kind === 'personal') throw conflict('A personal group cannot take members')
+  await changingMembersOf(groupId)
 
   // Projected: this row is serialised into the response, so it must not carry password_hash.
   const [user] = await db
@@ -230,11 +254,8 @@ export async function removeMember(caller: Caller, groupId: string, userId: stri
     throw notFound('group')
   }
 
-  const [group] = await db.select().from(groups).where(eq(groups.id, groupId)).limit(1)
-  if (group === undefined) throw notFound('group')
-  if (isStarterLibrary(group)) {
-    throw conflict('Nobody leaves the starter library: every account reads it, and plans use it')
-  }
+  // Outside the transaction: a group's kind and slug never change.
+  await changingMembersOf(groupId)
 
   /**
    * The count and the delete must be atomic. Two editors removing each other simultaneously would
