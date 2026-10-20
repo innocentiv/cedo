@@ -82,7 +82,7 @@ export function SetLogger({
 
         {tracking === null ? (
           <Text variant="caption" tone="muted" testID={`${testID}-unavailable`}>
-            Out of your reach: nothing more can be logged against it.
+            Nothing more can be logged against it.
           </Text>
         ) : (
           <Inputs

@@ -1,4 +1,5 @@
 import type { Page } from '../harness.ts'
+import { closed } from './form.ts'
 import { picker } from './picker.ts'
 import { session } from './session.ts'
 
@@ -61,13 +62,7 @@ export const planEditor = (page: Page) => {
    */
   const save = async (): Promise<void> => {
     await page.click('[data-testid="save-plan"]')
-    await page.until(
-      async () =>
-        await page.evaluate(
-          `[...document.querySelectorAll('[data-testid="plan-edit-screen"]')].some((e) => e.offsetParent != null)`,
-        ),
-      (shown) => shown === false,
-    )
+    await closed(page, 'plan-edit-screen', 'plan-edit-error')
   }
   return {
     /**

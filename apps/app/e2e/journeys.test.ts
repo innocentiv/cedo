@@ -9,7 +9,7 @@ import { expect, test } from 'bun:test'
 
 const REACHES_PAST_A_SCREEN: readonly RegExp[] = [
   // A page method that touches an element — however it is spelled, and across lines.
-  /\bpage\s*\??\.\s*(?:click|fill|text|exists|waitFor|waitForSelector|evaluate|value)\b/gu,
+  /\bpage\s*\??\.\s*(?:click|fill|text|exists|shown|waitFor|waitForSelector|evaluate|value)\b/gu,
   /\bpage\s*\??\.?\s*\[/gu,
   // The page renamed or taken apart, which would hide the calls above.
   /\b(?:const|let|var)\s+(?:\{[^}]*\}|\w+)\s*=\s*page\b/gu,

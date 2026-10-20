@@ -1,7 +1,7 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import { exerciseName } from '../../../../src/lib/exercise-name.ts'
-import { formatEffort, prescriptionOf } from '@cedo/contract'
-import type { WeightUnit, WorkoutDay, WorkoutEntry } from '@cedo/contract'
+import { formatPrescription } from '@cedo/contract'
+import type { WorkoutDay } from '@cedo/contract'
 import { useWeightUnit } from '../../../../src/lib/weight-unit.ts'
 import {
   Button,
@@ -15,15 +15,6 @@ import {
 } from '../../../../src/ui/index.ts'
 import { useStartSession, useWorkout } from '../../../../src/api/queries.ts'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
-
-/** How many working sets, and the prescription they share — `prescriptionOf`, as everywhere. */
-function prescription(entry: WorkoutEntry, unit: WeightUnit): string {
-  const first = prescriptionOf(entry)
-  if (first === undefined) return 'no working sets'
-  const count = entry.sets.filter((s) => !s.isWarmup).length
-  const sets = `${count} set${count === 1 ? '' : 's'}`
-  return `${sets} · ${formatEffort(first.target, entry.exercise?.tracking ?? null, unit)}`
-}
 
 export default function WorkoutDetail(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>()
@@ -98,7 +89,7 @@ export default function WorkoutDetail(): React.JSX.Element {
                     {exerciseName(entry.exercise)}
                   </Text>
                   <Text variant="caption" tone="muted">
-                    {prescription(entry, unit)}
+                    {formatPrescription(entry.sets, entry.exercise?.tracking ?? null, unit)}
                     {entry.progression.kind === 'none' ? '' : ` · ${entry.progression.kind}`}
                   </Text>
                 </Stack>

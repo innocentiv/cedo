@@ -51,7 +51,7 @@ describe('formatEffort renders what the tracking mode measures', () => {
   /** Checked by `tsc`, not at run time: a reader that forgot the mode does not compile. */
   test('the mode cannot be left out — unknown is said, as null', () => {
     // @ts-expect-error -- `undefined` is not a mode, nor a way of saying there is none.
-    expect(formatEffort({ ...none, reps: 8 }, undefined, 'kg')).toBe('8 reps')
+    formatEffort({ ...none, reps: 8 }, undefined, 'kg')
   })
 })
 

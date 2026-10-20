@@ -1,4 +1,5 @@
 import { DIMENSION_FIELDS, tracks } from './dimension.ts'
+import { type Effort, formatEffort } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
 import { NO_PROGRESSION, type Progression } from './progression.ts'
 import { type WeightUnit, lbToG } from './units.ts'
@@ -104,6 +105,23 @@ export const newEntry = (exercise: {
 export const prescriptionOf = <S extends { readonly isWarmup: boolean }>(entry: {
   readonly sets: readonly S[]
 }): S | undefined => entry.sets.find((s) => !s.isWarmup)
+
+/**
+ * `3 sets · 8 × 60 kg`: how many working sets, and the prescription they share (`prescriptionOf`),
+ * in its exercise's terms — a mode of `null` for an unavailable exercise reads it as measured. Over
+ * any shape of set, like `prescriptionOf`: a plan as read, or a draft's sets through `setTargetOf`.
+ */
+export function formatPrescription(
+  sets: readonly { readonly isWarmup: boolean; readonly target: Effort }[],
+  tracking: TrackingMode | null,
+  unit: WeightUnit,
+): string {
+  const working = sets.filter((s) => !s.isWarmup)
+  const first = working[0]
+  if (first === undefined) return 'no working sets'
+  const count = `${working.length} set${working.length === 1 ? '' : 's'}`
+  return `${count} · ${formatEffort(first.target, tracking, unit)}`
+}
 
 export const setCounts = (entry: WorkoutEntryInput): Record<SetKind, number> => {
   const { warmup, working } = split(entry)

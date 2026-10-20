@@ -213,6 +213,11 @@ export interface Page {
   readonly value: (testId: string) => Promise<unknown>
   readonly text: (testId: string) => Promise<string | null>
   readonly exists: (testId: string) => Promise<boolean>
+  /**
+   * Whether any element with this test id is SHOWN. Not `exists`: a tab keeps its stack mounted, so
+   * a screen left behind — a form that saved, a session in another tab — is still in the page.
+   */
+  readonly shown: (testId: string) => Promise<boolean>
   /** Wait until a test id is present, or fail with what was on screen instead. */
   readonly waitFor: (testId: string, timeoutMs?: number) => Promise<void>
   /**
@@ -351,6 +356,10 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
     },
     exists: async (testId) =>
       (await view.evaluate(`!!document.querySelector(${quote(selector(testId))})`)) === true,
+    shown: async (testId) =>
+      (await view.evaluate(
+        `[...document.querySelectorAll(${quote(selector(testId))})].some((e) => e.offsetParent != null)`,
+      )) === true,
     until,
     waitFor: async (testId, timeoutMs = WAIT_MS) => {
       try {

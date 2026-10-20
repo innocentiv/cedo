@@ -12,7 +12,11 @@ import { UnavailableEntry } from './unavailable-entry.tsx'
 export interface DayEditorProps {
   readonly day: DayDraft
   readonly index: number
-  /** The exercises this day may reference, by id. Carries the tracking mode, not just a name. */
+  /**
+   * Every exercise the editor can see, by id — the plan's own, as resolved, and any picked since.
+   * Carries the tracking mode, not just a name. An id missing from it is an UNAVAILABLE exercise:
+   * the same map `planIssues` is given, so the entry and the footer agree.
+   */
   readonly library: ReadonlyMap<string, Exercise>
   readonly onChange: (day: DayDraft) => void
   readonly onMoveUp: () => void

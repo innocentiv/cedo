@@ -1,4 +1,4 @@
-import { formatEffort, prescriptionOf, setCounts, setTargetOf } from '@cedo/contract'
+import { formatPrescription, setTargetOf } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
 import { useWeightUnit } from '../lib/weight-unit.ts'
 import { Button } from './button.tsx'
@@ -26,9 +26,7 @@ export function UnavailableEntry({
   testID,
 }: UnavailableEntryProps): React.JSX.Element {
   const unit = useWeightUnit()
-  const first = prescriptionOf(entry)
-  const { working } = setCounts(entry)
-  const sets = `${working} set${working === 1 ? '' : 's'}`
+  const sets = entry.sets.map((set) => ({ isWarmup: set.isWarmup, target: setTargetOf(set) }))
   return (
     <Card testID={testID}>
       <Stack gap="sm">
@@ -39,10 +37,10 @@ export function UnavailableEntry({
           <Button title="Remove" variant="ghost" onPress={onRemove} testID={`${testID}-remove`} />
         </Stack>
         <Text variant="caption" tone="muted" testID={`${testID}-target`}>
-          {first === undefined ? sets : `${sets} · ${formatEffort(setTargetOf(first), null, unit)}`}
+          {formatPrescription(sets, null, unit)}
         </Text>
         <Text variant="caption" tone="muted" testID={`${testID}-unavailable`}>
-          Out of your reach: remove it to save the plan.
+          Remove it to save the plan.
         </Text>
       </Stack>
     </Card>

@@ -8,6 +8,7 @@ import {
   newEntry,
   planIssues,
   prescribe,
+  formatPrescription,
   prescriptionOf,
   progressionOf,
   resizeSets,
@@ -241,5 +242,34 @@ describe('an entry whose exercise is out of the editor’s reach', () => {
       'Day 1, exercise 2: Unavailable exercise — remove it to save',
       'Day 1, name: Cannot be empty',
     ])
+  })
+})
+
+describe('a prescription in one line', () => {
+  const target = (reps: number, weightG: number | null) => ({
+    reps,
+    weightG,
+    durationS: null,
+    distanceMm: null,
+  })
+
+  test('counts the working sets, and reads the first in its exercise’s terms', () => {
+    const sets = [
+      { isWarmup: true, target: target(10, 20_000) },
+      { isWarmup: false, target: target(6, 20_000) },
+      { isWarmup: false, target: target(6, 20_000) },
+    ]
+    expect(formatPrescription(sets, 'bodyweight_reps', 'kg')).toBe('2 sets · 6 × bodyweight +20 kg')
+    // An unavailable exercise: as measured.
+    expect(formatPrescription(sets, null, 'kg')).toBe('2 sets · 6 × 20 kg')
+  })
+
+  test('one set is a set, and warm-ups alone prescribe nothing', () => {
+    expect(formatPrescription([{ isWarmup: false, target: target(5, null) }], null, 'kg')).toBe(
+      '1 set · 5 reps',
+    )
+    expect(formatPrescription([{ isWarmup: true, target: target(5, null) }], null, 'kg')).toBe(
+      'no working sets',
+    )
   })
 })

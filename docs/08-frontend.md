@@ -93,16 +93,19 @@ Two constraints found by building it:
 | `color`, `space`, `radius`, `type`, `CONTENT_MAX_WIDTH`, `CONTROL_HEIGHT` | the only source of visual values |
 | `useLayout()`, `TABLET_MIN_WIDTH` | the only layout branch: `'phone' | 'tablet'`, and where it switches |
 
-Four composites are here rather than in a screen, because each is used from more than one and each
-would otherwise be copied: `MusclePicker`, `SetLogger`, `EntryEditor`, `DayEditor`. They are still
-presentational — the rules they render (loads summing to 100, which inputs a tracking mode implies,
-what a progression rule contains) all live in `@cedo/contract`.
+Five composites are here rather than in a screen, because each is used from more than one place or
+would otherwise be copied: `MusclePicker`, `SetLogger`, `EntryEditor`, `UnavailableEntry`,
+`DayEditor`. They are still presentational — the rules they render (loads summing to 100, which
+inputs a tracking mode implies, what a progression rule contains, a prescription in one line) all
+live in `@cedo/contract`. An unavailable exercise has no mode, so no inputs: `SetLogger` shows it
+without any, and the day editor gives it an `UnavailableEntry` — what it prescribes, and Remove.
 
 Editing a plan follows the same split. How sets resize within an entry's total, what a target change
 applies to, what a new entry prescribes, and whether another day or exercise fits are
 `plan-editing.ts` in the contract, with its tests; the limits themselves are declared once beside
 the schema in `workout.ts`, which enforces them. The editor only wires these to controls. It also
-reads `planIssues(draft)` — the schema's own verdict, located by day and exercise — as the draft is
+reads `planIssues(draft, visible)` — the schema's own verdict, located by day and exercise, and
+first every entry whose exercise it cannot see, which the server would refuse — as the draft is
 edited, shows it above Save, and disables Save while there is one. The editor prevents what it
 models; that line catches what it does not, before the request rather than as a 422. The editor
 once clamped warm-ups and working sets to 20 each while the schema allowed 20 in total, which is

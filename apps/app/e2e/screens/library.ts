@@ -1,4 +1,5 @@
 import type { Page } from '../harness.ts'
+import { closed } from './form.ts'
 
 /** The exercise library: its list, an exercise's detail, and the form that creates or edits one. */
 
@@ -20,26 +21,10 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
     await page.click('[data-testid="attach-media"]')
     await page.waitForSelector('[data-testid^="media-row-"]')
   },
-  /**
-   * Saves, and waits for the form to close. Closed, not gone: a tab keeps its stack mounted, so the
-   * form stays in the page — hidden — after going back to wherever it was opened from. Every copy,
-   * not the first: another tab's stack may hold a hidden one already. A save the API refuses fails
-   * with the form's own message.
-   */
+  /** Saves, and waits for the form to close — see `closed`. */
   save: async (): Promise<void> => {
     await page.click(`[data-testid="${screen}-save"]`)
-    const state = await page.until(
-      async () =>
-        await page.evaluate(`(() => {
-          const shown = (id) => [...document.querySelectorAll('[data-testid="' + id + '"]')]
-            .find((e) => e.offsetParent != null)
-          const error = shown('${screen}-error')
-          if (error) return 'refused: ' + error.textContent
-          return shown('${screen}') ? 'open' : 'closed'
-        })()`),
-      (seen) => seen !== 'open',
-    )
-    if (state !== 'closed') throw new Error(`Saving the exercise form was ${String(state)}`)
+    await closed(page, screen, `${screen}-error`)
   },
   /** Saves a form the API will refuse, and returns the message it shows instead. */
   saveRefused: async (): Promise<string> => {
