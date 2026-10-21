@@ -2,8 +2,9 @@ import { StyleSheet, View } from 'react-native'
 import {
   type ExerciseHistory,
   type TrendPoint,
-  formatEffort,
-  formatWeight,
+  formatStall,
+  formatTrendPoint,
+  trendName,
   trendOf,
 } from '@cedo/contract'
 import { useWeightUnit } from '../lib/weight-unit.ts'
@@ -15,10 +16,10 @@ import { color, radius, space } from './tokens.ts'
 const BAR_HEIGHT = 72
 
 /**
- * Am I progressing? One bar per session, oldest first, as the contract draws it (`trendOf`): a
- * weight lift's best estimated max, or the top set's own measure — with the first and the latest
- * said in words, and the server's stall (`ExerciseHistory.stalled`) as a badge. Nothing to read
- * from one session, so it needs two.
+ * Am I progressing? A bar per session, oldest first, as the contract draws it (`trendOf` — none
+ * under two sessions), the first and the latest said in its words (`formatTrendPoint`), and the
+ * server's stall (`ExerciseHistory.stalled`) as a badge: shown whenever there is one, trend or no
+ * trend — a lift stalled at fifteen reps has nothing to estimate, and is still stalled.
  */
 export function ProgressTrend({
   history,
@@ -29,12 +30,45 @@ export function ProgressTrend({
 }): React.JSX.Element | null {
   const unit = useWeightUnit()
   const points = trendOf(history)
+  const { stalled, tracking } = history
+  if (points.length === 0 && stalled === null) return null
+
+  return (
+    <Card testID={testID}>
+      <Stack gap="sm">
+        <Stack direction="row" gap="sm" align="center">
+          <Stack grow>
+            <Text variant="label" tone="muted">
+              {points.length === 0 ? 'Progress' : trendName(points)}
+            </Text>
+          </Stack>
+          {stalled === null ? null : (
+            <Text variant="caption" tone="warning" testID={`${testID}-stalled`}>
+              {`Stalled · ${formatStall(stalled, tracking, unit)}`}
+            </Text>
+          )}
+        </Stack>
+        {points.length === 0 ? null : (
+          <Bars points={points} said={(p) => formatTrendPoint(p, tracking, unit)} testID={testID} />
+        )}
+      </Stack>
+    </Card>
+  )
+}
+
+/** The bars, and the first and the latest in words. */
+function Bars({
+  points,
+  said,
+  testID,
+}: {
+  readonly points: readonly TrendPoint[]
+  readonly said: (point: TrendPoint) => string
+  readonly testID: string
+}): React.JSX.Element | null {
   const [first] = points
   const latest = points.at(-1)
-  if (first === undefined || latest === undefined || points.length < 2) return null
-
-  const said = (p: TrendPoint) =>
-    p.estimated ? formatWeight(p.value, unit) : formatEffort(p.top, history.tracking, unit)
+  if (first === undefined || latest === undefined) return null
   // Read by its change, so drawn from just below the lowest point: from zero, 64 kg against 70 kg
   // were bars of one height. A quarter of the height is kept, so the lowest is still a bar.
   const values = points.map((p) => p.value)
@@ -43,36 +77,22 @@ export function ProgressTrend({
     highest === lowest
       ? BAR_HEIGHT
       : BAR_HEIGHT * (0.25 + (0.75 * (value - lowest)) / (highest - lowest))
-  const { stalled } = history
-
   return (
-    <Card testID={testID}>
-      <Stack gap="sm">
-        <Stack direction="row" gap="sm" align="center">
-          <Stack grow>
-            <Text variant="label" tone="muted">
-              {latest.estimated ? 'Estimated max' : 'Top set'}
-            </Text>
-          </Stack>
-          {stalled === null ? null : (
-            <Text variant="caption" tone="warning" testID={`${testID}-stalled`}>
-              {`Stalled · ${stalled.sessions} sessions at ${formatEffort(stalled.effort, history.tracking, unit)}`}
-            </Text>
-          )}
+    <>
+      <View style={styles.bars} testID={`${testID}-bars`}>
+        {points.map((p) => (
+          <View key={p.sessionId} style={[styles.bar, { height: heightOf(p.value) }]} />
+        ))}
+      </View>
+      <Stack direction="row" gap="sm">
+        <Stack grow>
+          <Text variant="caption" tone="faint" testID={`${testID}-first`}>
+            {`${said(first)} at first`}
+          </Text>
         </Stack>
-        <View style={styles.bars} testID={`${testID}-bars`}>
-          {points.map((p) => (
-            <View key={p.sessionId} style={[styles.bar, { height: heightOf(p.value) }]} />
-          ))}
-        </View>
-        <Stack direction="row" gap="sm">
-          <Stack grow>
-            <Text variant="caption" tone="faint">{`${said(first)} at first`}</Text>
-          </Stack>
-          <Text variant="caption" testID={`${testID}-latest`}>{`${said(latest)} now`}</Text>
-        </Stack>
+        <Text variant="caption" testID={`${testID}-latest`}>{`${said(latest)} now`}</Text>
       </Stack>
-    </Card>
+    </>
   )
 }
 

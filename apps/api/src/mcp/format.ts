@@ -7,9 +7,16 @@ import type {
   Workout,
   WorkoutSummary,
 } from '@cedo/contract'
-import { estimatedMax, formatDuration, formatEffort, formatWeight, trendOf } from '@cedo/contract'
+import {
+  AT_LEAST_SESSIONS,
+  estimatedMax,
+  formatDuration,
+  formatEffort,
+  formatStall,
+  formatWeight,
+  pointsOf,
+} from '@cedo/contract'
 import type { MuscleWork, TrainingReview } from '../modules/review/service.ts'
-import { AT_LEAST_SESSIONS } from '../modules/review/stalled.ts'
 
 /**
  * Tool output is TEXT the model reads, and its size is the real cost of an MCP tool — not the
@@ -144,11 +151,9 @@ function describeTarget(
  * terms, like every other effort here: no unit arithmetic of its own.
  */
 function stalledLine(s: TrainingReview['stalled'][number], unit: WeightUnit): string {
-  const effort = formatEffort(s.effort, s.exercise.tracking, unit)
-  // No RPE travels with a stall's set, so its reserve counts as none.
-  const estimate = estimatedMax({ ...s.effort, rpe: null }, s.exercise.tracking)
+  const estimate = estimatedMax({ ...s.effort, rpe: s.effort.rpe ?? null }, s.exercise.tracking)
   const max = estimate === null ? '' : ` (estimated max ${formatWeight(estimate, unit)})`
-  return `${s.exercise.name}: ${s.sessions} sessions${effort === '—' ? '' : ` at ${effort}`}${max}`
+  return `${s.exercise.name}: ${formatStall(s, s.exercise.tracking, unit)}${max}`
 }
 
 /**
@@ -159,7 +164,7 @@ function stalledLine(s: TrainingReview['stalled'][number], unit: WeightUnit): st
 export function historyLines(history: ExerciseHistory, unit: WeightUnit): string {
   if (history.sessions.length === 0) return 'No sessions logged for this exercise.'
   const estimates = new Map(
-    trendOf(history).flatMap((p) => (p.estimated ? [[p.sessionId, p.value] as const] : [])),
+    pointsOf(history).flatMap((p) => (p.estimated ? [[p.sessionId, p.value] as const] : [])),
   )
   const lines = history.sessions.map((s) => {
     const sets = s.sets
@@ -175,11 +180,7 @@ export function historyLines(history: ExerciseHistory, unit: WeightUnit): string
   const { stalled } = history
   return [
     ...lines,
-    ...(stalled === null
-      ? []
-      : [
-          `Stalled: ${stalled.sessions} sessions at ${formatEffort(stalled.effort, history.tracking, unit)}`,
-        ]),
+    ...(stalled === null ? [] : [`Stalled: ${formatStall(stalled, history.tracking, unit)}`]),
   ].join('\n')
 }
 

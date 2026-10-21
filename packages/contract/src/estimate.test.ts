@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import type { ExerciseHistory } from './log.ts'
-import { MAX_ESTIMATE_REPS, estimatedMax, trendOf } from './estimate.ts'
+import {
+  MAX_ESTIMATE_REPS,
+  estimatedMax,
+  formatTrendPoint,
+  pointsOf,
+  trendName,
+  trendOf,
+} from './estimate.ts'
 
 /**
  * Estimated max (GLOSSARY.md): the most weight a set suggests could be lifted once — Epley,
@@ -26,6 +33,20 @@ describe('the estimated max of a set', () => {
 
   test('is whole grams', () => {
     expect(Number.isInteger(estimatedMax(set(62_500, 7, 8.5), 'weight_reps'))).toBe(true)
+  })
+
+  /** A single at RPE 10 is a one-rep max lifted, not estimated: Epley would add 3%. */
+  test('of a true single is the weight lifted', () => {
+    expect(estimatedMax(set(100_000, 1), 'weight_reps')).toBe(100_000)
+    expect(estimatedMax(set(100_000, 1, 10), 'weight_reps')).toBe(100_000)
+    // One left in reserve: as if two reps.
+    expect(estimatedMax(set(90_000, 1, 9), 'weight_reps')).toBe(96_000)
+  })
+
+  /** The reserve counts as reps done, so it counts toward the dozen too. */
+  test(`is none past ${MAX_ESTIMATE_REPS} reps done and in reserve`, () => {
+    expect(estimatedMax(set(40_000, 10, 8), 'weight_reps')).not.toBeNull()
+    expect(estimatedMax(set(40_000, 12, 5), 'weight_reps')).toBeNull()
   })
 
   /** Past a dozen reps the formula stops meaning a single lift. */
@@ -82,7 +103,7 @@ describe("an exercise's trend", () => {
   })
 
   test('leaves warm-ups out, and a session with no set to estimate', () => {
-    const trend = trendOf(
+    const trend = pointsOf(
       history('weight_reps', [
         [working(100_000, 1, { isWarmup: true }), working(60_000, 5)],
         [working(40_000, 15)],
@@ -99,12 +120,57 @@ describe("an exercise's trend", () => {
     expect(trend.at(-1)?.top).toMatchObject({ durationS: 60 })
   })
 
-  test('for bodyweight work, is the added weight when any is added, the reps otherwise', () => {
+  /** Added weight and reps are not one scale: a mixed series is drawn by what every session has. */
+  test('for bodyweight work, is the added weight when every session adds some, else the reps', () => {
     const plain = trendOf(history('bodyweight_reps', [[working(null, 12)], [working(null, 10)]]))
     expect(plain.map((p) => p.value)).toEqual([10, 12])
-    const loaded = trendOf(
+    const loaded = trendOf(history('bodyweight_reps', [[working(10_000, 6)], [working(5_000, 8)]]))
+    expect(loaded.map((p) => p.value)).toEqual([5_000, 10_000])
+    const mixed = trendOf(
       history('bodyweight_reps', [[working(10_000, 6)], [working(null, 12)], [working(5_000, 8)]]),
     )
-    expect(loaded.map((p) => p.value)).toEqual([5_000, 0, 10_000])
+    expect(mixed.map((p) => p.value)).toEqual([8, 12, 6])
+  })
+
+  /** A run ranks by distance, then by pace: over one distance, faster is progress. */
+  test('for a run, is the distance — or, every run one distance, its speed', () => {
+    const run = (distanceMm: number, durationS: number) => ({
+      ...working(null, null),
+      distanceMm,
+      durationS,
+    })
+    const longer = trendOf(
+      history('distance_duration', [[run(8_000_000, 2400)], [run(5_000_000, 1500)]]),
+    )
+    expect(longer.map((p) => p.value)).toEqual([5_000_000, 8_000_000])
+    const faster = trendOf(
+      history('distance_duration', [[run(5_000_000, 1440)], [run(5_000_000, 1500)]]),
+    )
+    const [slow, fast] = faster.map((p) => p.value)
+    expect((fast ?? 0) > (slow ?? 0)).toBe(true)
+  })
+
+  /** One session says nothing about a direction: a trend needs two. */
+  test('of a single session is none — though its point is still there to read', () => {
+    const once = history('weight_reps', [[working(60_000, 5)]])
+    expect(trendOf(once)).toEqual([])
+    expect(pointsOf(once).map((p) => p.value)).toEqual([70_000])
+  })
+
+  test('is named and said by what it draws', () => {
+    const lifts = trendOf(history('weight_reps', [[working(60_000, 5)], [working(55_000, 5)]]))
+    expect(trendName(lifts)).toBe('Estimated max')
+    expect(lifts.map((p) => formatTrendPoint(p, 'weight_reps', 'kg'))).toEqual([
+      '64.17 kg',
+      '70 kg',
+    ])
+    const holds = trendOf(
+      history('duration', [
+        [{ ...working(null, null), durationS: 60 }],
+        [{ ...working(null, null), durationS: 45 }],
+      ]),
+    )
+    expect(trendName(holds)).toBe('Top set')
+    expect(holds.map((p) => formatTrendPoint(p, 'duration', 'kg'))).toEqual(['0:45', '1:00'])
   })
 })

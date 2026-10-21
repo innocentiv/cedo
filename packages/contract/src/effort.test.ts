@@ -120,7 +120,7 @@ describe('the top set', () => {
     expect(topSet([set({ reps: 8 }), set({ reps: 5, weightG: 40_000 })], 'weight_reps')).toEqual(
       set({ reps: 5, weightG: 40_000 }),
     )
-    expect(topSet([], 'weight_reps')).toBeUndefined()
+    expect(topSet<Effort>([], 'weight_reps')).toBeUndefined()
   })
 
   test('efforts the mode measures alike are the same: no added weight is "+0 kg"', () => {

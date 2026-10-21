@@ -2,7 +2,8 @@ import { beforeEach, describe, expect, test } from 'bun:test'
 import type { Effort, TrackingMode } from '@cedo/contract'
 import { makeApi } from '../../test/harness.ts'
 import { reviewFixture } from './review-fixture.ts'
-import { STALL_DEPTH, type WorkingSet, stalledOf } from './stalled.ts'
+import { STALL_DEPTH } from '@cedo/contract'
+import { type WorkingSet, stalledOf } from './stalled.ts'
 
 /**
  * What has stalled — the same top set, three or more sessions running. Measured from the logs, in
@@ -49,8 +50,9 @@ describe('measured from the logs', () => {
       const exerciseId = await fixture.anExercise({ tracking })
       await threeIdenticalSessions({ exerciseId, ...effort })
 
+      // Whole, and with its RPE — none said here — so what it is worth counts the reserve.
       expect((await fixture.review()).stalled).toEqual([
-        { exercise: { name: 'Movement', tracking }, sessions: 3, effort },
+        { exercise: { name: 'Movement', tracking }, sessions: 3, effort: { ...effort, rpe: null } },
       ])
     },
   )
@@ -84,7 +86,7 @@ describe('measured from the logs', () => {
       {
         exercise: { name: 'Movement', tracking: 'weight_reps' },
         sessions: 3,
-        effort: { ...NOTHING, reps: 8, weightG: 60_000 },
+        effort: { ...NOTHING, reps: 8, weightG: 60_000, rpe: null },
       },
     ])
   })

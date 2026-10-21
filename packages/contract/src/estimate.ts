@@ -1,7 +1,8 @@
-import { type Effort, topSet } from './effort.ts'
+import { type Effort, formatEffort, topSet } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
 import type { ExerciseHistory } from './log.ts'
 import { reserveOf } from './rpe.ts'
+import { type WeightUnit, formatWeight } from './units.ts'
 
 /**
  * Estimated max (GLOSSARY.md): the most weight a set suggests could be lifted once, from its
@@ -13,7 +14,11 @@ import { reserveOf } from './rpe.ts'
 /** Past a dozen reps the formula stops meaning a single lift: such a set estimates nothing. */
 export const MAX_ESTIMATE_REPS = 12
 
-/** In grams; null for a set it cannot estimate — not a weight lift, no weight, or out of range. */
+/**
+ * In grams; null for a set it cannot estimate — not a weight lift, no weight, or past
+ * `MAX_ESTIMATE_REPS` reps done and in reserve, which the formula counts alike. A true single — one
+ * rep, none in reserve — is the weight itself: a one-rep max lifted, where Epley would add 3%.
+ */
 export function estimatedMax(
   set: {
     readonly weightG: number | null
@@ -24,9 +29,10 @@ export function estimatedMax(
 ): number | null {
   const { weightG, reps, rpe } = set
   if (tracking !== 'weight_reps' || weightG === null || weightG === 0) return null
-  if (reps === null || reps < 1 || reps > MAX_ESTIMATE_REPS) return null
-  const reserve = rpe === null ? 0 : reserveOf(rpe)
-  return Math.round(weightG * (1 + (reps + reserve) / 30))
+  if (reps === null || reps < 1) return null
+  const done = reps + (rpe === null ? 0 : reserveOf(rpe))
+  if (done > MAX_ESTIMATE_REPS) return null
+  return done === 1 ? weightG : Math.round(weightG * (1 + done / 30))
 }
 
 /** One session on an exercise's trend: what it reached, and the set that reached it. */
@@ -35,7 +41,7 @@ export interface TrendPoint {
   readonly performedAt: string
   /**
    * What the trend draws: the best estimated max in grams for a weight lift; for anything else, the
-   * top set's measure as its mode ranks it — added weight, else reps; a hold's seconds; a distance.
+   * top set's measure as its mode ranks it — see `MEASURE`.
    */
   readonly value: number
   /** Whether `value` is an estimated max, or the top set's own measure. */
@@ -44,41 +50,72 @@ export interface TrendPoint {
   readonly top: Effort
 }
 
+/** One session says nothing about a direction: a trend is two points or more. */
+export const MIN_TREND_POINTS = 2
+
 /**
- * Each session's point, oldest first — the order a trend is read in. Warm-ups never count. A weight
- * lift's session with no set to estimate (all past `MAX_ESTIMATE_REPS`) has no point: it is not a
- * zero. Bodyweight work is drawn by added weight when any session added some, else by reps.
+ * Each session's point, oldest first. Warm-ups never count. A weight lift's session with no set to
+ * estimate has no point: it is not a zero. Every point, however few — what a history line reads.
  */
-export function trendOf(history: ExerciseHistory): TrendPoint[] {
+export function pointsOf(history: ExerciseHistory): TrendPoint[] {
   const { tracking } = history
-  const sessions = history.sessions
-    .map((s) => ({ ...s, sets: s.sets.filter((set) => !set.isWarmup) }))
-    .filter((s) => s.sets.length > 0)
-  const loaded = sessions.some((s) => s.sets.some((set) => (set.weightG ?? 0) > 0))
+  const sessions = history.sessions.flatMap((s) => {
+    const sets = s.sets.filter((set) => !set.isWarmup)
+    const top = topSet(sets, tracking)
+    return top === undefined ? [] : [{ ...s, sets, top }]
+  })
+  const measure = MEASURE[tracking](sessions.map((s) => s.top))
 
   return sessions
     .flatMap((s): TrendPoint[] => {
-      const top = topSet(s.sets, tracking)
-      if (top === undefined) return []
-      const at = { sessionId: s.sessionId, performedAt: s.performedAt, top }
-      if (tracking === 'weight_reps') {
-        const estimates = s.sets.flatMap((set) => estimatedMax(set, tracking) ?? [])
-        return estimates.length === 0
-          ? []
-          : [{ ...at, value: Math.max(...estimates), estimated: true }]
-      }
-      return [{ ...at, value: MEASURE[tracking](top, loaded), estimated: false }]
+      const at = { sessionId: s.sessionId, performedAt: s.performedAt, top: s.top }
+      if (tracking !== 'weight_reps') return [{ ...at, value: measure(s.top), estimated: false }]
+      const estimates = s.sets.flatMap((set) => estimatedMax(set, tracking) ?? [])
+      return estimates.length === 0
+        ? []
+        : [{ ...at, value: Math.max(...estimates), estimated: true }]
     })
     .toReversed()
 }
 
+/** The points as a trend: none, under `MIN_TREND_POINTS`. */
+export function trendOf(history: ExerciseHistory): TrendPoint[] {
+  const points = pointsOf(history)
+  return points.length < MIN_TREND_POINTS ? [] : points
+}
+
+/** What a trend is of, said as its heading. */
+export const trendName = (points: readonly TrendPoint[]): string =>
+  points.at(-1)?.estimated === true ? 'Estimated max' : 'Top set'
+
+/** A point, said: an estimated max as a weight; any other, its top set as its mode measures it. */
+export const formatTrendPoint = (
+  point: TrendPoint,
+  tracking: TrackingMode,
+  unit: WeightUnit,
+): string =>
+  point.estimated ? formatWeight(point.value, unit) : formatEffort(point.top, tracking, unit)
+
 /**
- * A top set's measure, as its mode ranks it first — one per mode, or this does not compile. A weight
- * lift reaches it only where no set could be estimated, and such a session has no point.
+ * How a series of top sets is drawn, decided over the whole series — one per mode, or this does not
+ * compile. A weight lift is estimated before it gets here. Bodyweight work by added weight when
+ * every session added some — added weight and reps are not one scale — else by reps. A run by
+ * distance, as it ranks first; every run one distance, by speed — the farthest, then the fastest.
  */
-const MEASURE: { readonly [M in TrackingMode]: (top: Effort, loaded: boolean) => number } = {
-  weight_reps: (top) => top.weightG ?? 0,
-  bodyweight_reps: (top, loaded) => (loaded ? (top.weightG ?? 0) : (top.reps ?? 0)),
-  duration: (top) => top.durationS ?? 0,
-  distance_duration: (top) => top.distanceMm ?? 0,
+const MEASURE: {
+  readonly [M in TrackingMode]: (tops: readonly Effort[]) => (top: Effort) => number
+} = {
+  weight_reps: () => (top) => top.weightG ?? 0,
+  bodyweight_reps: (tops) =>
+    tops.every((t) => (t.weightG ?? 0) > 0) ? (top) => top.weightG ?? 0 : (top) => top.reps ?? 0,
+  duration: () => (top) => top.durationS ?? 0,
+  distance_duration: (tops) => {
+    const [first] = tops
+    const oneDistance = tops.every(
+      (t) => t.distanceMm === first?.distanceMm && (t.durationS ?? 0) > 0,
+    )
+    return oneDistance
+      ? (top) => Math.round((top.distanceMm ?? 0) / (top.durationS ?? 1))
+      : (top) => top.distanceMm ?? 0
+  },
 }

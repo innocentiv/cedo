@@ -62,9 +62,9 @@ through every session and doing date arithmetic itself, which is slow, expensive
 reliable source of quiet errors. One call returns adherence (sessions per week, streak, longest
 gap), which planned days are being skipped, working sets per muscle against the preceding period,
 and which exercises have stalled. "Stalled" is the one judgement it makes rather than aggregates —
-the same top set, three or more sessions running (`GLOSSARY.md`) — judged in `review/stalled.ts`
-on what was logged, and ranked by the contract's `topSet` — the same rule (`stallOf`) the exercise
-screen's badge reads, through `exercise_history`. A weight lift's stall says its **estimated max**
+the same top set, three or more sessions running (`GLOSSARY.md`) — judged by the contract's
+`stallOf` on what was logged, ranked by its `topSet`, over the latest ten sessions — the rule the
+exercise screen's badge reads too, through `exercise_history`. A weight lift's stall says its **estimated max**
 (`GLOSSARY.md`, the contract's `estimate.ts`), and `exercise_history` gives each session's best,
 so the AI reads progress across rep counts without doing the arithmetic.
 

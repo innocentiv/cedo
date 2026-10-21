@@ -1,10 +1,4 @@
-import {
-  type Effort,
-  type LoggedExercise,
-  type TrackingMode,
-  compareEfforts,
-  topSet,
-} from '@cedo/contract'
+import { type Effort, type LoggedExercise, stallOf } from '@cedo/contract'
 import type { TrainingReview } from './service.ts'
 
 /**
@@ -15,22 +9,16 @@ import type { TrainingReview } from './service.ts'
  * as the exercise's tracking mode measures it. See GLOSSARY.md, "Stalled".
  */
 
+/** A set's measures, and how hard it was when that was said — what a stall's set is worth needs both. */
+export type RatedEffort = Effort & { readonly rpe?: number | null }
+
 /** One working set the caller logged, with the exercise and session it belongs to. */
 export interface WorkingSet {
   readonly exerciseId: string
   readonly exercise: LoggedExercise
   readonly sessionId: string
-  readonly effort: Effort
+  readonly effort: RatedEffort
 }
-
-/** A stall is at least this many sessions running with the same top set. */
-export const AT_LEAST_SESSIONS = 3
-
-/**
- * The most recent sessions of an exercise read — and so the longest run a stall reports. Capped in
- * SQL by the loader, where the rows are selected, so the read does not grow with history.
- */
-export const STALL_DEPTH = 10
 
 /**
  * Stalled: the exercise's latest sessions, three or more running, share one top set — its best
@@ -43,12 +31,12 @@ export const STALL_DEPTH = 10
 export function stalledOf(sets: readonly WorkingSet[]): TrainingReview['stalled'] {
   const byExercise = new Map<
     string,
-    { exercise: LoggedExercise; sessions: Map<string, Effort[]> }
+    { exercise: LoggedExercise; sessions: Map<string, RatedEffort[]> }
   >()
   for (const set of sets) {
     const seen = byExercise.get(set.exerciseId) ?? {
       exercise: set.exercise,
-      sessions: new Map<string, Effort[]>(),
+      sessions: new Map<string, RatedEffort[]>(),
     }
     seen.sessions.set(set.sessionId, [...(seen.sessions.get(set.sessionId) ?? []), set.effort])
     byExercise.set(set.exerciseId, seen)
@@ -62,24 +50,4 @@ export function stalledOf(sets: readonly WorkingSet[]): TrainingReview['stalled'
       // In one locale, not the runtime's: the order cannot change with the machine it runs on.
       .toSorted((a, b) => a.exercise.name.localeCompare(b.exercise.name, 'en'))
   )
-}
-
-/**
- * One exercise's stall — the run of its latest sessions sharing one top set, and that set — or null
- * when it has not stalled. `sessions` are its working sets session by session, newest first. The
- * rule both `training_review` and an exercise's history read state.
- */
-export function stallOf(
-  sessions: readonly (readonly Effort[])[],
-  tracking: TrackingMode,
-): { readonly sessions: number; readonly effort: Effort } | null {
-  const tops = sessions.map((efforts) => topSet(efforts, tracking))
-  const [latest] = tops
-  if (latest === undefined) return null
-  // The same as the mode measures it: a pull-up with no added weight and one with "+0 kg" are.
-  const run = tops.findIndex(
-    (top) => top === undefined || compareEfforts(top, latest, tracking) !== 0,
-  )
-  const sessionsRunning = run === -1 ? tops.length : run
-  return sessionsRunning >= AT_LEAST_SESSIONS ? { sessions: sessionsRunning, effort: latest } : null
 }

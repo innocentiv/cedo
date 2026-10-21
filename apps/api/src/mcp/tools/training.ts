@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import {
   DuplicateInput,
+  ExerciseHistoryQuery,
   SessionLogInput,
   WorkoutCreate,
   WorkoutPlanInput,
@@ -177,16 +178,16 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     'exercise_history',
     {
       title: 'History for one exercise',
-      description: 'Every logged session for one exercise, newest first, with each set.',
-      inputSchema: z.object({
-        exerciseId: z.uuid(),
-        limit: z.int().min(1).max(200).default(20),
-      }),
+      description:
+        'Logged sessions for one exercise, newest first, with each set and its RPE, the ' +
+        "session's best estimated max for a weight lift, and — when it has stalled — how many " +
+        'sessions it has repeated one top set.',
+      inputSchema: ExerciseHistoryQuery.safeExtend({ exerciseId: z.uuid() }),
       annotations: READ,
     },
-    async ({ exerciseId, limit }) => {
+    async ({ exerciseId, ...query }) => {
       const { history } = await import('../../modules/session/history.ts')
-      return text(historyLines(await history(caller, exerciseId, { limit }), caller.weightUnit))
+      return text(historyLines(await history(caller, exerciseId, query), caller.weightUnit))
     },
   )
 

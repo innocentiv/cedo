@@ -94,8 +94,11 @@ function travel({ distanceMm, durationS }: Effort): string | null {
  *
  * A dimension not measured counts as least. Of equal sets, the first. Undefined for no sets.
  */
-export function topSet(sets: readonly Effort[], tracking: TrackingMode): Effort | undefined {
-  let best: Effort | undefined
+export function topSet<E extends Effort>(
+  sets: readonly E[],
+  tracking: TrackingMode,
+): E | undefined {
+  let best: E | undefined
   for (const set of sets) {
     if (best === undefined || compareEfforts(set, best, tracking) > 0) best = set
   }

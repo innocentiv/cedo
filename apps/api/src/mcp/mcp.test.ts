@@ -439,7 +439,7 @@ describe('training review', () => {
           { exerciseId: pullUp, weightG: 20_000, reps: 6 },
           { exerciseId: plank, durationS: 60 },
           { exerciseId: squat, weightG: 100_000 + i * 2500, reps: 5 },
-          { exerciseId: bench, weightG: 60_000, reps: 5 },
+          { exerciseId: bench, weightG: 60_000, reps: 5, rpe: 8 },
         ],
       })
     }
@@ -448,8 +448,12 @@ describe('training review', () => {
     expect(review).toContain('Stalled (the same top set, 3+ sessions running):')
     expect(review).toContain('Weighted Pull-up: 3 sessions at 6 × bodyweight +20 kg')
     expect(review).toContain('Plank: 3 sessions at 1:00')
-    // A weight lift's stall says what it is worth: the estimated max of the set it is stuck at.
-    expect(review).toContain('Test Bench: 3 sessions at 5 × 60 kg (estimated max 70 kg)')
+    // A weight lift's stall says what it is worth: the estimated max of the set it is stuck at —
+    // its reserve counted, as exercise_history counts it: RPE 8 leaves 2, so 60 × (1 + 7/30).
+    expect(review).toContain('Test Bench: 3 sessions at 5 × 60 kg (estimated max 74 kg)')
+    const history = textOf((await callTool(pat, 'exercise_history', { exerciseId: bench })).body)
+    expect(history).toContain('· estimated max 74 kg')
+    expect(history).toContain('Stalled: 3 sessions at 5 × 60 kg')
     expect(review).not.toContain('Test Squat: 3 sessions')
     // Three sets, 5 × (100 + 102.5 + 105) kg lifted.
     expect(review).toContain('quadriceps: 3 sets, 1537.5 kg lifted (no prior data)')

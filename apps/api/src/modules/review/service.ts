@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gte, lt, sql } from 'drizzle-orm'
-import type { Effort, LoggedExercise } from '@cedo/contract'
+import { type LoggedExercise, STALL_DEPTH } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import {
@@ -11,7 +11,7 @@ import {
 import type { Caller } from '../../plugins/auth.ts'
 import { adherenceOf } from './adherence.ts'
 import { muscleWorkOf } from './muscle-work.ts'
-import { STALL_DEPTH, stalledOf } from './stalled.ts'
+import { type RatedEffort, stalledOf } from './stalled.ts'
 
 /**
  * A READ MODEL for coaching, not new domain rules.
@@ -62,7 +62,8 @@ export interface TrainingReview {
     readonly exercise: LoggedExercise
     /** How many sessions running, the latest included, have shared that top set — at most ten. */
     readonly sessions: number
-    readonly effort: Effort
+    /** The top set, and its RPE when one was said: its estimated max counts the reserve. */
+    readonly effort: RatedEffort
   }[]
 }
 
@@ -206,6 +207,7 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
         weightG: r.weightG,
         durationS: r.durationS,
         distanceMm: r.distanceMm,
+        rpe: r.rpe,
       },
     })),
   )
@@ -235,6 +237,7 @@ function latestSessions(caller: Caller, since: Date) {
       weightG: setLogs.weightG,
       durationS: setLogs.durationS,
       distanceMm: setLogs.distanceMm,
+      rpe: setLogs.rpe,
       setIndex: setLogs.setIndex,
       rank: sql<number>`dense_rank() over (partition by ${exercises.id} order by ${workoutSessions.startedAt} desc, ${setLogs.sessionId} desc)`.as(
         'rank',

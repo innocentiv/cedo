@@ -41,9 +41,14 @@ export const exercise = (page: Page) => ({
   /** Which group it is in, and transferring it to another. */
   placement: placement(page, 'exercise-transfer'),
   /** Its progress, as the trend says it: the latest point in words, and a stall when there is one. */
-  trend: async (): Promise<{ latest: string | null; stalled: string | null }> => {
+  trend: async (): Promise<{
+    first: string | null
+    latest: string | null
+    stalled: string | null
+  }> => {
     await page.waitFor('exercise-trend')
     return {
+      first: await page.text('exercise-trend-first'),
       latest: await page.text('exercise-trend-latest'),
       stalled: await page.text('exercise-trend-stalled'),
     }

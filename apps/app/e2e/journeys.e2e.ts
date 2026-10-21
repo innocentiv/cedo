@@ -1204,15 +1204,24 @@ test(
           muscles: [{ muscle: 'pectoralis_major', loadPct: 100 }],
         }),
       )
-      // 55, then 60 three sessions running: a rise, then a stall.
+      const endurance = await mine.exercises.create(
+        ExerciseCreate.parse({
+          name: unique('Curl '),
+          muscles: [{ muscle: 'biceps_brachii', loadPct: 100 }],
+        }),
+      )
+      // 55, then 60 three sessions running: a rise, then a stall. And a curl stuck at fifteen reps,
+      // past what the estimate reads — a stall with no trend to draw.
       for (const weightG of [55_000, 60_000, 60_000, 60_000]) {
         // oxlint-disable-next-line no-await-in-loop -- sessions in order: what is under test.
         const session = await mine.sessions.start({ workoutId: null, dayId: null })
-        // oxlint-disable-next-line no-await-in-loop -- one session at a time.
-        await mine.sessions.logSet(
-          session.id,
-          LogSetInput.parse({ exerciseId: lift.id, weightG, reps: 5 }),
-        )
+        for (const set of [
+          { exerciseId: lift.id, weightG, reps: 5 },
+          { exerciseId: endurance.id, weightG: 10_000, reps: 15 },
+        ]) {
+          // oxlint-disable-next-line no-await-in-loop -- one set after another.
+          await mine.sessions.logSet(session.id, LogSetInput.parse(set))
+        }
         // oxlint-disable-next-line no-await-in-loop -- finished before the next can start.
         await mine.sessions.update(session.id, { endedAt: new Date().toISOString() })
       }
@@ -1221,8 +1230,17 @@ test(
       await app.exercise.shown()
       // 60 × (1 + 5/30): five reps at 60 kg suggest 70 kg once.
       expect(await app.exercise.trend()).toEqual({
+        first: '64.17 kg at first',
         latest: '70 kg now',
         stalled: 'Stalled · 3 sessions at 5 × 60 kg',
+      })
+
+      await page.goto(`/exercises/${endurance.id}`)
+      await app.exercise.shown()
+      expect(await app.exercise.trend()).toEqual({
+        first: null,
+        latest: null,
+        stalled: 'Stalled · 4 sessions at 15 × 10 kg',
       })
     })
   },

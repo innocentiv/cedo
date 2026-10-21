@@ -1,11 +1,16 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
-import type { ExerciseHistory, ExerciseHistoryQuery, TrackingMode } from '@cedo/contract'
+import {
+  type ExerciseHistory,
+  type ExerciseHistoryQuery,
+  LoggedEffort,
+  type TrackingMode,
+  stallOf,
+} from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises } from '../../db/visible.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { stallOf } from '../review/stalled.ts'
 
 /**
  * Per-exercise history, newest session first. One indexed read on
@@ -75,8 +80,9 @@ export async function history(
 }
 
 /**
- * The sessions, and the stall `training_review` would report — judged over the sessions this read
- * returns.
+ * The sessions, and their stall — the contract's `stallOf`, the rule `training_review` applies,
+ * over the latest `STALL_DEPTH` of them as it does. A read asking for fewer than three sessions,
+ * or none before a `since`, cannot show one.
  */
 function withStall(
   sessions: ExerciseHistory['sessions'],
@@ -85,10 +91,10 @@ function withStall(
   const working = sessions.map((s) => s.sets.filter((set) => !set.isWarmup))
   const stall = stallOf(working, tracking)
   if (stall === null) return { sessions, stalled: null }
-  const { reps, weightG, durationS, distanceMm } = stall.effort
+  // A logged set's measures, no more: what the badge says it is stuck at.
   return {
     sessions,
-    stalled: { sessions: stall.sessions, effort: { reps, weightG, durationS, distanceMm } },
+    stalled: { sessions: stall.sessions, effort: LoggedEffort.parse(stall.effort) },
   }
 }
 
