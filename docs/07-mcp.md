@@ -63,7 +63,10 @@ reliable source of quiet errors. One call returns adherence (sessions per week, 
 gap), which planned days are being skipped, working sets per muscle against the preceding period,
 and which exercises have stalled. "Stalled" is the one judgement it makes rather than aggregates —
 the same top set, three or more sessions running (`GLOSSARY.md`) — judged in `review/stalled.ts`
-on what was logged, and ranked by the contract's `topSet`.
+on what was logged, and ranked by the contract's `topSet` — the same rule (`stallOf`) the exercise
+screen's badge reads, through `exercise_history`. A weight lift's stall says its **estimated max**
+(`GLOSSARY.md`, the contract's `estimate.ts`), and `exercise_history` gives each session's best,
+so the AI reads progress across rep counts without doing the arithmetic.
 
 The work per muscle is what the load percentages are **for**: each working set counts toward a
 muscle by `load_pct / 100` — a set of a 70/30 exercise is 0.7 of a set for one muscle and 0.3 for the

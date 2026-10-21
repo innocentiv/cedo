@@ -123,6 +123,11 @@ lift, then the most reps at it; the most weight added to bodyweight; the longest
 run, then the fastest over it.
 _Avoid_: best set, max set
 
+**Estimated max**:
+The most weight a set suggests could be lifted once, worked out from its weight, its reps and the
+reps it left in reserve — so sets of different rep counts can be compared.
+_Avoid_: e1RM, 1RM, one-rep max, max (a one-rep max is lifted, not estimated)
+
 **Stalled**:
 An exercise whose latest sessions — three or more running — share one top set: what was logged has
 stopped moving. Judged on the logs, not on a plan, so an exercise logged without one can stall too.

@@ -1,4 +1,10 @@
-import { type Effort, type LoggedExercise, compareEfforts, topSet } from '@cedo/contract'
+import {
+  type Effort,
+  type LoggedExercise,
+  type TrackingMode,
+  compareEfforts,
+  topSet,
+} from '@cedo/contract'
 import type { TrainingReview } from './service.ts'
 
 /**
@@ -50,19 +56,30 @@ export function stalledOf(sets: readonly WorkingSet[]): TrainingReview['stalled'
   return (
     [...byExercise.values()]
       .flatMap(({ exercise, sessions }) => {
-        const tops = [...sessions.values()].map((efforts) => topSet(efforts, exercise.tracking))
-        const [latest] = tops
-        if (latest === undefined) return []
-        // The same as the mode measures it: a pull-up with no added weight and one with "+0 kg" are.
-        const run = tops.findIndex(
-          (top) => top === undefined || compareEfforts(top, latest, exercise.tracking) !== 0,
-        )
-        const sessionsRunning = run === -1 ? tops.length : run
-        return sessionsRunning >= AT_LEAST_SESSIONS
-          ? [{ exercise, sessions: sessionsRunning, effort: latest }]
-          : []
+        const stall = stallOf([...sessions.values()], exercise.tracking)
+        return stall === null ? [] : [{ exercise, ...stall }]
       })
       // In one locale, not the runtime's: the order cannot change with the machine it runs on.
       .toSorted((a, b) => a.exercise.name.localeCompare(b.exercise.name, 'en'))
   )
+}
+
+/**
+ * One exercise's stall — the run of its latest sessions sharing one top set, and that set — or null
+ * when it has not stalled. `sessions` are its working sets session by session, newest first. The
+ * rule both `training_review` and an exercise's history read state.
+ */
+export function stallOf(
+  sessions: readonly (readonly Effort[])[],
+  tracking: TrackingMode,
+): { readonly sessions: number; readonly effort: Effort } | null {
+  const tops = sessions.map((efforts) => topSet(efforts, tracking))
+  const [latest] = tops
+  if (latest === undefined) return null
+  // The same as the mode measures it: a pull-up with no added weight and one with "+0 kg" are.
+  const run = tops.findIndex(
+    (top) => top === undefined || compareEfforts(top, latest, tracking) !== 0,
+  )
+  const sessionsRunning = run === -1 ? tops.length : run
+  return sessionsRunning >= AT_LEAST_SESSIONS ? { sessions: sessionsRunning, effort: latest } : null
 }

@@ -381,6 +381,8 @@ describe('training review', () => {
     const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
     // "8", not "8.0": a numeric read back as a string, unconverted, would say so.
     expect(history).toContain('5 × 60 kg @ RPE 8.5, 5 × 60 kg @ RPE 8, 5 × 60 kg')
+    // The session's best estimated max: 5 reps at RPE 8 leave 2, as if 7 — 60 × (1 + 7/30).
+    expect(history).toContain('· estimated max 74 kg')
   })
 
   /** The AI reads a weighted pull-up as the app shows it — added load, not a 20 kg lift. */
@@ -428,6 +430,7 @@ describe('training review', () => {
     )
     const plank = await createExercise(pat, 'Plank', 'rectus_abdominis', 'duration')
     const squat = await createExercise(pat, 'Test Squat', 'quadriceps')
+    const bench = await createExercise(pat, 'Test Bench', 'pectoralis_major')
 
     for (let i = 0; i < 3; i += 1) {
       // oxlint-disable-next-line no-await-in-loop -- three sessions, in order: what is under test.
@@ -436,6 +439,7 @@ describe('training review', () => {
           { exerciseId: pullUp, weightG: 20_000, reps: 6 },
           { exerciseId: plank, durationS: 60 },
           { exerciseId: squat, weightG: 100_000 + i * 2500, reps: 5 },
+          { exerciseId: bench, weightG: 60_000, reps: 5 },
         ],
       })
     }
@@ -444,6 +448,8 @@ describe('training review', () => {
     expect(review).toContain('Stalled (the same top set, 3+ sessions running):')
     expect(review).toContain('Weighted Pull-up: 3 sessions at 6 × bodyweight +20 kg')
     expect(review).toContain('Plank: 3 sessions at 1:00')
+    // A weight lift's stall says what it is worth: the estimated max of the set it is stuck at.
+    expect(review).toContain('Test Bench: 3 sessions at 5 × 60 kg (estimated max 70 kg)')
     expect(review).not.toContain('Test Squat: 3 sessions')
     // Three sets, 5 × (100 + 102.5 + 105) kg lifted.
     expect(review).toContain('quadriceps: 3 sets, 1537.5 kg lifted (no prior data)')

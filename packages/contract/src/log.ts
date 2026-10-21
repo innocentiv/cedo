@@ -250,12 +250,27 @@ export const ExerciseHistoryEntry = z.object({
 })
 export type ExerciseHistoryEntry = z.output<typeof ExerciseHistoryEntry>
 
+/** What a logged set measured. A logged set's measures, no more. */
+export const LoggedEffort = SetLog.pick({
+  reps: true,
+  weightG: true,
+  durationS: true,
+  distanceMm: true,
+})
+export type LoggedEffort = z.output<typeof LoggedEffort>
+
 /** Most recent session first. */
 export const ExerciseHistory = z.object({
   exerciseId: Id,
   /** So a reader renders the sets in the exercise's terms — `formatEffort(set, tracking, unit)`. */
   tracking: TrackingMode,
   sessions: z.array(ExerciseHistoryEntry),
+  /**
+   * Whether it has stalled (GLOSSARY.md) — its latest sessions, three or more running, sharing one
+   * top set — judged as `training_review` judges it, over the sessions this read returns. The run's
+   * length and the top set it is stuck at; null when it has not.
+   */
+  stalled: z.object({ sessions: z.int().min(1), effort: LoggedEffort }).nullable(),
 })
 export type ExerciseHistory = z.output<typeof ExerciseHistory>
 

@@ -5,6 +5,7 @@ import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises } from '../../db/visible.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { stallOf } from '../review/stalled.ts'
 
 /**
  * Per-exercise history, newest session first. One indexed read on
@@ -70,7 +71,25 @@ export async function history(
     // numbers, and ordered by number they interleaved arbitrarily.
     .orderBy(desc(workoutSessions.startedAt), asc(setLogs.loggedAt), asc(setLogs.setIndex))
 
-  return { exerciseId, tracking, sessions: groupIntoSessions(rows) }
+  return { exerciseId, tracking, ...withStall(groupIntoSessions(rows), tracking) }
+}
+
+/**
+ * The sessions, and the stall `training_review` would report — judged over the sessions this read
+ * returns.
+ */
+function withStall(
+  sessions: ExerciseHistory['sessions'],
+  tracking: ExerciseHistory['tracking'],
+): Pick<ExerciseHistory, 'sessions' | 'stalled'> {
+  const working = sessions.map((s) => s.sets.filter((set) => !set.isWarmup))
+  const stall = stallOf(working, tracking)
+  if (stall === null) return { sessions, stalled: null }
+  const { reps, weightG, durationS, distanceMm } = stall.effort
+  return {
+    sessions,
+    stalled: { sessions: stall.sessions, effort: { reps, weightG, durationS, distanceMm } },
+  }
 }
 
 type HistoryRow = {

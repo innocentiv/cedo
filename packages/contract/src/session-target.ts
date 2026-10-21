@@ -1,15 +1,6 @@
 import { z } from 'zod'
-import { SetLog } from './log.ts'
+import { LoggedEffort } from './log.ts'
 import { SetTarget } from './progression.ts'
-
-/** What a logged set measured — what "last time" carries. A logged set's measures, no more. */
-export const LoggedEffort = SetLog.pick({
-  reps: true,
-  weightG: true,
-  durationS: true,
-  distanceMm: true,
-})
-export type LoggedEffort = z.output<typeof LoggedEffort>
 
 /**
  * What one entry of a session asks for, and what was done last time — `GET /sessions/:id/targets`,

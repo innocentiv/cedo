@@ -7,7 +7,7 @@ import type {
   Workout,
   WorkoutSummary,
 } from '@cedo/contract'
-import { formatDuration, formatEffort, formatWeight } from '@cedo/contract'
+import { estimatedMax, formatDuration, formatEffort, formatWeight, trendOf } from '@cedo/contract'
 import type { MuscleWork, TrainingReview } from '../modules/review/service.ts'
 import { AT_LEAST_SESSIONS } from '../modules/review/stalled.ts'
 
@@ -145,23 +145,42 @@ function describeTarget(
  */
 function stalledLine(s: TrainingReview['stalled'][number], unit: WeightUnit): string {
   const effort = formatEffort(s.effort, s.exercise.tracking, unit)
-  return `${s.exercise.name}: ${s.sessions} sessions${effort === '—' ? '' : ` at ${effort}`}`
+  // No RPE travels with a stall's set, so its reserve counts as none.
+  const estimate = estimatedMax({ ...s.effort, rpe: null }, s.exercise.tracking)
+  const max = estimate === null ? '' : ` (estimated max ${formatWeight(estimate, unit)})`
+  return `${s.exercise.name}: ${s.sessions} sessions${effort === '—' ? '' : ` at ${effort}`}${max}`
 }
 
-/** An exercise's recent sessions, one line each: `2026-10-14: w10 × 20 kg, 8 × 60 kg @ RPE 8.5`. */
+/**
+ * An exercise's recent sessions, one line each, with the session's best estimated max for a weight
+ * lift — `2026-10-14: w10 × 20 kg, 8 × 60 kg @ RPE 8.5 · estimated max 74 kg` — and its stall,
+ * if it has one, last.
+ */
 export function historyLines(history: ExerciseHistory, unit: WeightUnit): string {
   if (history.sessions.length === 0) return 'No sessions logged for this exercise.'
-  return history.sessions
-    .map((s) => {
-      const sets = s.sets
-        .map(
-          (set) =>
-            `${set.isWarmup ? 'w' : ''}${formatEffort(set, history.tracking, unit)}${atRpe(set.rpe)}`,
-        )
-        .join(', ')
-      return `${s.performedAt.slice(0, 10)}: ${sets}`
-    })
-    .join('\n')
+  const estimates = new Map(
+    trendOf(history).flatMap((p) => (p.estimated ? [[p.sessionId, p.value] as const] : [])),
+  )
+  const lines = history.sessions.map((s) => {
+    const sets = s.sets
+      .map(
+        (set) =>
+          `${set.isWarmup ? 'w' : ''}${formatEffort(set, history.tracking, unit)}${atRpe(set.rpe)}`,
+      )
+      .join(', ')
+    const estimate = estimates.get(s.sessionId)
+    const max = estimate === undefined ? '' : ` · estimated max ${formatWeight(estimate, unit)}`
+    return `${s.performedAt.slice(0, 10)}: ${sets}${max}`
+  })
+  const { stalled } = history
+  return [
+    ...lines,
+    ...(stalled === null
+      ? []
+      : [
+          `Stalled: ${stalled.sessions} sessions at ${formatEffort(stalled.effort, history.tracking, unit)}`,
+        ]),
+  ].join('\n')
 }
 
 /**

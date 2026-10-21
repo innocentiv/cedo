@@ -489,6 +489,51 @@ describe('exercise history', () => {
     )
     expect(forAlice.sessions).toHaveLength(0)
   })
+
+  /** The badge on the exercise screen: the same judgement `training_review` makes. */
+  describe('says whether it has stalled', () => {
+    const sessionsOf = async (exerciseId: string, sets: { weightG: number; reps: number }[][]) => {
+      for (const session of sets) {
+        const started = expectContract(WorkoutSession, (await startSession(alice)).body)
+        for (const set of session) {
+          await alice.wire(`/sessions/${started.id}/logs`, {
+            method: 'POST',
+            body: JSON.stringify({ exerciseId, ...set }),
+          })
+        }
+        await finishSession(alice, started.id)
+        await Bun.sleep(5)
+      }
+      return expectContract(
+        ExerciseHistory,
+        (await alice.wire(`/exercises/${exerciseId}/history`)).body,
+      )
+    }
+    const top = { weightG: kgToG(60), reps: 5 }
+
+    test('three sessions at one top set, however the back-off sets went', async () => {
+      const history = await sessionsOf(await anExercise(alice), [
+        [top, { weightG: kgToG(50), reps: 8 }],
+        [top, { weightG: kgToG(50), reps: 6 }],
+        [top],
+      ])
+      expect(history.stalled).toEqual({
+        sessions: 3,
+        effort: { weightG: kgToG(60), reps: 5, durationS: null, distanceMm: null },
+      })
+    })
+
+    test('not while the top set still moves, nor before three sessions', async () => {
+      const moving = await sessionsOf(await anExercise(alice, 'Squat'), [
+        [top],
+        [top],
+        [{ weightG: kgToG(60), reps: 6 }],
+      ])
+      expect(moving.stalled).toBeNull()
+      const early = await sessionsOf(await anExercise(alice, 'Press'), [[top], [top]])
+      expect(early.stalled).toBeNull()
+    })
+  })
 })
 
 /** The loop closes here: prescription → logged reality → the next prescription. */
