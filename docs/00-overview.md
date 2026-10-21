@@ -28,14 +28,24 @@ Everything you create belongs to a **group**. Every user gets a personal group a
 A seeded `cedo` group carries the starter exercise library that every user can read.
 
 You can favourite anything visible to you, duplicate anything into a group you can edit, and
-transfer ownership between groups you can edit.
+transfer ownership between groups you can edit. Editors add and remove a group's members; any
+member may leave, except its last editor. Nobody leaves the starter library: every account reads
+it, so every shared plan can use it.
 
 ## AI as a first-class operator
 
-An MCP server is part of the API, not a bolt-on. An AI with a personal access token can do
-everything the UI can — create exercises, build workouts, log sessions, evaluate progression — as a
-real user, under exactly the same permissions. The expectation is that most users will have their
-training programmed and adjusted by an AI rather than by hand.
+An MCP server is part of the API, not a bolt-on. An AI with a personal access token acts as a real
+user, under exactly the same permissions — no elevated path — for three jobs (`docs/07-mcp.md`):
+
+1. **Curating the exercise library** from reliable sources: audit it, search before creating,
+   create and correct exercises with consistent muscle attribution, duplicate one to adapt it.
+2. **Reviewing someone's training and adjusting it**: adherence, work per muscle, stalled lifts,
+   then the plan itself — read, rewrite, duplicate, log a session, see what progression proposes.
+3. **Diagnosing a running instance** that belongs to someone else, where there is no shell.
+   Curator-only.
+
+It is not a second UI. It deletes nothing, and it does not manage groups, members or tokens: those
+are a person's to do, in the app.
 
 ## Explicit non-goals (for now)
 
@@ -45,8 +55,9 @@ them without being asked:
 - **Progress graphs.** The data and indexes exist (`GET /exercises/:id/history`); the charts do not.
 - **Meal planning** — recipes, ingredients, shopping lists, meal prep. Will reuse the ownable/
   sharing machinery unchanged; see `docs/playbooks/add-entity.md`.
-- **Imperial units.** Everything is stored metric. Conversion is isolated to one file so display-
-  level imperial support is additive.
+- **Imperial distances.** Everything is stored metric. Weights already read and are typed in kilograms
+  or pounds, per account; distances are metric only. Conversion is isolated to one file
+  (`packages/contract/src/units.ts`), so miles and yards are additive.
 - **IAM / SSO.** Auth is username and password. The `users.auth_provider` / `users.external_id`
   columns (and the unique index on the latter) exist so OIDC can be added without a schema redesign.
   There is no `AuthProvider` interface in code yet; it is the shape the first OIDC change will add.
