@@ -28,44 +28,46 @@ export interface Falling {
   readonly exercise: LoggedExercise
   /** How many latest sessions running each fell below the one before. */
   readonly sessions: number
-  /** The estimated max before the fall, and now — grams. */
-  readonly from: number
-  readonly to: number
+  /** The estimated max before the fall, and now, from what was lifted. */
+  readonly fromG: number
+  readonly toG: number
 }
 
 export interface EffortDrift {
   readonly exercise: LoggedExercise
   /** The set compared: the latest top set, as its mode measures it. */
   readonly effort: Effort
-  /** Its average RPE before, and over the latest sessions — to one decimal. */
-  readonly from: number
-  readonly to: number
+  /** Its RPE averaged over the sessions before, and over the latest — to one decimal. */
+  readonly fromRpe: number
+  readonly toRpe: number
 }
 
 /**
  * A weight lift whose best estimated max fell in each of its latest `FALLING_SESSIONS` sessions or
- * more, consecutively. A session with nothing to estimate breaks the run: it says nothing either way.
+ * more, consecutively. A session with nothing to estimate ends the run: it says nothing either way.
+ *
+ * Estimated from what was LIFTED — weight and reps — with the reserve left out. Counted, the same
+ * set rated half a point harder each time reads as a fall of rating noise, and as the one cause
+ * effort drift already says. A bodyweight lift has no estimated max (`estimate.ts`), so cannot fall.
  */
 export function fallingOf(sets: readonly WorkingSet[]): Falling[] {
   return sessionsByExercise(sets).flatMap(({ exercise, sessions }) => {
-    const best = sessions.map((efforts) => bestEstimate(efforts, exercise))
-    let drops = 0
-    for (;;) {
-      const [now, before] = [best[drops], best[drops + 1]]
-      if (now === undefined || now === null || before === undefined || before === null) break
-      if (now >= before) break
-      drops += 1
-    }
-    const [to, from] = [best[0], best[drops]]
-    if (drops < FALLING_SESSIONS || to === undefined || to === null) return []
-    if (from === undefined || from === null) return []
-    return [{ exercise, sessions: drops, from, to }]
+    const best = sessions.map((efforts) => bestLifted(efforts, exercise))
+    // The first session not below the one before it; the oldest never is, having none.
+    const drops = best.findIndex((now, s) => {
+      const before = best[s + 1]
+      return now === null || before == null || now >= before
+    })
+    const [toG] = best
+    const fromG = best[drops]
+    if (drops < FALLING_SESSIONS || toG == null || fromG == null) return []
+    return [{ exercise, sessions: drops, fromG, toG }]
   })
 }
 
-function bestEstimate(efforts: readonly RatedEffort[], exercise: LoggedExercise): number | null {
+function bestLifted(efforts: readonly RatedEffort[], exercise: LoggedExercise): number | null {
   const estimates = efforts.flatMap(
-    (e) => estimatedMax({ ...e, rpe: e.rpe ?? null }, exercise.tracking) ?? [],
+    (e) => estimatedMax({ ...e, rpe: null }, exercise.tracking) ?? [],
   )
   return estimates.length === 0 ? null : Math.max(...estimates)
 }
@@ -74,33 +76,34 @@ function bestEstimate(efforts: readonly RatedEffort[], exercise: LoggedExercise)
  * The same set — the latest top set, as its mode measures it — rated at least `DRIFT_RPE` higher
  * in EACH of the latest `DRIFT_SESSIONS` sessions than on average before them. Each session on its
  * own, so one hard set, or one hard session, is not drift: self-reported RPE is off by about one,
- * and is read across sessions (Halperin et al., Sports Med 2022). A heavier set, or more reps, is
- * harder by its load, and is not compared.
+ * and is read across sessions (Halperin et al., Sports Med 2022). Every session weighs the same,
+ * before and since, whatever its number of sets. A heavier set, or more reps, is harder by its load
+ * and is not compared — so a latest session that added load has nothing before it to drift from.
  */
 export function effortDriftOf(sets: readonly WorkingSet[]): EffortDrift[] {
   return sessionsByExercise(sets).flatMap(({ exercise, sessions }) => {
     const [latest] = sessions
     const target = latest === undefined ? undefined : topSet(latest, exercise.tracking)
     if (target === undefined) return []
-    const ratings = sessions.map((efforts) =>
-      efforts.flatMap((e) =>
+    // Each session's average rating of that set, when it was logged and rated there.
+    const rated = sessions.map((efforts) => {
+      const ratings = efforts.flatMap((e) =>
         e.rpe != null && compareEfforts(e, target, exercise.tracking) === 0 ? [e.rpe] : [],
-      ),
-    )
-    const recent = ratings.slice(0, DRIFT_SESSIONS)
-    const earlier = ratings.slice(DRIFT_SESSIONS).flat()
-    if (recent.length < DRIFT_SESSIONS || recent.some((r) => r.length === 0)) return []
-    if (earlier.length === 0) return []
+      )
+      return ratings.length === 0 ? [] : [mean(ratings)]
+    })
+    const recent = rated.slice(0, DRIFT_SESSIONS).flat()
+    const earlier = rated.slice(DRIFT_SESSIONS).flat()
+    if (recent.length < DRIFT_SESSIONS || earlier.length === 0) return []
     const before = mean(earlier)
-    const sessionMeans = recent.map((r) => mean(r))
-    if (sessionMeans.some((m) => m - before < DRIFT_RPE)) return []
+    if (recent.some((m) => m - before < DRIFT_RPE)) return []
     const { reps, weightG, durationS, distanceMm } = target
     return [
       {
         exercise,
         effort: { reps, weightG, durationS, distanceMm },
-        from: oneDecimal(before),
-        to: oneDecimal(mean(sessionMeans)),
+        fromRpe: oneDecimal(before),
+        toRpe: oneDecimal(mean(recent)),
       },
     ]
   })

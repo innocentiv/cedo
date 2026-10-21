@@ -441,12 +441,14 @@ describe('training review', () => {
 
     const review = textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)
     // 66 kg × 7/6 is 77 kg; 57 kg, 66.5 kg.
-    expect(review).toContain('Falling (estimated max down, 2+ sessions running):')
-    expect(review).toContain('Test Bench: 3 sessions, 77 kg → 66.5 kg')
+    expect(review).toContain(
+      'Falling (estimated max from what was lifted, down 2+ sessions running):',
+    )
+    expect(review).toContain('Test Bench: down in each of the latest 3 sessions, 77 kg → 66.5 kg')
     expect(review).toContain(
       'Effort drift (RPE up 1+ at the same set, in each of the latest 2 sessions):',
     )
-    expect(review).toContain('Test Row at 8 × 50 kg: RPE 7 → 8.5')
+    expect(review).toContain('Test Row at 8 × 50 kg: average RPE 7 → 8.5')
   })
 
   /** Every effort reaches the AI as the app shows it. See `stalled.test.ts` for the history. */

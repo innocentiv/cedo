@@ -32,7 +32,7 @@ describe('falling', () => {
   // Five reps estimate 7/6 of the weight: 60 → 70 kg, 63 → 73.5 kg, 66 → 77 kg.
   test('is the estimated max lower in each of the latest two sessions or more', () => {
     const sets = logged([[[60, 5, null]], [[63, 5, null]], [[66, 5, null]], [[60, 5, null]]])
-    expect(fallingOf(sets)).toEqual([{ exercise: bench, sessions: 2, from: 77_000, to: 70_000 }])
+    expect(fallingOf(sets)).toEqual([{ exercise: bench, sessions: 2, fromG: 77_000, toG: 70_000 }])
   })
 
   test('is not one bad session', () => {
@@ -43,6 +43,15 @@ describe('falling', () => {
     expect(
       fallingOf(logged([[[60, 5, null]], [[60, 5, null]], [[63, 5, null]], [[66, 5, null]]])),
     ).toEqual([])
+  })
+
+  /**
+   * What was lifted, not how it was rated: the same 60 × 5 said half a point harder each time
+   * estimates 76, 75, 74 kg with the reserve counted — a "fall" made of rating noise, and the very
+   * thing effort drift reads, said twice.
+   */
+  test('is not the same set rated harder', () => {
+    expect(fallingOf(logged([[[60, 5, 8]], [[60, 5, 7.5]], [[60, 5, 7]]]))).toEqual([])
   })
 
   test('is not a fall that has already turned', () => {
@@ -65,6 +74,7 @@ describe('falling', () => {
 })
 
 describe('effort drift', () => {
+  /** Each session weighs the same: the two-set session before averages 7.25, not two votes of three. */
   test('is RPE up by 1 or more at the same set, in each of the latest two sessions', () => {
     const sets = logged([
       [
@@ -82,8 +92,8 @@ describe('effort drift', () => {
       {
         exercise: bench,
         effort: { weightG: 60_000, reps: 5, durationS: null, distanceMm: null },
-        from: 7.2,
-        to: 8.5,
+        fromRpe: 7.1,
+        toRpe: 8.5,
       },
     ])
   })
@@ -149,7 +159,7 @@ describe('in the training review', () => {
 
     const review = await fixture.review()
     expect(review.falling.map((f) => [f.exercise.name, f.sessions])).toEqual([['Bench', 3]])
-    expect(review.effortDrift.map((d) => [d.exercise.name, d.from, d.to])).toEqual([
+    expect(review.effortDrift.map((d) => [d.exercise.name, d.fromRpe, d.toRpe])).toEqual([
       ['Row', 7, 8.5],
     ])
   })

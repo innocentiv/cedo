@@ -16,8 +16,13 @@ import {
   formatWeight,
   pointsOf,
 } from '@cedo/contract'
-import { DRIFT_RPE, DRIFT_SESSIONS, FALLING_SESSIONS } from '../modules/review/deload.ts'
-import type { MuscleWork, TrainingReview } from '../modules/review/service.ts'
+import {
+  DRIFT_RPE,
+  DRIFT_SESSIONS,
+  FALLING_SESSIONS,
+  type MuscleWork,
+  type TrainingReview,
+} from '../modules/review/service.ts'
 
 /**
  * Tool output is TEXT the model reads, and its size is the real cost of an MCP tool — not the
@@ -165,10 +170,10 @@ function deloadSections(review: TrainingReview, unit: WeightUnit): string[] {
   const sections: string[] = []
   if (review.falling.length > 0) {
     sections.push(
-      `Falling (estimated max down, ${FALLING_SESSIONS}+ sessions running):\n  ${review.falling
+      `Falling (estimated max from what was lifted, down ${FALLING_SESSIONS}+ sessions running):\n  ${review.falling
         .map(
           (f) =>
-            `${f.exercise.name}: ${f.sessions} sessions, ${formatWeight(f.from, unit)} → ${formatWeight(f.to, unit)}`,
+            `${f.exercise.name}: down in each of the latest ${f.sessions} sessions, ${formatWeight(f.fromG, unit)} → ${formatWeight(f.toG, unit)}`,
         )
         .join('\n  ')}`,
     )
@@ -178,7 +183,7 @@ function deloadSections(review: TrainingReview, unit: WeightUnit): string[] {
       `Effort drift (RPE up ${DRIFT_RPE}+ at the same set, in each of the latest ${DRIFT_SESSIONS} sessions):\n  ${review.effortDrift
         .map(
           (d) =>
-            `${d.exercise.name} at ${formatEffort(d.effort, d.exercise.tracking, unit)}: RPE ${d.from} → ${d.to}`,
+            `${d.exercise.name} at ${formatEffort(d.effort, d.exercise.tracking, unit)}: average RPE ${d.fromRpe} → ${d.toRpe}`,
         )
         .join('\n  ')}`,
     )

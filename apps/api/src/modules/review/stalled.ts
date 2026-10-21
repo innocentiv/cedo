@@ -37,7 +37,8 @@ export function stalledOf(sets: readonly WorkingSet[]): TrainingReview['stalled'
 
 /**
  * Each exercise, with its working sets session by session — newest session first, as `sets`
- * arrive — by exercise name. The shape every judgement over an exercise's sessions reads.
+ * arrive. Grouped by exercise id, never by name; sorted by name. The shape every judgement over an
+ * exercise's sessions reads.
  */
 export function sessionsByExercise(
   sets: readonly WorkingSet[],

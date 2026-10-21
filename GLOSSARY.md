@@ -134,8 +134,9 @@ stopped moving. Judged on the logs, not on a plan, so an exercise logged without
 _Avoid_: plateaued, stuck
 
 **Falling**:
-A weight lift whose best estimated max has dropped in each of its latest two sessions or more —
-performance going down, not just not going up. One bad session is not a fall.
+A weight lift whose best estimated max, from the weight and reps lifted alone, has dropped in each
+of its latest two sessions or more — performance going down, not just not going up. One bad session
+is not a fall, and a set rated harder is effort drift, not a fall.
 _Avoid_: regressing, declining (a declined muscle is about sets, not strength)
 
 **Effort drift**:

@@ -12,6 +12,9 @@ import type { Caller } from '../../plugins/auth.ts'
 import { adherenceOf } from './adherence.ts'
 import { muscleWorkOf } from './muscle-work.ts'
 import { type EffortDrift, type Falling, effortDriftOf, fallingOf } from './deload.ts'
+
+/** The thresholds the review judges by, for whoever says its signals. */
+export { DRIFT_RPE, DRIFT_SESSIONS, FALLING_SESSIONS } from './deload.ts'
 import { type RatedEffort, type WorkingSet, stalledOf } from './stalled.ts'
 
 /**
@@ -67,9 +70,9 @@ export interface TrainingReview {
     readonly effort: RatedEffort
   }[]
   /**
-   * Weight lifts whose estimated max fell in each of their latest two sessions or more — a deload
-   * trigger, as is effort drift: the same set rated at least 1 RPE harder in each of the latest two
-   * sessions. The AI's to act on, by saving a lighter plan (ADR-0012). See ./deload.ts.
+   * The deload triggers: weight lifts falling, and effort drift at the same set — see GLOSSARY.md
+   * for each, and ./deload.ts for the thresholds. The AI's to act on, by saving a lighter plan
+   * (ADR-0012).
    */
   readonly falling: readonly Falling[]
   readonly effortDrift: readonly EffortDrift[]

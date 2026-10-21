@@ -72,16 +72,21 @@ Beside the stall it says the two **deload** triggers (`GLOSSARY.md`), judged ove
 sessions (`review/deload.ts`): a weight lift **falling** — its best estimated max down in each of its
 latest two sessions or more — and **effort drift** — the latest top set rated at least one RPE harder
 in each of the latest two sessions than on average before them. Each session must cross the line on
-its own, so one hard set or one bad day says nothing: self-rated RPE is off by about one. Drift needs
-RPE said both before and since; a heavier set is harder by its load and is not compared. Each
-section appears only when it has something to say:
+its own, so one hard set or one bad day says nothing: self-rated RPE is off by about one.
+
+The two read different things, so one cause is never said twice. Falling is estimated from what was
+**lifted**, the reserve left out: counted, the same set rated half a point harder each time would
+read as a fall made of rating noise. That is drift's to say, and drift needs RPE said both before and
+since. A heavier set is harder by its load and is not compared, so drift goes quiet the session the
+load goes up. A bodyweight lift has no estimated max, so it can drift but cannot fall. Each section
+appears only when it has something to say:
 
 ```
-Falling (estimated max down, 2+ sessions running):
-  Bench Press: 3 sessions, 77 kg → 66.5 kg
+Falling (estimated max from what was lifted, down 2+ sessions running):
+  Bench Press: down in each of the latest 3 sessions, 77 kg → 66.5 kg
 
 Effort drift (RPE up 1+ at the same set, in each of the latest 2 sessions):
-  Row at 8 × 50 kg: RPE 7 → 8.5
+  Row at 8 × 50 kg: average RPE 7 → 8.5
 ```
 
 The review only says them. Deloading is the AI's to do, by saving a lighter plan — the progression
