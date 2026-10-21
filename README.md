@@ -4,8 +4,8 @@ Self-hosted workout tracker with a first-class MCP server, so an AI can plan and
 training as a real user under real permissions.
 
 Bun + Elysia + Postgres on the back, Expo (React Native) on the front, deployed with
-`docker compose`. The app ships as a web app, used from a phone's browser; native iOS and Android
-builds are not configured yet.
+`docker compose`. The app ships as a web app, used from a phone's browser (installable once #8
+lands); native iOS and Android builds are not configured yet (#10).
 
 ---
 
@@ -154,5 +154,6 @@ The three rules worth knowing before you type anything:
 
 All milestones complete: contract, database, API, exercises and media, workouts and logs, MCP,
 performance, frontend, and deployment. The app is web only: there is no native build configuration
-(no `eas.json`, no bundle ids), and the API address is fixed when the web app is built. A native app
-with the server address entered at runtime is issue #10; an installable web app is #8.
+(no `eas.json`, no bundle ids). On the web it calls `/api` on its own origin; a native build would
+need the server address fixed when it is built, one build per instance. A native app with the
+address entered at runtime is issue #10; an installable web app is #8.

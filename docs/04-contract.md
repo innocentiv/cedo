@@ -99,9 +99,10 @@ All measurements cross the wire as **integers in base units** — `weightG`, `di
 `durationS`. Never a float, never kilograms.
 
 `units.ts` is the only file permitted to convert. Screens call `formatWeight(grams, unit)` to show
-a value and `DIMENSION_FIELDS` (`dimension.ts`) to type one; they never divide by 1000. That is how
-pounds arrived: those two files plus the account's `weightUnit`, and nothing more. Imperial
-distances would take the same path.
+a value and `DIMENSION_FIELDS` (`dimension.ts`) to type one; they never divide by 1000. So when
+pounds arrived, the conversion changed in those two files alone; the rest of the work was carrying
+the account's `weightUnit` to where values are shown — the account route, the MCP formatters, each
+screen. Imperial distances would take the same path.
 
 ## Errors
 

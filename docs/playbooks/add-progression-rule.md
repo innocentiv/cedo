@@ -39,8 +39,8 @@ sessions only, warmup sets excluded, and an empty history returning the current 
 ## 4. Give the editor its defaults
 
 `NEW_RULE` in `packages/contract/src/plan-editing.ts` is the starting rule for each kind, in the
-person's unit; `progressionOf` picks from it. It is typed over every kind, so a missing one does not
-compile. `apps/app/src/ui/progression-field.tsx` renders the rule's fields, so a kind with a new
+person's unit — what `progressionOf` gives when the editor switches to that kind (switching back
+keeps the earlier rule's settings). It is typed over every kind, so a missing one does not compile. `apps/app/src/ui/progression-field.tsx` renders the rule's fields, so a kind with a new
 parameter gets its input there.
 
 ## 5. Check nothing else needed changing

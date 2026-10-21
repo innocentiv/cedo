@@ -52,14 +52,16 @@ those are a person's to do, in the app.
 These are deliberately **not** built. The architecture leaves room for them, but do not implement
 them without being asked:
 
-- **An analytics dashboard.** The exercise screen will show one trend — each session's estimated
-  max, or the top set for lifts without weight — and whether the exercise has stalled (#5). Charts
-  beyond that, across exercises or muscles, are not planned.
-- **Periodization** — weeks, blocks, mesocycles, a calendar. A plan is a flat list of days. The
-  evidence gives periodization a small strength edge and no hypertrophy one; turning up matters
-  more. A deload is the AI saving a lighter plan, prompted by the review's signals (#6).
+- **An analytics dashboard.** The exercise screen will show one trend — for a weight lift, each
+  session's estimated max; for other tracking modes, the top set — and whether the exercise has
+  stalled (#5). Charts beyond that, across exercises or muscles, are not planned.
+- **Periodization** — weeks, blocks, mesocycles, a calendar. A plan is a flat list of days.
+  Periodization gives a small edge in strength and none in muscle growth (Moesgaard et al., Sports
+  Med 2022); training consistently matters more. A deload is the AI saving a lighter plan, prompted
+  by the review's signals (#6).
 - **Offline logging.** The app needs the server to log a set. A queue of sets written offline is
-  #9, to be designed first: it meets the one-session-in-progress rule and refused writes.
+  #9, to be designed first: it conflicts with the one-session-in-progress rule, and a write the
+  server refuses would strand the sets queued after it.
 - **A native app.** The app is a web app, installable on a phone's home screen once #8 lands. Native
   iOS and Android builds — with the server address entered at runtime, so one build serves every
   instance — are #10.

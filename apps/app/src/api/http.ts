@@ -20,8 +20,7 @@ import { tokenStore } from '../auth/token-storage.ts'
  */
 function resolveBaseUrl(): string {
   // DOT access, deliberately: Expo substitutes `EXPO_PUBLIC_*` only for static member access, and
-  // `process.env['NAME']` silently stays undefined in a built app. See CLAUDE.md's working note on
-  // grepping the built bundle.
+  // `process.env['NAME']` silently stays undefined in a built app. See types/env.d.ts.
   const configured = process.env.EXPO_PUBLIC_API_URL
   if (configured !== undefined && configured !== '') return configured.replace(/\/$/u, '')
   if (Platform.OS === 'web') return '/api'
