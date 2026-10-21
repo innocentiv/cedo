@@ -38,8 +38,16 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
 
 /** The exercise detail screen — reached however the journey reached it. */
 export const exercise = (page: Page) => ({
-  /** Which group it is in, and moving it to another. */
+  /** Which group it is in, and transferring it to another. */
   placement: placement(page, 'exercise-transfer'),
+  /** Its progress, as the trend says it: the latest point in words, and a stall when there is one. */
+  trend: async (): Promise<{ latest: string | null; stalled: string | null }> => {
+    await page.waitFor('exercise-trend')
+    return {
+      latest: await page.text('exercise-trend-latest'),
+      stalled: await page.text('exercise-trend-stalled'),
+    }
+  },
   shown: async (): Promise<void> => {
     await page.waitFor('exercise-detail-screen')
   },

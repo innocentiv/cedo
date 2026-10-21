@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test'
-import { ExerciseCreate, type TrackingMode, WorkoutPlanInput } from '@cedo/contract'
+import { ExerciseCreate, LogSetInput, type TrackingMode, WorkoutPlanInput } from '@cedo/contract'
 import {
   E2E_STARTUP_TIMEOUT_MS,
   E2E_TIMEOUT_MS,
@@ -1185,6 +1185,45 @@ test(
       await bench.log()
       expect(await bench.rest()).toMatch(/^Rest 0:0[1-5]$/u)
       await page.until(bench.rest, (said) => said === 'Rest over — ready for the next set', 8000)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/** Am I progressing? The exercise screen answers: its trend, and whether it has stalled. */
+test(
+  'an exercise shows its estimated max over time, and says when it has stalled',
+  async () => {
+    await withApp('estimated-max-trend', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('trend'))
+      const mine = await page.client()
+      const lift = await mine.exercises.create(
+        ExerciseCreate.parse({
+          name: unique('Press '),
+          muscles: [{ muscle: 'pectoralis_major', loadPct: 100 }],
+        }),
+      )
+      // 55, then 60 three sessions running: a rise, then a stall.
+      for (const weightG of [55_000, 60_000, 60_000, 60_000]) {
+        // oxlint-disable-next-line no-await-in-loop -- sessions in order: what is under test.
+        const session = await mine.sessions.start({ workoutId: null, dayId: null })
+        // oxlint-disable-next-line no-await-in-loop -- one session at a time.
+        await mine.sessions.logSet(
+          session.id,
+          LogSetInput.parse({ exerciseId: lift.id, weightG, reps: 5 }),
+        )
+        // oxlint-disable-next-line no-await-in-loop -- finished before the next can start.
+        await mine.sessions.update(session.id, { endedAt: new Date().toISOString() })
+      }
+
+      await page.goto(`/exercises/${lift.id}`)
+      await app.exercise.shown()
+      // 60 × (1 + 5/30): five reps at 60 kg suggest 70 kg once.
+      expect(await app.exercise.trend()).toEqual({
+        latest: '70 kg now',
+        stalled: 'Stalled · 3 sessions at 5 × 60 kg',
+      })
     })
   },
   E2E_TIMEOUT_MS,

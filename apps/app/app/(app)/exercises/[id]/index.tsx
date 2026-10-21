@@ -13,6 +13,7 @@ import {
   type QueryLike,
   NavButton,
   PinButton,
+  ProgressTrend,
   Screen,
   Spinner,
   Stack,
@@ -58,6 +59,7 @@ function RecentHistory({
             </Text>
           ) : (
             <Stack gap="xs">
+              <ProgressTrend history={history} testID="exercise-trend" />
               {history.sessions.map((entry) => (
                 <ListRow
                   key={entry.sessionId}

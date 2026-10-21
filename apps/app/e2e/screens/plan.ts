@@ -50,7 +50,7 @@ export const workouts = (page: Page) => {
     await page.waitFor('workout-detail-screen')
   }
   return {
-    /** Which group the open plan is in, and moving it to another. */
+    /** Which group the open plan is in, and transferring it to another. */
     placement: placement(page, 'workout-transfer'),
     /** Opens the first plan in the list on screen. */
     openFirst: async (): Promise<void> => {
