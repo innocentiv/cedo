@@ -988,3 +988,55 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+/** Moved into a group you edit — never one you only read — and it says where it now is. */
+test(
+  'an exercise moves into a group you edit, and says it is there',
+  async () => {
+    const owner = unique('mv')
+    await withApp('move-exercise', async (page) => {
+      const app = screens(page)
+      await app.auth.register(owner)
+      const mine = await page.client()
+      await mine.groups.create({ name: 'Squad' })
+      const coach = await signUp(`${owner}c`)
+      const coached = await coach.api.groups.create({ name: 'Coached' })
+      await coach.api.groups.addMember(coached.id, { username: owner, role: 'reader' })
+
+      const name = unique('Lift ')
+      await app.library.create(name, 'quadriceps')
+      await page.goto('/exercises')
+      await app.library.find(name)
+      expect(await app.exercise.placement.owner()).toBe('In your personal group')
+      expect(await app.exercise.placement.targets()).toEqual(['Squad'])
+
+      await app.exercise.placement.moveTo('Squad')
+      await app.exercise.placement.moveTo('your personal group')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/** The server's refusal, as it is: a plan goes only where every exercise it uses can be read. */
+test(
+  'a plan using an exercise the group cannot see is not moved, and says which',
+  async () => {
+    await withApp('move-workout-refused', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('mvw'))
+      const lift = unique('Private ')
+      await app.library.create(lift, 'quadriceps')
+      await app.planEditor.create(lift)
+      await app.planEditor.save()
+      await (await page.client()).groups.create({ name: 'Squad' })
+
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      expect(await app.workouts.placement.moveRefused('Squad')).toContain(
+        `That group cannot see "${lift}"`,
+      )
+      expect(await app.workouts.placement.owner()).toBe('In your personal group')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)

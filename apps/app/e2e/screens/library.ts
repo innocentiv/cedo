@@ -1,6 +1,7 @@
 import type { OwnableScope } from '@cedo/contract'
 import type { Page } from '../harness.ts'
 import { closed } from './form.ts'
+import { placement } from './placement.ts'
 
 /** The exercise library: its list, an exercise's detail, and the form that creates or edits one. */
 
@@ -37,6 +38,8 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
 
 /** The exercise detail screen — reached however the journey reached it. */
 export const exercise = (page: Page) => ({
+  /** Which group it is in, and moving it to another. */
+  placement: placement(page, 'exercise-move'),
   shown: async (): Promise<void> => {
     await page.waitFor('exercise-detail-screen')
   },

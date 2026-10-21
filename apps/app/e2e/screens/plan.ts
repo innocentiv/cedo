@@ -2,6 +2,7 @@ import type { OwnableScope } from '@cedo/contract'
 import type { Page } from '../harness.ts'
 import { closed } from './form.ts'
 import { picker } from './picker.ts'
+import { placement } from './placement.ts'
 import { session } from './session.ts'
 
 /** Plans: the list, a plan's detail, and the editor. */
@@ -37,6 +38,8 @@ export const workouts = (page: Page) => {
     await page.waitFor('workout-detail-screen')
   }
   return {
+    /** Which group the open plan is in, and moving it to another. */
+    placement: placement(page, 'workout-move'),
     /** Opens the first plan in the list on screen. */
     openFirst: async (): Promise<void> => {
       const row = await page.waitForSelector('[data-testid^="workout-row-"]')

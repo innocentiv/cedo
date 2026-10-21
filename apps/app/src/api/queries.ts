@@ -202,6 +202,14 @@ export const useFavouriteExercise = () =>
     async (input: { id: string; on: boolean }) => await api.exercises.favourite(input.id, input.on),
   )
 
+/** Into another group you edit. The exercise is still yours to see, so nothing is skipped. */
+export const useTransferExercise = () =>
+  useWriteTo(
+    'exercise',
+    async (input: { id: string; toGroupId: string }) =>
+      await api.exercises.transfer(input.id, { toGroupId: input.toGroupId }),
+  )
+
 export const useDuplicateExercise = () =>
   useWriteTo('exercise', async (id: string) => await api.exercises.duplicate(id))
 
@@ -216,6 +224,13 @@ export const useReplacePlan = (id: string) =>
 
 export const useDeleteWorkout = () =>
   useDeleteOf('workout', async (id) => await api.workouts.remove(id))
+
+export const useTransferWorkout = () =>
+  useWriteTo(
+    'workout',
+    async (input: { id: string; toGroupId: string }) =>
+      await api.workouts.transfer(input.id, { toGroupId: input.toGroupId }),
+  )
 
 export const useFavouriteWorkout = () =>
   useWriteTo(

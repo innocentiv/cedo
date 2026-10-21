@@ -24,7 +24,9 @@ import {
   useExercise,
   useExerciseHistory,
   useFavouriteExercise,
+  useTransferExercise,
 } from '../../../../src/api/queries.ts'
+import { GroupPlacement } from '../../../../src/lib/group-placement.tsx'
 import { useGoBack } from '../../../../src/lib/use-go-back.ts'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
 
@@ -80,6 +82,7 @@ export default function ExerciseDetail(): React.JSX.Element {
   const { data, isPending, error, refetch } = useExercise(id ?? '')
   const history = useExerciseHistory(id ?? '')
   const favourite = useFavouriteExercise()
+  const transfer = useTransferExercise()
   const duplicate = useDuplicateExercise()
   const remove = useDeleteExercise()
   const goBack = useGoBack('/exercises')
@@ -146,6 +149,12 @@ export default function ExerciseDetail(): React.JSX.Element {
             })
           }}
           testID="toggle-favourite"
+        />
+        <GroupPlacement
+          ownerGroupId={data.ownerGroupId}
+          canEdit={data.canEdit}
+          move={async (toGroupId) => await transfer.mutateAsync({ id: data.id, toGroupId })}
+          testID="exercise-move"
         />
 
         {data.description === '' ? null : <Text tone="muted">{data.description}</Text>}

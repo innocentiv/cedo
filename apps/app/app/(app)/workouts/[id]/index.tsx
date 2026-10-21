@@ -21,8 +21,10 @@ import {
   useFavouriteWorkout,
   useSessions,
   useStartSession,
+  useTransferWorkout,
   useWorkout,
 } from '../../../../src/api/queries.ts'
+import { GroupPlacement } from '../../../../src/lib/group-placement.tsx'
 import { useGoBack } from '../../../../src/lib/use-go-back.ts'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
 
@@ -32,6 +34,7 @@ export default function WorkoutDetail(): React.JSX.Element {
   const { data, isPending, error, refetch } = useWorkout(id ?? '')
   const start = useStartSession()
   const favourite = useFavouriteWorkout()
+  const transfer = useTransferWorkout()
   const remove = useDeleteWorkout()
   const goBack = useGoBack('/workouts')
   // One submission each: pinning must not show the delete as busy, nor a refused delete as a
@@ -90,6 +93,12 @@ export default function WorkoutDetail(): React.JSX.Element {
           })
         }}
         testID="workout-pin"
+      />
+      <GroupPlacement
+        ownerGroupId={data.ownerGroupId}
+        canEdit={data.canEdit}
+        move={async (toGroupId) => await transfer.mutateAsync({ id: data.id, toGroupId })}
+        testID="workout-move"
       />
       <Loaded query={current} testID="workout-current">
         {({ items: [inProgress] }) => (
