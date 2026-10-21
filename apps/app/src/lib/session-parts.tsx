@@ -1,31 +1,17 @@
 import type {
   Effort,
-  ProgressionSuggestion,
+  EntryTarget,
   SessionDay,
   SessionExercise,
   SetLog,
   WorkoutEntry,
 } from '@cedo/contract'
-import { type WeightUnit, formatEffort, prescriptionOf, workingSetsDone } from '@cedo/contract'
+import { formatEffort, prescriptionOf, workingSetsDone } from '@cedo/contract'
 import { useWeightUnit } from './weight-unit.ts'
 import { exerciseName } from './exercise-name.ts'
 import { Button, Card, ListRow, SetLogger, Stack, Text } from '../ui/index.ts'
 
 /** The pieces the live session screen is assembled from, so the route itself stays control flow. */
-
-/**
- * What the progression rule says to do next, in one line.
- *
- * `nextTarget` itself lives in the contract and is computed by the API — this only renders the
- * result, so the hint on this screen and the answer the MCP tool gives can never disagree.
- */
-export function hintFor(
-  suggestion: ProgressionSuggestion | undefined,
-  unit: WeightUnit,
-): string | null {
-  if (suggestion === undefined || !suggestion.changed) return null
-  return `Next time: ${formatEffort(suggestion.suggested, suggestion.tracking, unit)}`
-}
 
 /**
  * The plan behind a session is out of the reader's reach — they left the group it lives in, as the
@@ -119,7 +105,8 @@ export function AdHoc({
             exerciseName={exercise.name}
             tracking={exercise.tracking}
             target={null}
-            suggestion={null}
+            prescribed={null}
+            last={null}
             done={workingSetsDone(logs, { entryId: null, exerciseId: exercise.id })}
             busy={busy}
             testID={`adhoc-${exercise.id}`}
@@ -140,24 +127,28 @@ export function AdHoc({
 }
 
 /**
- * The prescribed day, one logger per entry, showing what was planned against what has been done —
- * each entry's done count the server's, counted in the series it numbers by.
+ * The prescribed day, one logger per entry, each pre-filled with what this session asks of it —
+ * the plan carried forward by its rule (`EntryTarget`) — beside what was done last time, and each
+ * entry's done count the server's, counted in the series it numbers by.
+ *
+ * An entry the server asks nothing of — its exercise unavailable to the reader — shows the plan's
+ * own prescription, as it always did.
  */
 export function PlannedDay({
   day,
-  suggestions,
+  targets,
   busy,
   onLog,
 }: {
   readonly day: SessionDay
-  readonly suggestions: ReadonlyMap<string, ProgressionSuggestion>
+  readonly targets: ReadonlyMap<string, EntryTarget>
   readonly busy: boolean
   readonly onLog: (entry: WorkoutEntry, values: Effort) => void
 }): React.JSX.Element {
-  const unit = useWeightUnit()
   return (
     <Stack gap="md">
       {day.entries.map((entry) => {
+        const asked = targets.get(entry.id)
         return (
           <SetLogger
             key={entry.id}
@@ -165,8 +156,9 @@ export function PlannedDay({
             // See docs/03-domain-model.md.
             exerciseName={exerciseName(entry.exercise)}
             tracking={entry.exercise?.tracking ?? null}
-            target={prescriptionOf(entry)?.target ?? null}
-            suggestion={hintFor(suggestions.get(entry.id), unit)}
+            target={asked?.target ?? prescriptionOf(entry)?.target ?? null}
+            prescribed={asked?.changed === true ? asked.prescribed : null}
+            last={asked?.last ?? null}
             done={entry.done}
             busy={busy}
             testID={`log-entry-${entry.index}`}

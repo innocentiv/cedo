@@ -9,7 +9,7 @@ import {
   type WorkoutEntry,
   exercisesInSession,
 } from '@cedo/contract'
-import { ErrorNotice, Screen, Spinner, Text } from '../../../../src/ui/index.ts'
+import { ErrorNotice, Loaded, Screen, Spinner, Text } from '../../../../src/ui/index.ts'
 import {
   AdHoc,
   LoggedSets,
@@ -19,9 +19,9 @@ import {
 } from '../../../../src/lib/session-parts.tsx'
 import {
   useLogSet,
-  useProgression,
   useRemoveLog,
   useSession,
+  useSessionTargets,
   useUpdateSession,
 } from '../../../../src/api/queries.ts'
 import { ExercisePicker } from '../../../../src/lib/exercise-picker.tsx'
@@ -101,21 +101,15 @@ export default function LiveSession(): React.JSX.Element {
   const id = sessionId ?? ''
 
   const session = useSession(id)
-  // Hints are for the day's entries, so they are asked for only when there is a day to show.
+  // Targets are for the day's entries, so they are asked for only when there is a day to show.
   const plan = session.data?.plan
-  const progression = useProgression(
-    plan?.reachable === true ? (session.data?.workoutId ?? '') : '',
-  )
+  const targets = useSessionTargets(id, plan?.reachable === true)
   const logSet = useLogSet(id)
   const removeLog = useRemoveLog(id)
   const finish = useUpdateSession(id)
   const { submit, busy, error } = useSubmit()
   const record = useRecordSet(logSet, submit)
 
-  const suggestions = useMemo(
-    () => new Map((progression.data ?? []).map((s) => [s.entryId, s])),
-    [progression.data],
-  )
   const adHoc = useAdHocExercises(session.data?.logs ?? NO_LOGS)
 
   if (session.error !== null) {
@@ -183,12 +177,17 @@ export default function LiveSession(): React.JSX.Element {
           busy={logSet.isPending}
         />
       ) : (
-        <PlannedDay
-          day={day}
-          suggestions={suggestions}
-          busy={logSet.isPending}
-          onLog={record.planned}
-        />
+        // Shown once its targets have answered: each logger's inputs start from them, once.
+        <Loaded query={targets} testID="session-targets">
+          {(asked) => (
+            <PlannedDay
+              day={day}
+              targets={new Map(asked.map((t) => [t.entryId, t]))}
+              busy={logSet.isPending}
+              onLog={record.planned}
+            />
+          )}
+        </Loaded>
       )}
 
       <LoggedSets

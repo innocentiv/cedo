@@ -5,6 +5,7 @@ import {
   type TrackingMode,
   fieldsOf,
   formatEffort,
+  formatSets,
 } from '@cedo/contract'
 import { useWeightUnit } from '../lib/weight-unit.ts'
 import { Button } from './button.tsx'
@@ -17,10 +18,15 @@ export interface SetLoggerProps {
   readonly exerciseName: string
   /** Null for an unavailable exercise: nothing more can be logged against it. */
   readonly tracking: TrackingMode | null
-  /** What the plan prescribes for this set, if it came from one. */
+  /**
+   * What this session asks for, when it follows a plan: the prescription carried forward by its
+   * rule over earlier sessions — what the inputs start from. See `EntryTarget`.
+   */
   readonly target: SetTarget | null
-  /** What the progression rule suggests for NEXT time, when it differs from the target. */
-  readonly suggestion: string | null
+  /** What the plan itself prescribes, when progression has moved the target away from it. */
+  readonly prescribed: SetTarget | null
+  /** Last time's working sets of this exercise, if it was done before. */
+  readonly last: readonly Effort[] | null
   readonly done: number
   readonly onLog: (values: Effort) => void
   readonly busy: boolean
@@ -41,7 +47,8 @@ export function SetLogger({
   exerciseName,
   tracking,
   target,
-  suggestion,
+  prescribed,
+  last,
   done,
   onLog,
   busy,
@@ -69,14 +76,20 @@ export function SetLogger({
         </Stack>
 
         {target === null ? null : (
-          <Text variant="caption" tone="muted" testID={`${testID}-target`}>
-            {`Prescribed ${formatEffort(target, tracking, unit)}`}
+          <Text
+            variant="caption"
+            tone={prescribed === null ? 'muted' : 'accent'}
+            testID={`${testID}-target`}
+          >
+            {prescribed === null
+              ? `Prescribed ${formatEffort(target, tracking, unit)}`
+              : `Progressed to ${formatEffort(target, tracking, unit)} · the plan says ${formatEffort(prescribed, tracking, unit)}`}
           </Text>
         )}
 
-        {suggestion === null ? null : (
-          <Text variant="caption" tone="accent" testID={`${testID}-suggestion`}>
-            {suggestion}
+        {last === null ? null : (
+          <Text variant="caption" tone="muted" testID={`${testID}-last`}>
+            {`Last: ${formatSets(last, tracking, unit)}`}
           </Text>
         )}
 

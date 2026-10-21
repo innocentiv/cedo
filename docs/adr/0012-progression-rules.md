@@ -17,8 +17,15 @@ Four rule kinds, stored as a Zod discriminated union in a JSONB column on `worko
 `none`, `linear`, `double`, `linear_duration`.
 
 **`nextTarget()` is a pure function in `packages/contract`.** One implementation, called only by the
-API's progression service, whose answer both the `workout_progression` MCP tool and the logging
-screen's hint render. It is impossible for them to disagree.
+API's progression service, whose answers both the `workout_progression` MCP tool and the logger's
+pre-fill render. It is impossible for them to disagree.
+
+**The logger is pre-filled with it; the plan is not written to.** A session asks of each entry the
+plan's prescription carried forward over the sessions that started before it
+(`GET /sessions/:id/targets`, `EntryTarget`) — never over itself, or a session whose sets had all
+hit would offer its next set the advanced weight mid-workout. The plan stays what its author
+prescribed; progression carries it forward from there. Added after the requirements review (#2):
+the target was computed and shown only as a caption, while the logger offered the old weight.
 
 ### Double progression advances at the entry level
 

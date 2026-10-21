@@ -2,6 +2,7 @@ import { z } from 'zod'
 import {
   AuthResult,
   type DuplicateInput,
+  EntryTarget,
   Exercise,
   type ExerciseInput,
   ExerciseHistory,
@@ -138,6 +139,7 @@ const sessions = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
   list: async (query: Partial<SessionQuery> = {}) =>
     await GET('/sessions', page(WorkoutSessionSummary), asQuery(query)),
   get: async (id: string) => await GET(`/sessions/${id}`, SessionDetail),
+  targets: async (id: string) => await GET(`/sessions/${id}/targets`, z.array(EntryTarget)),
   start: async (body: SessionStart) => await POST('/sessions', WorkoutSession, body),
   update: async (id: string, body: SessionUpdate) =>
     await PATCH(`/sessions/${id}`, WorkoutSession, body),

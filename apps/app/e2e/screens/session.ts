@@ -33,8 +33,10 @@ const logger = (page: Page, id: string) => ({
     await page.click(`[data-testid="${id}-${dimension}"]`)
   },
   value: async (dimension: Dimension): Promise<unknown> => await page.value(`${id}-${dimension}`),
-  /** "Prescribed 8 × 60 kg". */
+  /** "Prescribed 8 × 60 kg", or "Progressed to … · the plan says …". */
   target: async (): Promise<string | null> => await page.text(`${id}-target`),
+  /** "Last: 5, 5, 5 × 60 kg" — null when the exercise was never done before. */
+  last: async (): Promise<string | null> => await page.text(`${id}-last`),
   /** Whether it offers a Log button at all. */
   canLog: async (): Promise<boolean> => await page.exists(`${id}-log`),
   /** Whether it is shown as an unavailable exercise. */

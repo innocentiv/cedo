@@ -75,8 +75,9 @@ The review, not the formatter, chooses which muscles are worth saying — the tw
 every declined muscle (`GLOSSARY.md`), and a count of the rest — because only the review knows what
 the comparison is for (`review/muscle-work.ts`).
 
-`workout_progression` returns what `nextTarget()` proposes — the same pure function the logging
-screen uses, so the AI's advice and the app's hint can never diverge.
+`workout_progression` returns what `nextTarget()` proposes — the same pure function that pre-fills
+the app's logger (`GET /sessions/:id/targets`), so the AI's advice and the athlete's next target
+can never diverge.
 
 ### 3. Diagnosing a running instance
 

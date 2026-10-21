@@ -1053,3 +1053,63 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+/**
+ * Progression, automatic: a clean session moves the next one's target, the logger starts from it
+ * and says so, beside what was done last time — and the plan itself is left as written.
+ */
+test(
+  'a clean session pre-fills the next one with the advanced target, and shows last time',
+  async () => {
+    await withApp('prefill-next-target', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('pf'))
+      const mine = await page.client()
+      const [bench] = (await mine.exercises.list({ q: 'Bench', limit: 1 })).items
+      if (bench === undefined) throw new Error('The seeded library has no bench press')
+      const plan = await mine.workouts.create({ name: 'Strength', notes: null })
+      const five = { targetReps: 5, targetWeightG: 60_000 }
+      await mine.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [
+            {
+              name: 'Heavy',
+              entries: [
+                {
+                  exerciseId: bench.id,
+                  progression: { kind: 'linear', incrementG: 2500, afterSuccesses: 1 },
+                  sets: [five, five, five],
+                },
+              ],
+            },
+          ],
+        }),
+      )
+
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await app.workouts.startDay(0)
+      const first = app.session.entry(0)
+      expect(await first.target()).toBe('Prescribed 5 × 60 kg')
+      expect(await first.last()).toBeNull()
+      await first.log()
+      await first.log()
+      await first.log()
+      await app.session.finish()
+
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await app.workouts.startDay(0)
+      const next = app.session.entry(0)
+      expect(await next.value('weight')).toBe('62.5')
+      expect(await next.target()).toBe('Progressed to 5 × 62.5 kg · the plan says 5 × 60 kg')
+      expect(await next.last()).toBe('Last: 5, 5, 5 × 60 kg')
+
+      // The plan is as its author wrote it: progression carries it, it does not rewrite it.
+      const written = (await mine.workouts.get(plan.id)).days[0]?.entries[0]?.sets
+      expect(written?.map((s) => s.target.weightG)).toEqual([60_000, 60_000, 60_000])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)

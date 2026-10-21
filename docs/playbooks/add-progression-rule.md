@@ -24,9 +24,9 @@ so the new rule appears in the UI without touching a screen.
 fail the build until the new case is handled. That is deliberate: it is impossible to add a rule and
 forget the maths.
 
-This one function is called by the API's progression service, whose answer the
-`workout_progression` MCP tool and the logging screen's hint both render, so an AI's advice and the
-UI's suggestion can never disagree.
+This one function is called by the API's progression service, whose answers the
+`workout_progression` MCP tool and the logger's pre-fill both render, so an AI's advice and the
+athlete's next target can never disagree.
 
 ## 3. Write the truth table first
 

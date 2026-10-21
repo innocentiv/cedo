@@ -6,6 +6,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import type {
+  EntryTarget,
   Exercise,
   ExerciseInput,
   ExerciseHistory,
@@ -20,7 +21,6 @@ import type {
   Page,
   PersonalAccessToken,
   PersonalAccessTokenCreate,
-  ProgressionSuggestion,
   Source,
   SessionQuery,
   SessionStart,
@@ -85,11 +85,18 @@ export function useWorkout(id: string): UseQueryResult<Workout> {
   })
 }
 
-export function useProgression(id: string): UseQueryResult<ProgressionSuggestion[]> {
+/**
+ * What a session asks of each entry of its day — the logger's pre-fill — and last time's sets.
+ * Asked for only when there is a day to show: `enabled` false otherwise.
+ */
+export function useSessionTargets(
+  sessionId: string,
+  enabled: boolean,
+): UseQueryResult<EntryTarget[]> {
   return useQuery({
-    queryKey: keys.progression(id),
-    queryFn: async () => await api.workouts.progression(id),
-    enabled: id !== '',
+    queryKey: keys.sessionTargets(sessionId),
+    queryFn: async () => await api.sessions.targets(sessionId),
+    enabled: enabled && sessionId !== '',
   })
 }
 
