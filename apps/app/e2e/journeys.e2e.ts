@@ -1158,3 +1158,30 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+/**
+ * What the plan tells the athlete beyond its numbers: the rest after a working set, counted down
+ * from when the set was logged, and a cue under the exercise — both written in the editor.
+ */
+test(
+  "a working set starts the entry's rest, and the plan's cue is shown with the exercise",
+  async () => {
+    await withApp('rest-and-cue', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('rest'))
+      await app.planEditor.create()
+      const entry = app.planEditor.entry(0, 0)
+      await entry.rest('5')
+      await entry.cue('Pause 1 s at the chest')
+      await app.planEditor.saveAndStart()
+
+      const bench = app.session.entry(0)
+      expect(await bench.cue()).toBe('Pause 1 s at the chest')
+      expect(await bench.rest()).toBeNull()
+      await bench.log()
+      expect(await bench.rest()).toMatch(/^Rest 0:0[1-5]$/u)
+      await page.until(bench.rest, (said) => said === 'Rest over — ready for the next set', 8000)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)

@@ -4,6 +4,7 @@ import {
   type SetTarget,
   type TrackingMode,
   fieldsOf,
+  formatDuration,
   formatEffort,
   formatSets,
   formatWithReserve,
@@ -29,6 +30,10 @@ export interface SetLoggerProps {
   readonly prescribed: SetTarget | null
   /** Last time's working sets of this exercise, if it was done before. */
   readonly last: readonly Effort[] | null
+  /** What the plan tells the athlete about this entry, if anything. */
+  readonly cue: string | null
+  /** Seconds of rest still to go after the latest working set (`restLeft`); null for none. */
+  readonly restLeft: number | null
   readonly done: number
   /** The set's measures, and how hard it was as an RPE — null when it was not said. */
   readonly onLog: (values: Effort, rpe: number | null) => void
@@ -52,6 +57,8 @@ export function SetLogger({
   target,
   prescribed,
   last,
+  cue,
+  restLeft,
   done,
   onLog,
   busy,
@@ -82,6 +89,11 @@ export function SetLogger({
         <Stack direction="row" gap="sm" align="center">
           <Stack grow>
             <Text variant="label">{exerciseName}</Text>
+            {cue === null ? null : (
+              <Text variant="caption" tone="muted" testID={`${testID}-cue`}>
+                {cue}
+              </Text>
+            )}
           </Stack>
           <Text variant="mono" tone="muted" testID={`${testID}-done`}>
             {`${done} done`}
@@ -103,6 +115,18 @@ export function SetLogger({
         {last === null ? null : (
           <Text variant="caption" tone="muted" testID={`${testID}-last`}>
             {`Last: ${formatSets(last, tracking, unit)}`}
+          </Text>
+        )}
+
+        {restLeft === null ? null : (
+          <Text
+            variant="label"
+            tone={restLeft === 0 ? 'success' : 'accent'}
+            testID={`${testID}-rest`}
+          >
+            {restLeft === 0
+              ? 'Rest over — ready for the next set'
+              : `Rest ${formatDuration(restLeft)}`}
           </Text>
         )}
 

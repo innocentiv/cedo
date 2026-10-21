@@ -35,6 +35,10 @@ const logger = (page: Page, id: string) => ({
   value: async (dimension: Dimension): Promise<unknown> => await page.value(`${id}-${dimension}`),
   /** "Prescribed 8 × 60 kg", or "Progressed to … · the plan says …". */
   target: async (): Promise<string | null> => await page.text(`${id}-target`),
+  /** What the plan tells the athlete about this entry — null when nothing. */
+  cue: async (): Promise<string | null> => await page.text(`${id}-cue`),
+  /** "Rest 1:28", or "Rest over — ready for the next set"; null before the first working set. */
+  rest: async (): Promise<string | null> => await page.text(`${id}-rest`),
   /** "Last: 5, 5, 5 × 60 kg" — null when the exercise was never done before. */
   last: async (): Promise<string | null> => await page.text(`${id}-last`),
   /** Says how many reps were left in reserve, as offered: `1`, `1.5`, or `none` for not said. */

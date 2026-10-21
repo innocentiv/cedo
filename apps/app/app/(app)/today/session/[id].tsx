@@ -193,6 +193,7 @@ export default function LiveSession(): React.JSX.Element {
         <PlannedDay
           day={day}
           targets={targets.data}
+          logs={logs}
           busy={logSet.isPending}
           onLog={record.planned}
         />

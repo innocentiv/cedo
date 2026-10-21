@@ -1,11 +1,4 @@
-import {
-  type SetKind,
-  type TrackingMode,
-  prescribe,
-  prescriptionOf,
-  resizeSets,
-  setCounts,
-} from '@cedo/contract'
+import { type SetKind, type TrackingMode, resizeSets, setCounts } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
@@ -66,14 +59,7 @@ export function EntryEditor({
           testID={testID}
         />
 
-        <PrescriptionFields
-          first={prescriptionOf(entry)}
-          tracking={tracking}
-          onChange={(patch) => {
-            onChange(prescribe(entry, patch))
-          }}
-          testID={testID}
-        />
+        <PrescriptionFields entry={entry} tracking={tracking} onChange={onChange} testID={testID} />
 
         <Superset
           value={entry.supersetGroup}

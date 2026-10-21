@@ -21,6 +21,14 @@ const planEntry = (page: Page, id: string) => ({
   progression: async (kind: string): Promise<void> => {
     await page.click(`[data-testid="${id}-progression-${kind}"]`)
   },
+  /** The rest between its sets, typed as the field reads it: `90`, `1:30`. */
+  rest: async (text: string): Promise<void> => {
+    await page.fill(`${id}-rest`, text)
+  },
+  /** What the athlete is told about it, typed. */
+  cue: async (text: string): Promise<void> => {
+    await page.fill(`${id}-cue`, text)
+  },
   /** The reps to leave in reserve, as offered: `2`, `1.5`, or `none`. */
   reserve: async (reps: string): Promise<void> => {
     await page.click(`[data-testid="${id}-reserve-${reps}"]`)
