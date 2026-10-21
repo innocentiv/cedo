@@ -259,8 +259,8 @@ export async function fillLogs(fill: LogFill): Promise<void> {
 
   const entries =
     fill.workoutId === null
-      ? sql`select null::uuid as id, 0 as rn`
-      : sql`select en.id, (row_number() over (order by d.index, en.index))::int - 1 as rn
+      ? sql`select null::uuid as id, null::uuid as exercise_id, 0 as rn`
+      : sql`select en.id, en.exercise_id, (row_number() over (order by d.index, en.index))::int - 1 rn
               from workout_entries en
               join workout_days d on d.id = en.day_id
              where d.workout_id = ${fill.workoutId}::uuid`
@@ -277,7 +277,7 @@ export async function fillLogs(fill: LogFill): Promise<void> {
     ), plan_entries as (${entries}),
     generated as (
       select t.id as session_id, pe.id as entry_id,
-             case when i % 5 = 0 then p.id else l.id end as exercise_id,
+             coalesce(pe.exercise_id, case when i % 5 = 0 then p.id else l.id end) as exercise_id,
              i, t.rn, t.started_at
         from target_sessions t
         cross join generate_series(0, ${fill.perSession - 1}) i
