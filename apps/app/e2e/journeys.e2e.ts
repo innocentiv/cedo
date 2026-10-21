@@ -1230,7 +1230,7 @@ test(
       await app.exercise.shown()
       // 60 × (1 + 5/30): five reps at 60 kg suggest 70 kg once.
       expect(await app.exercise.trend()).toEqual({
-        first: '64.17 kg at first',
+        first: '64 kg at first',
         latest: '70 kg now',
         stalled: 'Stalled · 3 sessions at 5 × 60 kg',
       })

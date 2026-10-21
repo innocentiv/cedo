@@ -43,8 +43,8 @@ export const mmToM = (mm: number): number => mm / 1000
 export const mmToCm = (mm: number): number => mm / MILLIMETRES_PER_CENTIMETRE
 
 /**
- * Round a weight to the nearest achievable increment — you cannot load 2.847 kg on a bar.
- * Used when a progression rule produces a target that must land on real plates.
+ * Round a weight to the nearest increment — you cannot load 2.847 kg on a bar, and an estimate is
+ * no more precise than half a kilogram (`estimatedMax`).
  */
 export const roundToIncrement = (grams: number, incrementG: number): number =>
   incrementG <= 0 ? grams : Math.round(grams / incrementG) * incrementG

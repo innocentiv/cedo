@@ -31,8 +31,14 @@ describe('the estimated max of a set', () => {
     expect(estimatedMax(set(60_000, 5, 10), 'weight_reps')).toBe(70_000)
   })
 
-  test('is whole grams', () => {
-    expect(Number.isInteger(estimatedMax(set(62_500, 7, 8.5), 'weight_reps'))).toBe(true)
+  /** An estimate, not a measurement: said to the nearest half kilogram, never to the gram. */
+  test('is rounded to the nearest half kilogram', () => {
+    // 62.5 × (1 + 8.5/30) = 80.21 kg.
+    expect(estimatedMax(set(62_500, 7, 8.5), 'weight_reps')).toBe(80_000)
+    // 55 × (1 + 5/30) = 64.17 kg; 62.5 × (1 + 5/30) = 72.92 kg.
+    expect(estimatedMax(set(55_000, 5), 'weight_reps')).toBe(64_000)
+    expect(estimatedMax(set(62_500, 5), 'weight_reps')).toBe(73_000)
+    expect(estimatedMax(set(60_500, 5), 'weight_reps')).toBe(70_500)
   })
 
   /** A single at RPE 10 is a one-rep max lifted, not estimated: Epley would add 3%. */
@@ -98,7 +104,7 @@ describe("an exercise's trend", () => {
         [working(60_000, 5), working(65_000, 2)],
       ]),
     )
-    expect(trend.map((p) => p.value)).toEqual([70_000, 72_917])
+    expect(trend.map((p) => p.value)).toEqual([70_000, 73_000])
     expect(trend.every((p) => p.estimated)).toBe(true)
   })
 
@@ -160,10 +166,7 @@ describe("an exercise's trend", () => {
   test('is named and said by what it draws', () => {
     const lifts = trendOf(history('weight_reps', [[working(60_000, 5)], [working(55_000, 5)]]))
     expect(trendName(lifts)).toBe('Estimated max')
-    expect(lifts.map((p) => formatTrendPoint(p, 'weight_reps', 'kg'))).toEqual([
-      '64.17 kg',
-      '70 kg',
-    ])
+    expect(lifts.map((p) => formatTrendPoint(p, 'weight_reps', 'kg'))).toEqual(['64 kg', '70 kg'])
     const holds = trendOf(
       history('duration', [
         [{ ...working(null, null), durationS: 60 }],

@@ -2,7 +2,7 @@ import { type Effort, formatEffort, topSet } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
 import type { ExerciseHistory } from './log.ts'
 import { reserveOf } from './rpe.ts'
-import { type WeightUnit, formatWeight } from './units.ts'
+import { type WeightUnit, formatWeight, roundToIncrement } from './units.ts'
 
 /**
  * Estimated max (GLOSSARY.md): the most weight a set suggests could be lifted once, from its
@@ -13,6 +13,12 @@ import { type WeightUnit, formatWeight } from './units.ts'
 
 /** Past a dozen reps the formula stops meaning a single lift: such a set estimates nothing. */
 export const MAX_ESTIMATE_REPS = 12
+
+/**
+ * An estimate is said to the nearest half kilogram: precision it does not have — "64.17 kg" — would
+ * read as a measurement. A single lifted is no estimate, and keeps its weight.
+ */
+export const ESTIMATE_STEP_G = 500
 
 /**
  * In grams; null for a set it cannot estimate — not a weight lift, no weight, or past
@@ -32,7 +38,7 @@ export function estimatedMax(
   if (reps === null || reps < 1) return null
   const done = reps + (rpe === null ? 0 : reserveOf(rpe))
   if (done > MAX_ESTIMATE_REPS) return null
-  return done === 1 ? weightG : Math.round(weightG * (1 + done / 30))
+  return done === 1 ? weightG : roundToIncrement(weightG * (1 + done / 30), ESTIMATE_STEP_G)
 }
 
 /** One session on an exercise's trend: what it reached, and the set that reached it. */
