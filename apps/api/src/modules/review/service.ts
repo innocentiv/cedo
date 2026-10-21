@@ -11,7 +11,8 @@ import {
 import type { Caller } from '../../plugins/auth.ts'
 import { adherenceOf } from './adherence.ts'
 import { muscleWorkOf } from './muscle-work.ts'
-import { type RatedEffort, stalledOf } from './stalled.ts'
+import { type EffortDrift, type Falling, effortDriftOf, fallingOf } from './deload.ts'
+import { type RatedEffort, type WorkingSet, stalledOf } from './stalled.ts'
 
 /**
  * A READ MODEL for coaching, not new domain rules.
@@ -65,6 +66,13 @@ export interface TrainingReview {
     /** The top set, and its RPE when one was said: its estimated max counts the reserve. */
     readonly effort: RatedEffort
   }[]
+  /**
+   * Weight lifts whose estimated max fell in each of their latest two sessions or more — a deload
+   * trigger, as is effort drift: the same set rated at least 1 RPE harder in each of the latest two
+   * sessions. The AI's to act on, by saving a lighter plan (ADR-0012). See ./deload.ts.
+   */
+  readonly falling: readonly Falling[]
+  readonly effortDrift: readonly EffortDrift[]
 }
 
 /**
@@ -107,7 +115,7 @@ export async function trainingReview(caller: Caller, weeks: number): Promise<Tra
       await workBetween(caller, since, new Date()),
       await workBetween(caller, previousSince, since),
     ),
-    stalled: await stalled(caller, since),
+    ...judgedOver(await latestWorkingSets(caller, since)),
   }
 }
 
@@ -188,8 +196,11 @@ async function workBetween(caller: Caller, from: Date, to: Date) {
     .groupBy(exerciseMuscles.muscleSlug)
 }
 
-/** What has stalled, judged in ./stalled.ts over each exercise's latest sessions. */
-async function stalled(caller: Caller, since: Date): Promise<TrainingReview['stalled']> {
+/**
+ * Each exercise's working sets in its latest `STALL_DEPTH` sessions of the window — what a stall,
+ * a fall and a drift are all judged over (./stalled.ts, ./deload.ts), read once.
+ */
+async function latestWorkingSets(caller: Caller, since: Date): Promise<WorkingSet[]> {
   const ranked = latestSessions(caller, since)
   const rows = await db
     .select()
@@ -197,21 +208,26 @@ async function stalled(caller: Caller, since: Date): Promise<TrainingReview['sta
     .where(sql`${ranked.rank} <= ${STALL_DEPTH}`)
     // Newest session first, each session's sets together and in the order logged.
     .orderBy(desc(ranked.startedAt), desc(ranked.sessionId), asc(ranked.setIndex))
-  return stalledOf(
-    rows.map((r) => ({
-      exerciseId: r.exerciseId,
-      exercise: { name: r.name, tracking: r.tracking },
-      sessionId: r.sessionId,
-      effort: {
-        reps: r.reps,
-        weightG: r.weightG,
-        durationS: r.durationS,
-        distanceMm: r.distanceMm,
-        rpe: r.rpe,
-      },
-    })),
-  )
+  return rows.map((r) => ({
+    exerciseId: r.exerciseId,
+    exercise: { name: r.name, tracking: r.tracking },
+    sessionId: r.sessionId,
+    effort: {
+      reps: r.reps,
+      weightG: r.weightG,
+      durationS: r.durationS,
+      distanceMm: r.distanceMm,
+      rpe: r.rpe,
+    },
+  }))
 }
+
+/** What the latest sessions say: stalled, falling, drifting — the AI's signals to change something. */
+const judgedOver = (sets: readonly WorkingSet[]) => ({
+  stalled: stalledOf(sets),
+  falling: fallingOf(sets),
+  effortDrift: effortDriftOf(sets),
+})
 
 /**
  * The caller's working sets in the window, each with its exercise as they can still see it — an

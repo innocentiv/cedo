@@ -68,6 +68,25 @@ exercise screen's badge reads too, through `exercise_history`. A weight lift's s
 (`GLOSSARY.md`, the contract's `estimate.ts`), and `exercise_history` gives each session's best,
 so the AI reads progress across rep counts without doing the arithmetic.
 
+Beside the stall it says the two **deload** triggers (`GLOSSARY.md`), judged over the same latest
+sessions (`review/deload.ts`): a weight lift **falling** — its best estimated max down in each of its
+latest two sessions or more — and **effort drift** — the latest top set rated at least one RPE harder
+in each of the latest two sessions than on average before them. Each session must cross the line on
+its own, so one hard set or one bad day says nothing: self-rated RPE is off by about one. Drift needs
+RPE said both before and since; a heavier set is harder by its load and is not compared. Each
+section appears only when it has something to say:
+
+```
+Falling (estimated max down, 2+ sessions running):
+  Bench Press: 3 sessions, 77 kg → 66.5 kg
+
+Effort drift (RPE up 1+ at the same set, in each of the latest 2 sessions):
+  Row at 8 × 50 kg: RPE 7 → 8.5
+```
+
+The review only says them. Deloading is the AI's to do, by saving a lighter plan — the progression
+rule never lowers a weight by itself (ADR-0012).
+
 The work per muscle is what the load percentages are **for**: each working set counts toward a
 muscle by `load_pct / 100` — a set of a 70/30 exercise is 0.7 of a set for one muscle and 0.3 for the
 other — warm-ups excluded. Sets, because they count every tracking mode alike: weight × reps, which

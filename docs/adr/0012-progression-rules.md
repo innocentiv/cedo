@@ -46,8 +46,9 @@ and forces the UI to show a different target per set.
 
 ### It advances or holds. It never decreases.
 
-There is no automatic deload. A stall is surfaced by `training_review` over MCP (the UI does not show
-it yet) and left to the user or the AI, acting through `workout_save_plan`.
+There is no automatic deload. A stall, a lift falling and effort drift are surfaced by
+`training_review` over MCP (the exercise screen shows the stall too) and left to the user or the AI,
+acting through `workout_save_plan`.
 
 Rejected: automatic deload after N consecutive failures. Classic novice-linear behaviour, but it
 needs a failure definition that survives skipped sessions, a floor weight, and a deload percentage —

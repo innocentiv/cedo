@@ -16,6 +16,7 @@ import {
   formatWeight,
   pointsOf,
 } from '@cedo/contract'
+import { DRIFT_RPE, DRIFT_SESSIONS, FALLING_SESSIONS } from '../modules/review/deload.ts'
 import type { MuscleWork, TrainingReview } from '../modules/review/service.ts'
 
 /**
@@ -157,6 +158,35 @@ function stalledLine(s: TrainingReview['stalled'][number], unit: WeightUnit): st
 }
 
 /**
+ * The deload signals, each under its own heading and only when there is one to say: an empty
+ * "nothing is falling" beside "nothing looks stalled" is context spent on no news. See ./deload.ts.
+ */
+function deloadSections(review: TrainingReview, unit: WeightUnit): string[] {
+  const sections: string[] = []
+  if (review.falling.length > 0) {
+    sections.push(
+      `Falling (estimated max down, ${FALLING_SESSIONS}+ sessions running):\n  ${review.falling
+        .map(
+          (f) =>
+            `${f.exercise.name}: ${f.sessions} sessions, ${formatWeight(f.from, unit)} → ${formatWeight(f.to, unit)}`,
+        )
+        .join('\n  ')}`,
+    )
+  }
+  if (review.effortDrift.length > 0) {
+    sections.push(
+      `Effort drift (RPE up ${DRIFT_RPE}+ at the same set, in each of the latest ${DRIFT_SESSIONS} sessions):\n  ${review.effortDrift
+        .map(
+          (d) =>
+            `${d.exercise.name} at ${formatEffort(d.effort, d.exercise.tracking, unit)}: RPE ${d.from} → ${d.to}`,
+        )
+        .join('\n  ')}`,
+    )
+  }
+  return sections
+}
+
+/**
  * An exercise's recent sessions, one line each, with the session's best estimated max for a weight
  * lift — `2026-10-14: w10 × 20 kg, 8 × 60 kg @ RPE 8.5 · estimated max 74 kg` — and its stall,
  * if it has one, last.
@@ -258,5 +288,6 @@ export function reviewSummary(review: TrainingReview, unit: WeightUnit): string 
     muscleSections(review.muscleWork, weeks, unit).join('\n\n'),
     '',
     stalled,
+    ...deloadSections(review, unit).flatMap((section) => ['', section]),
   ].join('\n')
 }

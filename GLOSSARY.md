@@ -133,6 +133,20 @@ An exercise whose latest sessions — three or more running — share one top se
 stopped moving. Judged on the logs, not on a plan, so an exercise logged without one can stall too.
 _Avoid_: plateaued, stuck
 
+**Falling**:
+A weight lift whose best estimated max has dropped in each of its latest two sessions or more —
+performance going down, not just not going up. One bad session is not a fall.
+_Avoid_: regressing, declining (a declined muscle is about sets, not strength)
+
+**Effort drift**:
+The same set — the same weight and reps — rated at least one RPE harder in each of the latest two
+sessions than it was before them. One hard set, or one hard day, is not drift.
+_Avoid_: fatigue (drift is what was rated, not what was felt)
+
+**Deload**:
+A planned stretch of lighter training to shed accumulated fatigue. Falling and effort drift are its
+triggers; a deload is saved as a lighter plan, never applied by the progression rule on its own.
+
 **Weight lifted**:
 Weight × reps over working sets — what a session lifted. Work that carries no load (a plank, a run,
 an unweighted pull-up) adds nothing to it, so it is never the measure of whether a muscle trained.

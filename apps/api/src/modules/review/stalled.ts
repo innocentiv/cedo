@@ -29,6 +29,19 @@ export interface WorkingSet {
  * most `STALL_DEPTH` sessions of each exercise.
  */
 export function stalledOf(sets: readonly WorkingSet[]): TrainingReview['stalled'] {
+  return sessionsByExercise(sets).flatMap(({ exercise, sessions }) => {
+    const stall = stallOf(sessions, exercise.tracking)
+    return stall === null ? [] : [{ exercise, ...stall }]
+  })
+}
+
+/**
+ * Each exercise, with its working sets session by session — newest session first, as `sets`
+ * arrive — by exercise name. The shape every judgement over an exercise's sessions reads.
+ */
+export function sessionsByExercise(
+  sets: readonly WorkingSet[],
+): { readonly exercise: LoggedExercise; readonly sessions: RatedEffort[][] }[] {
   const byExercise = new Map<
     string,
     { exercise: LoggedExercise; sessions: Map<string, RatedEffort[]> }
@@ -43,10 +56,7 @@ export function stalledOf(sets: readonly WorkingSet[]): TrainingReview['stalled'
   }
   return (
     [...byExercise.values()]
-      .flatMap(({ exercise, sessions }) => {
-        const stall = stallOf([...sessions.values()], exercise.tracking)
-        return stall === null ? [] : [{ exercise, ...stall }]
-      })
+      .map(({ exercise, sessions }) => ({ exercise, sessions: [...sessions.values()] }))
       // In one locale, not the runtime's: the order cannot change with the machine it runs on.
       .toSorted((a, b) => a.exercise.name.localeCompare(b.exercise.name, 'en'))
   )

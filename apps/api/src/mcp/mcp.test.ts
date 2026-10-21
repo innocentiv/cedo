@@ -419,6 +419,36 @@ describe('training review', () => {
     expect(history).not.toContain('kg')
   })
 
+  /** The deload triggers, said beside the stall: what the AI acts on by saving a lighter plan. */
+  test('a lift falling and one drifting read as deload signals', async () => {
+    const pat = await mintPat(alice)
+    const bench = await createExercise(pat, 'Test Bench', 'pectoralis_major')
+    const row = await createExercise(pat, 'Test Row', 'latissimus_dorsi')
+    for (const [benchKg, rowRpe] of [
+      [66, 7],
+      [63, 7],
+      [60, 8.5],
+      [57, 8.5],
+    ] as const) {
+      // oxlint-disable-next-line no-await-in-loop -- sessions in order: what is under test.
+      await callTool(pat, 'session_log', {
+        sets: [
+          { exerciseId: bench, weightG: benchKg * 1000, reps: 5 },
+          { exerciseId: row, weightG: 50_000, reps: 8, rpe: rowRpe },
+        ],
+      })
+    }
+
+    const review = textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)
+    // 66 kg × 7/6 is 77 kg; 57 kg, 66.5 kg.
+    expect(review).toContain('Falling (estimated max down, 2+ sessions running):')
+    expect(review).toContain('Test Bench: 3 sessions, 77 kg → 66.5 kg')
+    expect(review).toContain(
+      'Effort drift (RPE up 1+ at the same set, in each of the latest 2 sessions):',
+    )
+    expect(review).toContain('Test Row at 8 × 50 kg: RPE 7 → 8.5')
+  })
+
   /** Every effort reaches the AI as the app shows it. See `stalled.test.ts` for the history. */
   test('a stalled movement reads in its own terms, and a muscle’s work as sets', async () => {
     const pat = await mintPat(alice)
