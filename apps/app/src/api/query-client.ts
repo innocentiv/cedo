@@ -59,6 +59,7 @@ export const keys = {
   progression: (id: string) => ['progression', id] as const,
   sessionList: (query: Record<string, unknown>) => ['sessionList', query] as const,
   session: (id: string) => ['session', id] as const,
+  sessionTargets: (sessionId: string) => ['sessionTargets', sessionId] as const,
   groups: ['groups'] as const,
   groupMembers: (id: string) => ['groupMembers', id] as const,
   tokens: ['tokens'] as const,

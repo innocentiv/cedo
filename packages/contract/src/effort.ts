@@ -32,6 +32,31 @@ export function formatEffort(
   return parts.length === 0 ? '—' : parts.join(' ')
 }
 
+/**
+ * Several sets of one exercise in one line, as they were done: `8, 8, 7 × 60 kg` when every set has
+ * reps and only the reps differ, set by set otherwise — `8 × 60 kg, 6 × 65 kg`, `1:00, 0:45`. What
+ * "last time" reads as beside a logger.
+ */
+export function formatSets(
+  sets: readonly Effort[],
+  tracking: TrackingMode | null,
+  unit: WeightUnit,
+): string {
+  const [first] = sets
+  if (first === undefined) return '—'
+  const sameButReps = sets.every(
+    (s) =>
+      s.reps !== null &&
+      s.weightG === first.weightG &&
+      s.durationS === first.durationS &&
+      s.distanceMm === first.distanceMm,
+  )
+  if (!sameButReps) return sets.map((s) => formatEffort(s, tracking, unit)).join(', ')
+  // One set's line without its leading count — `× 60 kg`, `reps` — after every set's count.
+  const rest = formatEffort(first, tracking, unit).slice(String(first.reps).length + 1)
+  return `${sets.map((s) => s.reps).join(', ')} ${rest}`
+}
+
 function lift(
   { reps, weightG }: Effort,
   tracking: TrackingMode | null,

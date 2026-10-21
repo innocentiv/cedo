@@ -109,8 +109,8 @@ export interface ProgressionInput {
 
 /**
  * Compute the next prescription. Pure, total, and deterministic — the single implementation, called
- * by the API's progression service, whose answer the `workout_progression` MCP tool and the logging
- * screen both render.
+ * by the API's progression service, whose answers the `workout_progression` MCP tool and the
+ * logger's pre-fill (`EntryTarget`) both render.
  *
  * It ADVANCES OR HOLDS, never decreases. Deloading is a judgement call needing context this
  * function does not have (illness, a bad week, form breakdown), so it stays with the user or the

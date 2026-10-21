@@ -37,6 +37,12 @@ export const READS = {
   workout: { of: 'workout', embeds: ['exercise', 'group'] },
   /** An exercise's name and tracking mode, judged against the caller's logged sessions. */
   progression: { of: 'workout', embeds: ['exercise', 'session', 'group'] },
+  /**
+   * What a session asks of each entry: its plan, carried forward over the sessions before it, and
+   * last time's sets. Of the plan, as progression is — so logging a set refreshes it behind the
+   * Log button rather than holding it busy.
+   */
+  sessionTargets: { of: 'workout', embeds: ['exercise', 'session', 'group'] },
   /** Each session names its workout and day. */
   sessionList: { of: 'session', embeds: ['workout', 'group'] },
   /**

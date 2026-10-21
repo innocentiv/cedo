@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { type Effort, compareEfforts, formatEffort, topSet } from './effort.ts'
+import { type Effort, compareEfforts, formatEffort, formatSets, topSet } from './effort.ts'
+import { lbToG } from './units.ts'
 
 const none = { reps: null, weightG: null, durationS: null, distanceMm: null }
 
@@ -133,5 +134,52 @@ describe('the top set', () => {
     expect(compareEfforts(set({ reps: 9 }), set({ reps: 8, weightG: 0 }), 'bodyweight_reps')).toBe(
       1,
     )
+  })
+})
+
+/** "Last time", in one line: a session's working sets of one exercise, as logged. */
+describe('formatSets', () => {
+  const set = (reps: number | null, weightG: number | null, durationS: number | null = null) => ({
+    reps,
+    weightG,
+    durationS,
+    distanceMm: null,
+  })
+
+  test('sets of one weight read as their reps, then the weight once', () => {
+    expect(formatSets([set(8, 60_000), set(8, 60_000), set(7, 60_000)], 'weight_reps', 'kg')).toBe(
+      '8, 8, 7 × 60 kg',
+    )
+  })
+
+  test('sets of different weights read one by one', () => {
+    expect(formatSets([set(8, 60_000), set(6, 65_000)], 'weight_reps', 'kg')).toBe(
+      '8 × 60 kg, 6 × 65 kg',
+    )
+  })
+
+  test('bodyweight sets keep their mode, with or without added weight', () => {
+    expect(formatSets([set(10, null), set(9, null)], 'bodyweight_reps', 'kg')).toBe(
+      '10, 9 × bodyweight',
+    )
+    expect(formatSets([set(6, 20_000), set(5, 20_000)], 'bodyweight_reps', 'kg')).toBe(
+      '6, 5 × bodyweight +20 kg',
+    )
+  })
+
+  test('sets without reps — holds — read one by one', () => {
+    expect(formatSets([set(null, null, 60), set(null, null, 45)], 'duration', 'kg')).toBe(
+      '1:00, 0:45',
+    )
+  })
+
+  test('in the reader’s unit', () => {
+    expect(formatSets([set(5, lbToG(135)), set(5, lbToG(135))], 'weight_reps', 'lb')).toBe(
+      '5, 5 × 135 lb',
+    )
+  })
+
+  test('no sets is a dash', () => {
+    expect(formatSets([], 'weight_reps', 'kg')).toBe('—')
   })
 })

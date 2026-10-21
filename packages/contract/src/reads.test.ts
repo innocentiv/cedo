@@ -13,7 +13,7 @@ describe('what a write makes stale', () => {
   test('renaming an exercise refreshes the plan, its progression and a live session', () => {
     const { awaited, background } = affectedBy('exercise')
     expect(sorted(awaited)).toEqual(['exercise', 'exerciseHistory', 'exerciseList'])
-    expect(sorted(background)).toEqual(['progression', 'session', 'workout'])
+    expect(sorted(background)).toEqual(['progression', 'session', 'sessionTargets', 'workout'])
   })
 
   /**
@@ -24,7 +24,7 @@ describe('what a write makes stale', () => {
   test('logging a set awaits the session, and refreshes history and progression behind it', () => {
     const { awaited, background } = affectedBy('session')
     expect(sorted(awaited)).toEqual(['session', 'sessionList'])
-    expect(sorted(background)).toEqual(['exerciseHistory', 'progression'])
+    expect(sorted(background)).toEqual(['exerciseHistory', 'progression', 'sessionTargets'])
   })
 
   /**
@@ -34,7 +34,7 @@ describe('what a write makes stale', () => {
    */
   test('saving or deleting a plan refreshes its progression, and the sessions that point into it', () => {
     const { awaited, background } = affectedBy('workout')
-    expect(sorted(awaited)).toEqual(['progression', 'workout', 'workoutList'])
+    expect(sorted(awaited)).toEqual(['progression', 'sessionTargets', 'workout', 'workoutList'])
     expect(sorted(background)).toEqual(['session', 'sessionList'])
   })
 
@@ -53,6 +53,7 @@ describe('what a write makes stale', () => {
       'progression',
       'session',
       'sessionList',
+      'sessionTargets',
       'workout',
       'workoutList',
     ])
