@@ -24,7 +24,16 @@ describe('what a write makes stale', () => {
   test('logging a set awaits the session, and refreshes history and progression behind it', () => {
     const { awaited, background } = affectedBy('session')
     expect(sorted(awaited)).toEqual(['session', 'sessionList'])
-    expect(sorted(background)).toEqual(['exerciseHistory', 'progression', 'sessionTargets'])
+    expect(sorted(background)).toEqual(['exerciseHistory', 'progression'])
+  })
+
+  /**
+   * A session's targets are carried over the sessions BEFORE it, and those are finished — final —
+   * so logging in it cannot move them. They used to be recomputed after every set, for nothing.
+   */
+  test("logging a set leaves the session's targets alone", () => {
+    const { awaited, background } = affectedBy('session')
+    expect([...awaited, ...background]).not.toContain('sessionTargets')
   })
 
   /**

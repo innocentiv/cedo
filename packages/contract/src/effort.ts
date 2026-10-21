@@ -44,32 +44,37 @@ export function formatSets(
 ): string {
   const [first] = sets
   if (first === undefined) return '—'
+  // Added to bodyweight, nothing is nothing however it was logged — 0, or not at all.
+  const load = (s: Effort) => (tracking === 'bodyweight_reps' ? (s.weightG ?? 0) : s.weightG)
   const sameButReps = sets.every(
     (s) =>
       s.reps !== null &&
-      s.weightG === first.weightG &&
+      load(s) === load(first) &&
       s.durationS === first.durationS &&
       s.distanceMm === first.distanceMm,
   )
   if (!sameButReps) return sets.map((s) => formatEffort(s, tracking, unit)).join(', ')
-  // One set's line without its leading count — `× 60 kg`, `reps` — after every set's count.
-  const rest = formatEffort(first, tracking, unit).slice(String(first.reps).length + 1)
-  return `${sets.map((s) => s.reps).join(', ')} ${rest}`
+  // The first set's line, every set's count where its own would be: `8, 8, 7 × 60 kg`.
+  const counts = sets.map((s) => s.reps).join(', ')
+  const parts = [lift(first, tracking, unit, counts), travel(first)].filter((p) => p !== null)
+  return parts.join(' ')
 }
 
+/** Reps and load. `count` stands where the reps go — several sets' counts, for `formatSets`. */
 function lift(
   { reps, weightG }: Effort,
   tracking: TrackingMode | null,
   unit: WeightUnit,
+  count: string | null = reps === null ? null : String(reps),
 ): string | null {
   const weight = (grams: number) => formatWeight(grams, unit)
-  if (reps === null) return weightG === null ? null : weight(weightG)
+  if (count === null) return weightG === null ? null : weight(weightG)
   if (tracking === 'bodyweight_reps') {
     return weightG === null || weightG === 0
-      ? `${reps} × bodyweight`
-      : `${reps} × bodyweight +${weight(weightG)}`
+      ? `${count} × bodyweight`
+      : `${count} × bodyweight +${weight(weightG)}`
   }
-  return weightG === null ? `${reps} reps` : `${reps} × ${weight(weightG)}`
+  return weightG === null ? `${count} reps` : `${count} × ${weight(weightG)}`
 }
 
 function travel({ distanceMm, durationS }: Effort): string | null {

@@ -18,7 +18,9 @@ Four rule kinds, stored as a Zod discriminated union in a JSONB column on `worko
 
 **`nextTarget()` is a pure function in `packages/contract`.** One implementation, called only by the
 API's progression service, whose answers both the `workout_progression` MCP tool and the logger's
-pre-fill render. It is impossible for them to disagree.
+pre-fill render. They cannot compute differently; they differ only in which sessions they read —
+every one so far, or those before the session being logged — so they agree whenever none is in
+progress.
 
 **The logger is pre-filled with it; the plan is not written to.** A session asks of each entry the
 plan's prescription carried forward over the sessions that started before it

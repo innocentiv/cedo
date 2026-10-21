@@ -26,7 +26,7 @@ forget the maths.
 
 This one function is called by the API's progression service, whose answers the
 `workout_progression` MCP tool and the logger's pre-fill both render, so an AI's advice and the
-athlete's next target can never disagree.
+athlete's next target never compute differently (they read different sessions — see ADR-0012).
 
 ## 3. Write the truth table first
 

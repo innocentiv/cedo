@@ -39,10 +39,11 @@ export const READS = {
   progression: { of: 'workout', embeds: ['exercise', 'session', 'group'] },
   /**
    * What a session asks of each entry: its plan, carried forward over the sessions before it, and
-   * last time's sets. Of the plan, as progression is — so logging a set refreshes it behind the
-   * Log button rather than holding it busy.
+   * last time's sets. Of the plan: a save changes what it prescribes. It embeds no session — the
+   * ones it reads are finished, which is final, and its own sets never count — so logging leaves
+   * it alone.
    */
-  sessionTargets: { of: 'workout', embeds: ['exercise', 'session', 'group'] },
+  sessionTargets: { of: 'workout', embeds: ['exercise', 'group'] },
   /** Each session names its workout and day. */
   sessionList: { of: 'session', embeds: ['workout', 'group'] },
   /**

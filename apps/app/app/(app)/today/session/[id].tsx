@@ -176,18 +176,21 @@ export default function LiveSession(): React.JSX.Element {
           logs={logs}
           busy={logSet.isPending}
         />
-      ) : (
-        // Shown once its targets have answered: each logger's inputs start from them, once.
+      ) : targets.data === undefined ? (
+        // The day waits for its targets — each logger's inputs start from them, once — and says
+        // so if they fail. Its children never run: they have answered by the branch below.
         <Loaded query={targets} testID="session-targets">
-          {(asked) => (
-            <PlannedDay
-              day={day}
-              targets={new Map(asked.map((t) => [t.entryId, t]))}
-              busy={logSet.isPending}
-              onLog={record.planned}
-            />
-          )}
+          {() => null}
         </Loaded>
+      ) : (
+        // Once answered, the day stays: a failed refresh behind it must not take the loggers, and
+        // what is typed in them, off the screen mid-set.
+        <PlannedDay
+          day={day}
+          targets={targets.data}
+          busy={logSet.isPending}
+          onLog={record.planned}
+        />
       )}
 
       <LoggedSets

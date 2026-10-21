@@ -740,6 +740,40 @@ describe("a session's targets", () => {
     expect(await targetsOf(alice, adHoc.id)).toEqual([])
   })
 
+  /** Without a rule nothing carries it forward, however well it went — but last time still shows. */
+  test('an entry with no rule asks for its prescription after a clean session', async () => {
+    const workout = await aPlannedWorkout(alice, await anExercise(alice))
+    const entry = workout.days[0]?.entries[0]
+    if (entry === undefined) throw new Error('the workout has no entry')
+    const saved = await alice.wire(`/workouts/${workout.id}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        days: [
+          {
+            id: workout.days[0]?.id,
+            name: 'Push',
+            entries: [
+              {
+                id: entry.id,
+                exerciseId: entry.exerciseId,
+                progression: { kind: 'none' },
+                sets: [8, 8, 8].map((reps) => ({ targetReps: reps, targetWeightG: kgToG(60) })),
+              },
+            ],
+          },
+        ],
+      }),
+    })
+    const plan = expectContract(Workout, saved.body)
+    await aSession(alice, plan, [8, 8, 8])
+
+    const [target] = await targetsOf(alice, await aSession(alice, plan, [], false))
+    expect(target?.target).toEqual(target?.prescribed)
+    expect(target?.target.reps).toBe(8)
+    expect(target?.changed).toBe(false)
+    expect(target?.last).toEqual(sets(8, 8, 8))
+  })
+
   test("someone else's session is not there", async () => {
     const workout = await aPlannedWorkout(alice, await anExercise(alice))
     const id = await aSession(alice, workout, [], false)

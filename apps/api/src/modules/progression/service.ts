@@ -185,6 +185,7 @@ async function lastTimes(
       durationS: setLogs.durationS,
       distanceMm: setLogs.distanceMm,
       loggedAt: setLogs.loggedAt,
+      setIndex: setLogs.setIndex,
       rank: sql<number>`dense_rank() over (partition by ${setLogs.exerciseId} order by ${workoutSessions.startedAt} desc, ${workoutSessions.id} desc)`.as(
         'rank',
       ),
@@ -211,7 +212,8 @@ async function lastTimes(
     })
     .from(ranked)
     .where(sql`${ranked.rank} = 1`)
-    .orderBy(asc(ranked.loggedAt))
+    // Ties broken as exercise history breaks them (`session/history.ts`), so the order is fixed.
+    .orderBy(asc(ranked.loggedAt), asc(ranked.setIndex))
 
   return groupBy(
     rows,

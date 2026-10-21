@@ -167,6 +167,13 @@ describe('formatSets', () => {
     )
   })
 
+  /** Nothing added, logged as 0 or as nothing, is one weight: bodyweight. */
+  test('bodyweight with nothing added reads as one weight, however it was logged', () => {
+    expect(formatSets([set(10, 0), set(9, null)], 'bodyweight_reps', 'kg')).toBe(
+      '10, 9 × bodyweight',
+    )
+  })
+
   test('sets without reps — holds — read one by one', () => {
     expect(formatSets([set(null, null, 60), set(null, null, 45)], 'duration', 'kg')).toBe(
       '1:00, 0:45',

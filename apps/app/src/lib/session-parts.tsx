@@ -141,14 +141,14 @@ export function PlannedDay({
   onLog,
 }: {
   readonly day: SessionDay
-  readonly targets: ReadonlyMap<string, EntryTarget>
+  readonly targets: readonly EntryTarget[]
   readonly busy: boolean
   readonly onLog: (entry: WorkoutEntry, values: Effort) => void
 }): React.JSX.Element {
   return (
     <Stack gap="md">
       {day.entries.map((entry) => {
-        const asked = targets.get(entry.id)
+        const asked = targets.find((t) => t.entryId === entry.id)
         return (
           <SetLogger
             key={entry.id}

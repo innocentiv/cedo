@@ -1,13 +1,13 @@
 import { z } from 'zod'
-import { LoggedDistanceMm, LoggedDurationS, LoggedReps, LoggedWeightG } from './measurement.ts'
+import { SetLog } from './log.ts'
 import { SetTarget } from './progression.ts'
 
-/** What a logged set measured — what "last time" carries. */
-export const LoggedEffort = z.object({
-  reps: LoggedReps.nullable(),
-  weightG: LoggedWeightG.nullable(),
-  durationS: LoggedDurationS.nullable(),
-  distanceMm: LoggedDistanceMm.nullable(),
+/** What a logged set measured — what "last time" carries. A logged set's measures, no more. */
+export const LoggedEffort = SetLog.pick({
+  reps: true,
+  weightG: true,
+  durationS: true,
+  distanceMm: true,
 })
 export type LoggedEffort = z.output<typeof LoggedEffort>
 
@@ -30,7 +30,7 @@ export const EntryTarget = z.object({
   changed: z.boolean(),
   /**
    * The working sets of the latest earlier session that logged this exercise — in this plan or any
-   * other, or none — in set order. Null when there is none.
+   * other, or none — in the order they were logged. Null when there is none.
    */
   last: z.array(LoggedEffort).nullable(),
 })
