@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
-import { ExerciseCreate, ExerciseUpdate, MUSCLES, MuscleSlug } from '@cedo/contract'
+import { DuplicateInput, ExerciseCreate, ExerciseUpdate, MUSCLES, MuscleSlug } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import * as ExerciseService from '../../modules/exercise/service.ts'
 import * as MediaService from '../../modules/media/service.ts'
@@ -114,6 +114,24 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
     async ({ exerciseId, ...patch }) =>
       text(
         `Updated.\n\n${exerciseDetail(await ExerciseService.update(caller, exerciseId, patch))}`,
+      ),
+  )
+
+  server.registerTool(
+    'exercise_duplicate',
+    {
+      title: 'Duplicate an exercise',
+      description:
+        'Copy an exercise you can see — muscles, instructions, media — into a group you edit: ' +
+        'your personal group unless `toGroupId` names another. The way to adapt a library ' +
+        'exercise for someone without curator rights. The copy is a second exercise, so prefer ' +
+        'the original unless it must change.',
+      inputSchema: DuplicateInput.safeExtend({ exerciseId: z.uuid() }),
+      annotations: WRITE,
+    },
+    async ({ exerciseId, toGroupId }) =>
+      text(
+        `Duplicated.\n\n${exerciseDetail(await ExerciseService.duplicate(caller, exerciseId, toGroupId))}`,
       ),
   )
 

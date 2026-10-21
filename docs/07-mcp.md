@@ -38,7 +38,7 @@ Four objectives, and every tool exists to serve one of them.
 Reviewing and creating exercises from reliable sources, with correct muscle attribution.
 
 `library_audit` · `exercise_search` · `exercise_get` · `exercise_create` · `exercise_update` ·
-`media_add_link` · `muscle_list`
+`exercise_duplicate` · `media_add_link` · `muscle_list`
 
 **The guardrail matters more than the capability.** The expensive failure is not a missing tool, it
 is creating "Barbell Bench Press" beside an existing "Bench Press", or attributing muscles
@@ -47,7 +47,8 @@ inconsistently across similar movements. So `library_audit` reports near-duplica
 instructions or media. The tool descriptions tell the model to read before it writes.
 
 Writing to the shared library requires **curator** rights (below). Anything else lands in the
-caller's own group.
+caller's own group — and `exercise_duplicate` is how an AI adapts a library exercise for someone
+without them: a copy in a group they edit, as `workout_duplicate` is for a shared programme.
 
 ### 2. Reviewing someone's training
 

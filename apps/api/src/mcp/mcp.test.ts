@@ -201,6 +201,62 @@ describe('library curation', () => {
   })
 })
 
+/**
+ * The library is read-only to all but curators; a copy is how an AI adapts one of its exercises for
+ * someone — never by asking for curator rights. The same service as POST /exercises/:id/duplicate.
+ */
+describe('exercise_duplicate', () => {
+  const Listed = z.object({ items: z.array(Exercise) })
+  const findOne = async (user: TestUser, query: string) => {
+    const [found] = expectContract(Listed, (await user.wire(`/exercises?${query}`)).body).items
+    if (found === undefined) throw new Error(`Nothing matched ${query}`)
+    return found
+  }
+
+  test('copies a library exercise into your own group, where you can change it', async () => {
+    await seedLibrary(h.groupId, h.systemUserId)
+    const squat = await findOne(alice, 'q=Barbell%20Back%20Squat&limit=1')
+    const pat = await mintPat(alice)
+
+    const { body } = await callTool(pat, 'exercise_duplicate', { exerciseId: squat.id })
+    expect(body.result?.isError).not.toBe(true)
+    expect(textOf(body)).toContain('Duplicated.')
+
+    const copy = await findOne(alice, 'scope=mine&q=Barbell%20Back%20Squat')
+    expect(copy.id).not.toBe(squat.id)
+    expect(copy.ownerGroupId).toBe(alice.personalGroupId)
+    expect(copy.canEdit).toBe(true)
+    expect(copy.muscles).toEqual(squat.muscles)
+  })
+
+  test('goes nowhere you cannot edit — not even the library it came from', async () => {
+    await seedLibrary(h.groupId, h.systemUserId)
+    const squat = await findOne(alice, 'q=Barbell%20Back%20Squat&limit=1')
+    const pat = await mintPat(alice)
+
+    const { body } = await callTool(pat, 'exercise_duplicate', {
+      exerciseId: squat.id,
+      toGroupId: h.groupId,
+    })
+    expect(body.result?.isError).toBe(true)
+    expect(textOf(body)).toContain('No such group')
+  })
+
+  test("cannot copy what the caller cannot see — another user's own exercise", async () => {
+    const bob = await h.as('bob')
+    const created = await bob.wire('/exercises', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Bob Lift', muscles: [{ muscle: 'quadriceps', loadPct: 100 }] }),
+    })
+    const theirs = expectContract(Exercise, created.body)
+    const pat = await mintPat(alice)
+
+    const { body } = await callTool(pat, 'exercise_duplicate', { exerciseId: theirs.id })
+    expect(body.result?.isError).toBe(true)
+    expect(textOf(body)).toContain('No such exercise')
+  })
+})
+
 describe('training review', () => {
   /** Through the tool, as the AI would; the id is read back out of its text. */
   async function createExercise(
