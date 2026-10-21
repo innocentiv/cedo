@@ -73,7 +73,7 @@ const mayOf = (group: GroupRow, role: GroupRole, editors: number) => {
     // The last editor stays: a group with no editor cannot be administered again.
     canLeave: changes && !(role === 'editor' && editors === 1),
     // What `transferOwnable` asks of the target: the caller edits it.
-    canMoveInto: role === 'editor',
+    canTransferInto: role === 'editor',
   }
 }
 
@@ -131,7 +131,7 @@ export async function list(caller: Caller): Promise<GroupMembership[]> {
       memberCount: memberCount(r.group.id, r.role),
       canManage: may.canManage,
       canLeave: may.canLeave,
-      canMoveInto: may.canMoveInto,
+      canTransferInto: may.canTransferInto,
     }
   })
 }

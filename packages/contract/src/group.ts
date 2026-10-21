@@ -43,8 +43,8 @@ export const GroupMembership = Group.extend({
    * are its last editor.
    */
   canLeave: z.boolean(),
-  /** Move what they edit into it: any group they edit — the starter library, for a curator. */
-  canMoveInto: z.boolean(),
+  /** Transfer what they edit into it: any group they edit — the starter library, for a curator. */
+  canTransferInto: z.boolean(),
 })
 export type GroupMembership = z.output<typeof GroupMembership>
 

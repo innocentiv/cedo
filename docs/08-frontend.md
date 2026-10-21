@@ -90,7 +90,7 @@ Two constraints found by building it:
 | `Stack` | every layout. There is no other container |
 | `Text` | all text. Variants `title` / `heading` / `body` / `label` / `caption` / `mono` |
 | `Button`, `NavButton` | actions, and actions that navigate |
-| `ConfirmButton` | every action that cannot be taken back — delete, revoke, remove, leave — and every move to another group, which others feel at once. Asked twice, in the app's own UI, never a browser dialog; a refusal shows beside it. Removing a set from a session in progress is not one: it is logged again in a tap |
+| `ConfirmButton` | every action that cannot be taken back — delete, revoke, remove, leave — and every transfer to another group, which others feel at once. Asked twice, in the app's own UI, never a browser dialog; a refusal shows beside it. Removing a set from a session in progress is not one: it is logged again in a tap |
 | `PinButton` | pinning what you can see, for its list's "Pinned" filter |
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput` |
 | `Card`, `ListRow` | the one row shape every list uses |
@@ -110,7 +110,7 @@ without any, and the day editor gives it an `UnavailableEntry` — what it presc
 
 A composite that reads through a query hook is not presentational, so it lives in `src/lib/`
 instead: the exercise picker, and `GroupPlacement` — which group an exercise or plan is in, and
-Move to group, on both detail screens. Where it may go is the server's `canMoveInto`, not a rule
+Transfer to group, on both detail screens. Where it may go is the server's `canTransferInto`, not a rule
 of its own; a plan the target group could not read is refused by the server, which says why.
 
 Editing a plan follows the same split. How sets resize within an entry's total, what a target change

@@ -989,9 +989,9 @@ test(
   E2E_TIMEOUT_MS,
 )
 
-/** Moved into a group you edit — never one you only read — and it says where it now is. */
+/** Transferred into a group you edit — never one you only read — and it says where it now is. */
 test(
-  'an exercise moves into a group you edit, and says it is there',
+  'an exercise is transferred into a group you edit, and says it is there',
   async () => {
     const owner = unique('mv')
     await withApp('move-exercise', async (page) => {
@@ -1010,8 +1010,8 @@ test(
       expect(await app.exercise.placement.owner()).toBe('In your personal group')
       expect(await app.exercise.placement.targets()).toEqual(['Squad'])
 
-      await app.exercise.placement.moveTo('Squad')
-      await app.exercise.placement.moveTo('your personal group')
+      await app.exercise.placement.transferTo('Squad')
+      await app.exercise.placement.transferTo('your personal group')
 
       // A reader is told where the coach's exercise is, and offered nothing to do about it.
       const theirs = await coach.api.exercises.create(
@@ -1032,7 +1032,7 @@ test(
 
 /** The server's refusal, as it is: a plan goes only where every exercise it uses can be read. */
 test(
-  'a plan using an exercise the group cannot see is not moved, and says which',
+  'a plan using an exercise the group cannot see is not transferred, and says which',
   async () => {
     await withApp('move-workout-refused', async (page) => {
       const app = screens(page)
@@ -1045,7 +1045,7 @@ test(
 
       await page.goto('/workouts')
       await app.workouts.openFirst()
-      expect(await app.workouts.placement.moveRefused('Squad')).toContain(
+      expect(await app.workouts.placement.transferRefused('Squad')).toContain(
         `That group cannot see "${lift}"`,
       )
       expect(await app.workouts.placement.owner()).toBe('In your personal group')

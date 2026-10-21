@@ -15,8 +15,14 @@ A member's role in a group: an editor can change what the group owns and who bel
 reader can only read it.
 _Avoid_: admin, viewer, owner
 
+**Leave**:
+A member removing themselves from a group, in either role. The group's last editor cannot, and
+nobody leaves their personal group or the library.
+_Avoid_: quit, unsubscribe
+
 **Library**:
-The starter exercises every account can read, owned by the seeded `cedo` group.
+The starter exercises every account can read, owned by the seeded `cedo` group. Every account
+belongs to it from registration on and keeps belonging, which is why any shared plan may use them.
 _Avoid_: catalogue, defaults
 
 **Curator**:

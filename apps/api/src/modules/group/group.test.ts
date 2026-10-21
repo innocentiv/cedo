@@ -423,28 +423,28 @@ describe('what a member may do with a group', () => {
 })
 
 /**
- * Where a member may move what they edit: into any group they edit — the server takes nothing into
+ * Where a member may transfer what they edit: into any group they edit — the server takes nothing into
  * one they only read. Said by the server, so the app offers only those, holding no rule.
  */
-describe('the groups a member may move things into', () => {
-  const moveInto = async (user: TestUser) =>
-    Object.fromEntries((await groupsOf(user)).map((g) => [g.id, g.canMoveInto]))
+describe('the groups a member may transfer things into', () => {
+  const transferInto = async (user: TestUser) =>
+    Object.fromEntries((await groupsOf(user)).map((g) => [g.id, g.canTransferInto]))
 
   test('their personal group, and a shared group they edit — not one they read', async () => {
     const squad = expectContract(GroupMembership, (await createGroup(alice, 'Squad')).body)
-    expect(squad.canMoveInto).toBe(true)
+    expect(squad.canTransferInto).toBe(true)
     await addMember(alice, squad.id, 'bob', 'reader')
 
-    expect(await moveInto(alice)).toEqual({
+    expect(await transferInto(alice)).toEqual({
       [alice.personalGroupId]: true,
       [squad.id]: true,
       [h.groupId]: false,
     })
-    expect((await moveInto(bob))[squad.id]).toBe(false)
+    expect((await transferInto(bob))[squad.id]).toBe(false)
   })
 
   test('the starter library, for a curator', async () => {
     await promote(alice)
-    expect((await moveInto(alice))[h.groupId]).toBe(true)
+    expect((await transferInto(alice))[h.groupId]).toBe(true)
   })
 })
