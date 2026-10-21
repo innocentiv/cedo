@@ -46,6 +46,16 @@ export const GroupMembership = Group.extend({
 })
 export type GroupMembership = z.output<typeof GroupMembership>
 
+/**
+ * Where something owned by `ownerGroupId` may be moved: every group the caller edits, but the one it
+ * is in. The server takes nothing into a group you cannot edit, and checks the rest itself — a plan
+ * goes only where every exercise it uses can be read, and says so when it cannot.
+ */
+export const groupsToMoveInto = (
+  memberships: readonly GroupMembership[],
+  ownerGroupId: string,
+): GroupMembership[] => memberships.filter((g) => g.role === 'editor' && g.id !== ownerGroupId)
+
 export const GroupMember = z.object({
   user: User,
   role: GroupRole,
