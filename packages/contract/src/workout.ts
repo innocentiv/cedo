@@ -1,7 +1,8 @@
 import { z } from 'zod'
 import { Exercise } from './exercise.ts'
 import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
-import { EntryCue } from './rest.ts'
+import { EntryCue } from './cue.ts'
+import { DEFAULT_REST_S } from './rest.ts'
 import { Rpe } from './rpe.ts'
 import { Progression, SetTarget } from './progression.ts'
 import { OwnableQuery, ownableFields } from './ownable.ts'
@@ -75,8 +76,9 @@ export const WorkoutEntryInput = z
     id: Id.optional(),
     exerciseId: Id,
     supersetGroup: SupersetGroup.default(null),
-    restSeconds: z.int().nonnegative().max(3600).nullable().default(null),
-    /** One line for the athlete about this entry — see `rest.ts`. */
+    /** Two minutes when not said; null or 0 is none — see `rest.ts`. */
+    restSeconds: z.int().nonnegative().max(3600).nullable().default(DEFAULT_REST_S),
+    /** One line for the athlete about this entry — see `cue.ts`. */
     cue: EntryCue.default(null),
     progression: Progression.default({ kind: 'none' }),
     sets: z

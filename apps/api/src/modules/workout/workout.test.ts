@@ -389,6 +389,39 @@ describe("an entry's cue", () => {
     expect(second.days[0]?.entries[0]?.cue).toBe('Elbows tucked')
   })
 
+  test('is cleared by a later save that keeps the entry', async () => {
+    const workout = await aWorkout(alice)
+    const exerciseId = await anExercise(alice)
+    const first = expectContract(
+      Workout,
+      (await save(workout.id, withCue(exerciseId, 'Pause'))).body,
+    )
+    const day = first.days[0]
+    const entry = day?.entries[0]
+    if (day === undefined || entry === undefined) throw new Error('no entry')
+    const second = expectContract(
+      Workout,
+      (await save(workout.id, withCue(exerciseId, null, { day: day.id, entry: entry.id }))).body,
+    )
+    expect(second.days[0]?.entries[0]?.cue).toBeNull()
+  })
+
+  /** An entry saved without a rest — by the AI, say — rests two minutes; one saying none, none. */
+  test('rest is two minutes when not said, and none when said so', async () => {
+    const workout = await aWorkout(alice)
+    const exerciseId = await anExercise(alice)
+    const entry = (rest: object) => ({ exerciseId, sets: [{ targetReps: 5 }], ...rest })
+    const saved = expectContract(
+      Workout,
+      (
+        await save(workout.id, {
+          days: [{ name: 'Day', entries: [entry({}), entry({ restSeconds: null })] }],
+        })
+      ).body,
+    )
+    expect(saved.days[0]?.entries.map((e) => e.restSeconds)).toEqual([120, null])
+  })
+
   test('blank is none', async () => {
     const workout = await aWorkout(alice)
     const saved = expectContract(

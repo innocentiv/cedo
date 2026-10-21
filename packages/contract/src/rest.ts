@@ -1,29 +1,24 @@
-import { z } from 'zod'
-
 /**
- * What a plan entry tells the athlete beyond its numbers: the rest between its working sets, and a
- * cue — "pause 1 s at the chest" — from whoever wrote the plan, a coach or an AI.
+ * The rest a plan entry prescribes between its working sets, and what the logger counts down.
+ *
+ * Two minutes unless the plan says otherwise: the evidence leans, with wide uncertainty, toward
+ * longer rest for growth, and a minute or less on a compound lift is a known pitfall (Singer et al.,
+ * Front Sports Act Living 2024). A rest of 0 is "straight on": in a superset, the rest goes on its
+ * last exercise and the others' 0 sends the athlete straight to the next.
  */
 
-export const MAX_CUE_LENGTH = 200
-
-/** One line for the athlete, shown under the exercise as they log it. Blank is none. */
-export const EntryCue = z
-  .string()
-  .trim()
-  .max(MAX_CUE_LENGTH, `A cue is at most ${MAX_CUE_LENGTH} characters`)
-  .nullable()
-  .transform((cue) => (cue === '' ? null : cue))
+export const DEFAULT_REST_S = 120
 
 /**
  * Seconds of the entry's rest still to go, counted from its latest WORKING set — a warm-up is the
  * ramp to the work, not what the rest is for — in whole seconds, rounding up, so it reads 0 only
- * once the rest is over. Null before the first working set, or with no rest prescribed.
+ * once the rest is over. Null before the first working set, or with no rest prescribed (0 too).
  *
  * From when the server logged the set, not from a tap: a reload, or another screen, counts the
  * same rest. The server's clock and the device's disagree — by a moment under NTP, more inside a
- * container's VM — so a set can look logged in the future: the rest left is never more than the
- * rest prescribed.
+ * container's VM. A server clock AHEAD makes a set look logged in the future: the rest left is
+ * never more than the rest prescribed. One BEHIND shortens the rest by the difference, which
+ * nothing here can see.
  */
 export function restLeft(
   logs: readonly {
@@ -34,7 +29,7 @@ export function restLeft(
   entry: { readonly id: string; readonly restSeconds: number | null },
   now: number,
 ): number | null {
-  if (entry.restSeconds === null) return null
+  if (entry.restSeconds === null || entry.restSeconds === 0) return null
   const latest = logs
     .filter((l) => l.entryId === entry.id && !l.isWarmup)
     .reduce<number | null>((at, l) => Math.max(at ?? 0, Date.parse(l.loggedAt)), null)

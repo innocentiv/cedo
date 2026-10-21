@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import {
   type Effort,
+  type SetLog,
   type SetTarget,
   type TrackingMode,
+  type WorkoutEntry,
   fieldsOf,
-  formatDuration,
   formatEffort,
   formatSets,
   formatWithReserve,
@@ -14,6 +15,7 @@ import { Button } from './button.tsx'
 import { Card } from './card.tsx'
 import { DimensionInput } from './dimension-input.tsx'
 import { ReserveChips } from './reserve-chips.tsx'
+import { RestCountdown } from './rest-countdown.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
@@ -32,8 +34,11 @@ export interface SetLoggerProps {
   readonly last: readonly Effort[] | null
   /** What the plan tells the athlete about this entry, if anything. */
   readonly cue: string | null
-  /** Seconds of rest still to go after the latest working set (`restLeft`); null for none. */
-  readonly restLeft: number | null
+  /** The session's sets and this entry, for the rest after its latest working set; null for none. */
+  readonly rest: {
+    readonly logs: readonly SetLog[]
+    readonly entry: Pick<WorkoutEntry, 'id' | 'restSeconds'>
+  } | null
   readonly done: number
   /** The set's measures, and how hard it was as an RPE — null when it was not said. */
   readonly onLog: (values: Effort, rpe: number | null) => void
@@ -58,7 +63,7 @@ export function SetLogger({
   prescribed,
   last,
   cue,
-  restLeft,
+  rest,
   done,
   onLog,
   busy,
@@ -118,16 +123,8 @@ export function SetLogger({
           </Text>
         )}
 
-        {restLeft === null ? null : (
-          <Text
-            variant="label"
-            tone={restLeft === 0 ? 'success' : 'accent'}
-            testID={`${testID}-rest`}
-          >
-            {restLeft === 0
-              ? 'Rest over — ready for the next set'
-              : `Rest ${formatDuration(restLeft)}`}
-          </Text>
+        {rest === null ? null : (
+          <RestCountdown logs={rest.logs} entry={rest.entry} testID={`${testID}-rest`} />
         )}
 
         {tracking === null ? (

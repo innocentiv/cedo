@@ -183,10 +183,11 @@ evaluated as their working sets and would never progress — see
 
 `workout_entries.progression` is JSONB validated by the `Progression` union.
 
-An entry also tells the athlete two things beyond its numbers (`rest.ts`): `rest_seconds`, which
-the logger counts down from each working set's `logged_at` — never longer than prescribed, as the
-server's clock and the device's disagree — and `cue`, one line ("pause 1 s at the chest") of at
-most 200 characters, blank stored as null.
+An entry also tells the athlete two things beyond its numbers: `rest_seconds` (`rest.ts`) — two
+minutes when not said, 0 or null for "straight on", as a superset's earlier exercises are — which
+the logger counts down from each working set's `logged_at`, never longer than prescribed, as the
+server's clock and the device's disagree; and `cue` (`cue.ts`), one line ("pause 1 s at the
+chest") of at most 200 characters, blank stored as null.
 
 Ordering uses `(parent_id, index)` unique indexes. **API inputs carry no indices** — order is array
 position and the server assigns them, which removes duplicate/gap indices and reorder endpoints

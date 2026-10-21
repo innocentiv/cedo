@@ -2,6 +2,7 @@ import { DIMENSION_FIELDS, tracks } from './dimension.ts'
 import { type Effort, formatEffort } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
 import { NO_PROGRESSION, type Progression } from './progression.ts'
+import { DEFAULT_REST_S } from './rest.ts'
 import { type WeightUnit, lbToG } from './units.ts'
 import {
   MAX_DAYS_PER_PLAN,
@@ -83,7 +84,7 @@ export const newEntry = (exercise: {
 }): WorkoutEntryInput => ({
   exerciseId: exercise.id,
   supersetGroup: null,
-  restSeconds: 120,
+  restSeconds: DEFAULT_REST_S,
   cue: null,
   progression: NO_PROGRESSION,
   sets: Array.from({ length: 3 }, () => ({
@@ -215,6 +216,7 @@ const FIELD_NAMES: Readonly<Record<string, string>> = {
   entries: 'exercises',
   exerciseId: 'exercise',
   restSeconds: 'rest',
+  cue: 'cue',
   supersetGroup: 'superset',
   progression: 'progression',
 }

@@ -114,8 +114,9 @@ without any, and the day editor gives it an `UnavailableEntry` — what it presc
 Two smaller parts serve those composites and no screen, so they are not in the list above:
 `ReserveChips` — RPE asked as reps in reserve, holding an RPE while the contract converts
 (`rpe.ts`) — used by `SetLogger` and by `PrescriptionFields`: what an entry asks of the athlete,
-its targets, reserve, rest and cue. The logger's rest countdown is the contract's `restLeft`, read
-against `useNow()` (`src/lib/use-now.ts`), a clock that ticks once a second.
+its targets, reserve, rest and cue. The logger's rest countdown is `RestCountdown`: the contract's
+`restLeft` read against `useNow` (`src/lib/use-now.ts`), a clock of its own that ticks once a
+second only while a rest is running — so the line re-renders, not the day.
 
 A composite that reads through a query hook is not presentational, so it lives in `src/lib/`
 instead: the exercise picker, and `GroupPlacement` — which group an exercise or plan is in, and

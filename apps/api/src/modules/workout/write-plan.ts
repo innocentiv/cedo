@@ -5,10 +5,9 @@ import { type OwnedRow, editable } from '../../db/ownable.ts'
 import { workoutDays, workoutEntries, workoutSets } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { valuesOf } from '../../lib/values.ts'
-import { required, setsFor } from './plan-rows.ts'
+import { type EntryInput, required, setsFor } from './plan-rows.ts'
 
 type DayInput = WorkoutPlanInput['days'][number]
-type EntryInput = DayInput['entries'][number]
 
 /**
  * Writes a whole plan over whatever the workout holds now, KEEPING every day and entry whose id is

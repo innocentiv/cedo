@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { EntryCue, MAX_CUE_LENGTH, restLeft } from './rest.ts'
+import { DEFAULT_REST_S, restLeft } from './rest.ts'
 
 /** What the logger counts down after a working set: the entry's rest, from when it was logged. */
 describe('rest left', () => {
@@ -37,23 +37,24 @@ describe('rest left', () => {
     expect(restLeft(logs, { id: 'e', restSeconds: 5 }, at('2026-10-21T10:00:00Z'))).toBe(5)
   })
 
+  /** A rest of none is "straight on" — a superset's first exercise — not a rest that is over. */
+  test('is nothing for a rest of 0: straight on, not over', () => {
+    const logs = [log('2026-10-21T10:00:00Z')]
+    expect(restLeft(logs, { id: 'e', restSeconds: 0 }, at('2026-10-21T10:00:01Z'))).toBeNull()
+  })
+
+  test('falls back to the working set before, once the latest is undone', () => {
+    const logs = [log('2026-10-21T10:00:00Z')]
+    expect(restLeft(logs, { id: 'e', restSeconds: 120 }, at('2026-10-21T10:01:00Z'))).toBe(60)
+  })
+
+  test('is two minutes, by default', () => {
+    expect(DEFAULT_REST_S).toBe(120)
+  })
+
   test('is nothing before the first working set, or without a rest prescribed', () => {
     expect(restLeft([], { id: 'e', restSeconds: 120 }, at('2026-10-21T10:00:00Z'))).toBeNull()
     const logs = [log('2026-10-21T10:00:00Z')]
     expect(restLeft(logs, { id: 'e', restSeconds: null }, at('2026-10-21T10:00:10Z'))).toBeNull()
-  })
-})
-
-/** What the coach or the AI tells the athlete about one entry: "pause 1 s at the chest". */
-describe('an entry’s cue', () => {
-  test('is trimmed, and blank is none', () => {
-    expect(EntryCue.parse('  Pause at the chest ')).toBe('Pause at the chest')
-    expect(EntryCue.parse('   ')).toBeNull()
-    expect(EntryCue.parse(null)).toBeNull()
-  })
-
-  test(`holds at most ${MAX_CUE_LENGTH} characters`, () => {
-    expect(EntryCue.safeParse('x'.repeat(MAX_CUE_LENGTH)).success).toBe(true)
-    expect(EntryCue.safeParse('x'.repeat(MAX_CUE_LENGTH + 1)).success).toBe(false)
   })
 })

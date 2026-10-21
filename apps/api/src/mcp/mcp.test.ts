@@ -600,7 +600,10 @@ describe('editing a plan', () => {
           method: 'PUT',
           body: JSON.stringify({
             days: [
-              { name: 'Pull', entries: [{ exerciseId: exercise.id, sets: [{ targetReps: 8 }] }] },
+              {
+                name: 'Pull',
+                entries: [{ exerciseId: exercise.id, cue: 'Chest up', sets: [{ targetReps: 8 }] }],
+              },
             ],
           }),
         })
@@ -622,6 +625,8 @@ describe('editing a plan', () => {
     expect(after.days[0]?.name).toBe('Back')
     expect(after.days[0]?.id).toBe(before.days[0]?.id)
     expect(after.days[0]?.entries[0]?.id).toBe(before.days[0]?.entries[0]?.id)
+    // What the AI did not touch, it did not lose: the cue came back in the editable plan.
+    expect(after.days[0]?.entries[0]?.cue).toBe('Chest up')
   })
 
   /** An RPE target written by the AI in half-points, and read back in its outline as written. */

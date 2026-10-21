@@ -5,7 +5,8 @@ import type { WorkoutPlanInput } from '@cedo/contract'
  * lost. Beside `write-plan.ts`, which holds the statements.
  */
 
-type EntryInput = WorkoutPlanInput['days'][number]['entries'][number]
+/** One entry of a plan as it is written. */
+export type EntryInput = WorkoutPlanInput['days'][number]['entries'][number]
 
 /** Flattens one entry's prescribed sets. `index` is array position, as at every other level. */
 export function setsFor(entry: EntryInput, entryId: string, ownerGroupId: string) {

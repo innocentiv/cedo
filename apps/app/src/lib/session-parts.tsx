@@ -6,8 +6,7 @@ import type {
   SetLog,
   WorkoutEntry,
 } from '@cedo/contract'
-import { formatWithReserve, prescriptionOf, restLeft, workingSetsDone } from '@cedo/contract'
-import { useNow } from './use-now.ts'
+import { formatWithReserve, prescriptionOf, workingSetsDone } from '@cedo/contract'
 import { useWeightUnit } from './weight-unit.ts'
 import { exerciseName } from './exercise-name.ts'
 import { Button, Card, ListRow, SetLogger, Stack, Text } from '../ui/index.ts'
@@ -109,7 +108,7 @@ export function AdHoc({
             prescribed={null}
             last={null}
             cue={null}
-            restLeft={null}
+            rest={null}
             done={workingSetsDone(logs, { entryId: null, exerciseId: exercise.id })}
             busy={busy}
             testID={`adhoc-${exercise.id}`}
@@ -151,7 +150,6 @@ export function PlannedDay({
   readonly busy: boolean
   readonly onLog: (entry: WorkoutEntry, values: Effort, rpe: number | null) => void
 }): React.JSX.Element {
-  const now = useNow()
   return (
     <Stack gap="md">
       {day.entries.map((entry) => {
@@ -167,7 +165,7 @@ export function PlannedDay({
             prescribed={asked?.changed === true ? asked.prescribed : null}
             last={asked?.last ?? null}
             cue={entry.cue}
-            restLeft={restLeft(logs, entry, now)}
+            rest={{ logs, entry }}
             done={entry.done}
             busy={busy}
             testID={`log-entry-${entry.index}`}

@@ -1181,6 +1181,10 @@ test(
       await bench.log()
       expect(await bench.rest()).toMatch(/^Rest 0:0[1-5]$/u)
       await page.until(bench.rest, (said) => said === 'Rest over — ready for the next set', 8000)
+      // The clock stood still once it was over; the next set starts it again, from the full rest.
+      await bench.log()
+      expect(await bench.rest()).toMatch(/^Rest 0:0[1-5]$/u)
+      await page.until(bench.rest, (said) => said === 'Rest over — ready for the next set', 8000)
     })
   },
   E2E_TIMEOUT_MS,
