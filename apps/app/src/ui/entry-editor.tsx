@@ -1,8 +1,6 @@
 import {
-  type Prescription,
   type SetKind,
   type TrackingMode,
-  fieldsOf,
   prescribe,
   prescriptionOf,
   resizeSets,
@@ -12,7 +10,7 @@ import type { EntryDraft } from '../lib/plan-draft.ts'
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
 import { Chips } from './chips.tsx'
-import { DimensionInput } from './dimension-input.tsx'
+import { PrescriptionFields } from './prescription-fields.tsx'
 import { ProgressionField } from './progression-field.tsx'
 import { CompactField, NumberInput } from './input.tsx'
 import { Stack } from './stack.tsx'
@@ -26,8 +24,6 @@ const SUPERSET_OPTIONS = [
   { value: 'C', label: 'C' },
   { value: 'D', label: 'D' },
 ] as const
-
-type SetDraft = EntryDraft['sets'][number]
 
 export interface EntryEditorProps {
   readonly entry: EntryDraft
@@ -70,7 +66,7 @@ export function EntryEditor({
           testID={testID}
         />
 
-        <Targets
+        <PrescriptionFields
           first={prescriptionOf(entry)}
           tracking={tracking}
           onChange={(patch) => {
@@ -131,38 +127,6 @@ function Counts({
           testID={`${testID}-sets`}
         />
       </CompactField>
-    </Stack>
-  )
-}
-
-/** Only the quantities this exercise measures, in the contract's order and terms. */
-function Targets({
-  first,
-  tracking,
-  onChange,
-  testID,
-}: {
-  readonly first: SetDraft | undefined
-  readonly tracking: TrackingMode
-  readonly onChange: (patch: Prescription) => void
-  readonly testID: string
-}): React.JSX.Element {
-  return (
-    <Stack direction="row" gap="sm">
-      {fieldsOf(tracking).map((field) => (
-        <DimensionInput
-          key={field.dimension}
-          dimension={field.dimension}
-          tracking={tracking}
-          value={first?.[field.targetKey] ?? null}
-          onChange={(value) => {
-            // Only the target that changed: the patch is applied to every working set. `targetKey`
-            // is derived from the set schema this draft comes from, so it names a real field.
-            onChange({ [field.targetKey]: value })
-          }}
-          testID={`${testID}-${field.dimension}`}
-        />
-      ))}
     </Stack>
   )
 }

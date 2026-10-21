@@ -37,6 +37,10 @@ const logger = (page: Page, id: string) => ({
   target: async (): Promise<string | null> => await page.text(`${id}-target`),
   /** "Last: 5, 5, 5 × 60 kg" — null when the exercise was never done before. */
   last: async (): Promise<string | null> => await page.text(`${id}-last`),
+  /** Says how many reps were left in the tank, as offered: `1`, `1.5`, or `-` for not said. */
+  reserve: async (reps: string): Promise<void> => {
+    await page.click(`[data-testid="${id}-reserve-${reps}"]`)
+  },
   /** Whether it offers a Log button at all. */
   canLog: async (): Promise<boolean> => await page.exists(`${id}-log`),
   /** Whether it is shown as an unavailable exercise. */

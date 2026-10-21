@@ -6,7 +6,7 @@ import type {
   SetLog,
   WorkoutEntry,
 } from '@cedo/contract'
-import { formatEffort, prescriptionOf, workingSetsDone } from '@cedo/contract'
+import { formatEffort, inReserve, prescriptionOf, workingSetsDone } from '@cedo/contract'
 import { useWeightUnit } from './weight-unit.ts'
 import { exerciseName } from './exercise-name.ts'
 import { Button, Card, ListRow, SetLogger, Stack, Text } from '../ui/index.ts'
@@ -54,7 +54,7 @@ export function LoggedSets({
           <ListRow
             key={log.id}
             title={`${exerciseName(log.exercise)} · set ${log.setIndex + 1}`}
-            subtitle={formatEffort(log, log.exercise?.tracking ?? null, unit)}
+            subtitle={`${formatEffort(log, log.exercise?.tracking ?? null, unit)}${inReserve(log.rpe)}`}
             trailing={editable ? 'Undo' : undefined}
             onPress={
               editable
@@ -92,7 +92,7 @@ export function AdHoc({
   readonly logs: readonly SetLog[]
   readonly busy: boolean
   readonly onAdd: () => void
-  readonly onLog: (exercise: SessionExercise, values: Effort) => void
+  readonly onLog: (exercise: SessionExercise, values: Effort, rpe: number | null) => void
 }): React.JSX.Element {
   return (
     <Stack gap="md" testID="session-adhoc">
@@ -110,8 +110,8 @@ export function AdHoc({
             done={workingSetsDone(logs, { entryId: null, exerciseId: exercise.id })}
             busy={busy}
             testID={`adhoc-${exercise.id}`}
-            onLog={(values) => {
-              onLog(exercise, values)
+            onLog={(values, rpe) => {
+              onLog(exercise, values, rpe)
             }}
           />
         ))
@@ -143,7 +143,7 @@ export function PlannedDay({
   readonly day: SessionDay
   readonly targets: readonly EntryTarget[]
   readonly busy: boolean
-  readonly onLog: (entry: WorkoutEntry, values: Effort) => void
+  readonly onLog: (entry: WorkoutEntry, values: Effort, rpe: number | null) => void
 }): React.JSX.Element {
   return (
     <Stack gap="md">
@@ -162,8 +162,8 @@ export function PlannedDay({
             done={entry.done}
             busy={busy}
             testID={`log-entry-${entry.index}`}
-            onLog={(values) => {
-              onLog(entry, values)
+            onLog={(values, rpe) => {
+              onLog(entry, values, rpe)
             }}
           />
         )

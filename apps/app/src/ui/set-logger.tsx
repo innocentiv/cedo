@@ -6,11 +6,13 @@ import {
   fieldsOf,
   formatEffort,
   formatSets,
+  inReserve,
 } from '@cedo/contract'
 import { useWeightUnit } from '../lib/weight-unit.ts'
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
 import { DimensionInput } from './dimension-input.tsx'
+import { ReserveChips } from './reserve-chips.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
@@ -28,7 +30,8 @@ export interface SetLoggerProps {
   /** Last time's working sets of this exercise, if it was done before. */
   readonly last: readonly Effort[] | null
   readonly done: number
-  readonly onLog: (values: Effort) => void
+  /** The set's measures, and how hard it was as an RPE — null when it was not said. */
+  readonly onLog: (values: Effort, rpe: number | null) => void
   readonly busy: boolean
   readonly testID: string
 }
@@ -62,6 +65,8 @@ export function SetLogger({
     durationS: target?.durationS ?? null,
     distanceMm: target?.distanceMm ?? null,
   })
+  // Asked afresh for every set and never pre-filled with the target, which would lead the answer.
+  const [rpe, setRpe] = useState<number | null>(null)
 
   return (
     <Card testID={testID}>
@@ -82,8 +87,8 @@ export function SetLogger({
             testID={`${testID}-target`}
           >
             {prescribed === null
-              ? `Prescribed ${formatEffort(target, tracking, unit)}`
-              : `Progressed to ${formatEffort(target, tracking, unit)} · the plan says ${formatEffort(prescribed, tracking, unit)}`}
+              ? `Prescribed ${formatEffort(target, tracking, unit)}${inReserve(target.rpe)}`
+              : `Progressed to ${formatEffort(target, tracking, unit)}${inReserve(target.rpe)} · the plan says ${formatEffort(prescribed, tracking, unit)}`}
           </Text>
         )}
 
@@ -102,9 +107,12 @@ export function SetLogger({
             tracking={tracking}
             effort={effort}
             onChange={setEffort}
+            rpe={rpe}
+            onRpe={setRpe}
             busy={busy}
             onLog={() => {
-              onLog(effort)
+              onLog(effort, rpe)
+              setRpe(null)
             }}
             testID={testID}
           />
@@ -114,11 +122,16 @@ export function SetLogger({
   )
 }
 
-/** The next set's fields — which, in which order, labelled how: the contract's — and Log. */
+/**
+ * The next set's fields — which, in which order, labelled how: the contract's — how many reps were
+ * left in the tank, if the person says, and Log.
+ */
 function Inputs({
   tracking,
   effort,
   onChange,
+  rpe,
+  onRpe,
   busy,
   onLog,
   testID,
@@ -126,6 +139,8 @@ function Inputs({
   readonly tracking: TrackingMode
   readonly effort: Effort
   readonly onChange: (update: (current: Effort) => Effort) => void
+  readonly rpe: number | null
+  readonly onRpe: (rpe: number | null) => void
   readonly busy: boolean
   readonly onLog: () => void
   readonly testID: string
@@ -146,6 +161,14 @@ function Inputs({
           />
         ))}
       </Stack>
+
+      <ReserveChips
+        label="Reps left in the tank"
+        hint="How many more you could have done. Leave it blank if you are not sure."
+        rpe={rpe}
+        onChange={onRpe}
+        testID={`${testID}-reserve`}
+      />
 
       <Button title="Log set" onPress={onLog} busy={busy} testID={`${testID}-log`} />
     </>

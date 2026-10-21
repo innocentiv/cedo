@@ -37,14 +37,19 @@ function useRecordSet(
   logSet: ReturnType<typeof useLogSet>,
   submit: ReturnType<typeof useSubmit>['submit'],
 ) {
-  const record = (exerciseId: string, entryId: string | null, values: Effort): void => {
+  const record = (
+    exerciseId: string,
+    entryId: string | null,
+    values: Effort,
+    rpe: number | null,
+  ): void => {
     void submit(async () => {
       await logSet.mutateAsync({
         exerciseId,
         entryId,
         weightG: values.weightG,
         reps: values.reps,
-        rpe: null,
+        rpe,
         durationS: values.durationS,
         distanceMm: values.distanceMm,
         isWarmup: false,
@@ -53,11 +58,11 @@ function useRecordSet(
   }
 
   return {
-    adHoc: (exercise: SessionExercise, values: Effort) => {
-      record(exercise.id, null, values)
+    adHoc: (exercise: SessionExercise, values: Effort, rpe: number | null) => {
+      record(exercise.id, null, values, rpe)
     },
-    planned: (entry: WorkoutEntry, values: Effort) => {
-      record(entry.exerciseId, entry.id, values)
+    planned: (entry: WorkoutEntry, values: Effort, rpe: number | null) => {
+      record(entry.exerciseId, entry.id, values, rpe)
     },
   }
 }

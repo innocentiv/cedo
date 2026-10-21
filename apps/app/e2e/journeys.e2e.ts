@@ -1113,3 +1113,34 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+/**
+ * RPE, asked as reps in reserve: a target set in the editor, said in the logger, logged per set —
+ * and never carried to the next set, which would be an answer the athlete did not give.
+ */
+test(
+  'a set logged with one rep left reads back as RPE 9, and the next is asked afresh',
+  async () => {
+    await withApp('rpe-reserve', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('rpe'))
+      await app.planEditor.create()
+      await app.planEditor.entry(0, 0).reserve('2')
+      await app.planEditor.saveAndStart()
+
+      const bench = app.session.entry(0)
+      expect(await bench.target()).toContain('· 2 in reserve')
+      await bench.reserve('1')
+      await bench.log()
+      await bench.log()
+      expect(await app.session.loggedLines()).toContain('8 reps · 1 in reserve')
+
+      const mine = await page.client()
+      const [latest] = (await mine.sessions.list({ limit: 1 })).items
+      if (latest === undefined) throw new Error('The session was not listed')
+      const logs = (await mine.sessions.get(latest.id)).logs
+      expect(logs.map((l) => l.rpe)).toEqual([9, null])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)

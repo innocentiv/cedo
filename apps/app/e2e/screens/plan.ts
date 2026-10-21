@@ -21,6 +21,10 @@ const planEntry = (page: Page, id: string) => ({
   progression: async (kind: string): Promise<void> => {
     await page.click(`[data-testid="${id}-progression-${kind}"]`)
   },
+  /** The reps to leave in reserve, as offered: `2`, `1.5`, or `-` for none. */
+  reserve: async (reps: string): Promise<void> => {
+    await page.click(`[data-testid="${id}-reserve-${reps}"]`)
+  },
   progressionSummary: async (): Promise<string | null> =>
     await page.text(`${id}-progression-summary`),
   /** Its sets and prescription, for an entry shown read-only. */
