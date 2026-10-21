@@ -86,7 +86,8 @@ errors.
 ## Units
 
 All measurements are integers in base units — `weight_g`, `distance_mm`, `duration_s`. Never a
-float, never a `numeric`, never kilograms in the database or on the wire.
+float, never a `numeric`, never kilograms in the database or on the wire. RPE is not a measurement
+but a rating, in half-points: `numeric(3,1)` (ADR-0020).
 
 **`packages/contract/src/units.ts` is the only file permitted to convert.** If you find yourself
 writing `/ 1000` or `* 2.20462` anywhere else, stop and use a helper from that file.

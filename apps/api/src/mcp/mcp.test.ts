@@ -373,12 +373,14 @@ describe('training review', () => {
     await callTool(pat, 'session_log', {
       sets: [
         { exerciseId, weightG: 60_000, reps: 5, rpe: 8.5 },
+        { exerciseId, weightG: 60_000, reps: 5, rpe: 8 },
         { exerciseId, weightG: 60_000, reps: 5 },
       ],
     })
 
     const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
-    expect(history).toContain('5 × 60 kg @ RPE 8.5, 5 × 60 kg')
+    // "8", not "8.0": a numeric read back as a string, unconverted, would say so.
+    expect(history).toContain('5 × 60 kg @ RPE 8.5, 5 × 60 kg @ RPE 8, 5 × 60 kg')
   })
 
   /** The AI reads a weighted pull-up as the app shows it — added load, not a 20 kg lift. */
@@ -620,6 +622,38 @@ describe('editing a plan', () => {
     expect(after.days[0]?.name).toBe('Back')
     expect(after.days[0]?.id).toBe(before.days[0]?.id)
     expect(after.days[0]?.entries[0]?.id).toBe(before.days[0]?.entries[0]?.id)
+  })
+
+  /** An RPE target written by the AI in half-points, and read back in its outline as written. */
+  test('workout_save_plan takes RPE targets in half-points, and the outline says them', async () => {
+    const pat = await mintPat(alice)
+    const { id: exerciseId } = expectContract(
+      Exercise,
+      (
+        await alice.wire('/exercises', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Row',
+            muscles: [{ muscle: 'latissimus_dorsi', loadPct: 100 }],
+          }),
+        })
+      ).body,
+    )
+    const workout = expectContract(
+      Workout,
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'RPE' }) }))
+        .body,
+    )
+    const entry = (targetRpe: number) => ({ exerciseId, sets: [{ targetReps: 5, targetRpe }] })
+    await callTool(pat, 'workout_save_plan', {
+      workoutId: workout.id,
+      days: [{ name: 'Day', entries: [entry(8.5), entry(8)] }],
+    })
+
+    const outline = textOf((await callTool(pat, 'workout_get', { workoutId: workout.id })).body)
+    expect(outline).toContain('@ RPE 8.5')
+    // A whole RPE reads whole: "8.0" would be a numeric read back as a string, unconverted.
+    expect(outline).toMatch(/@ RPE 8(?![.\d])/u)
   })
 })
 

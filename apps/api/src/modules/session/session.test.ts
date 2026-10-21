@@ -1051,6 +1051,34 @@ describe('RPE in half-points', () => {
     expect(await refusal(4.5)).toMatchObject(byTheCheck)
   })
 
+  test.each([5, 10])('a set at the edge of the scale, RPE %p, is logged', async (rpe) => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const res = await alice.wire(`/sessions/${session.id}/logs`, {
+      method: 'POST',
+      body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, rpe }),
+    })
+    expect(expectContract(SetLog, res.body).rpe).toBe(rpe)
+  })
+
+  test("a plan's target off the scale is refused", async () => {
+    const exerciseId = await anExercise(alice)
+    const created = expectContract(
+      Workout,
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'RPE' }) }))
+        .body,
+    )
+    const res = await alice.wire(`/workouts/${created.id}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        days: [
+          { name: 'Day', entries: [{ exerciseId, sets: [{ targetReps: 5, targetRpe: 8.25 }] }] },
+        ],
+      }),
+    })
+    expect(res.status).toBe(422)
+  })
+
   test.each([4.5, 10.5, 8.25])('a set at RPE %p is refused', async (rpe) => {
     const exerciseId = await anExercise(alice)
     const session = expectContract(WorkoutSession, (await startSession(alice)).body)

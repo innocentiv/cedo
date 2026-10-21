@@ -6,7 +6,7 @@ import type {
   SetLog,
   WorkoutEntry,
 } from '@cedo/contract'
-import { formatEffort, inReserve, prescriptionOf, workingSetsDone } from '@cedo/contract'
+import { formatWithReserve, prescriptionOf, workingSetsDone } from '@cedo/contract'
 import { useWeightUnit } from './weight-unit.ts'
 import { exerciseName } from './exercise-name.ts'
 import { Button, Card, ListRow, SetLogger, Stack, Text } from '../ui/index.ts'
@@ -54,7 +54,7 @@ export function LoggedSets({
           <ListRow
             key={log.id}
             title={`${exerciseName(log.exercise)} · set ${log.setIndex + 1}`}
-            subtitle={`${formatEffort(log, log.exercise?.tracking ?? null, unit)}${inReserve(log.rpe)}`}
+            subtitle={formatWithReserve(log, log.exercise?.tracking ?? null, unit)}
             trailing={editable ? 'Undo' : undefined}
             onPress={
               editable

@@ -37,9 +37,16 @@ const logger = (page: Page, id: string) => ({
   target: async (): Promise<string | null> => await page.text(`${id}-target`),
   /** "Last: 5, 5, 5 × 60 kg" — null when the exercise was never done before. */
   last: async (): Promise<string | null> => await page.text(`${id}-last`),
-  /** Says how many reps were left in the tank, as offered: `1`, `1.5`, or `-` for not said. */
+  /** Says how many reps were left in reserve, as offered: `1`, `1.5`, or `none` for not said. */
   reserve: async (reps: string): Promise<void> => {
     await page.click(`[data-testid="${id}-reserve-${reps}"]`)
+  },
+  /** The reps in reserve chosen now, as offered — `none` when not said. */
+  reserveChosen: async (): Promise<string | null> => {
+    const chosen = await page.evaluate(
+      `document.querySelector('[data-testid^="${id}-reserve-"][aria-selected="true"]')?.dataset.testid ?? null`,
+    )
+    return typeof chosen === 'string' ? chosen.slice(`${id}-reserve-`.length) : null
   },
   /** Whether it offers a Log button at all. */
   canLog: async (): Promise<boolean> => await page.exists(`${id}-log`),

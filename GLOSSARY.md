@@ -103,6 +103,10 @@ How hard a set was, or is meant to be: 5 to 10 in half-points, where 10 leaves n
 and each point below it leaves one more.
 _Avoid_: intensity, difficulty, exertion
 
+**Reps in reserve**:
+How many more reps a set could have had — how RPE is asked of a person: none to five, in halves.
+_Avoid_: reps left in the tank, RIR (in what a person reads)
+
 **Working sets per muscle**:
 The work a muscle got: every working set counted toward it by that muscle's share of the
 exercise's load. Counts every tracking mode alike, which weight lifted cannot.

@@ -6,7 +6,7 @@ import {
   fieldsOf,
   formatEffort,
   formatSets,
-  inReserve,
+  formatWithReserve,
 } from '@cedo/contract'
 import { useWeightUnit } from '../lib/weight-unit.ts'
 import { Button } from './button.tsx'
@@ -65,8 +65,16 @@ export function SetLogger({
     durationS: target?.durationS ?? null,
     distanceMm: target?.distanceMm ?? null,
   })
-  // Asked afresh for every set and never pre-filled with the target, which would lead the answer.
-  const [rpe, setRpe] = useState<number | null>(null)
+  /**
+   * The answer belongs to the set being asked about — the one after the `done` so far — and is never
+   * pre-filled with the target, which would lead it. Once that set is logged and counted, `done`
+   * moves on and the answer is gone with it; a set the server refuses keeps it for the retry.
+   */
+  const [answer, setAnswer] = useState<{ readonly rpe: number | null; readonly set: number }>({
+    rpe: null,
+    set: done,
+  })
+  const rpe = answer.set === done ? answer.rpe : null
 
   return (
     <Card testID={testID}>
@@ -87,8 +95,8 @@ export function SetLogger({
             testID={`${testID}-target`}
           >
             {prescribed === null
-              ? `Prescribed ${formatEffort(target, tracking, unit)}${inReserve(target.rpe)}`
-              : `Progressed to ${formatEffort(target, tracking, unit)}${inReserve(target.rpe)} · the plan says ${formatEffort(prescribed, tracking, unit)}`}
+              ? `Prescribed ${formatWithReserve(target, tracking, unit)}`
+              : `Progressed to ${formatWithReserve(target, tracking, unit)} · the plan says ${formatEffort(prescribed, tracking, unit)}`}
           </Text>
         )}
 
@@ -108,11 +116,12 @@ export function SetLogger({
             effort={effort}
             onChange={setEffort}
             rpe={rpe}
-            onRpe={setRpe}
+            onRpe={(next) => {
+              setAnswer({ rpe: next, set: done })
+            }}
             busy={busy}
             onLog={() => {
               onLog(effort, rpe)
-              setRpe(null)
             }}
             testID={testID}
           />
@@ -124,7 +133,7 @@ export function SetLogger({
 
 /**
  * The next set's fields — which, in which order, labelled how: the contract's — how many reps were
- * left in the tank, if the person says, and Log.
+ * left in reserve, if the person says, and Log.
  */
 function Inputs({
   tracking,
@@ -163,7 +172,7 @@ function Inputs({
       </Stack>
 
       <ReserveChips
-        label="Reps left in the tank"
+        label="Reps in reserve"
         hint="How many more you could have done. Leave it blank if you are not sure."
         rpe={rpe}
         onChange={onRpe}

@@ -1130,16 +1130,30 @@ test(
 
       const bench = app.session.entry(0)
       expect(await bench.target()).toContain('· 2 in reserve')
+      expect(await bench.reserveChosen()).toBe('none')
       await bench.reserve('1')
+      // Refused — no bar holds 9999 kg — the answer stays for the retry, not lost with the tap.
+      await bench.fill('weight', '9999')
+      await bench.attemptLog()
+      expect(await app.session.error()).not.toBeNull()
+      expect(await bench.reserveChosen()).toBe('1')
+      await bench.fill('weight', '60')
       await bench.log()
+      // Counted, it is gone: the next set is asked afresh.
+      expect(await bench.reserveChosen()).toBe('none')
       await bench.log()
-      expect(await app.session.loggedLines()).toContain('8 reps · 1 in reserve')
+      expect(await app.session.loggedLines()).toContain('8 × 60 kg · 1 in reserve')
 
       const mine = await page.client()
       const [latest] = (await mine.sessions.list({ limit: 1 })).items
       if (latest === undefined) throw new Error('The session was not listed')
       const logs = (await mine.sessions.get(latest.id)).logs
       expect(logs.map((l) => l.rpe)).toEqual([9, null])
+      // And the editor's 2 in reserve was saved as the plan's target: RPE 8.
+      const [plan] = (await mine.workouts.list({})).items
+      if (plan === undefined) throw new Error('The plan was not listed')
+      const saved = (await mine.workouts.get(plan.id)).days[0]?.entries[0]?.sets
+      expect(saved?.filter((s) => !s.isWarmup).map((s) => s.target.rpe)).toEqual([8, 8, 8])
     })
   },
   E2E_TIMEOUT_MS,

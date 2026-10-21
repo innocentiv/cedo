@@ -21,7 +21,7 @@ const planEntry = (page: Page, id: string) => ({
   progression: async (kind: string): Promise<void> => {
     await page.click(`[data-testid="${id}-progression-${kind}"]`)
   },
-  /** The reps to leave in reserve, as offered: `2`, `1.5`, or `-` for none. */
+  /** The reps to leave in reserve, as offered: `2`, `1.5`, or `none`. */
   reserve: async (reps: string): Promise<void> => {
     await page.click(`[data-testid="${id}-reserve-${reps}"]`)
   },

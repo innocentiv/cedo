@@ -1,5 +1,13 @@
 import { describe, expect, test } from 'bun:test'
-import { RESERVE_CHOICES, Rpe, formatReserve, inReserve, reserveOf, rpeOf } from './rpe.ts'
+import {
+  RESERVE_CHOICES,
+  Rpe,
+  formatReserve,
+  formatWithReserve,
+  inReserve,
+  reserveOf,
+  rpeOf,
+} from './rpe.ts'
 
 /** RPE as GLOSSARY.md defines it: 5 to 10 in half-points, 10 leaving no rep in reserve. */
 describe('the RPE scale', () => {
@@ -51,5 +59,20 @@ describe('inReserve', () => {
 
   test('says nothing for a set without one', () => {
     expect(inReserve(null)).toBe('')
+  })
+})
+
+/** A set, prescribed or logged, as it reads beside the logger: what it measures, then its reserve. */
+describe('formatWithReserve', () => {
+  const set = { reps: 5, weightG: 60_000, durationS: null, distanceMm: null }
+
+  test('says the reserve after the effort, when there is an RPE', () => {
+    expect(formatWithReserve({ ...set, rpe: 8.5 }, 'weight_reps', 'kg')).toBe(
+      '5 × 60 kg · 1½ in reserve',
+    )
+  })
+
+  test('is the effort alone without one', () => {
+    expect(formatWithReserve({ ...set, rpe: null }, 'weight_reps', 'kg')).toBe('5 × 60 kg')
   })
 })

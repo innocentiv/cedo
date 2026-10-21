@@ -4,7 +4,7 @@ import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
 /** Not said: no chip of its own is selected. */
-const NOT_SAID = '-'
+const NOT_SAID = 'none'
 
 const OPTIONS = [
   { value: NOT_SAID, label: '—' },
@@ -12,8 +12,7 @@ const OPTIONS = [
 ]
 
 /**
- * How many more reps there were in the tank — the question RPE is asked as (`rpe.ts`): none to five,
- * in halves, or not said. Holds an RPE, so the screen never converts: the contract does.
+ * Reps in reserve — the question RPE is asked as (`rpe.ts`): none to five, in halves, or not said. Holds an RPE, so the screen never converts: the contract does.
  */
 export function ReserveChips({
   label,

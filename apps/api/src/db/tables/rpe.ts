@@ -1,5 +1,6 @@
 import { type SQL, sql } from 'drizzle-orm'
 import { type AnyPgColumn, numeric } from 'drizzle-orm/pg-core'
+import { RPE_MAX, RPE_MIN, RPE_STEP } from '@cedo/contract'
 
 /**
  * RPE, as GLOSSARY.md defines it — 5 to 10 in half-points — on a prescribed set and on a logged
@@ -11,5 +12,8 @@ import { type AnyPgColumn, numeric } from 'drizzle-orm/pg-core'
  */
 export const rpeColumn = (name: string) => numeric(name, { precision: 3, scale: 1, mode: 'number' })
 
+/** The contract's scale, as literals: a CHECK cannot take parameters. */
+const [min, max, steps] = [RPE_MIN, RPE_MAX, 1 / RPE_STEP].map((n) => sql.raw(String(n)))
+
 export const rpeCheck = (column: AnyPgColumn): SQL =>
-  sql`${column} is null or (${column} between 5 and 10 and ${column} * 2 = trunc(${column} * 2))`
+  sql`${column} is null or (${column} between ${min} and ${max} and ${column} * ${steps} = trunc(${column} * ${steps}))`

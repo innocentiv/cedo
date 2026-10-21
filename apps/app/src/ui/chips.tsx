@@ -34,7 +34,7 @@ export function Chips<T extends string>({
         <Pressable
           key={option.value}
           accessibilityRole="button"
-          accessibilityState={{ selected: option.value === value }}
+          aria-selected={option.value === value}
           testID={`${testID ?? 'chip'}-${option.value}`}
           onPress={() => {
             onChange(option.value)

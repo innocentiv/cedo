@@ -95,7 +95,6 @@ Two constraints found by building it:
 | `NavItem` | one tab of the shell's tab bar or sidebar — used only by `app/(app)/_layout.tsx` |
 | `ConfirmButton` | every action that cannot be taken back — delete, revoke, remove, leave — and every transfer to another group, which others feel at once. Asked twice, in the app's own UI, never a browser dialog; a refusal shows beside it. Removing a set from a session in progress is not one: it is logged again in a tap |
 | `PinButton` | pinning what you can see, for its list's "Pinned" filter |
-| `ReserveChips` | RPE asked as reps left in the tank — none to five in halves, or not said. It holds an RPE; the contract converts (`rpe.ts`) |
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput` |
 | `Card`, `ListRow` | the one row shape every list uses |
 | `Chips` | one choice from a short flat set — list scopes, tracking mode, progression kind |
@@ -111,6 +110,10 @@ would otherwise be copied: `MusclePicker`, `SetLogger`, `EntryEditor`, `Unavaila
 inputs a tracking mode implies, what a progression rule contains, a prescription in one line) all
 live in `@cedo/contract`. An unavailable exercise has no mode, so no inputs: `SetLogger` shows it
 without any, and the day editor gives it an `UnavailableEntry` — what it prescribes, and Remove.
+
+Two smaller parts serve those composites and no screen, so they are not in the list above:
+`ReserveChips` — RPE asked as reps in reserve, holding an RPE while the contract converts
+(`rpe.ts`) — used by `SetLogger` and by `PrescriptionFields`, an entry's targets and reserve.
 
 A composite that reads through a query hook is not presentational, so it lives in `src/lib/`
 instead: the exercise picker, and `GroupPlacement` — which group an exercise or plan is in, and

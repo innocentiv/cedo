@@ -27,7 +27,8 @@ is designed to prevent.
    logging against its workouts. Lint, `raw-sql.test.ts` and `test/membership-lost.test.ts` enforce
    it. See `docs/adr/0019-visible-relations.md`.
 6. **All measurements are stored as integers in base units** (`weight_g`, `distance_mm`,
-   `duration_s`). Conversion happens only in `packages/contract/src/units.ts`.
+   `duration_s`). Conversion happens only in `packages/contract/src/units.ts`. RPE is a rating,
+   not a measurement, so it is `numeric(3,1)` — see `docs/adr/0020-rpe-is-numeric.md`.
 7. **All behaviour is tested on the backend.** UI code stays trivially thin and holds no domain
    logic. The one exception is state only the app owns — who is signed in on this device — which
    lives in a plain module (`apps/app/src/auth/session.ts`, no React, no React Native) and is

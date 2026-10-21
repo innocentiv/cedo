@@ -224,7 +224,7 @@ set_logs(id, session_id, entry_id?, exercise_id, set_index, is_warmup, weight_g,
 `rpe` — and a prescribed set's `target_rpe` — is RPE as `GLOSSARY.md` defines it: 5 to 10 in
 half-points, or null when not said. A rating, not a measurement, so it is `numeric(3,1)` rather
 than an integer in base units, with a check holding the scale for a write that bypasses the
-contract (`db/tables/rpe.ts`). People are asked it as reps left in reserve (`rpe.ts`).
+contract (`db/tables/rpe.ts`, ADR-0020). People are asked it as reps in reserve (`rpe.ts`).
 
 `workout_id`, `day_id` and `entry_id` are nullable so ad-hoc training uses the same tables and feeds
 the same history. `exercise_id` is always set — that is what makes per-exercise history one indexed
