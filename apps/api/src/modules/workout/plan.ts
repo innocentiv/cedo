@@ -36,6 +36,7 @@ export function planEntries(caller: Caller, workoutId: string | null) {
       exerciseId: entries.exerciseId,
       supersetGroup: entries.supersetGroup,
       restSeconds: entries.restSeconds,
+      cue: entries.cue,
       progression: entries.progression,
     })
     .from(entries)
@@ -175,6 +176,7 @@ function toEntry(
     exercise: exerciseById.get(entry.exerciseId) ?? null,
     supersetGroup: entry.supersetGroup,
     restSeconds: entry.restSeconds,
+    cue: entry.cue,
     progression: entry.progression,
     sets: sets.map((set) => ({
       id: set.id,

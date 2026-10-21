@@ -75,6 +75,8 @@ export const workoutEntries = pgTable(
       .references(() => exercises.id, { onDelete: 'restrict' }),
     supersetGroup: char('superset_group', { length: 1 }),
     restSeconds: integer('rest_seconds'),
+    /** One line for the athlete — "pause 1 s at the chest". Bounded by the contract's `EntryCue`. */
+    cue: text('cue'),
     /** Validated by the `Progression` union on read and write. No migration to add a rule kind. */
     progression: jsonb('progression').$type<Progression>().notNull().default({ kind: 'none' }),
   },

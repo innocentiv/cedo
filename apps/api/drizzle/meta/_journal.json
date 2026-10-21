@@ -43,6 +43,13 @@
       "when": 1792589159762,
       "tag": "0005_rpe_half_points",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1792591191411,
+      "tag": "0006_entry_cue",
+      "breakpoints": true
     }
   ]
 }

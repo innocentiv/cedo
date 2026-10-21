@@ -1,0 +1,1 @@
+ALTER TABLE "workout_entries" ADD COLUMN "cue" text;

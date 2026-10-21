@@ -102,6 +102,7 @@ export function workoutDetail(workout: Workout, unit: WeightUnit): string {
       const name = entry.exercise?.name ?? '[unavailable exercise]'
       return [
         `  - ${name}${superset}${rest}${rule}   [entry ${entry.id}]`,
+        ...(entry.cue === null ? [] : [`      cue: ${entry.cue}`]),
         ...entry.sets.map((set) => `      ${setLine(set, entry.exercise?.tracking ?? null, unit)}`),
       ].join('\n')
     })

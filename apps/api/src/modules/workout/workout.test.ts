@@ -342,3 +342,75 @@ describe('duplicate and transfer', () => {
     expect((await alice.wire(`/exercises/${exerciseId}`)).status).toBe(200)
   })
 })
+
+/** What the plan tells the athlete about one entry, beyond its numbers: "pause 1 s at the chest". */
+describe("an entry's cue", () => {
+  const withCue = (exerciseId: string, cue: unknown, ids?: { day: string; entry: string }) => ({
+    days: [
+      {
+        ...(ids && { id: ids.day }),
+        name: 'Push',
+        entries: [
+          {
+            ...(ids && { id: ids.entry }),
+            exerciseId,
+            cue,
+            sets: [{ targetReps: 5 }],
+          },
+        ],
+      },
+    ],
+  })
+  const save = async (workoutId: string, body: unknown) =>
+    await alice.wire(`/workouts/${workoutId}/plan`, { method: 'PUT', body: JSON.stringify(body) })
+
+  test('is saved and read back — and changed by a later save that keeps the entry', async () => {
+    const workout = await aWorkout(alice)
+    const exerciseId = await anExercise(alice)
+    const first = expectContract(
+      Workout,
+      (await save(workout.id, withCue(exerciseId, ' Pause at the chest '))).body,
+    )
+    const day = first.days[0]
+    const entry = day?.entries[0]
+    expect(entry?.cue).toBe('Pause at the chest')
+    if (day === undefined || entry === undefined) throw new Error('no entry')
+
+    const second = expectContract(
+      Workout,
+      (
+        await save(
+          workout.id,
+          withCue(exerciseId, 'Elbows tucked', { day: day.id, entry: entry.id }),
+        )
+      ).body,
+    )
+    expect(second.days[0]?.entries[0]?.id).toBe(entry.id)
+    expect(second.days[0]?.entries[0]?.cue).toBe('Elbows tucked')
+  })
+
+  test('blank is none', async () => {
+    const workout = await aWorkout(alice)
+    const saved = expectContract(
+      Workout,
+      (await save(workout.id, withCue(await anExercise(alice), '  '))).body,
+    )
+    expect(saved.days[0]?.entries[0]?.cue).toBeNull()
+  })
+
+  test('longer than 200 characters is refused', async () => {
+    const workout = await aWorkout(alice)
+    const res = await save(workout.id, withCue(await anExercise(alice), 'x'.repeat(201)))
+    expect(res.status).toBe(422)
+  })
+
+  test('comes with the entry when the workout is duplicated', async () => {
+    const workout = await aWorkout(alice)
+    await save(workout.id, withCue(await anExercise(alice), 'Pause at the chest'))
+    const copy = expectContract(
+      Workout,
+      (await alice.wire(`/workouts/${workout.id}/duplicate`, { method: 'POST', body: '{}' })).body,
+    )
+    expect(copy.days[0]?.entries[0]?.cue).toBe('Pause at the chest')
+  })
+})

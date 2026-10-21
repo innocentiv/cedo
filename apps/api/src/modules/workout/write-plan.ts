@@ -5,6 +5,7 @@ import { type OwnedRow, editable } from '../../db/ownable.ts'
 import { workoutDays, workoutEntries, workoutSets } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { valuesOf } from '../../lib/values.ts'
+import { required, setsFor } from './plan-rows.ts'
 
 type DayInput = WorkoutPlanInput['days'][number]
 type EntryInput = DayInput['entries'][number]
@@ -219,6 +220,7 @@ async function placeEntries(
               exerciseId: entry.exerciseId,
               supersetGroup: entry.supersetGroup,
               restSeconds: entry.restSeconds,
+              cue: entry.cue,
               progression: entry.progression,
             },
           ]
@@ -259,6 +261,7 @@ async function moveKeptEntries(
           index,
           entry.supersetGroup,
           entry.restSeconds,
+          entry.cue,
           JSON.stringify(entry.progression),
         ],
       ]
@@ -271,30 +274,10 @@ async function moveKeptEntries(
              index = v.index::smallint,
              superset_group = v.superset_group::char(1),
              rest_seconds = v.rest_seconds::integer,
+             cue = v.cue::text,
              progression = v.progression::jsonb
-        from (values ${valuesOf(kept)}) as v(id, day_id, index, superset_group, rest_seconds, progression)
+        from (values ${valuesOf(kept)}) as v(id, day_id, index, superset_group, rest_seconds, cue, progression)
        where workout_entries.id = v.id::uuid
          and ${editable(workoutEntries, caller)}`)
   }
-}
-
-/** Flattens one entry's prescribed sets. `index` is array position, as at every other level. */
-function setsFor(entry: EntryInput, entryId: string, ownerGroupId: string) {
-  return entry.sets.map((set, index) => ({
-    entryId,
-    ownerGroupId,
-    index,
-    isWarmup: set.isWarmup,
-    targetReps: set.targetReps,
-    targetWeightG: set.targetWeightG,
-    targetRpe: set.targetRpe,
-    targetDurationS: set.targetDurationS,
-    targetDistanceMm: set.targetDistanceMm,
-  }))
-}
-
-/** Names what went missing, because "invalid input syntax for type uuid" names nothing. */
-function required(id: string | undefined, what: string): string {
-  if (id === undefined) throw new Error(`writePlan lost the id for ${what}`)
-  return id
 }

@@ -84,6 +84,7 @@ export const newEntry = (exercise: {
   exerciseId: exercise.id,
   supersetGroup: null,
   restSeconds: 120,
+  cue: null,
   progression: NO_PROGRESSION,
   sets: Array.from({ length: 3 }, () => ({
     targetReps: tracks(exercise.tracking, 'reps') ? 8 : null,

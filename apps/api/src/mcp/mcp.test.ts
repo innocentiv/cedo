@@ -644,7 +644,11 @@ describe('editing a plan', () => {
       (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'RPE' }) }))
         .body,
     )
-    const entry = (targetRpe: number) => ({ exerciseId, sets: [{ targetReps: 5, targetRpe }] })
+    const entry = (targetRpe: number) => ({
+      exerciseId,
+      cue: 'Pause at the chest',
+      sets: [{ targetReps: 5, targetRpe }],
+    })
     await callTool(pat, 'workout_save_plan', {
       workoutId: workout.id,
       days: [{ name: 'Day', entries: [entry(8.5), entry(8)] }],
@@ -652,6 +656,8 @@ describe('editing a plan', () => {
 
     const outline = textOf((await callTool(pat, 'workout_get', { workoutId: workout.id })).body)
     expect(outline).toContain('@ RPE 8.5')
+    // Written by the AI for the athlete, and read back as written.
+    expect(outline).toContain('cue: Pause at the chest')
     // A whole RPE reads whole: "8.0" would be a numeric read back as a string, unconverted.
     expect(outline).toMatch(/@ RPE 8(?![.\d])/u)
   })

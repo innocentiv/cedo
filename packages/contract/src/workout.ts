@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { Exercise } from './exercise.ts'
 import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
+import { EntryCue } from './rest.ts'
 import { Rpe } from './rpe.ts'
 import { Progression, SetTarget } from './progression.ts'
 import { OwnableQuery, ownableFields } from './ownable.ts'
@@ -75,6 +76,8 @@ export const WorkoutEntryInput = z
     exerciseId: Id,
     supersetGroup: SupersetGroup.default(null),
     restSeconds: z.int().nonnegative().max(3600).nullable().default(null),
+    /** One line for the athlete about this entry — see `rest.ts`. */
+    cue: EntryCue.default(null),
     progression: Progression.default({ kind: 'none' }),
     sets: z
       .array(WorkoutSetInput)
@@ -154,6 +157,7 @@ export const WorkoutEntry = z.object({
   exercise: Exercise.nullable(),
   supersetGroup: SupersetGroup,
   restSeconds: z.int().nonnegative().nullable(),
+  cue: z.string().nullable(),
   progression: Progression,
   sets: z.array(WorkoutSet),
 })
@@ -212,6 +216,7 @@ export function planInputFrom(workout: Workout, { keepIds = true } = {}): Workou
         exerciseId: entry.exerciseId,
         supersetGroup: entry.supersetGroup,
         restSeconds: entry.restSeconds,
+        cue: entry.cue,
         progression: entry.progression,
         sets: entry.sets.map((set) => ({ ...targetFieldsOf(set.target), isWarmup: set.isWarmup })),
       })),
