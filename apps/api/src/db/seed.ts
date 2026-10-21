@@ -224,7 +224,7 @@ export async function seedCore(): Promise<{ userId: string; groupId: string }> {
 }
 
 /**
- * Makes `CEDO_ADMIN_USERNAME` an editor of the shared `cedo` group.
+ * Makes `CEDO_CURATOR_USERNAME` an editor of the shared `cedo` group.
  *
  * Without this NOBODY can edit the shared library: the system account owns those rows but is not a
  * member of the group, and registration only ever grants `reader`. Idempotent, and a no-op when the
@@ -232,7 +232,7 @@ export async function seedCore(): Promise<{ userId: string; groupId: string }> {
  * See docs/07-mcp.md.
  */
 export async function promoteCurator(sharedGroupId: string): Promise<boolean> {
-  const username = env.CEDO_ADMIN_USERNAME
+  const username = env.CEDO_CURATOR_USERNAME
   if (username === undefined) return false
 
   const [user] = await db
@@ -242,7 +242,7 @@ export async function promoteCurator(sharedGroupId: string): Promise<boolean> {
     .limit(1)
   if (user === undefined) {
     console.warn(
-      `CEDO_ADMIN_USERNAME='${username}' does not exist yet — register that account, then restart to grant it curator rights.`,
+      `CEDO_CURATOR_USERNAME='${username}' does not exist yet — register that account, then restart to grant it curator rights.`,
     )
     return false
   }

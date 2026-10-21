@@ -17,7 +17,7 @@ await runMigrations()
  * It is idempotent, so this costs a few queries on restart, and it buys three things a self-hosted
  * instance needs: `docker compose up` alone produces a working install with a library, an upgrade
  * that ships new library entries delivers them without anyone running a command, and
- * CEDO_ADMIN_USERNAME takes effect on the restart the operator has already been told to do.
+ * CEDO_CURATOR_USERNAME takes effect on the restart the operator has already been told to do.
  *
  * Without this the curator promotion only ran under `bun run db:seed`, which nothing in the
  * deployment path invokes. See docs/09-deployment.md.

@@ -93,7 +93,7 @@ readable message rather than throwing something obscure on the first request.
 | `POSTGRES_USER`, `POSTGRES_DB` | Default to `cedo`. |
 | `WEB_PORT` | Host port. Default 8080. |
 | `POSTGRES_PORT`, `POSTGRES_BIND` | Where Postgres is published on the host: `127.0.0.1:55432` by default, so only the machine itself can reach it. The containers never use this mapping. Set `POSTGRES_BIND=0.0.0.0` only to reach the database from another machine, deliberately. |
-| `CEDO_ADMIN_USERNAME` | Promoted to curator of the shared library on every seed run. Register the account first, then restart. Leave unset for a personal instance. |
+| `CEDO_CURATOR_USERNAME` | Promoted to curator of the shared library on every seed run. Register the account first, then restart. Leave unset for a personal instance. |
 
 `DATABASE_URL` is **composed inside `docker-compose.yml`**, not read from `.env`. The host inside the
 network is always the service name, and a `DATABASE_URL` left pointing at `localhost` — the value a

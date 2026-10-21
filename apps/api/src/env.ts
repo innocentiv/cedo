@@ -16,7 +16,7 @@ const Env = z.object({
    * joins that group as a reader. Optional — an instance with no curator still works, its library
    * is just fixed at whatever shipped. See docs/07-mcp.md.
    */
-  CEDO_ADMIN_USERNAME: z.string().min(1).optional(),
+  CEDO_CURATOR_USERNAME: z.string().min(1).optional(),
 })
 
 export type Env = z.output<typeof Env>
@@ -66,7 +66,7 @@ function suffixed(databaseUrl: string, suffix: string): string {
  * An empty variable means UNSET, not "the empty string".
  *
  * `.env` files are written by hand and blank values are the natural way to leave something out —
- * `.env.example` itself ships `CEDO_ADMIN_USERNAME=`. Without this, that blank line is a hard boot
+ * `.env.example` itself ships `CEDO_CURATOR_USERNAME=`. Without this, that blank line is a hard boot
  * failure with a message about minimum string length, which is a miserable first experience for
  * someone self-hosting.
  */

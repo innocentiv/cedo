@@ -100,7 +100,7 @@ There is **no admin flag**. Being an **editor of the seeded `cedo` group** is th
 it grants writing to the shared library and reading diagnostics.
 
 ```
-CEDO_ADMIN_USERNAME=valerio
+CEDO_CURATOR_USERNAME=valerio
 ```
 
 The seed promotes that account to editor on every boot. Register the account first, then restart —

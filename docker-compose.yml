@@ -56,7 +56,7 @@ services:
       PORT: 3000
       NODE_ENV: production
       UPLOAD_DIR: /data/uploads
-      CEDO_ADMIN_USERNAME: ${CEDO_ADMIN_USERNAME:-}
+      CEDO_CURATOR_USERNAME: ${CEDO_CURATOR_USERNAME:-}
     volumes:
       - uploads:/data/uploads
     depends_on:
