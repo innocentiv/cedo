@@ -1,6 +1,12 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
-import { SessionLogInput, WorkoutCreate, WorkoutPlanInput, planInputFrom } from '@cedo/contract'
+import {
+  DuplicateInput,
+  SessionLogInput,
+  WorkoutCreate,
+  WorkoutPlanInput,
+  planInputFrom,
+} from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import { logWhole } from '../../modules/session/start.ts'
@@ -136,13 +142,14 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     {
       title: 'Duplicate a workout',
       description:
-        'Deep-copy a workout and its whole plan into your own group so you can edit the copy. The ' +
-        'usual way to personalise a shared workout.',
-      inputSchema: z.object({ workoutId: z.uuid() }),
+        'Deep-copy a workout and its whole plan into a group you edit — your personal group ' +
+        'unless `toGroupId` names another — so you can edit the copy. The usual way to ' +
+        'personalise a shared workout.',
+      inputSchema: DuplicateInput.safeExtend({ workoutId: z.uuid() }),
       annotations: WRITE,
     },
-    async ({ workoutId }) => {
-      const copy = await WorkoutService.duplicate(caller, workoutId)
+    async ({ workoutId, toGroupId }) => {
+      const copy = await WorkoutService.duplicate(caller, workoutId, toGroupId)
       return text(`Copied to workout ${copy.id} — "${copy.name}", ${copy.days.length} day(s).`)
     },
   )

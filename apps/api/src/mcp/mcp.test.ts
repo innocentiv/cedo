@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test } from 'bun:test'
 import { z } from 'zod'
 import {
   Exercise,
+  GroupMembership,
   MUSCLE_SLUGS,
   PersonalAccessTokenCreated,
   type TrackingMode,
@@ -262,6 +263,59 @@ describe('exercise_duplicate', () => {
     const { body } = await callTool(pat, 'exercise_duplicate', { exerciseId: theirs.id })
     expect(body.result?.isError).toBe(true)
     expect(textOf(body)).toContain('No such exercise')
+  })
+})
+
+/** The same choice of where the copy goes as exercise_duplicate, through the same input. */
+describe('workout_duplicate', () => {
+  const aWorkout = async (user: TestUser) =>
+    expectContract(
+      Workout,
+      (
+        await user.wire('/workouts', {
+          method: 'POST',
+          body: JSON.stringify({ name: 'Push', notes: null }),
+        })
+      ).body,
+    )
+  /** Where the copy the tool names landed. */
+  const landedIn = async (user: TestUser, out: string) => {
+    const copyId = /workout ([0-9a-f-]{36})/u.exec(out)?.[1]
+    if (copyId === undefined) throw new Error(`No copy named in: ${out}`)
+    return expectContract(Workout, (await user.wire(`/workouts/${copyId}`)).body).ownerGroupId
+  }
+
+  test('copies into your personal group by default', async () => {
+    const plan = await aWorkout(alice)
+    const pat = await mintPat(alice)
+    const { body } = await callTool(pat, 'workout_duplicate', { workoutId: plan.id })
+    expect(await landedIn(alice, textOf(body))).toBe(alice.personalGroupId)
+  })
+
+  test('or into another group you edit, when `toGroupId` names it', async () => {
+    const squad = expectContract(
+      GroupMembership,
+      (await alice.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Squad' }) }))
+        .body,
+    )
+    const plan = await aWorkout(alice)
+    const pat = await mintPat(alice)
+    const { body } = await callTool(pat, 'workout_duplicate', {
+      workoutId: plan.id,
+      toGroupId: squad.id,
+    })
+    expect(await landedIn(alice, textOf(body))).toBe(squad.id)
+  })
+
+  test('never into a group you only read', async () => {
+    const plan = await aWorkout(alice)
+    const pat = await mintPat(alice)
+    const { body } = await callTool(pat, 'workout_duplicate', {
+      workoutId: plan.id,
+      toGroupId: h.groupId,
+    })
+    expect(body.result?.isError).toBe(true)
+    expect(textOf(body)).toContain('No such group')
   })
 })
 
