@@ -9,9 +9,9 @@ import {
   MAX_DURATION_S,
   MAX_REPS,
   MAX_WEIGHT_G,
-  Rpe,
   TargetWeightG,
 } from './measurement.ts'
+import { Rpe } from './rpe.ts'
 import { SetTarget } from './progression.ts'
 import { LogSetInput } from './log.ts'
 import { WorkoutSetInput } from './workout.ts'
@@ -78,9 +78,12 @@ describe('bounds are shared, not redeclared', () => {
     expect(LoggedWeightG.safeParse(0).success).toBe(true)
   })
 
-  test('rpe is 1-10 wherever it appears', () => {
-    expect(Rpe.safeParse(0).success).toBe(false)
-    expect(Rpe.safeParse(11).success).toBe(false)
-    expect(Rpe.safeParse(10).success).toBe(true)
+  /** One scale for a target and a log: 5 to 10 in half-points (`rpe.ts`). */
+  test('rpe is the same scale wherever it appears', () => {
+    const target = (rpe: number) =>
+      SetTarget.safeParse({ reps: 5, weightG: null, rpe, durationS: null, distanceMm: null })
+        .success
+    expect([target(8.5), target(8.25), target(4)]).toEqual([true, false, false])
+    expect(Rpe.safeParse(8.5).success).toBe(true)
   })
 })

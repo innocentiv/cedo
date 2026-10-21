@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { Exercise } from './exercise.ts'
-import { Rpe, TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
+import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
+import { Rpe } from './rpe.ts'
 import { Progression, SetTarget } from './progression.ts'
 import { OwnableQuery, ownableFields } from './ownable.ts'
 import { Id, NonEmptyString, OrderIndex, patchOf } from './primitives.ts'

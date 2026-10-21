@@ -33,6 +33,3 @@ export const TargetReps = z.int().positive(MORE_THAN_ZERO).max(MAX_REPS, TOO_LAR
 export const TargetWeightG = z.int().nonnegative('Cannot be negative').max(MAX_WEIGHT_G, TOO_LARGE)
 export const TargetDurationS = z.int().positive(MORE_THAN_ZERO).max(MAX_DURATION_S, TOO_LARGE)
 export const TargetDistanceMm = z.int().positive(MORE_THAN_ZERO).max(MAX_DISTANCE_MM, TOO_LARGE)
-
-/** Rate of perceived exertion, 1–10. Identical for targets and logs. */
-export const Rpe = z.int().min(1, 'RPE is 1 to 10').max(10, 'RPE is 1 to 10')

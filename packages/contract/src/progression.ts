@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { TrackingMode } from './exercise.ts'
-import { Rpe, TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
+import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
+import { Rpe } from './rpe.ts'
 import { formatDuration } from './units.ts'
 
 /**

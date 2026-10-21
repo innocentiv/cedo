@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { LoggedDistanceMm, LoggedDurationS, LoggedReps, LoggedWeightG, Rpe } from './measurement.ts'
+import { LoggedDistanceMm, LoggedDurationS, LoggedReps, LoggedWeightG } from './measurement.ts'
+import { Rpe } from './rpe.ts'
 import { Exercise, TrackingMode } from './exercise.ts'
 import { Id, PaginationQuery, Timestamp } from './primitives.ts'
 import { WorkoutDay, WorkoutEntry } from './workout.ts'
