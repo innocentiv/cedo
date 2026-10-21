@@ -90,7 +90,7 @@ Two constraints found by building it:
 | `Stack` | every layout. There is no other container |
 | `Text` | all text. Variants `title` / `heading` / `body` / `label` / `caption` / `mono` |
 | `Button`, `NavButton` | actions, and actions that navigate |
-| `ConfirmButton` | every action that cannot be taken back — delete, revoke, remove, leave. Asked twice, in the app's own UI, never a browser dialog; a refusal shows beside it. Removing a set from a session in progress is not one: it is logged again in a tap |
+| `ConfirmButton` | every action that cannot be taken back — delete, revoke, remove, leave — and every move to another group, which others feel at once. Asked twice, in the app's own UI, never a browser dialog; a refusal shows beside it. Removing a set from a session in progress is not one: it is logged again in a tap |
 | `PinButton` | pinning what you can see, for its list's "Pinned" filter |
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput` |
 | `Card`, `ListRow` | the one row shape every list uses |

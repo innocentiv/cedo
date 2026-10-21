@@ -14,7 +14,7 @@ export const placement = (page: Page, prefix: string) => {
     await page.click(`[data-testid="${prefix}"]`)
     await page.waitFor(`${prefix}-targets`)
     const buttons = await page.evaluate(
-      `[...document.querySelectorAll('[data-testid^="${prefix}-to-"]')].map((e) => ({ title: e.innerText.trim(), id: e.dataset.testid }))`,
+      `[...document.querySelectorAll('[data-testid^="${prefix}-to-"]:not([data-testid$="-error"])')].map((e) => ({ title: e.innerText.trim(), id: e.dataset.testid }))`,
     )
     return Array.isArray(buttons) ? (buttons as { title: string; id: string }[]) : []
   }
@@ -24,7 +24,9 @@ export const placement = (page: Page, prefix: string) => {
     if (chosen === undefined) {
       throw new Error(`Move to ${group} is not offered: ${choices.map((c) => c.title).join(', ')}`)
     }
+    // Asked twice: every move has a shared group on one side.
     await page.click(`[data-testid="${chosen.id}"]`)
+    await page.click(`[data-testid="${chosen.id}-confirm"]`)
   }
   return {
     /** "In Squad", or "In your personal group". */
