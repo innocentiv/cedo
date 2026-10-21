@@ -1004,3 +1004,84 @@ test('a set past the most a series holds is refused', async () => {
   const read = expectContract(WorkoutSession, (await alice.wire(`/sessions/${id}`)).body)
   expect(read.logs).toHaveLength(MAX_SET_INDEX + 1)
 })
+
+/**
+ * RPE, as GLOSSARY.md defines it: 5 to 10 in half-points. A set's effort, logged and prescribed —
+ * the half-point is what a person answering "one and a half reps left" means.
+ */
+describe('RPE in half-points', () => {
+  test('a set logged at RPE 8.5 reads back as 8.5', async () => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const logged = await alice.wire(`/sessions/${session.id}/logs`, {
+      method: 'POST',
+      body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, rpe: 8.5 }),
+    })
+    expect(expectContract(SetLog, logged.body).rpe).toBe(8.5)
+
+    const read = expectContract(WorkoutSession, (await alice.wire(`/sessions/${session.id}`)).body)
+    expect(read.logs.map((l) => l.rpe)).toEqual([8.5])
+  })
+
+  /** The column holds the scale too, for a write that never passes the contract: a seed, a fix. */
+  test('the database refuses an RPE off the scale written past the API', async () => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const logged = expectContract(
+      SetLog,
+      (
+        await alice.wire(`/sessions/${session.id}/logs`, {
+          method: 'POST',
+          body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, rpe: 8 }),
+        })
+      ).body,
+    )
+    /** What refusing it says. Drizzle wraps the driver's error; its `cause` names the check. */
+    const refusal = async (rpe: number) =>
+      await db
+        .update(setLogs)
+        .set({ rpe })
+        .where(eq(setLogs.id, logged.id))
+        .then(
+          () => null,
+          (error: unknown) => error,
+        )
+    const byTheCheck = { cause: { constraint_name: 'set_logs_rpe_ck' } }
+    expect(await refusal(8.25)).toMatchObject(byTheCheck)
+    expect(await refusal(4.5)).toMatchObject(byTheCheck)
+  })
+
+  test.each([4.5, 10.5, 8.25])('a set at RPE %p is refused', async (rpe) => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const res = await alice.wire(`/sessions/${session.id}/logs`, {
+      method: 'POST',
+      body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, rpe }),
+    })
+    expect(res.status).toBe(422)
+  })
+
+  test("a plan's target RPE of 7.5 is saved and read back", async () => {
+    const exerciseId = await anExercise(alice)
+    const created = expectContract(
+      Workout,
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'RPE' }) }))
+        .body,
+    )
+    const saved = await alice.wire(`/workouts/${created.id}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        days: [
+          {
+            name: 'Day',
+            entries: [
+              { exerciseId, sets: [{ targetReps: 5, targetWeightG: kgToG(60), targetRpe: 7.5 }] },
+            ],
+          },
+        ],
+      }),
+    })
+    const plan = expectContract(Workout, saved.body)
+    expect(plan.days[0]?.entries[0]?.sets[0]?.target.rpe).toBe(7.5)
+  })
+})

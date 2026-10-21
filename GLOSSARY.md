@@ -98,6 +98,11 @@ _Avoid_: measure, metric
 The dimensions one set carries — prescribed as a target, or done as a log.
 _Avoid_: result, performance
 
+**RPE**:
+How hard a set was, or is meant to be: 5 to 10 in half-points, where 10 leaves no rep in reserve
+and each point below it leaves one more.
+_Avoid_: intensity, difficulty, exertion
+
 **Working sets per muscle**:
 The work a muscle got: every working set counted toward it by that muscle's share of the
 exercise's load. Counts every tracking mode alike, which weight lifted cannot.

@@ -12,6 +12,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 import { exercises } from './exercise.ts'
+import { rpeCheck, rpeColumn } from './rpe.ts'
 import { users } from './identity.ts'
 import { workoutDays, workoutEntries, workouts } from './workout.ts'
 
@@ -84,7 +85,7 @@ export const setLogs = pgTable(
     isWarmup: boolean('is_warmup').notNull().default(false),
     weightG: integer('weight_g'),
     reps: smallint('reps'),
-    rpe: smallint('rpe'),
+    rpe: rpeColumn('rpe'),
     durationS: integer('duration_s'),
     distanceMm: integer('distance_mm'),
     loggedAt: timestamp('logged_at', { withTimezone: true }).notNull().defaultNow(),
@@ -101,6 +102,6 @@ export const setLogs = pgTable(
     index('set_logs_exercise_time_idx').on(t.exerciseId, t.loggedAt.desc()),
     index('set_logs_session_idx').on(t.sessionId),
     index('set_logs_entry_idx').on(t.entryId),
-    check('set_logs_rpe_ck', sql`${t.rpe} is null or ${t.rpe} between 1 and 10`),
+    check('set_logs_rpe_ck', rpeCheck(t.rpe)),
   ],
 )

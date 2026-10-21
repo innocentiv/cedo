@@ -366,6 +366,21 @@ describe('training review', () => {
     expect(history).toContain('5 × 100 kg')
   })
 
+  /** How hard each set was is half of what it says: the AI reads it, as it logs it, in half-points. */
+  test('history carries each set’s RPE, half-points included', async () => {
+    const pat = await mintPat(alice)
+    const exerciseId = await createExercise(pat, 'Test Bench', 'pectoralis_major')
+    await callTool(pat, 'session_log', {
+      sets: [
+        { exerciseId, weightG: 60_000, reps: 5, rpe: 8.5 },
+        { exerciseId, weightG: 60_000, reps: 5 },
+      ],
+    })
+
+    const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
+    expect(history).toContain('5 × 60 kg @ RPE 8.5, 5 × 60 kg')
+  })
+
   /** The AI reads a weighted pull-up as the app shows it — added load, not a 20 kg lift. */
   test('history describes a bodyweight movement in its own terms', async () => {
     const pat = await mintPat(alice)

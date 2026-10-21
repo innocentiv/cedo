@@ -81,10 +81,11 @@ const setLine = (
   set: Workout['days'][number]['entries'][number]['sets'][number],
   tracking: TrackingMode | null,
   unit: WeightUnit,
-): string => {
-  const rpe = set.target.rpe === null ? '' : ` @ RPE ${set.target.rpe}`
-  return `${set.isWarmup ? 'warm-up' : 'work'}: ${formatEffort(set.target, tracking, unit)}${rpe}`
-}
+): string =>
+  `${set.isWarmup ? 'warm-up' : 'work'}: ${formatEffort(set.target, tracking, unit)}${atRpe(set.target.rpe)}`
+
+/** ` @ RPE 8.5` after a set prescribed or logged at one, and nothing after one without. */
+const atRpe = (rpe: number | null): string => (rpe === null ? '' : ` @ RPE ${rpe}`)
 
 /** The whole plan as an outline. A 6-day plan is ~60 short lines rather than ~40 KB of JSON. */
 export function workoutDetail(workout: Workout, unit: WeightUnit): string {
@@ -146,13 +147,16 @@ function stalledLine(s: TrainingReview['stalled'][number], unit: WeightUnit): st
   return `${s.exercise.name}: ${s.sessions} sessions${effort === '—' ? '' : ` at ${effort}`}`
 }
 
-/** An exercise's recent sessions, one line each: `2026-10-14: w10 × 20 kg, 8 × 60 kg`. */
+/** An exercise's recent sessions, one line each: `2026-10-14: w10 × 20 kg, 8 × 60 kg @ RPE 8.5`. */
 export function historyLines(history: ExerciseHistory, unit: WeightUnit): string {
   if (history.sessions.length === 0) return 'No sessions logged for this exercise.'
   return history.sessions
     .map((s) => {
       const sets = s.sets
-        .map((set) => `${set.isWarmup ? 'w' : ''}${formatEffort(set, history.tracking, unit)}`)
+        .map(
+          (set) =>
+            `${set.isWarmup ? 'w' : ''}${formatEffort(set, history.tracking, unit)}${atRpe(set.rpe)}`,
+        )
         .join(', ')
       return `${s.performedAt.slice(0, 10)}: ${sets}`
     })

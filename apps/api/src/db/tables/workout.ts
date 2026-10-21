@@ -15,6 +15,7 @@ import {
 import type { Progression } from '@cedo/contract'
 import { childOwner, favouriteTable, ownable, ownerKey, ownerTarget } from '../ownable.ts'
 import { exercises } from './exercise.ts'
+import { rpeCheck, rpeColumn } from './rpe.ts'
 
 export const workouts = pgTable(
   'workouts',
@@ -99,14 +100,14 @@ export const workoutSets = pgTable(
     isWarmup: boolean('is_warmup').notNull().default(false),
     targetReps: smallint('target_reps'),
     targetWeightG: integer('target_weight_g'),
-    targetRpe: smallint('target_rpe'),
+    targetRpe: rpeColumn('target_rpe'),
     targetDurationS: integer('target_duration_s'),
     targetDistanceMm: integer('target_distance_mm'),
   },
   (t) => [
     uniqueIndex('workout_sets_order_idx').on(t.entryId, t.index),
     ownerKey('workout_sets_entry_fk', [t.entryId, t.ownerGroupId], workoutEntries),
-    check('workout_sets_rpe_ck', sql`${t.targetRpe} is null or ${t.targetRpe} between 1 and 10`),
+    check('workout_sets_rpe_ck', rpeCheck(t.targetRpe)),
   ],
 )
 
