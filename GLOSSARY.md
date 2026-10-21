@@ -21,8 +21,8 @@ nobody leaves their personal group or the library.
 _Avoid_: quit, unsubscribe
 
 **Library**:
-The starter exercises every account can read, owned by the seeded `cedo` group. Every account
-belongs to it from registration on and keeps belonging, which is why any shared plan may use them.
+The starter exercises every account can read. Every account belongs to its group from the start
+and keeps belonging, which is why any shared plan may use them.
 _Avoid_: catalogue, defaults
 
 **Curator**:
@@ -132,12 +132,12 @@ _Avoid_: units setting, locale
 ## Plans
 
 **Workout**:
-A named programme someone trains from — Push/Pull/Legs, a five-week block. It is an ownable: shared,
+A named course of training someone follows — Push/Pull/Legs, a five-week block. It is an ownable: shared,
 transferred, duplicated, favourited as one.
-_Avoid_: routine, program, template
+_Avoid_: routine, program, programme, template
 
 **Plan**:
-A workout's days and entries — what the editor edits and replaces as a whole. "Start from a plan"
+A workout's days and entries, changed together as one. "Start from a plan"
 means starting a session from one of its days.
 _Avoid_: schedule, layout
 

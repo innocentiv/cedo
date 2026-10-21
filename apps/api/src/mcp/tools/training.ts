@@ -137,7 +137,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       title: 'Duplicate a workout',
       description:
         'Deep-copy a workout and its whole plan into your own group so you can edit the copy. The ' +
-        'usual way to personalise a shared programme.',
+        'usual way to personalise a shared workout.',
       inputSchema: z.object({ workoutId: z.uuid() }),
       annotations: WRITE,
     },

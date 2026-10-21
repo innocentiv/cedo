@@ -44,8 +44,8 @@ user, under exactly the same permissions — no elevated path — for three jobs
 3. **Diagnosing a running instance** that belongs to someone else, where there is no shell.
    Curator-only.
 
-It is not a second UI. It deletes nothing, and it does not manage groups, members or tokens: those
-are a person's to do, in the app.
+It is not a second UI. It has no delete tool, and it does not manage groups, members or tokens:
+those are a person's to do, in the app.
 
 ## Explicit non-goals (for now)
 

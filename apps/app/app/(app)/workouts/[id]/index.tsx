@@ -97,8 +97,8 @@ export default function WorkoutDetail(): React.JSX.Element {
       <GroupPlacement
         ownerGroupId={data.ownerGroupId}
         canEdit={data.canEdit}
-        move={async (toGroupId) => await transfer.mutateAsync({ id: data.id, toGroupId })}
-        testID="workout-move"
+        transfer={async (toGroupId) => await transfer.mutateAsync({ id: data.id, toGroupId })}
+        testID="workout-transfer"
       />
       <Loaded query={current} testID="workout-current">
         {({ items: [inProgress] }) => (

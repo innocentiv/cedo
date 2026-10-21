@@ -39,7 +39,7 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
 /** The exercise detail screen — reached however the journey reached it. */
 export const exercise = (page: Page) => ({
   /** Which group it is in, and moving it to another. */
-  placement: placement(page, 'exercise-move'),
+  placement: placement(page, 'exercise-transfer'),
   shown: async (): Promise<void> => {
     await page.waitFor('exercise-detail-screen')
   },

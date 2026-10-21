@@ -7,6 +7,7 @@ import {
   type TrackingMode,
   Workout,
   WorkoutPlanInput,
+  page,
 } from '@cedo/contract'
 import { createApp } from '../app.ts'
 import { seedLibrary } from '../db/seed.ts'
@@ -206,9 +207,11 @@ describe('library curation', () => {
  * someone — never by asking for curator rights. The same service as POST /exercises/:id/duplicate.
  */
 describe('exercise_duplicate', () => {
-  const Listed = z.object({ items: z.array(Exercise) })
   const findOne = async (user: TestUser, query: string) => {
-    const [found] = expectContract(Listed, (await user.wire(`/exercises?${query}`)).body).items
+    const [found] = expectContract(
+      page(Exercise),
+      (await user.wire(`/exercises?${query}`)).body,
+    ).items
     if (found === undefined) throw new Error(`Nothing matched ${query}`)
     return found
   }
@@ -227,6 +230,11 @@ describe('exercise_duplicate', () => {
     expect(copy.ownerGroupId).toBe(alice.personalGroupId)
     expect(copy.canEdit).toBe(true)
     expect(copy.muscles).toEqual(squat.muscles)
+    // The seed gives it a description and a media link, and no instructions — so those two pin it.
+    expect(squat.description).not.toBe('')
+    expect(squat.media).not.toEqual([])
+    expect(copy.description).toBe(squat.description)
+    expect(copy.media.map((m) => m.id)).toEqual(squat.media.map((m) => m.id))
   })
 
   test('goes nowhere you cannot edit — not even the library it came from', async () => {

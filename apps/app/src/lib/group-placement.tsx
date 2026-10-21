@@ -20,12 +20,12 @@ const nameOf = (group: GroupMembership): string => {
 export function GroupPlacement({
   ownerGroupId,
   canEdit,
-  move,
+  transfer,
   testID,
 }: {
   readonly ownerGroupId: string
   readonly canEdit: boolean
-  readonly move: (toGroupId: string) => Promise<unknown>
+  readonly transfer: (toGroupId: string) => Promise<unknown>
   readonly testID: string
 }): React.JSX.Element {
   const groups = useGroups()
@@ -35,7 +35,7 @@ export function GroupPlacement({
         <Placement
           owner={mine.find((g) => g.id === ownerGroupId)}
           targets={canEdit ? mine.filter((g) => g.canTransferInto && g.id !== ownerGroupId) : []}
-          move={move}
+          transfer={transfer}
           testID={testID}
         />
       )}
@@ -46,12 +46,12 @@ export function GroupPlacement({
 function Placement({
   owner,
   targets,
-  move,
+  transfer,
   testID,
 }: {
   readonly owner: GroupMembership | undefined
   readonly targets: readonly GroupMembership[]
-  readonly move: (toGroupId: string) => Promise<unknown>
+  readonly transfer: (toGroupId: string) => Promise<unknown>
   readonly testID: string
 }): React.JSX.Element {
   const { submit, busy, error } = useSubmit()
@@ -72,7 +72,7 @@ function Placement({
               busy={busy}
               onConfirm={async () => {
                 await submit(async () => {
-                  await move(group.id)
+                  await transfer(group.id)
                 })
                 setChoosing(false)
               }}

@@ -39,7 +39,7 @@ export const workouts = (page: Page) => {
   }
   return {
     /** Which group the open plan is in, and moving it to another. */
-    placement: placement(page, 'workout-move'),
+    placement: placement(page, 'workout-transfer'),
     /** Opens the first plan in the list on screen. */
     openFirst: async (): Promise<void> => {
       const row = await page.waitForSelector('[data-testid^="workout-row-"]')

@@ -993,8 +993,8 @@ test(
 test(
   'an exercise is transferred into a group you edit, and says it is there',
   async () => {
-    const owner = unique('mv')
-    await withApp('move-exercise', async (page) => {
+    const owner = unique('tr')
+    await withApp('transfer-exercise', async (page) => {
       const app = screens(page)
       await app.auth.register(owner)
       const mine = await page.client()
@@ -1024,7 +1024,7 @@ test(
       await coach.api.exercises.transfer(theirs.id, { toGroupId: coached.id })
       await page.goto(`/exercises/${theirs.id}`)
       expect(await app.exercise.placement.owner()).toBe('In Coached')
-      expect(await app.exercise.placement.canMove()).toBe(false)
+      expect(await app.exercise.placement.canTransfer()).toBe(false)
     })
   },
   E2E_TIMEOUT_MS,
@@ -1034,9 +1034,9 @@ test(
 test(
   'a plan using an exercise the group cannot see is not transferred, and says which',
   async () => {
-    await withApp('move-workout-refused', async (page) => {
+    await withApp('transfer-workout-refused', async (page) => {
       const app = screens(page)
-      await app.auth.register(unique('mvw'))
+      await app.auth.register(unique('trw'))
       const lift = unique('Private ')
       await app.library.create(lift, 'quadriceps')
       await app.planEditor.create(lift)

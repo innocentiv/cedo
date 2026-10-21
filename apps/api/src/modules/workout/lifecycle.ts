@@ -1,6 +1,6 @@
 import { visibleWorkouts } from '../../db/visible.ts'
 import { ownableLifecycle, relationOf } from '../ownable/service.ts'
-import { assertWorkoutCanMoveTo } from './references.ts'
+import { assertWorkoutCanTransferTo } from './references.ts'
 
 /**
  * How a workout is an ownable: its name, its visible relation, and the one thing it does
@@ -12,5 +12,5 @@ import { assertWorkoutCanMoveTo } from './references.ts'
 export const workoutLifecycle = ownableLifecycle({
   noun: 'workout',
   relation: (caller) => relationOf(visibleWorkouts(caller)),
-  beforeTransfer: assertWorkoutCanMoveTo,
+  beforeTransfer: assertWorkoutCanTransferTo,
 })

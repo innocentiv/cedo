@@ -153,8 +153,8 @@ export default function ExerciseDetail(): React.JSX.Element {
         <GroupPlacement
           ownerGroupId={data.ownerGroupId}
           canEdit={data.canEdit}
-          move={async (toGroupId) => await transfer.mutateAsync({ id: data.id, toGroupId })}
-          testID="exercise-move"
+          transfer={async (toGroupId) => await transfer.mutateAsync({ id: data.id, toGroupId })}
+          testID="exercise-transfer"
         />
 
         {data.description === '' ? null : <Text tone="muted">{data.description}</Text>}

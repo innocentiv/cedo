@@ -34,7 +34,7 @@ export const placement = (page: Page, prefix: string) => {
     /** "In Squad", or "In your personal group". */
     owner,
     /** Whether Transfer to group is offered at all — once the screen says where it is. */
-    canMove: async (): Promise<boolean> => {
+    canTransfer: async (): Promise<boolean> => {
       await owner()
       return await page.exists(prefix)
     },

@@ -31,7 +31,7 @@ session token to `/mcp` is a 401, and a test asserts it.
 
 ## What it is for
 
-Four objectives, and every tool exists to serve one of them.
+Three objectives today, and a fourth planned; every tool exists to serve one of them.
 
 ### 1. Curating the exercise library
 
@@ -48,7 +48,7 @@ instructions or media. The tool descriptions tell the model to read before it wr
 
 Writing to the shared library requires **curator** rights (below). Anything else lands in the
 caller's own group — and `exercise_duplicate` is how an AI adapts a library exercise for someone
-without them: a copy in a group they edit, as `workout_duplicate` is for a shared programme.
+without them: a copy in a group they edit, as `workout_duplicate` is for a shared workout.
 
 ### 2. Reviewing someone's training
 

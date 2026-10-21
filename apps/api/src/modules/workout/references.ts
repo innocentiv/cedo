@@ -15,7 +15,7 @@ import { planEntries } from './plan.ts'
 export type ReferencedBy = 'request' | 'plan'
 
 /**
- * The one rule for which exercises a plan may use in a group — saved there, copied there, or moved
+ * The one rule for which exercises a plan may use in a group — saved there, copied there, or transferred
  * there. It was three checks that disagreed: saving and duplicating refused an exercise the caller
  * cannot see, while transferring into their personal group returned early and let it through, to
  * become an "Unavailable exercise" row.
@@ -81,7 +81,7 @@ function refusedHidden(hidden: readonly string[], referencedBy: ReferencedBy) {
 }
 
 /** Before a transfer: the one rule, over whatever exercises the stored plan references. */
-export async function assertWorkoutCanMoveTo(
+export async function assertWorkoutCanTransferTo(
   caller: Caller,
   workoutId: string,
   toGroupId: string,
