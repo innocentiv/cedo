@@ -1,6 +1,7 @@
 import { Elysia } from 'elysia'
 import { z } from 'zod'
 import {
+  EntryTarget,
   ExerciseHistory,
   ExerciseHistoryQuery,
   Id,
@@ -15,6 +16,7 @@ import {
   page,
 } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
+import { targetsForSession } from '../progression/service.ts'
 import { get as getSession } from './plan.ts'
 import { start as startSession } from './start.ts'
 import * as HistoryService from './history.ts'
@@ -40,6 +42,14 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
     params,
     response: SessionDetail,
     detail: { summary: 'A session, with the plan it follows as the caller can reach it' },
+  })
+  .get('/:id/targets', ({ caller, params: { id } }) => targetsForSession(caller, id), {
+    params,
+    response: z.array(EntryTarget),
+    detail: {
+      summary:
+        "What the session asks of each entry of its day — the plan carried forward by its rule over the sessions before this one — and last time's sets",
+    },
   })
   .patch('/:id', ({ caller, params: { id }, body }) => SessionService.update(caller, id, body), {
     params,

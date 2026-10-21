@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import {
   ApiError,
+  EntryTarget,
   Exercise,
   ExerciseHistory,
   GroupMembership,
@@ -628,6 +629,121 @@ describe('progression suggestions', () => {
     )
     // Three working sets were prescribed; only two were logged.
     expect(suggestion?.changed).toBe(false)
+  })
+})
+
+/**
+ * What a session asks of each entry — what the logger is pre-filled with: the plan's prescription
+ * carried forward over the sessions BEFORE this one, and what was done last time. See `EntryTarget`.
+ */
+describe("a session's targets", () => {
+  const Targets = z.array(EntryTarget)
+  const targetsOf = async (user: TestUser, sessionId: string) =>
+    expectContract(Targets, (await user.wire(`/sessions/${sessionId}/targets`)).body)
+
+  /** Starts the workout's day, logs a warm-up and `reps` at 60 kg — and finishes it, unless told. */
+  async function aSession(
+    user: TestUser,
+    workout: Workout,
+    reps: number[],
+    finish = true,
+  ): Promise<string> {
+    const entry = workout.days[0]?.entries[0]
+    if (entry === undefined) throw new Error('the workout has no entry')
+    const session = expectContract(
+      WorkoutSession,
+      (await startSession(user, { workoutId: workout.id, dayId: workout.days[0]?.id })).body,
+    )
+    const log = async (body: Record<string, unknown>) =>
+      await user.wire(`/sessions/${session.id}/logs`, {
+        method: 'POST',
+        body: JSON.stringify({ exerciseId: entry.exerciseId, entryId: entry.id, ...body }),
+      })
+    await log({ weightG: kgToG(20), reps: 10, isWarmup: true })
+    for (const count of reps) await log({ weightG: kgToG(60), reps: count })
+    if (finish) await finishSession(user, session.id)
+    return session.id
+  }
+
+  const sets = (...reps: number[]) =>
+    reps.map((count) => ({ reps: count, weightG: kgToG(60), durationS: null, distanceMm: null }))
+
+  test('with no history: the prescription, unchanged, and no last time', async () => {
+    const workout = await aPlannedWorkout(alice, await anExercise(alice))
+    const id = await aSession(alice, workout, [], false)
+
+    const [target] = await targetsOf(alice, id)
+    expect(target?.entryId).toBe(workout.days[0]?.entries[0]?.id)
+    expect(target?.target).toEqual(target?.prescribed)
+    expect(target?.target.reps).toBe(8)
+    expect(target?.changed).toBe(false)
+    expect(target?.last).toBeNull()
+  })
+
+  test('after a clean session, the next asks for more — and says what was done', async () => {
+    const workout = await aPlannedWorkout(alice, await anExercise(alice))
+    await aSession(alice, workout, [8, 8, 8])
+    const next = await aSession(alice, workout, [], false)
+
+    const [target] = await targetsOf(alice, next)
+    expect(target?.prescribed.reps).toBe(8)
+    expect(target?.target.reps).toBe(9)
+    expect(target?.target.weightG).toBe(kgToG(60))
+    expect(target?.changed).toBe(true)
+    // Working sets only, in order: the warm-up is not last time's work.
+    expect(target?.last).toEqual(sets(8, 8, 8))
+  })
+
+  /**
+   * Regression guard for the design: counted with its own sets, a session whose sets had all hit
+   * would offer its NEXT set the advanced target, mid-workout.
+   */
+  test("a session's own sets never move its target", async () => {
+    const workout = await aPlannedWorkout(alice, await anExercise(alice))
+    const id = await aSession(alice, workout, [8, 8, 8], false)
+
+    const [target] = await targetsOf(alice, id)
+    expect(target?.target.reps).toBe(8)
+    expect(target?.changed).toBe(false)
+    expect(target?.last).toBeNull()
+  })
+
+  test('the plan itself is not written to', async () => {
+    const workout = await aPlannedWorkout(alice, await anExercise(alice))
+    await aSession(alice, workout, [8, 8, 8])
+    await targetsOf(alice, await aSession(alice, workout, [], false))
+
+    const plan = expectContract(Workout, (await alice.wire(`/workouts/${workout.id}`)).body)
+    const working = plan.days[0]?.entries[0]?.sets.filter((s) => !s.isWarmup)
+    expect(working?.map((s) => s.target.reps)).toEqual([8, 8, 8])
+  })
+
+  /** Last time is the exercise's, wherever it was logged — a session without a plan included. */
+  test('last time is the latest earlier session of the exercise, planned or not', async () => {
+    const exerciseId = await anExercise(alice)
+    const workout = await aPlannedWorkout(alice, exerciseId)
+    await aSession(alice, workout, [8, 8, 8])
+
+    const adHoc = expectContract(WorkoutSession, (await startSession(alice)).body)
+    await alice.wire(`/sessions/${adHoc.id}/logs`, {
+      method: 'POST',
+      body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5 }),
+    })
+    await finishSession(alice, adHoc.id)
+
+    const [target] = await targetsOf(alice, await aSession(alice, workout, [], false))
+    expect(target?.last).toEqual(sets(5))
+  })
+
+  test('a session without a plan asks nothing of any entry', async () => {
+    const adHoc = expectContract(WorkoutSession, (await startSession(alice)).body)
+    expect(await targetsOf(alice, adHoc.id)).toEqual([])
+  })
+
+  test("someone else's session is not there", async () => {
+    const workout = await aPlannedWorkout(alice, await anExercise(alice))
+    const id = await aSession(alice, workout, [], false)
+    expect((await bob.wire(`/sessions/${id}/targets`)).status).toBe(404)
   })
 })
 

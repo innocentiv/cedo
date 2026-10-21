@@ -1,5 +1,7 @@
 import {
   type Effort,
+  type EntryTarget,
+  type LoggedEffort,
   type Progression,
   type ProgressionSuggestion,
   type SessionAttempts,
@@ -59,6 +61,26 @@ export function suggest(
   return entries.map((entry) =>
     suggestForEntry(entry, setsByEntry.get(entry.id) ?? [], logsByEntry.get(entry.id) ?? []),
   )
+}
+
+/**
+ * What a session asks of each entry — `EntryTarget` — from the same evaluation as `suggest`, over
+ * logs the loader has already limited to the sessions before it; and last time's working sets of
+ * each entry's exercise, by exercise.
+ */
+export function targetsFrom(
+  entries: readonly EntryToEvaluate[],
+  prescribed: readonly PrescribedSet[],
+  logs: readonly LoggedSet[],
+  lastByExercise: ReadonlyMap<string, LoggedEffort[]>,
+): EntryTarget[] {
+  return suggest(entries, prescribed, logs).map((s) => ({
+    entryId: s.entryId,
+    prescribed: s.current,
+    target: s.suggested,
+    changed: s.changed,
+    last: lastByExercise.get(s.exerciseId) ?? null,
+  }))
 }
 
 function suggestForEntry(

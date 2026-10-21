@@ -7,7 +7,7 @@ import * as sessionService from '../../modules/session/service.ts'
 import { get as getSession } from '../../modules/session/plan.ts'
 import { list as listSessions } from '../../modules/session/list.ts'
 import { history } from '../../modules/session/history.ts'
-import { suggestForWorkout } from '../../modules/progression/service.ts'
+import { suggestForWorkout, targetsForSession } from '../../modules/progression/service.ts'
 import { trainingReview } from '../../modules/review/service.ts'
 import { libraryAudit } from '../../modules/review/curation.ts'
 import { type QueryPlan, explainInOrder, slowestOf } from '../explain.ts'
@@ -229,6 +229,28 @@ export const HOT_PATHS: readonly HotPath[] = [
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
       return await getSession(profile.caller, profile.sessionId)
+    },
+  },
+  {
+    name: 'GET /sessions/:id/targets',
+    why:
+      "Read as a live session opens: each entry's target, carried over the sessions before it, and " +
+      "last time's sets. Must not issue a query per entry of the day, nor scan the logs table.",
+    dimension: 'the entries of the day, and the history behind them',
+    // The session; the day's entries, their sets, their logs; last time's sets.
+    maxQueries: 5,
+    budgetMs: 80,
+    noSeqScan: ['set_logs', 'workout_sessions', 'workout_entries', 'workout_sets'],
+    // Both log reads enter through the person's sessions, then each session's logs.
+    indexes: [
+      'workout_entries_order_idx',
+      'workout_sets_order_idx',
+      'workout_sessions_user_time_idx',
+      'set_logs_session_idx',
+    ],
+    run: async (fixtures, size) => {
+      const profile = pick(fixtures, size)
+      return await targetsForSession(profile.caller, profile.openSessionId)
     },
   },
   {

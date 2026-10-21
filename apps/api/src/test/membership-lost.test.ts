@@ -1,6 +1,7 @@
 import { beforeEach, expect, test } from 'bun:test'
 import { z } from 'zod'
 import {
+  EntryTarget,
   Exercise,
   GroupMembership,
   PersonalAccessTokenCreated,
@@ -287,6 +288,16 @@ const ROUTES: Record<string, Case> = {
         http(`/sessions/${w.alicesOwnSessionId}`),
       ]),
   },
+  'GET /sessions/:id/targets': {
+    // Targets and last time's sets — numbers, never a name. Bob's plan out of reach after, the day's
+    // entries leave with it: the read asks nothing of them.
+    named: false,
+    read: async (w) =>
+      await all([
+        http(`/sessions/${w.alicesSessionId}/targets`),
+        http(`/sessions/${w.alicesOwnSessionId}/targets`),
+      ]),
+  },
   // Curator-only, and Alice is no curator: she is refused before and after.
   'GET /admin/status': { named: false, read: async () => await http('/admin/status') },
   'GET /admin/slow-queries': { named: false, read: async () => await http('/admin/slow-queries') },
@@ -415,6 +426,13 @@ test('losing a group takes back every name it showed, on every read path', async
     page(WorkoutSessionSummary),
     (await alice.wire('/sessions')).body,
   )
+  // What her session on Bob's plan asks of each entry: his prescriptions, while she is a member.
+  const targetsOf = async () =>
+    expectContract(
+      z.array(EntryTarget),
+      (await alice.wire(`/sessions/${w.alicesSessionId}/targets`)).body,
+    )
+  expect(await targetsOf()).not.toEqual([])
 
   const removed = await bob.wire(`/groups/${w.crewId}/members/${alice.userId}`, {
     method: 'DELETE',
@@ -457,4 +475,6 @@ test('losing a group takes back every name it showed, on every read path', async
   expect(loggedAfter.map((l) => l.exercise)).toEqual([null])
   // The plan it followed is Bob's, and out of her reach now — said, not guessed from a failed read.
   expect(sessionAfter.plan).toEqual({ reachable: false })
+  // Nor are his prescriptions offered any more: numbers carry no name, so the sentinel cannot tell.
+  expect(await targetsOf()).toEqual([])
 })
