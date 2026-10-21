@@ -55,7 +55,7 @@ app/(app)/settings/         index · groups/index · groups/[id]/index · tokens
 src/ui/                      the entire visual vocabulary
 src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
-src/lib/                     use-submit.ts, plan-draft.ts, forms and pickers
+src/lib/                     use-submit.ts, plan-draft.ts, forms, pickers, group-placement.tsx
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts
 ```
 
@@ -107,6 +107,11 @@ would otherwise be copied: `MusclePicker`, `SetLogger`, `EntryEditor`, `Unavaila
 inputs a tracking mode implies, what a progression rule contains, a prescription in one line) all
 live in `@cedo/contract`. An unavailable exercise has no mode, so no inputs: `SetLogger` shows it
 without any, and the day editor gives it an `UnavailableEntry` — what it prescribes, and Remove.
+
+A composite that reads through a query hook is not presentational, so it lives in `src/lib/`
+instead: the exercise picker, and `GroupPlacement` — which group an exercise or plan is in, and
+Move to group, on both detail screens. Where it may go is the server's `canMoveInto`, not a rule
+of its own; a plan the target group could not read is refused by the server, which says why.
 
 Editing a plan follows the same split. How sets resize within an entry's total, what a target change
 applies to, what a new entry prescribes, and whether another day or exercise fits are

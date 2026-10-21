@@ -1012,6 +1012,19 @@ test(
 
       await app.exercise.placement.moveTo('Squad')
       await app.exercise.placement.moveTo('your personal group')
+
+      // A reader is told where the coach's exercise is, and offered nothing to do about it.
+      const theirs = await coach.api.exercises.create(
+        ExerciseCreate.parse({
+          name: unique('Coached '),
+          tracking: 'weight_reps',
+          muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+        }),
+      )
+      await coach.api.exercises.transfer(theirs.id, { toGroupId: coached.id })
+      await page.goto(`/exercises/${theirs.id}`)
+      expect(await app.exercise.placement.owner()).toBe('In Coached')
+      expect(await app.exercise.placement.canMove()).toBe(false)
     })
   },
   E2E_TIMEOUT_MS,

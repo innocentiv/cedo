@@ -421,3 +421,30 @@ describe('what a member may do with a group', () => {
     expect(await mayOf(alice, squad.id)).toEqual({ canManage: true, canLeave: true })
   })
 })
+
+/**
+ * Where a member may move what they edit: into any group they edit — the server takes nothing into
+ * one they only read. Said by the server, so the app offers only those, holding no rule.
+ */
+describe('the groups a member may move things into', () => {
+  const moveInto = async (user: TestUser) =>
+    Object.fromEntries((await groupsOf(user)).map((g) => [g.id, g.canMoveInto]))
+
+  test('their personal group, and a shared group they edit — not one they read', async () => {
+    const squad = expectContract(GroupMembership, (await createGroup(alice, 'Squad')).body)
+    expect(squad.canMoveInto).toBe(true)
+    await addMember(alice, squad.id, 'bob', 'reader')
+
+    expect(await moveInto(alice)).toEqual({
+      [alice.personalGroupId]: true,
+      [squad.id]: true,
+      [h.groupId]: false,
+    })
+    expect((await moveInto(bob))[squad.id]).toBe(false)
+  })
+
+  test('the starter library, for a curator', async () => {
+    await promote(alice)
+    expect((await moveInto(alice))[h.groupId]).toBe(true)
+  })
+})

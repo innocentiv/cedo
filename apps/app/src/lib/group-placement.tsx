@@ -1,16 +1,19 @@
 import { useState } from 'react'
-import { type GroupMembership, groupsToMoveInto } from '@cedo/contract'
-import { Button, FormError, Stack, Text } from '../ui/index.ts'
+import { DEFAULT_GROUP_SLUG, type GroupMembership } from '@cedo/contract'
+import { Button, FormError, Loaded, Stack, Text } from '../ui/index.ts'
 import { useGroups } from '../api/queries.ts'
 import { useSubmit } from './use-submit.ts'
 
-const nameOf = (group: GroupMembership): string =>
-  group.kind === 'personal' ? 'your personal group' : group.name
+const nameOf = (group: GroupMembership): string => {
+  if (group.kind === 'personal') return 'your personal group'
+  return group.slug === DEFAULT_GROUP_SLUG ? 'the starter library' : group.name
+}
 
 /**
- * Which group something is in, and — when you edit it — Move to another you edit. Not asked twice:
- * you edit both groups, so it can always be moved back. A refusal is the server's, shown as it is:
- * a plan goes only where every exercise it uses can be read, and says which cannot.
+ * Which group something is in, and — when you edit it — Move to another the server says you may
+ * move into (`canMoveInto`). Not asked twice: you edit both groups, so it can always be moved back.
+ * A refusal is the server's, shown as it is: a plan goes only where every exercise it uses can be
+ * read, and says which cannot.
  */
 export function GroupPlacement({
   ownerGroupId,
@@ -22,14 +25,35 @@ export function GroupPlacement({
   readonly canEdit: boolean
   readonly move: (toGroupId: string) => Promise<unknown>
   readonly testID: string
-}): React.JSX.Element | null {
+}): React.JSX.Element {
   const groups = useGroups()
+  return (
+    <Loaded query={groups} testID={`${testID}-groups`}>
+      {(mine) => (
+        <Placement
+          owner={mine.find((g) => g.id === ownerGroupId)}
+          targets={canEdit ? mine.filter((g) => g.canMoveInto && g.id !== ownerGroupId) : []}
+          move={move}
+          testID={testID}
+        />
+      )}
+    </Loaded>
+  )
+}
+
+function Placement({
+  owner,
+  targets,
+  move,
+  testID,
+}: {
+  readonly owner: GroupMembership | undefined
+  readonly targets: readonly GroupMembership[]
+  readonly move: (toGroupId: string) => Promise<unknown>
+  readonly testID: string
+}): React.JSX.Element {
   const { submit, busy, error } = useSubmit()
   const [choosing, setChoosing] = useState(false)
-  if (groups.data === undefined) return null
-
-  const owner = groups.data.find((g) => g.id === ownerGroupId)
-  const targets = canEdit ? groupsToMoveInto(groups.data, ownerGroupId) : []
   return (
     <Stack gap="sm">
       {owner === undefined ? null : (
@@ -38,7 +62,7 @@ export function GroupPlacement({
         </Text>
       )}
       {targets.length === 0 ? null : choosing ? (
-        <Stack gap="xs">
+        <Stack gap="xs" testID={`${testID}-targets`}>
           {targets.map((group) => (
             <Button
               key={group.id}
