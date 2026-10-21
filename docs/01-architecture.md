@@ -11,8 +11,8 @@ This is the single most important structural fact about the codebase:
                     ^        ^
                     |        |
             apps/api          apps/app
-      (Elysia, Drizzle,      (Expo: web,
-       services, MCP)         iOS, Android)
+      (Elysia, Drizzle,      (Expo: web today,
+       services, MCP)         native later)
 
               apps/app  --X-->  apps/api
                    NEVER, not even a type
@@ -40,7 +40,7 @@ This is why we do not use Eden Treaty, despite it being Elysia's headline featur
 | --- | --- | --- | --- |
 | `packages/contract` | any | 7.0.2 | Zod schemas, units, pure domain functions, and what each read is built from. Only dependency: `zod`. |
 | `apps/api` | Bun | 7.0.2 | Elysia HTTP API, Drizzle/Postgres, MCP server. |
-| `apps/app` | Expo | 6.0.3 | React Native for web, iOS and Android. |
+| `apps/app` | Expo | 6.0.3 | React Native, built for web. Native builds are not configured yet (#10). |
 
 The TypeScript split is forced: type-aware linting requires TypeScript 7, and Expo will not support
 it until 7.1. See `docs/adr/0007-typescript-version-split.md`.

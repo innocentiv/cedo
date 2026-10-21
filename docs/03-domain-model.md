@@ -152,7 +152,8 @@ media(id, kind, title, payload JSONB, thumbnail_key, created_by, created_at)
 
 `payload` is validated by a Zod discriminated union: `image` (blob key, mime, dimensions, sha256) or
 `video_link` (provider, source URL, external id). Adding `video_upload`, `gif` or `model_3d` later
-is a union extension with **no migration** — the same pattern as `progression`.
+extends that union with no change to `payload`'s column — but `kind` is the Postgres enum
+`media_kind`, so a new kind is a migration adding its value (`ALTER TYPE … ADD VALUE`).
 
 ### Exercises — and how they are measured
 

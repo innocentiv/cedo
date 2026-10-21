@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router'
 import { MUSCLES } from '@cedo/contract'
 import type { OwnableScope } from '@cedo/contract'
 import {
+  Chips,
   Empty,
   Input,
   ListRow,
@@ -12,7 +13,6 @@ import {
   Stack,
   Text,
 } from '../../../src/ui/index.ts'
-import { Chips } from '../../../src/ui/chips.tsx'
 import { useExercises } from '../../../src/api/queries.ts'
 
 const SCOPES: readonly { value: OwnableScope; label: string }[] = [

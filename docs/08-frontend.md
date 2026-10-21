@@ -56,7 +56,9 @@ src/ui/                      the entire visual vocabulary
 src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
 src/lib/                     use-submit.ts, plan-draft.ts, forms, pickers, group-placement.tsx
-e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts
+e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts,
+                             harness.e2e.ts (the harness's own tests), journeys.test.ts (the rules
+                             journeys obey), screens/ (one driver per screen; test ids live here)
 ```
 
 Each tab directory has its own `_layout.tsx` holding a `Stack`, so pushing a detail screen keeps the
@@ -90,6 +92,7 @@ Two constraints found by building it:
 | `Stack` | every layout. There is no other container |
 | `Text` | all text. Variants `title` / `heading` / `body` / `label` / `caption` / `mono` |
 | `Button`, `NavButton` | actions, and actions that navigate |
+| `NavItem` | one tab of the shell's tab bar or sidebar — used only by `app/(app)/_layout.tsx` |
 | `ConfirmButton` | every action that cannot be taken back — delete, revoke, remove, leave — and every transfer to another group, which others feel at once. Asked twice, in the app's own UI, never a browser dialog; a refusal shows beside it. Removing a set from a session in progress is not one: it is logged again in a tap |
 | `PinButton` | pinning what you can see, for its list's "Pinned" filter |
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput` |

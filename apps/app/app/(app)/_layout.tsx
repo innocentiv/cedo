@@ -2,8 +2,7 @@ import { StyleSheet } from 'react-native'
 import { Redirect } from 'expo-router'
 import { TabList, TabSlot, TabTrigger, Tabs } from 'expo-router/ui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { Spinner, color, space, useLayout } from '../../src/ui/index.ts'
-import { NavItem } from '../../src/ui/nav-item.tsx'
+import { NavItem, Spinner, color, space, useLayout } from '../../src/ui/index.ts'
 import { useAuth } from '../../src/auth/auth-provider.tsx'
 
 /**

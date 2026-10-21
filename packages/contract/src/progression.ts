@@ -114,7 +114,7 @@ export interface ProgressionInput {
  *
  * It ADVANCES OR HOLDS, never decreases. Deloading is a judgement call needing context this
  * function does not have (illness, a bad week, form breakdown), so it stays with the user or the
- * AI, acting through `workout_update_plan`.
+ * AI, acting through `workout_save_plan`.
  */
 export function nextTarget(input: ProgressionInput): SetTarget {
   const { rule } = input

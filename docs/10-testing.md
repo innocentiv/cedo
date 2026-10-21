@@ -49,8 +49,9 @@ route — `progression`, reached through `GET /workouts/:id/progression` — is 
 through `treaty(app)` so requests traverse the real
 Elysia lifecycle: validation, the auth macro, the error handler. No socket, no port.
 
-A service's PURE half — rows in, answer out, like `progression/evaluate.ts` or `group/slug.ts` — is
-tested directly beside it, with no database. It is still the service's rule, kept in the API because
+A service's PURE half — rows in, answer out, like `progression/evaluate.ts`, or `slugify` in
+`group/service.ts` (tested by `group/slug.test.ts`) — is tested directly beside it, with no
+database. It is still the service's rule, kept in the API because
 only the API runs it; the contract is for what more than one side needs.
 
 Two things are mandatory in every module:

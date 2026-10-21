@@ -1,7 +1,8 @@
 # cedo
 
-Self-hosted workout tracker. Bun + Elysia + Postgres backend, Expo (React Native for web, iOS,
-Android) frontend, with an MCP server so an AI can operate every entity.
+Self-hosted workout tracker. Bun + Elysia + Postgres backend, Expo (React Native) frontend — shipped
+as a web app today; native iOS and Android builds are not configured yet (#10) — with an MCP server
+so an AI can plan, review and adjust training (`docs/07-mcp.md`).
 
 **Read `docs/01-architecture.md` before writing any code.** The conventions below are load-bearing;
 breaking one produces a codebase that drifts from itself, which is the specific failure this project

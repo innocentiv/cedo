@@ -31,8 +31,9 @@ export const Exercise = z.object({ id: Id, ...exerciseFields, canEdit: z.boolean
 server.registerTool('exercise_create',
   { title: 'Create an exercise', description: '…', inputSchema: ExerciseCreate, annotations: WRITE }, ...)
 
-// 3. UI client — apps/app/src/api/client.ts
-create: (body: ExerciseCreate) => POST('/exercises', Exercise, body)
+// 3. UI client — apps/app/src/api/client.ts. `ExerciseInput` is `z.input<typeof ExerciseCreate>`:
+//    what may be sent, before the schema's defaults fill it in.
+create: (body: ExerciseInput) => POST('/exercises', Exercise, body)
 
 // 4. OpenAPI — apps/api/src/plugins/openapi.ts
 openapi({ mapJsonSchema: { zod: (s) => z.toJSONSchema(s, { io: 'input' }) } })
@@ -97,9 +98,10 @@ for a closed set. `schema.test.ts` asserts the JSON Schema output contains every
 All measurements cross the wire as **integers in base units** — `weightG`, `distanceMm`,
 `durationS`. Never a float, never kilograms.
 
-`units.ts` is the only file permitted to convert. Screens call `formatWeight(g)` to show a value and
-`DIMENSION_FIELDS` (`dimension.ts`) to type one; they never divide by 1000. That is what makes
-imperial support a change to those two files plus a preference, and nothing more.
+`units.ts` is the only file permitted to convert. Screens call `formatWeight(grams, unit)` to show
+a value and `DIMENSION_FIELDS` (`dimension.ts`) to type one; they never divide by 1000. That is how
+pounds arrived: those two files plus the account's `weightUnit`, and nothing more. Imperial
+distances would take the same path.
 
 ## Errors
 

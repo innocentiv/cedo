@@ -11,7 +11,11 @@ src/
   plugins/auth.ts     the `auth` macro — resolves the caller in ONE query
   plugins/openapi.ts  spec generation from Zod
   lib/                error, password, token, keyset (cursors, LIKE escaping), media, storage/
-  modules/<name>/     index.ts (routes) + service.ts (logic) + <name>.test.ts
+  modules/<name>/     index.ts (routes) + service.ts (logic) + <name>.test.ts — a module with
+                      routes. Some have only one half: ownable/, progression/ and review/ are
+                      logic other modules' routes and the MCP tools call; admin/ is routes onto
+                      review/diagnostics.ts. A module grows write*.ts, lifecycle.ts and its pure
+                      parts beside these as it needs them.
 ```
 
 ## Route shape

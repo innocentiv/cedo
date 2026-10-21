@@ -73,7 +73,8 @@ Rules:
 - **Add the index in the same commit as the query that needs it**, and a guard in
   `bun run perf`. See [adr/0018](adr/0018-n1-detection.md).
 - **JSONB columns are typed with `$type<T>()`** and validated by the matching Zod union on read and
-  write. Used for `progression` and `media.payload`, so adding a variant needs no migration.
+  write. Used for `progression` and `media.payload`, so a new variant's shape needs no migration.
+  A new media kind still does: `media.kind` is the Postgres enum `media_kind`.
 
 ## Querying
 

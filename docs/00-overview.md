@@ -52,7 +52,17 @@ those are a person's to do, in the app.
 These are deliberately **not** built. The architecture leaves room for them, but do not implement
 them without being asked:
 
-- **Progress graphs.** The data and indexes exist (`GET /exercises/:id/history`); the charts do not.
+- **An analytics dashboard.** The exercise screen will show one trend — each session's estimated
+  max, or the top set for lifts without weight — and whether the exercise has stalled (#5). Charts
+  beyond that, across exercises or muscles, are not planned.
+- **Periodization** — weeks, blocks, mesocycles, a calendar. A plan is a flat list of days. The
+  evidence gives periodization a small strength edge and no hypertrophy one; turning up matters
+  more. A deload is the AI saving a lighter plan, prompted by the review's signals (#6).
+- **Offline logging.** The app needs the server to log a set. A queue of sets written offline is
+  #9, to be designed first: it meets the one-session-in-progress rule and refused writes.
+- **A native app.** The app is a web app, installable on a phone's home screen once #8 lands. Native
+  iOS and Android builds — with the server address entered at runtime, so one build serves every
+  instance — are #10.
 - **Meal planning** — recipes, ingredients, shopping lists, meal prep. Will reuse the ownable/
   sharing machinery unchanged; see `docs/playbooks/add-entity.md`.
 - **Imperial distances.** Everything is stored metric. Weights already read and are typed in kilograms
