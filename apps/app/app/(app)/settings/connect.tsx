@@ -1,9 +1,7 @@
 import { useState } from 'react'
-import { Linking } from 'react-native'
-import { aiClientConfigs, mcpAddress } from '@cedo/contract'
-import { Button, Card, Field, FormError, Screen, Text } from '../../../src/ui/index.ts'
-import { apiRoot } from '../../../src/api/http.ts'
-import { useCreateToken } from '../../../src/api/queries.ts'
+import { aiClientConfigs } from '@cedo/contract'
+import { Button, Card, Field, FormError, NavButton, Screen, Text } from '../../../src/ui/index.ts'
+import { useCreateToken, useMcpAddress } from '../../../src/api/queries.ts'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 
 /** Every other client's setup, beside the two pasted here. */
@@ -42,7 +40,7 @@ export default function ConnectAi(): React.JSX.Element {
   const { submit, busy, error } = useSubmit()
   const [token, setToken] = useState<string | null>(null)
 
-  const address = mcpAddress(apiRoot())
+  const address = useMcpAddress()
   const configs = aiClientConfigs(address, token ?? TOKEN_PLACEHOLDER)
 
   const add = () => {
@@ -77,17 +75,14 @@ export default function ConnectAi(): React.JSX.Element {
 
       <Snippet label="Claude Code" text={configs.claudeCode} testID="snippet-claude-code" />
       <Snippet
-        label="Other MCP clients (JSON configuration)"
+        label="Cursor, and other clients that read an mcpServers file"
         text={configs.json}
         testID="snippet-json"
       />
 
-      <Button
+      <NavButton
         title="Setup for other clients"
-        variant="ghost"
-        onPress={() => {
-          void Linking.openURL(OTHER_CLIENTS_URL)
-        }}
+        href={OTHER_CLIENTS_URL}
         testID="connect-other-clients"
       />
     </Screen>

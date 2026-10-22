@@ -1,6 +1,11 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test'
-import { z } from 'zod'
-import { ExerciseCreate, LogSetInput, type TrackingMode, WorkoutPlanInput } from '@cedo/contract'
+import {
+  ExerciseCreate,
+  LogSetInput,
+  McpClientConfig,
+  type TrackingMode,
+  WorkoutPlanInput,
+} from '@cedo/contract'
 import {
   E2E_STARTUP_TIMEOUT_MS,
   E2E_TIMEOUT_MS,
@@ -514,11 +519,16 @@ test(
       const shown = await app.settings.connectAi()
       // This page's origin, through the proxy — as Caddy serves it, never a build-time host.
       expect(shown.address).toBe(`${shown.origin}/api/mcp`)
-      const { url, headers } = PastedConfig.parse(JSON.parse(shown.json ?? '')).mcpServers.cedo
+      const server = McpClientConfig.parse(JSON.parse(shown.json ?? '')).mcpServers['cedo']
+      if (server === undefined) throw new Error('No cedo server in the JSON shown')
+      const { url, headers } = server
       expect(url).toBe(`${shown.origin}/api/mcp`)
-      const token = headers.Authorization.replace(/^Bearer /u, '')
+      const token = /^Bearer (\S+)$/u.exec(headers['Authorization'] ?? '')?.[1]
+      expect(token).toBeDefined()
+      // Spelled out, not rebuilt with the contract's `aiClientConfigs`: what someone pastes is
+      // checked against what it should say, not against the code that wrote it.
       expect(shown.claudeCode).toBe(
-        `claude mcp add --transport http cedo ${url} --header "Authorization: Bearer ${token}"`,
+        `claude mcp add --transport http --scope user cedo ${url} --header "Authorization: Bearer ${token}"`,
       )
 
       // Pasted into a client: what it sends, from outside the page, reaches the tools.
@@ -539,16 +549,6 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
-
-/** The JSON configuration as a client reads it: one server, its URL and its headers. */
-const PastedConfig = z.object({
-  mcpServers: z.object({
-    cedo: z.object({
-      url: z.string(),
-      headers: z.object({ Authorization: z.string().startsWith('Bearer ') }),
-    }),
-  }),
-})
 
 test(
   'a credential revoked mid-session returns you to the login screen',

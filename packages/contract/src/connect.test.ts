@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { aiClientConfigs, mcpAddress } from './connect.ts'
+import { McpClientConfig, aiClientConfigs, mcpAddress } from './connect.ts'
 
 /** What "Connect your AI" hands a self-hoster to paste: this instance's MCP address, and a token. */
 describe('connecting an AI', () => {
@@ -9,15 +9,16 @@ describe('connecting an AI', () => {
     expect(mcpAddress('http://192.168.1.20:8080/api')).toBe('http://192.168.1.20:8080/api/mcp')
   })
 
-  test('Claude Code adds it in one line, the token in its header', () => {
+  /** For the user, not the folder it was typed in: `local`, the default, is that one project only. */
+  test('Claude Code adds it in one line, for the user, the token in its header', () => {
     expect(aiClientConfigs('https://gym.example/api/mcp', 'cedo_abc').claudeCode).toBe(
-      'claude mcp add --transport http cedo https://gym.example/api/mcp --header "Authorization: Bearer cedo_abc"',
+      'claude mcp add --transport http --scope user cedo https://gym.example/api/mcp --header "Authorization: Bearer cedo_abc"',
     )
   })
 
   test('any other client reads the same in JSON', () => {
     const { json } = aiClientConfigs('https://gym.example/api/mcp', 'cedo_abc')
-    expect(JSON.parse(json)).toEqual({
+    expect(McpClientConfig.parse(JSON.parse(json))).toEqual({
       mcpServers: {
         cedo: {
           type: 'http',

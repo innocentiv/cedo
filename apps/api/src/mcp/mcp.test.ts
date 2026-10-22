@@ -4,6 +4,7 @@ import {
   Exercise,
   GroupMembership,
   MCP_SERVER_NAME,
+  McpClientConfig,
   MUSCLE_SLUGS,
   PersonalAccessTokenCreated,
   aiClientConfigs,
@@ -127,7 +128,7 @@ describe('authentication', () => {
       body: JSON.stringify({ name: 'Your AI', expiresInDays: null }),
     })
     const { token } = expectContract(PersonalAccessTokenCreated, created.body)
-    const config = ClientConfig.parse(
+    const config = McpClientConfig.parse(
       JSON.parse(aiClientConfigs(mcpAddress('http://localhost'), token).json),
     )
     const server = config.mcpServers[MCP_SERVER_NAME]
@@ -147,13 +148,6 @@ describe('authentication', () => {
     expect(response.status).toBe(200)
     expect(await response.text()).toContain('training_review')
   })
-})
-
-const ClientConfig = z.object({
-  mcpServers: z.record(
-    z.string(),
-    z.object({ url: z.string(), headers: z.record(z.string(), z.string()) }),
-  ),
 })
 
 describe('the published tool list', () => {

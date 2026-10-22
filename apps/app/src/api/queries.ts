@@ -34,9 +34,9 @@ import type {
   WorkoutSessionSummary,
   WorkoutSummary,
 } from '@cedo/contract'
-import { type Read, affectedBy } from '@cedo/contract'
+import { type Read, affectedBy, mcpAddress } from '@cedo/contract'
 import { ApiError } from './errors.ts'
-import { api } from './http.ts'
+import { api, apiRoot } from './http.ts'
 import { keys } from './query-client.ts'
 
 /**
@@ -259,6 +259,9 @@ export const useLogSet = (sessionId: string) =>
 
 export const useRemoveLog = (sessionId: string) =>
   useWriteTo('session', async (logId: string) => await api.sessions.removeLog(sessionId, logId))
+
+/** This instance's MCP address, as an AI's client must be told it. Not a read: nothing to fetch. */
+export const useMcpAddress = (): string => mcpAddress(apiRoot())
 
 export const useCreateToken = () =>
   useWriteTo('token', async (input: PersonalAccessTokenCreate) => await api.tokens.create(input))

@@ -91,7 +91,7 @@ Two constraints found by building it:
 | `Screen` | the outermost element of every route: safe area, background, padding, optional footer |
 | `Stack` | every layout. There is no other container |
 | `Text` | all text. Variants `title` / `heading` / `body` / `label` / `caption` / `mono` |
-| `Button`, `NavButton` | actions, and actions that navigate |
+| `Button`, `NavButton` | actions, and actions that navigate — in the app, or out of it to an absolute URL |
 | `NavItem` | one tab of the shell's tab bar or sidebar — used only by `app/(app)/_layout.tsx` |
 | `ConfirmButton` | every action that cannot be taken back — delete, revoke, remove, leave — and every transfer to another group, which others feel at once. Asked twice, in the app's own UI, never a browser dialog; a refusal shows beside it. Removing a set from a session in progress is not one: it is logged again in a tap |
 | `PinButton` | pinning what you can see, for its list's "Pinned" filter |

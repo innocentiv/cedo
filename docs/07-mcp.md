@@ -26,14 +26,13 @@ configurations below with the two filled in, ready to paste. They are built by t
 `connect.ts`, and the API mounts its server at the same `MCP_PATH`, so the address cannot drift
 from the route.
 
-Claude Code:
+**Claude Code** — for the user, so every project sees it (`local`, the default, is one folder only):
 
 ```bash
-claude mcp add --transport http cedo https://<host>/api/mcp --header "Authorization: Bearer <token>"
+claude mcp add --transport http --scope user cedo https://<host>/api/mcp --header "Authorization: Bearer <token>"
 ```
 
-Any other client that reads an `mcpServers` JSON configuration (Claude Desktop through a remote
-connector, Cursor, VS Code, …):
+**Clients that read an `mcpServers` file** — Claude Code's `.mcp.json`, Cursor's `mcp.json`:
 
 ```json
 {
@@ -47,7 +46,23 @@ connector, Cursor, VS Code, …):
 }
 ```
 
-The token travels only in the `Authorization` header, so a client must be able to send one.
+**VS Code** — the same server under a top-level `servers` key, in `.vscode/mcp.json`:
+
+```json
+{
+  "servers": {
+    "cedo": {
+      "type": "http",
+      "url": "https://<host>/api/mcp",
+      "headers": { "Authorization": "Bearer <token>" }
+    }
+  }
+}
+```
+
+The token travels only in the `Authorization` header, so a client must be able to send one. A client
+that connects a remote server by URL and OAuth alone — Claude Desktop's and claude.ai's custom
+connectors — cannot connect yet: this server issues no OAuth tokens.
 
 A **personal access token**, not a session token. The two are deliberately not interchangeable: a
 PAT is long-lived and pasted into a client's config, a session belongs to a browser. Passing a

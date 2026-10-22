@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 /**
  * Connecting an AI: the instance brings no model of its own (no API key on the server, nothing sent
  * to a provider), so the user brings theirs, through MCP — the single AI surface. What it needs is
@@ -17,29 +19,40 @@ export function mcpAddress(apiRoot: string): string {
   return `${apiRoot.replace(/\/$/u, '')}${MCP_PATH}`
 }
 
+/**
+ * The `mcpServers` configuration Claude Code's `.mcp.json` and Cursor read: each server by name,
+ * reached over HTTP with its headers. What the JSON snippet is, and what a test reads it back as.
+ */
+export const McpClientConfig = z.object({
+  mcpServers: z.record(
+    z.string(),
+    z.object({
+      type: z.literal('http'),
+      url: z.string(),
+      headers: z.record(z.string(), z.string()),
+    }),
+  ),
+})
+export type McpClientConfig = z.output<typeof McpClientConfig>
+
 export interface AiClientConfigs {
   /** A `claude mcp add` command, on one line so it pastes into any shell. */
   readonly claudeCode: string
-  /** The `mcpServers` JSON most other clients read. */
+  /** An `McpClientConfig`, as JSON to paste. */
   readonly json: string
 }
 
 export function aiClientConfigs(address: string, token: string): AiClientConfigs {
   const authorization = `Bearer ${token}`
+  const config: McpClientConfig = {
+    mcpServers: {
+      [MCP_SERVER_NAME]: { type: 'http', url: address, headers: { Authorization: authorization } },
+    },
+  }
   return {
-    claudeCode: `claude mcp add --transport http ${MCP_SERVER_NAME} ${address} --header "Authorization: ${authorization}"`,
-    json: JSON.stringify(
-      {
-        mcpServers: {
-          [MCP_SERVER_NAME]: {
-            type: 'http',
-            url: address,
-            headers: { Authorization: authorization },
-          },
-        },
-      },
-      null,
-      2,
-    ),
+    // `--scope user`: every project, as a self-hoster expects, not only the folder it was typed in.
+    // The header last, because `--header` takes every argument after it.
+    claudeCode: `claude mcp add --transport http --scope user ${MCP_SERVER_NAME} ${address} --header "Authorization: ${authorization}"`,
+    json: JSON.stringify(config, null, 2),
   }
 }
