@@ -185,6 +185,30 @@ everyone self-hosting.
 
 Two volumes hold everything: `pgdata` and `uploads`.
 
+**Nightly, on the server.** `scripts/backup.sh` writes the database as a `pg_dump` and the uploads
+as an archive, into one dated directory under `~/backups/cedo` (`BACKUP_DIR`). It keeps 14 days
+(`BACKUP_KEEP_DAYS`). Each backup is then restored into a scratch database beside the live one, and
+its row counts are compared with the live database's, table by table. A backup that has never been
+restored is a hope. A failed check keeps the backup and fails the run, where the journal shows it.
+
+A systemd **user** timer runs it at 03:30. It's a user unit, not a system one, because under SELinux
+a system service may not run a script in a home directory:
+
+```bash
+loginctl enable-linger "$USER"                 # user timers run without anyone logged in
+systemctl --user link ~/cedo/scripts/systemd/cedo-backup.service ~/cedo/scripts/systemd/cedo-backup.timer
+systemctl --user enable --now cedo-backup.timer
+systemctl --user start cedo-backup.service     # one now, to see it work
+journalctl --user -u cedo-backup               # every run, and why one failed
+```
+
+These backups stay on the server. They guard against a bad migration or a mistake, not against
+losing the server: copy `~/backups/cedo` elsewhere for that.
+
+To restore one, use the commands below with its `cedo.dump` and `uploads.tar.gz`.
+
+By hand, the same two steps:
+
 ```bash
 # Backup
 docker compose exec -T db pg_dump -U cedo -Fc cedo > cedo-$(date +%F).dump

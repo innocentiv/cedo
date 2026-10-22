@@ -1,0 +1,15 @@
+# Runs scripts/backup.sh once. Started by cedo-backup.timer; a USER unit of the account that owns
+# the checkout, which needs only docker group membership. A user unit rather than a system one:
+# under SELinux, a system service may not execute a script in a home directory.
+#
+# Installed by docs/09-deployment.md, "Backup and restore". Its last run:
+#   journalctl --user -u cedo-backup
+[Unit]
+Description=Back up cedo: database dump, uploads, and a restore check
+
+[Service]
+Type=oneshot
+ExecStart=%h/cedo/scripts/backup.sh
+# Low priority: a backup must never slow down the site, or the other services on the host.
+Nice=10
+IOSchedulingClass=idle

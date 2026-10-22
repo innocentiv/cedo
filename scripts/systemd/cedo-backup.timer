@@ -1,0 +1,11 @@
+# Nightly, when nobody trains. `Persistent`: a night the server was down runs at the next boot.
+[Unit]
+Description=Back up cedo nightly
+
+[Timer]
+OnCalendar=*-*-* 03:30:00
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
