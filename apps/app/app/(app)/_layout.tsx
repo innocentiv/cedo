@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { StyleSheet } from 'react-native'
 import { Redirect } from 'expo-router'
 import { TabList, TabSlot, TabTrigger, Tabs } from 'expo-router/ui'
@@ -14,15 +13,8 @@ import {
   useLayout,
 } from '../../src/ui/index.ts'
 import { useAuth } from '../../src/auth/auth-provider.tsx'
+import { useSubmit } from '../../src/lib/use-submit.ts'
 
-/**
- * The signed-in shell.
- *
- * ONE navigator for both form factors. The headless `Tabs` from `expo-router/ui` lets the chrome be
- * anything, so the same four triggers render as a bottom bar on a phone and a left sidebar on a
- * tablet. Swapping navigators on a width change would remount every screen and throw away scroll
- * position and half-typed input mid-resize. See docs/08-frontend.md.
- */
 /**
  * Signed in, but the server could not be asked who by: no signal, or the server down. The session
  * is kept (src/auth/session.ts), so getting back in is a tap, never a password.
@@ -34,7 +26,7 @@ function Unreachable({
   readonly retry: () => Promise<void>
   readonly signOut: () => Promise<void>
 }): React.JSX.Element {
-  const [busy, setBusy] = useState(false)
+  const { submit, busy } = useSubmit()
   return (
     <Screen title="Can’t reach your server" testID="unreachable-screen">
       <Text tone="muted">
@@ -44,10 +36,7 @@ function Unreachable({
         title="Try again"
         busy={busy}
         onPress={() => {
-          setBusy(true)
-          void retry().finally(() => {
-            setBusy(false)
-          })
+          void submit(retry)
         }}
         testID="unreachable-retry"
       />
@@ -64,6 +53,14 @@ function Unreachable({
   )
 }
 
+/**
+ * The signed-in shell.
+ *
+ * ONE navigator for both form factors. The headless `Tabs` from `expo-router/ui` lets the chrome be
+ * anything, so the same four triggers render as a bottom bar on a phone and a left sidebar on a
+ * tablet. Swapping navigators on a width change would remount every screen and throw away scroll
+ * position and half-typed input mid-resize. See docs/08-frontend.md.
+ */
 const TABS = [
   { name: 'today', href: '/today', label: 'Today' },
   { name: 'workouts', href: '/workouts', label: 'Workouts' },

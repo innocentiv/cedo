@@ -300,8 +300,9 @@ no third-party scripts; moving to an httpOnly cookie touches this file and the l
 the stored token has not been read yet, and a router that treats "not known yet" as "signed out"
 flashes the login screen at a returning user for one frame before bouncing them back.
 
-`unreachable` is a stored token the server could not be asked about: no signal, or the server down
-behind its proxy (a 5xx). Nobody refused it, so it is kept. The signed-in shell shows "Can't reach
+`unreachable` is a stored token the server could not be asked about: no signal (the transport's
+`NetworkError` — `fetch`'s own rejection is a bare `TypeError`, which a bug throws too), or the server
+down behind its proxy (a 5xx, said in the console). Nobody refused it, so it is kept. The signed-in shell shows "Can't reach
 your server", with **Try again** and **Sign out**. It used to be cleared like a rejected one, which
 the installed app made the ordinary case: opened at the gym without a signal, it signed its user out
 into needing a password, and a signal, to get back in. Only a 401 ends a session.

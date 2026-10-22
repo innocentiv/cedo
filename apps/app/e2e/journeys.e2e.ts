@@ -1296,8 +1296,10 @@ test(
 )
 
 /**
- * What a browser asks of a site before it offers to install it (Chrome's installability criteria;
- * iOS reads the apple-touch tags instead): a name, a start, a display that is an app's, and icons.
+ * What Chrome asks of a manifest before it offers to install a site, as its installability criteria
+ * document them: a name, a start, a display that is an app's, and icons. A copy of the rules, not
+ * Chrome: this WebView is WebKit, which never decides whether to offer an install. What it does
+ * prove for real is the rest — the files served, and a worker registered over the whole app.
  */
 const Installable = z.object({
   name: z.string().min(1),
@@ -1309,7 +1311,7 @@ const Installable = z.object({
 })
 
 test(
-  'installable: a manifest a browser accepts, and a worker that keeps the shell',
+  'installable: a manifest meeting Chrome’s criteria, its icons served, a worker over the app',
   async () => {
     await withApp('installable', async (page) => {
       const app = screens(page)
@@ -1367,7 +1369,8 @@ test(
         // The token the page kept still works: the API itself is up, only the site is cut.
         const { user } = await (await page.client()).auth.me()
         expect(user.username).toStartWith('gym')
-      }, // Asking the server who the token is — the one request a cut network must fail.
+      },
+      // Asking the server who the token is: the one request a cut network must fail.
       { allowErrors: [/\[network\] Load failed/u] },
     )
   },

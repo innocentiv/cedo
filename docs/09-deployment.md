@@ -63,10 +63,13 @@ and needs the network every time. Put the instance behind the HTTPS you already 
 proxy on your NAS, Tailscale Serve, or a tunnel. Caddy serves plain HTTP on port 80 inside the
 compose network, and leaves TLS to that front door.
 
-- **iPhone and iPad (Safari):** open the instance, tap **Share**, then **Add to Home Screen**. In
-  another browser on iOS, look for the same item in its share menu.
-- **Android (Chrome):** open the instance and tap **Install** when it is offered, or **⋮ → Add to
-  Home screen** (on some versions, **Install app**).
+- **iPhone and iPad (Safari):** open the instance and tap **Share** — on iOS 26, behind the **⋯**
+  button beside the address. Then **Add to Home Screen** (under **View More** if it is not listed),
+  leave **Open as Web App** on, and tap **Add**. Other browsers on iOS put the same item in their
+  share menu.
+- **Android (Chrome):** open the instance and tap **Install** when it is offered. Otherwise use
+  **⋮ → Add to Home screen**, and choose **Install** rather than **Create shortcut**: a shortcut is
+  only a bookmark, and opens in the browser.
 - **Desktop (Chrome, Edge):** the install icon at the end of the address bar.
 
 Sign in once inside the installed app: on iOS it keeps its own storage, apart from Safari's.
@@ -181,6 +184,8 @@ notes specific to that box:
 ```bash
 curl -s localhost:8080/api/health                       # {"ok":true,"db":true}
 curl -s localhost:8080/api/openapi                      # the Scalar UI, generated from the contract
+curl -sI localhost:8080/sw.js | grep -i content-type    # text/javascript — else the app never installs
+curl -sI localhost:8080/manifest.webmanifest | grep -i content-type   # application/manifest+json
 open http://localhost:8080                              # register, browse, build, log
 ```
 

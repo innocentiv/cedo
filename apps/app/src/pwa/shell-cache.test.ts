@@ -142,6 +142,51 @@ describe('opening the app', () => {
     expect(cache.entries.has(bundleOf('entry-3'))).toBe(true)
   })
 
+  /**
+   * Two openings at once — two tabs — both served the kept document, each refresh finishing after
+   * another deployment: the second's "before" is the first's new document, not what either page was
+   * served. Dropping that bundle leaves both pages asking for a file the image no longer has.
+   */
+  test('two openings at once never drop the bundle either was served', async () => {
+    const { net, cache, shell } = device('entry-1')
+    await precache(shell)
+    const answers: ((bundle: string) => void)[] = []
+    const slow: Shell = {
+      ...shell,
+      fetch: async (path) =>
+        path === '/'
+          ? await new Promise<Response>((resolve) => {
+              answers.push((bundle) => {
+                resolve(new Response(page(bundle)))
+              })
+            })
+          : await net.fetch(path),
+    }
+    const first = respond('shell', '/', slow)
+    const second = respond('shell', '/', slow)
+    expect(await (await first.response).text()).toContain('entry-1')
+    expect(await (await second.response).text()).toContain('entry-1')
+
+    net.state.bundle = 'entry-2'
+    answers[0]?.('entry-2')
+    await first.done
+    net.state.bundle = 'entry-3'
+    answers[1]?.('entry-3')
+    await second.done
+    expect(cache.entries.has(bundleOf('entry-1'))).toBe(true)
+  })
+
+  /** A cache that cannot be read is no reason to fail an opening the network can answer. */
+  test('a cache that cannot be read falls back to the network', async () => {
+    const { shell } = device('entry-1')
+    const broken: Shell = {
+      ...shell,
+      store: async () => await Promise.reject(new Error('QuotaExceededError')),
+    }
+    const opened = respond('shell', '/', broken)
+    expect(await (await opened.response).text()).toContain('entry-1')
+  })
+
   test('the first opening, with nothing kept, is the network’s, and is kept', async () => {
     const { cache, shell } = device('entry-1')
     const opened = respond('shell', '/', shell)

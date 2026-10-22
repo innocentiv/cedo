@@ -77,8 +77,21 @@ export function respond(route: Exclude<Route, 'network'>, path: string, shell: S
     return { response, done: response.then(ignore, ignore) }
   }
   const fetched = shell.fetch(path)
-  const done = fetched.then(async (response) => await keepShell(response.clone(), shell), ignore)
-  const kept = shell.store().then(async (store) => await store.match(SHELL_KEY))
+  // Copied the moment it arrives: on a first opening the page reads the original straight away.
+  const toKeep = fetched.then((response) => response.clone())
+  // A cache that cannot be read is no reason to fail an opening the network can answer.
+  const kept = shell
+    .store()
+    .then(async (store) => await store.match(SHELL_KEY))
+    .catch(ignore)
+  // What this page is served, read from a copy before the page reads the original.
+  const served = kept.then(async (copy) =>
+    copy === undefined ? [] : buildAssetsOf(await copy.clone().text()),
+  )
+  // Keeping is best effort: the next opening tries again.
+  const done = Promise.all([toKeep, served])
+    .then(async ([response, names]) => await keepShell(response, shell, names))
+    .catch(ignore)
   return { response: kept.then(async (copy) => copy ?? (await fetched)), done }
 }
 
@@ -95,10 +108,15 @@ async function fromBuild(path: string, shell: Shell): Promise<Response> {
 
 /**
  * Keeps a document only once its bundle is kept, so what is kept always boots — and never an error
- * page: a proxy's 502 while the app restarts is not the app. Then drops every bundle neither this
- * document nor the one it replaces names.
+ * page: a proxy's 502 while the app restarts is not the app. Then drops every bundle named neither
+ * by this document, nor by the one it replaces, nor by the one the opening was `served` — which,
+ * with two openings at once, is not the one it replaces.
  */
-async function keepShell(response: Response, shell: Shell): Promise<void> {
+async function keepShell(
+  response: Response,
+  shell: Shell,
+  served: readonly string[] = [],
+): Promise<void> {
   if (!response.ok) return
   const store = await shell.store()
   const html = await response.clone().text()
@@ -109,6 +127,7 @@ async function keepShell(response: Response, shell: Shell): Promise<void> {
   const before = await store.match(SHELL_KEY)
   const named = new Set([
     ...assets,
+    ...served,
     ...(before === undefined ? [] : buildAssetsOf(await before.text())),
   ])
   await store.put(SHELL_KEY, response)

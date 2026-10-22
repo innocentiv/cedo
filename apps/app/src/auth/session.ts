@@ -1,5 +1,5 @@
 import type { Me, WeightUnit } from '@cedo/contract'
-import { ApiError } from '../api/errors.ts'
+import { ApiError, NetworkError } from '../api/errors.ts'
 
 /**
  * Who is signed in on this device, and every rule about it — outside React, so each is unit-tested
@@ -138,9 +138,11 @@ async function restoreFrom(held: Held, store: TokenStore, auth: () => SessionAut
     if (reading === held.generation()) held.set({ status: 'signed-in', me: identity })
   } catch (error) {
     if (reading !== held.generation()) return
-    // Nobody refused the token: no signal, or the server down behind its proxy. Kept, quietly —
-    // an installed app opened at the gym is the ordinary case.
-    if (unreachable(error)) {
+    // Nobody refused the token, so it is kept. No signal is the ordinary case for an installed app
+    // opened at the gym, so quietly; a server error is the server's, and said — a broken
+    // `/auth/me` must not pass for a bad signal.
+    if (error instanceof NetworkError || (error instanceof ApiError && error.status >= 500)) {
+      if (error instanceof ApiError) console.error(error)
       held.set(UNREACHABLE)
       return
     }
@@ -151,10 +153,6 @@ async function restoreFrom(held: Held, store: TokenStore, auth: () => SessionAut
 }
 
 const UNREACHABLE: SessionSnapshot = { status: 'unreachable', me: null }
-
-/** `fetch` rejects with a TypeError when nothing answers; a 5xx is the server, not the credential. */
-const unreachable = (error: unknown): boolean =>
-  error instanceof TypeError || (error instanceof ApiError && error.status >= 500)
 
 /**
  * `auth` is read lazily: the API sends this session's token, so the two are made from each other.

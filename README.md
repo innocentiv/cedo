@@ -32,8 +32,9 @@ Details and backup instructions: **[docs/09-deployment.md](docs/09-deployment.md
 Served over HTTPS (behind your NAS's reverse proxy, Tailscale Serve, or a tunnel), the app installs
 like a native one, and opens even without a signal:
 
-- **iPhone / iPad:** in Safari, **Share → Add to Home Screen**.
-- **Android:** in Chrome, **Install** when offered, or **⋮ → Add to Home screen**.
+- **iPhone / iPad:** in Safari, **Share** (on iOS 26, behind the **⋯** button) **→ Add to Home
+  Screen**.
+- **Android:** in Chrome, **Install** when offered, or **⋮ → Add to Home screen → Install**.
 
 Over plain `http://` on your network it still works in the browser, but it can't keep itself for
 offline use. Details are in [docs/09-deployment.md](docs/09-deployment.md#installing-the-app).

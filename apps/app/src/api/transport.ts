@@ -1,6 +1,6 @@
 import { ApiError as ApiErrorSchema } from '@cedo/contract'
 import type { z } from 'zod'
-import { ApiError, ContractDriftError } from './errors.ts'
+import { ApiError, ContractDriftError, NetworkError } from './errors.ts'
 
 /**
  * One request to the API, its response parsed with the SAME contract schema the API validated it
@@ -74,6 +74,8 @@ export function transport(config: TransportConfig): SendRequest {
       method,
       headers,
       ...(body === null ? {} : { body }),
+    }).catch((error: unknown) => {
+      throw new NetworkError(path, { cause: error })
     })
 
     if (!response.ok) {

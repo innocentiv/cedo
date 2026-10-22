@@ -1,6 +1,6 @@
 import { describe, expect, spyOn, test } from 'bun:test'
 import type { Me } from '@cedo/contract'
-import { ApiError } from '../api/errors.ts'
+import { ApiError, NetworkError } from '../api/errors.ts'
 import { type SessionAuth, type TokenStore, createSession } from './session.ts'
 
 /**
@@ -126,7 +126,7 @@ describe('restoring a session at startup', () => {
     const alice = me('alice')
     const store = aStore('a')
     const server = {
-      answer: async (): Promise<Me> => await Promise.reject(new TypeError('Load failed')),
+      answer: async (): Promise<Me> => await Promise.reject(new NetworkError('/auth/me')),
     }
     const session = createSession({
       store,
@@ -138,14 +138,38 @@ describe('restoring a session at startup', () => {
     expect(store.held()).toBe('a')
     expect(session.token()).toBe('a')
 
-    server.answer = async () =>
-      await Promise.reject(new ApiError(502, 'internal', '/auth/me failed with 502', null))
-    await session.restore()
-    expect(session.snapshot().status).toBe('unreachable')
-
     server.answer = async () => alice
     await session.restore()
     expect(session.snapshot()).toEqual({ status: 'signed-in', me: alice })
+  })
+
+  /** A server error is the server's: the token kept — and said, so a broken `/auth/me` is seen. */
+  test('with the server failing, kept and unreachable — and said', async () => {
+    const store = aStore('a')
+    const session = createSession({
+      store,
+      auth: () => ({
+        ...anAuth({}, session.token, session.rejected),
+        me: async () =>
+          await Promise.reject(new ApiError(502, 'internal', '/auth/me failed with 502', null)),
+      }),
+    })
+    expect(await errorsDuring(session.restore)).not.toEqual([])
+    expect(session.snapshot().status).toBe('unreachable')
+    expect(store.held()).toBe('a')
+  })
+
+  /** A bug in the client is not a lost signal: said, and not mistaken for one. */
+  test('with a TypeError of its own, signed out — and said', async () => {
+    const session = createSession({
+      store: aStore('a'),
+      auth: () => ({
+        ...anAuth({}, session.token, session.rejected),
+        me: async () => await Promise.reject(new TypeError('me is not a function')),
+      }),
+    })
+    expect(await errorsDuring(session.restore)).not.toEqual([])
+    expect(session.snapshot().status).toBe('signed-out')
   })
 
   /** Regression (52260d8): an unguarded read left the app on the boot spinner forever. */

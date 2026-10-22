@@ -2,7 +2,7 @@ import type { z } from 'zod'
 import type { ErrorCode, ErrorDetail } from '@cedo/contract'
 
 /**
- * The two ways a request can fail that a screen may need to tell apart. Thrown by `transport.ts`,
+ * The ways a request can fail that a screen may need to tell apart. Thrown by `transport.ts`,
  * kept apart from it because they are a contract of their own: `useSubmit` and every error boundary
  * branch on them.
  */
@@ -25,6 +25,18 @@ export class ApiError extends Error {
     this.status = status
     this.code = code
     this.details = details
+  }
+}
+
+/**
+ * Nothing answered: no signal, or no server at that address. `fetch`'s own rejection is a bare
+ * TypeError, which a bug throws too — so the transport says this instead, and a lost signal can be
+ * told from a broken client (`session.ts` keeps the session through one, and says the other).
+ */
+export class NetworkError extends Error {
+  constructor(path: string, options?: ErrorOptions) {
+    super(`${path}: no answer from the server`, options)
+    this.name = 'NetworkError'
   }
 }
 

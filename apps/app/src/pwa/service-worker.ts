@@ -24,6 +24,8 @@ interface WorkerScope {
   }
 }
 
+// The one cast: under the DOM's types `globalThis` is a window. Bundled alone as `sw.js`, it is the
+// worker scope — the interfaces above are the part of it this file uses.
 const worker = globalThis as unknown as WorkerScope
 
 const shell: Shell = {
@@ -34,7 +36,11 @@ const shell: Shell = {
       put: async (path, response) => {
         await cache.put(path, response)
       },
-      keys: async () => (await cache.keys()).map((request) => new URL(request.url).pathname),
+      keys: async () =>
+        (await cache.keys()).map((request) => {
+          const url = new URL(request.url)
+          return url.pathname + url.search
+        }),
       delete: async (path) => await cache.delete(path),
     }
   },
@@ -60,8 +66,9 @@ worker.addEventListener('activate', (event) => {
 worker.addEventListener('fetch', (event) => {
   const route = routeOf(event.request, worker.location.origin)
   if (route === 'network') return
+  // By path and query: kept build output is matched exactly as it was asked for.
   const url = new URL(event.request.url)
-  const answer = respond(route, route === 'shell' ? url.pathname + url.search : url.pathname, shell)
+  const answer = respond(route, url.pathname + url.search, shell)
   event.respondWith(answer.response)
   event.waitUntil(answer.done)
 })
