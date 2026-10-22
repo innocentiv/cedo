@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test'
+import { z } from 'zod'
 import { ExerciseCreate, LogSetInput, type TrackingMode, WorkoutPlanInput } from '@cedo/contract'
 import {
   E2E_STARTUP_TIMEOUT_MS,
@@ -502,6 +503,52 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+test(
+  'connecting an AI: the address and a token, ready to paste, and they reach the MCP server',
+  async () => {
+    await withApp('connect-ai', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('ai'))
+
+      const shown = await app.settings.connectAi()
+      // This page's origin, through the proxy — as Caddy serves it, never a build-time host.
+      expect(shown.address).toBe(`${shown.origin}/api/mcp`)
+      const { url, headers } = PastedConfig.parse(JSON.parse(shown.json ?? '')).mcpServers.cedo
+      expect(url).toBe(`${shown.origin}/api/mcp`)
+      const token = headers.Authorization.replace(/^Bearer /u, '')
+      expect(shown.claudeCode).toBe(
+        `claude mcp add --transport http cedo ${url} --header "Authorization: Bearer ${token}"`,
+      )
+
+      // Pasted into a client: what it sends, from outside the page, reaches the tools.
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          ...headers,
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+      })
+      expect(response.status).toBe(200)
+      expect(await response.text()).toContain('training_review')
+      await app.settings.openTokens()
+      expect(await app.settings.tokenListText()).toContain('Your AI')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/** The JSON configuration as a client reads it: one server, its URL and its headers. */
+const PastedConfig = z.object({
+  mcpServers: z.object({
+    cedo: z.object({
+      url: z.string(),
+      headers: z.object({ Authorization: z.string().startsWith('Bearer ') }),
+    }),
+  }),
+})
 
 test(
   'a credential revoked mid-session returns you to the login screen',

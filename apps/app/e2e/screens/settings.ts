@@ -24,6 +24,36 @@ export const settings = (page: Page) => ({
     await page.waitFor('token-secret')
     return await page.text('token-secret')
   },
+  /**
+   * From the Settings tab to "Connect your AI", creates the token there, and returns what the
+   * screen shows to paste — with the page's own origin, which the address must be under.
+   */
+  connectAi: async (): Promise<{
+    readonly origin: string
+    readonly address: string | null
+    readonly claudeCode: string | null
+    readonly json: string | null
+  }> => {
+    await nav(page).tab('settings')
+    await page.waitFor('settings-screen')
+    await page.click('[data-testid="connect-ai"]')
+    await page.waitFor('connect-screen')
+    await page.click('[data-testid="connect-create-token"]')
+    await page.waitFor('connect-token-created')
+    return {
+      origin: String(await page.evaluate('location.origin')),
+      address: await page.text('mcp-address'),
+      claudeCode: await page.text('snippet-claude-code'),
+      json: await page.text('snippet-json'),
+    }
+  },
+  /** From the Settings tab to the tokens screen, as someone would. */
+  openTokens: async (): Promise<void> => {
+    await nav(page).tab('settings')
+    await page.waitFor('settings-screen')
+    await page.click('[data-testid="manage-tokens"]')
+    await page.waitFor('tokens-screen')
+  },
   tokenListText: async (): Promise<string> => {
     await page.waitFor('token-list')
     return (await page.text('token-list')) ?? ''

@@ -10,6 +10,7 @@ import {
   Input,
   ListRow,
   Loaded,
+  NavButton,
   Screen,
   Stack,
   Text,
@@ -101,6 +102,13 @@ export default function Tokens(): React.JSX.Element {
         A token lets an MCP client act as you, with exactly your permissions. Paste it into the
         client's configuration.
       </Text>
+
+      <NavButton
+        title="Connect your AI"
+        href="/settings/connect"
+        variant="secondary"
+        testID="tokens-connect-ai"
+      />
 
       {secret === null ? null : <Secret token={secret} />}
 

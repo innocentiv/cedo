@@ -52,6 +52,15 @@ export function apiUrl(path: string): string {
 }
 
 /**
+ * The API's root as an absolute URL — what a client outside this app must be told, an AI's MCP
+ * client above all. On web the base is `/api`, so it is this page's origin's; on native it is
+ * already absolute. Never baked in at build time, so the address is right on any host.
+ */
+export function apiRoot(): string {
+  return new URL(base(), typeof location === 'undefined' ? undefined : location.origin).href
+}
+
+/**
  * Who is signed in: the one session, which every request sends the token of. A credential the
  * server rejects mid-session — revoked on another device, or expired after a month unopened —
  * signs it out, rather than leaving every screen with "Authentication required" and no way back to

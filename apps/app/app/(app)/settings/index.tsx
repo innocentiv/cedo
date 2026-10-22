@@ -72,7 +72,18 @@ export default function Settings(): React.JSX.Element {
             subtitle="For MCP clients, so an AI can act as you"
             testID="settings-tokens"
           />
-          <NavButton title="Manage tokens" href="/settings/tokens" variant="secondary" />
+          <NavButton
+            title="Connect your AI"
+            href="/settings/connect"
+            variant="secondary"
+            testID="connect-ai"
+          />
+          <NavButton
+            title="Manage tokens"
+            href="/settings/tokens"
+            variant="secondary"
+            testID="manage-tokens"
+          />
         </Stack>
 
         <Button

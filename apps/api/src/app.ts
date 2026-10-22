@@ -1,7 +1,7 @@
 import { Elysia, ValidationError } from 'elysia'
 import { z } from 'zod'
 import { sql as raw } from 'drizzle-orm'
-import type { ApiError } from '@cedo/contract'
+import { type ApiError, MCP_PATH } from '@cedo/contract'
 import { db } from './db/client.ts'
 import { DomainError, toApiError } from './lib/error.ts'
 import { mcpHandler, withCaller } from './mcp/index.ts'
@@ -54,7 +54,7 @@ export function createApp() {
     .use(sessionRoutes)
     .use(workoutRoutes)
     .use(tokenRoutes)
-    .mount('/mcp', serveMcp)
+    .mount(MCP_PATH, serveMcp)
 }
 
 /**

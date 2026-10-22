@@ -19,11 +19,35 @@ claude ──JSON-RPC over HTTP──> POST /api/mcp
 
 ## Connecting
 
+Bring your own AI: the instance holds no model and no provider key, and sends nothing to one. MCP is
+the single AI surface, so connecting is an address and a token. **Settings → Connect your AI** says
+this instance's address (the page's own origin + `/api/mcp`), creates a token, and shows both
+configurations below with the two filled in, ready to paste. They are built by the contract's
+`connect.ts`, and the API mounts its server at the same `MCP_PATH`, so the address cannot drift
+from the route.
+
+Claude Code:
+
 ```bash
-# create a token in Settings, then:
-claude mcp add --transport http cedo https://<host>/api/mcp \
-  --header "Authorization: Bearer <token>"
+claude mcp add --transport http cedo https://<host>/api/mcp --header "Authorization: Bearer <token>"
 ```
+
+Any other client that reads an `mcpServers` JSON configuration (Claude Desktop through a remote
+connector, Cursor, VS Code, …):
+
+```json
+{
+  "mcpServers": {
+    "cedo": {
+      "type": "http",
+      "url": "https://<host>/api/mcp",
+      "headers": { "Authorization": "Bearer <token>" }
+    }
+  }
+}
+```
+
+The token travels only in the `Authorization` header, so a client must be able to send one.
 
 A **personal access token**, not a session token. The two are deliberately not interchangeable: a
 PAT is long-lived and pasted into a client's config, a session belongs to a browser. Passing a

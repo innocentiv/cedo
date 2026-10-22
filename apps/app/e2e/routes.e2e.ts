@@ -29,6 +29,7 @@ const ROUTES: readonly (readonly [string, string])[] = [
   ['/settings', 'settings-screen'],
   ['/settings/groups', 'groups-screen'],
   ['/settings/tokens', 'tokens-screen'],
+  ['/settings/connect', 'connect-screen'],
 ]
 
 // Started here rather than lazily inside the first test, so migrating and seeding is not charged

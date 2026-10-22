@@ -50,7 +50,7 @@ app/(app)/_layout.tsx        the signed-in shell: bottom bar on phone, sidebar o
 app/(app)/today/            index · session/[id]        the live logging screen
 app/(app)/workouts/         index · [id]/index · [id]/edit
 app/(app)/exercises/        index · new · [id]/index · [id]/edit
-app/(app)/settings/         index · groups/index · groups/[id]/index · tokens
+app/(app)/settings/         index · groups/index · groups/[id]/index · tokens · connect
 
 src/ui/                      the entire visual vocabulary
 src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts

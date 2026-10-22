@@ -3,8 +3,11 @@ import { z } from 'zod'
 import {
   Exercise,
   GroupMembership,
+  MCP_SERVER_NAME,
   MUSCLE_SLUGS,
   PersonalAccessTokenCreated,
+  aiClientConfigs,
+  mcpAddress,
   type TrackingMode,
   Workout,
   WorkoutPlanInput,
@@ -112,6 +115,45 @@ describe('authentication', () => {
     })
     expect(status).toBe(200)
   })
+
+  /**
+   * "Connect your AI" end to end, short of the proxy: a token made as the screen makes it, and the
+   * JSON config the screen shows, read the way a client reads it — its URL, its headers, nothing
+   * else. Here the API is the root; behind Caddy it is `/api`, which the e2e journey covers.
+   */
+  test('the config "Connect your AI" shows reaches the MCP server', async () => {
+    const created = await alice.wire('/tokens', {
+      method: 'POST',
+      body: JSON.stringify({ name: 'Your AI', expiresInDays: null }),
+    })
+    const { token } = expectContract(PersonalAccessTokenCreated, created.body)
+    const config = ClientConfig.parse(
+      JSON.parse(aiClientConfigs(mcpAddress('http://localhost'), token).json),
+    )
+    const server = config.mcpServers[MCP_SERVER_NAME]
+    if (server === undefined) throw new Error(`No ${MCP_SERVER_NAME} server in the config`)
+
+    const response = await app.handle(
+      new Request(server.url, {
+        method: 'POST',
+        headers: {
+          ...server.headers,
+          'content-type': 'application/json',
+          accept: 'application/json, text/event-stream',
+        },
+        body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+      }),
+    )
+    expect(response.status).toBe(200)
+    expect(await response.text()).toContain('training_review')
+  })
+})
+
+const ClientConfig = z.object({
+  mcpServers: z.record(
+    z.string(),
+    z.object({ url: z.string(), headers: z.record(z.string(), z.string()) }),
+  ),
 })
 
 describe('the published tool list', () => {
