@@ -19,6 +19,8 @@ interface AuthValue {
   readonly signOut: () => Promise<void>
   /** Saved to the account, so it follows them to every device — and to what the AI writes them. */
   readonly setWeightUnit: (unit: WeightUnit) => Promise<void>
+  /** When unreachable: asks the server again about the token kept. */
+  readonly retry: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthValue | null>(null)
@@ -62,6 +64,7 @@ export function AuthProvider({
       },
       signOut: session.signOut,
       setWeightUnit: session.setWeightUnit,
+      retry: session.restore,
     }),
     [status, me],
   )

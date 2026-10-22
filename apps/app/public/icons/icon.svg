@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!--
+    The app icon: a barbell on the app's background, colours from src/ui/tokens.ts. Full bleed, with
+    the barbell inside the maskable safe zone (a circle of 40% radius), so one image serves as both
+    the plain and the maskable icon. The PNGs beside it are rendered from this file:
+      for s in 192 512; do rsvg-convert -w $s -h $s icon.svg -o icon-$s.png; done
+      rsvg-convert -w 180 -h 180 icon.svg -o apple-touch-icon.png
+  -->
+  <rect width="512" height="512" fill="#0b0d10"/>
+  <rect x="112" y="246" width="288" height="20" rx="10" fill="#9aa4b2"/>
+  <rect x="136" y="196" width="28" height="120" rx="8" fill="#4c8dff"/>
+  <rect x="168" y="166" width="36" height="180" rx="10" fill="#4c8dff"/>
+  <rect x="308" y="166" width="36" height="180" rx="10" fill="#4c8dff"/>
+  <rect x="348" y="196" width="28" height="120" rx="8" fill="#4c8dff"/>
+</svg>

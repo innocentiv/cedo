@@ -6,7 +6,7 @@ suite becomes slow, flaky, or quietly stops proving anything.
 | Tier | Where | Answers | Cost |
 | ---- | ----- | ------- | ---- |
 | T1 contract | `packages/contract/**/*.test.ts` | Is the domain arithmetic right? | milliseconds |
-| T1 app modules | `apps/app/src/**/*.test.ts` | Do the app's own rules — who is signed in — hold? | milliseconds |
+| T1 app modules | `apps/app/src/**/*.test.ts` | Do the app's own rules — who is signed in, what the installed app keeps — hold? | milliseconds |
 | T2 integration | `apps/api/src/**/*.test.ts` | Does the API behave, and does it match the contract? | seconds |
 | T3 UI | `apps/app/e2e/*.e2e.ts` | Does every route render without exploding? | seconds |
 | T4 performance | `apps/api/src/test/perf/*.perf.ts` | Will this survive real data on cheap hardware? | minutes |
@@ -25,8 +25,11 @@ needs no component-test dependency. See `docs/01-architecture.md`.
 The one exception is behaviour the app owns and no backend can: **who is signed in on this device**
 — the stored token, restoring it, a late 401, a keychain that throws. It lives in a plain module
 (`src/auth/session.ts`) that imports neither React nor React Native, and is unit-tested beside it
-with `bun test`, a fake keychain and a fake API. Components are still never tested: see the
-amendment to `docs/adr/0017-webview-for-ui-verification.md`.
+with `bun test`, a fake keychain and a fake API. So does **what the installed app keeps** to open
+without a signal — the shell's caching rules, in `src/pwa/shell-cache.ts`, tested with a fake cache
+and a fake network. The service worker wiring them to the browser is driven for real by a journey
+that registers it, takes the site down, and opens the app. Components are still never tested: see
+the amendment to `docs/adr/0017-webview-for-ui-verification.md`.
 
 ## T1 — contract
 

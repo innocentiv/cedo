@@ -1,4 +1,5 @@
 import { afterAll, beforeAll, expect, test } from 'bun:test'
+import { z } from 'zod'
 import {
   ExerciseCreate,
   LogSetInput,
@@ -1290,6 +1291,85 @@ test(
         stalled: 'Stalled · 4 sessions at 15 × 10 kg',
       })
     })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * What a browser asks of a site before it offers to install it (Chrome's installability criteria;
+ * iOS reads the apple-touch tags instead): a name, a start, a display that is an app's, and icons.
+ */
+const Installable = z.object({
+  name: z.string().min(1),
+  short_name: z.string().min(1),
+  start_url: z.string().min(1),
+  display: z.enum(['fullscreen', 'standalone', 'minimal-ui']),
+  icons: z.array(z.object({ src: z.string(), sizes: z.string(), type: z.string() })).min(1),
+  prefer_related_applications: z.literal(false).optional(),
+})
+
+test(
+  'installable: a manifest a browser accepts, and a worker that keeps the shell',
+  async () => {
+    await withApp('installable', async (page) => {
+      const app = screens(page)
+      const { manifest, icons } = await app.install.manifest()
+      expect(Installable.safeParse(manifest).error?.issues ?? []).toEqual([])
+      expect(icons.filter((icon) => icon.status !== 200)).toEqual([])
+      // The two sizes installers ask for, each served as a PNG of exactly that size.
+      for (const px of [192, 512]) {
+        expect(
+          icons.some(
+            (icon) =>
+              icon.type?.startsWith('image/png') === true &&
+              icon.size?.width === px &&
+              icon.size.height === px,
+          ),
+        ).toBe(true)
+      }
+      expect(await app.install.workerScope()).toBe(`${page.origin}/`)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/** A flaky gym signal: the app opens from what the worker kept, with nothing answering at all. */
+test(
+  'without a signal, the installed app still opens',
+  async () => {
+    await withApp('offline-shell', async (page) => {
+      const app = screens(page)
+      await app.install.workerScope()
+      page.cutNetwork()
+      await page.goto('/')
+      await app.auth.onLoginScreen()
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * Signed in, at the gym, no signal: the app opens and says it cannot reach the server — and the
+ * session is still there, not signed out into needing a password and a signal to get back in.
+ */
+test(
+  'without a signal, a signed-in app keeps its session',
+  async () => {
+    await withApp(
+      'offline-signed-in',
+      async (page) => {
+        const app = screens(page)
+        await app.auth.register(unique('gym'))
+        await app.install.workerScope()
+        page.cutNetwork()
+        await page.goto('/')
+        await app.auth.onUnreachable()
+        // The token the page kept still works: the API itself is up, only the site is cut.
+        const { user } = await (await page.client()).auth.me()
+        expect(user.username).toStartWith('gym')
+      }, // Asking the server who the token is — the one request a cut network must fail.
+      { allowErrors: [/\[network\] Load failed/u] },
+    )
   },
   E2E_TIMEOUT_MS,
 )

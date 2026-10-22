@@ -37,7 +37,7 @@
     "typecheck:server": "tsc -b . && tsc -p apps/api/tsconfig.tools.json",
     "typecheck:app": "apps/app/node_modules/.bin/tsc -p apps/app --noEmit",
     "docs:links": "bun run scripts/check-doc-links.ts",
-    "build:app": "cd apps/app && ./node_modules/.bin/expo export --platform web --output-dir dist",
+    "build:app": "cd apps/app && bun run export",
     "check:ci": "bun run format:check && bun run lint && bun run typecheck && bun run docs:links && bun run test"
   },
   "devDependencies": {

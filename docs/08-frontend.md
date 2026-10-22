@@ -55,6 +55,7 @@ app/(app)/settings/         index · groups/index · groups/[id]/index · tokens
 src/ui/                      the entire visual vocabulary
 src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
+src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
 src/lib/                     use-submit.ts, plan-draft.ts, forms, pickers, group-placement.tsx
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts,
                              harness.e2e.ts (the harness's own tests), journeys.test.ts (the rules
@@ -293,11 +294,17 @@ branches in the open cannot fail that way.
 Documented tradeoff: a token in `localStorage` is XSS-reachable. Accepted for a self-hosted app with
 no third-party scripts; moving to an httpOnly cookie touches this file and the login handler only.
 
-### Auth status is three-state
+### Auth status is not a boolean
 
-`'loading' | 'signed-in' | 'signed-out'` — the session's `snapshot()`. On first paint the stored
-token has not been read yet, and a router that treats "not known yet" as "signed out" flashes the
-login screen at a returning user for one frame before bouncing them back.
+`'loading' | 'signed-in' | 'signed-out' | 'unreachable'` — the session's `snapshot()`. On first paint
+the stored token has not been read yet, and a router that treats "not known yet" as "signed out"
+flashes the login screen at a returning user for one frame before bouncing them back.
+
+`unreachable` is a stored token the server could not be asked about: no signal, or the server down
+behind its proxy (a 5xx). Nobody refused it, so it is kept. The signed-in shell shows "Can't reach
+your server", with **Try again** and **Sign out**. It used to be cleared like a rejected one, which
+the installed app made the ordinary case: opened at the gym without a signal, it signed its user out
+into needing a password, and a signal, to get back in. Only a 401 ends a session.
 
 ## The web build is a SPA, not prerendered
 
@@ -324,6 +331,27 @@ because it only visits routes without ids.
 Nothing here wants server rendering: the whole app is behind authentication and is served from
 someone's NAS, so there is no SEO and no first-paint budget to defend. Caddy's fallback is
 correspondingly simple — `try_files {path} /index.html`.
+
+## The installed app
+
+`public/` is copied into the export as is: `index.html` is the template Expo injects the bundle into,
+and carries the manifest link and the tags iOS reads instead of a manifest. `manifest.webmanifest`
+and the icons sit beside it. The icons are rendered from `public/icons/icon.svg`; its comment gives
+the command.
+
+The service worker keeps the **app shell**, and nothing else: the one document, and the bundle it
+names. It is authored in TypeScript (`src/pwa/`), and `bun run export` bundles it on its own into
+`dist/sw.js`, served from the root so its scope is the whole app. It is registered only in a build,
+never over the dev server. The rules live in `shell-cache.ts`:
+
+- **A page of the app** is answered from the kept document at once, while the network's copy
+  replaces it for the next opening (stale-while-revalidate). So an install opens instantly and
+  without a signal, and a deployment arrives one opening late.
+- **Build output** is answered from what was kept, or fetched once and kept: it is content-hashed.
+- **A new document is kept only once its bundle is.** Two bundle generations stay, because a page
+  still open on the old document asks for the old bundle. An error page is never kept.
+- **`/api`, writes, and other origins** are never touched. A stale read of training data is a
+  wrong one, and a set logged without a signal is #9.
 
 ## Development runs the same shape as production
 

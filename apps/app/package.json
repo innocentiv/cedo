@@ -6,7 +6,7 @@
   "scripts": {
     "start": "expo start",
     "web": "expo start --web",
-    "export": "expo export --platform web --output-dir dist"
+    "export": "expo export --platform web --output-dir dist && bun build src/pwa/service-worker.ts --target browser --minify --outfile dist/sw.js"
   },
   "dependencies": {
     "@cedo/contract": "workspace:*",

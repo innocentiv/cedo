@@ -1,8 +1,18 @@
+import { useState } from 'react'
 import { StyleSheet } from 'react-native'
 import { Redirect } from 'expo-router'
 import { TabList, TabSlot, TabTrigger, Tabs } from 'expo-router/ui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { NavItem, Spinner, color, space, useLayout } from '../../src/ui/index.ts'
+import {
+  Button,
+  NavItem,
+  Screen,
+  Spinner,
+  Text,
+  color,
+  space,
+  useLayout,
+} from '../../src/ui/index.ts'
 import { useAuth } from '../../src/auth/auth-provider.tsx'
 
 /**
@@ -13,6 +23,47 @@ import { useAuth } from '../../src/auth/auth-provider.tsx'
  * tablet. Swapping navigators on a width change would remount every screen and throw away scroll
  * position and half-typed input mid-resize. See docs/08-frontend.md.
  */
+/**
+ * Signed in, but the server could not be asked who by: no signal, or the server down. The session
+ * is kept (src/auth/session.ts), so getting back in is a tap, never a password.
+ */
+function Unreachable({
+  retry,
+  signOut,
+}: {
+  readonly retry: () => Promise<void>
+  readonly signOut: () => Promise<void>
+}): React.JSX.Element {
+  const [busy, setBusy] = useState(false)
+  return (
+    <Screen title="Can’t reach your server" testID="unreachable-screen">
+      <Text tone="muted">
+        You are still signed in. Try again once you have a signal, or once the server is back.
+      </Text>
+      <Button
+        title="Try again"
+        busy={busy}
+        onPress={() => {
+          setBusy(true)
+          void retry().finally(() => {
+            setBusy(false)
+          })
+        }}
+        testID="unreachable-retry"
+      />
+      {/* The way out when the server is gone for good, or moved: ends the session here only. */}
+      <Button
+        title="Sign out"
+        variant="ghost"
+        onPress={() => {
+          void signOut()
+        }}
+        testID="unreachable-sign-out"
+      />
+    </Screen>
+  )
+}
+
 const TABS = [
   { name: 'today', href: '/today', label: 'Today' },
   { name: 'workouts', href: '/workouts', label: 'Workouts' },
@@ -21,13 +72,14 @@ const TABS = [
 ] as const
 
 export default function AppLayout(): React.JSX.Element {
-  const { status } = useAuth()
+  const { status, retry, signOut } = useAuth()
   const layout = useLayout()
   const insets = useSafeAreaInsets()
   const tablet = layout === 'tablet'
 
   if (status === 'loading') return <Spinner testID="boot-spinner" />
   if (status === 'signed-out') return <Redirect href="/login" />
+  if (status === 'unreachable') return <Unreachable retry={retry} signOut={signOut} />
 
   return (
     /**

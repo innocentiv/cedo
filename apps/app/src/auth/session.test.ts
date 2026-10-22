@@ -117,6 +117,37 @@ describe('restoring a session at startup', () => {
     expect(session.token()).toBeNull()
   })
 
+  /**
+   * The installed app opened with no signal, or with the server down behind its proxy: nobody
+   * refused the token, so it is kept — signing out would leave someone at the gym needing a
+   * password, and a signal, to get back in. Said as unreachable, and restored again on request.
+   */
+  test('with no signal, kept and unreachable — quietly — and signed in once it answers', async () => {
+    const alice = me('alice')
+    const store = aStore('a')
+    const server = {
+      answer: async (): Promise<Me> => await Promise.reject(new TypeError('Load failed')),
+    }
+    const session = createSession({
+      store,
+      auth: () => ({ ...anAuth({ a: alice }, session.token, session.rejected), me: server.answer }),
+    })
+
+    expect(await errorsDuring(session.restore)).toEqual([])
+    expect(session.snapshot()).toEqual({ status: 'unreachable', me: null })
+    expect(store.held()).toBe('a')
+    expect(session.token()).toBe('a')
+
+    server.answer = async () =>
+      await Promise.reject(new ApiError(502, 'internal', '/auth/me failed with 502', null))
+    await session.restore()
+    expect(session.snapshot().status).toBe('unreachable')
+
+    server.answer = async () => alice
+    await session.restore()
+    expect(session.snapshot()).toEqual({ status: 'signed-in', me: alice })
+  })
+
   /** Regression (52260d8): an unguarded read left the app on the boot spinner forever. */
   test('with a keychain that throws, signed out — and said', async () => {
     const store = {

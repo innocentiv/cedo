@@ -18,7 +18,8 @@ COPY apps/app apps/app
 # NO API URL is baked in. The app calls the relative path /api, which Caddy proxies, so this exact
 # image works on any host at any port — which is the point when it is distributed to strangers.
 WORKDIR /app/apps/app
-RUN bunx expo export --platform web --output-dir dist
+# The static export, and the service worker that keeps it on an installed phone (src/pwa/).
+RUN bun run export
 
 FROM caddy:2-alpine AS runtime
 COPY --from=build /app/apps/app/dist /srv

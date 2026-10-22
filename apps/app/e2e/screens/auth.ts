@@ -29,4 +29,9 @@ export const auth = (page: Page) => ({
   onLoginScreen: async (): Promise<void> => {
     await page.waitFor('login-screen')
   },
+
+  /** Waits for "can't reach your server" — signed in, with nothing answering. */
+  onUnreachable: async (): Promise<void> => {
+    await page.waitFor('unreachable-screen')
+  },
 })

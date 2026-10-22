@@ -49,6 +49,32 @@ Each line does something the others do not:
 - A Postgres **minor** release is a restart; a **major** one (18 → 19) is a dump and restore, and
   is a deliberate change to the image tag, never something `pull` does on its own.
 
+## Installing the app
+
+The web app installs to a phone's home screen: no app store, and the same for every instance. It then
+opens full screen with its own icon, and opens at once — and without a signal — from the app shell
+its service worker keeps (`apps/app/src/pwa/`). Only the shell: training data is still read from
+the server, and a set logged without a signal is not queued (#9).
+
+**It needs HTTPS.** Browsers run a service worker, and Android offers to install, only on a secure
+origin — `https://`, or `localhost` on the machine itself. At `http://192.168.1.20:8080` the app
+works in the browser, and iOS can still add it to the home screen, but it opens with nothing kept
+and needs the network every time. Put the instance behind the HTTPS you already have: the reverse
+proxy on your NAS, Tailscale Serve, or a tunnel. Caddy serves plain HTTP on port 80 inside the
+compose network, and leaves TLS to that front door.
+
+- **iPhone and iPad (Safari):** open the instance, tap **Share**, then **Add to Home Screen**. In
+  another browser on iOS, look for the same item in its share menu.
+- **Android (Chrome):** open the instance and tap **Install** when it is offered, or **⋮ → Add to
+  Home screen** (on some versions, **Install app**).
+- **Desktop (Chrome, Edge):** the install icon at the end of the address bar.
+
+Sign in once inside the installed app: on iOS it keeps its own storage, apart from Safari's.
+
+An upgrade reaches the installed app one opening late. It opens at once from the shell it kept, and
+fetches the new one in the background for the next time. That is the price of opening without
+waiting for the network.
+
 ## Why one origin
 
 The browser talks only to Caddy. `/api/*` is proxied to the API container; everything else is the
@@ -158,12 +184,8 @@ curl -s localhost:8080/api/openapi                      # the Scalar UI, generat
 open http://localhost:8080                              # register, browse, build, log
 ```
 
-MCP arrives on the same port. Mint a token in Settings, then:
-
-```bash
-claude mcp add --transport http cedo http://localhost:8080/api/mcp \
-  --header "Authorization: Bearer <token>"
-```
+MCP arrives on the same port. **Settings → Connect your AI** shows its address, creates a token, and
+writes the configuration with both filled in (`docs/07-mcp.md`).
 
 The check worth doing by hand, because it is the invariant everything else rests on: register a
 second user and confirm they see the seeded library but **not** the first user's personal exercises,

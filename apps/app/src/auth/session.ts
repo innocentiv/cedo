@@ -5,11 +5,12 @@ import { ApiError } from '../api/errors.ts'
  * Who is signed in on this device, and every rule about it — outside React, so each is unit-tested
  * with a fake keychain and a fake API (session.test.ts). See the amendment to ADR-0017.
  *
- * `status` is a three-state, not a boolean: on first paint the stored token has not been read yet,
- * and a router that treats "unknown" as "signed out" bounces a returning user to the login screen
- * for one frame before bouncing them back. See docs/08-frontend.md.
+ * `status` is not a boolean: on first paint the stored token has not been read yet, and a router
+ * that treats "unknown" as "signed out" bounces a returning user to the login screen for one frame
+ * before bouncing them back. And `unreachable` is a token kept that the server could not be asked
+ * about — no signal, or the server down — which is not a signing out. See docs/08-frontend.md.
  */
-export type AuthStatus = 'loading' | 'signed-in' | 'signed-out'
+export type AuthStatus = 'loading' | 'signed-in' | 'signed-out' | 'unreachable'
 
 export interface SessionSnapshot {
   readonly status: AuthStatus
@@ -36,7 +37,7 @@ export interface Session {
   readonly subscribe: (listener: () => void) => () => void
   /** The credential to send now, if any. */
   readonly token: () => string | null
-  /** At startup: the stored token, if the server still knows it. */
+  /** At startup, and to try again when unreachable: the stored token, if the server still knows it. */
   readonly restore: () => Promise<void>
   /** A token just minted — by signing in, or by registering. */
   readonly adopt: (token: string) => Promise<void>
@@ -137,11 +138,23 @@ async function restoreFrom(held: Held, store: TokenStore, auth: () => SessionAut
     if (reading === held.generation()) held.set({ status: 'signed-in', me: identity })
   } catch (error) {
     if (reading !== held.generation()) return
+    // Nobody refused the token: no signal, or the server down behind its proxy. Kept, quietly —
+    // an installed app opened at the gym is the ordinary case.
+    if (unreachable(error)) {
+      held.set(UNREACHABLE)
+      return
+    }
     // Reopened weeks later, an expired token is the ordinary case: cleared without a word.
     if (!(error instanceof ApiError) || error.code !== 'unauthenticated') console.error(error)
     await held.forget()
   }
 }
+
+const UNREACHABLE: SessionSnapshot = { status: 'unreachable', me: null }
+
+/** `fetch` rejects with a TypeError when nothing answers; a 5xx is the server, not the credential. */
+const unreachable = (error: unknown): boolean =>
+  error instanceof TypeError || (error instanceof ApiError && error.status >= 500)
 
 /**
  * `auth` is read lazily: the API sends this session's token, so the two are made from each other.

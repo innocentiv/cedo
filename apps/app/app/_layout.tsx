@@ -1,10 +1,11 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { Slot } from 'expo-router'
-import { StatusBar } from 'react-native'
+import { Platform, StatusBar } from 'react-native'
 import { createQueryClient } from '../src/api/query-client.ts'
 import { AuthProvider } from '../src/auth/auth-provider.tsx'
+import { registerShell } from '../src/pwa/register.ts'
 import { ErrorBoundary } from '../src/ui/index.ts'
 
 /**
@@ -16,6 +17,10 @@ import { ErrorBoundary } from '../src/ui/index.ts'
  */
 export default function RootLayout(): React.JSX.Element {
   const queryClient = useMemo(() => createQueryClient(), [])
+
+  useEffect(() => {
+    if (Platform.OS === 'web' && !__DEV__) registerShell()
+  }, [])
 
   return (
     <ErrorBoundary>

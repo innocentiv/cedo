@@ -4,8 +4,8 @@ Self-hosted workout tracker with a first-class MCP server, so an AI can plan and
 training as a real user under real permissions.
 
 Bun + Elysia + Postgres on the back, Expo (React Native) on the front, deployed with
-`docker compose`. The app ships as a web app, used from a phone's browser (installable once #8
-lands); native iOS and Android builds are not configured yet (#10).
+`docker compose`. The app ships as a web app that installs to a phone's home screen; native iOS and
+Android builds are not configured yet (#10).
 
 ---
 
@@ -26,6 +26,17 @@ git pull && docker compose pull db && docker compose build --pull && docker comp
 ```
 
 Details and backup instructions: **[docs/09-deployment.md](docs/09-deployment.md)**.
+
+### Install it on your phone
+
+Served over HTTPS (behind your NAS's reverse proxy, Tailscale Serve, or a tunnel), the app installs
+like a native one, and opens even without a signal:
+
+- **iPhone / iPad:** in Safari, **Share → Add to Home Screen**.
+- **Android:** in Chrome, **Install** when offered, or **⋮ → Add to Home screen**.
+
+Over plain `http://` on your network it still works in the browser, but it can't keep itself for
+offline use. Details are in [docs/09-deployment.md](docs/09-deployment.md#installing-the-app).
 
 ---
 
@@ -156,4 +167,5 @@ All milestones complete: contract, database, API, exercises and media, workouts 
 performance, frontend, and deployment. The app is web only: there is no native build configuration
 (no `eas.json`, no bundle ids). On the web it calls `/api` on its own origin; a native build would
 need the server address fixed when it is built, one build per instance. A native app with the
-address entered at runtime is issue #10; an installable web app is #8.
+address entered at runtime is issue #10. The web app installs to a home screen and opens without a
+signal (see above).

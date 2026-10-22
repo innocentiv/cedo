@@ -2,7 +2,7 @@ import { join } from 'node:path'
 import type { User } from '@cedo/contract'
 import { type ApiClient, createApi } from '../src/api/client.ts'
 import { transport } from '../src/api/transport.ts'
-import { serveExport } from './server.ts'
+import { type StaticServer, serveExport } from './server.ts'
 
 /**
  * The end-to-end harness. See docs/10-testing.md for what belongs here and what does not.
@@ -232,6 +232,13 @@ export interface Page {
   readonly evaluate: (script: string) => Promise<unknown>
   /** The API as the page's signed-in user, from the test process — for setting up their data. */
   readonly client: () => Promise<ApiClient>
+  /** Where the app is served — the site, through which `/api` is proxied. */
+  readonly origin: string
+  /**
+   * Takes the site down, app and API alike, as a lost signal does: nothing answers from here on,
+   * except what the page's service worker kept.
+   */
+  readonly cutNetwork: () => void
   readonly errors: readonly string[]
 }
 
@@ -272,7 +279,7 @@ export async function withApp(
     },
   })
 
-  const page = makePage(view, site.url, errors)
+  const page = makePage(view, site, errors)
 
   try {
     await journey(page)
@@ -293,7 +300,8 @@ export async function withApp(
   }
 }
 
-function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
+function makePage(view: Bun.WebView, site: StaticServer, errors: string[]): Page {
+  const siteUrl = site.url
   const quote = (value: string) => JSON.stringify(value)
   const selector = (testId: string) => `[data-testid=${quote(testId)}]`
 
@@ -402,6 +410,10 @@ function makePage(view: Bun.WebView, siteUrl: string, errors: string[]): Page {
       const token = await view.evaluate(`localStorage.getItem('cedo.session')`)
       if (typeof token !== 'string') throw new Error('No signed-in session in the page')
       return await clientAs(token)
+    },
+    origin: siteUrl,
+    cutNetwork: () => {
+      site.stop()
     },
     get errors() {
       return errors
