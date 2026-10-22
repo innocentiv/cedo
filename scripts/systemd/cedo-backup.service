@@ -3,7 +3,7 @@
 # under SELinux, a system service may not execute a script in a home directory.
 #
 # Installed by docs/09-deployment.md, "Backup and restore". Its last run:
-#   journalctl --user -u cedo-backup
+#   journalctl --user-unit cedo-backup
 [Unit]
 Description=Back up cedo: database dump, uploads, and a restore check
 
