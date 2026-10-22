@@ -1,0 +1,67 @@
+# The gate, and the deploy behind it.
+#
+# `check` runs `bun run check` — the same gate as on a laptop, defined once in package.json — on
+# every push and pull request. Locally that gate FORMATS; here a file it would change fails the run,
+# since unformatted code was committed.
+#
+# `deploy` runs only on `main`, only once `check` has passed, and deploys that exact commit: the
+# runner SSHes in with a key the server pins to scripts/deploy-ssh.sh, which accepts `deploy <sha>`
+# for a commit on main and nothing else. The build runs on the server, which keeps its .env and
+# volumes; nothing secret leaves it. See docs/09-deployment.md, "Deploying on push".
+#
+# Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (the private half of that pinned key) and
+# DEPLOY_KNOWN_HOSTS (`ssh-keyscan <host>`, so the runner refuses an impostor).
+
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - run: bun install --frozen-lockfile
+      # The defaults a fresh checkout gets, TEST_DATABASE_URL among them.
+      - run: bun run env:init
+      # The suite's own Postgres, from the file the laptop uses — its settings included.
+      - run: bun run db:test
+      - run: bun run check
+      - name: Nothing the gate formatted was left uncommitted
+        run: git diff --exit-code
+
+  deploy:
+    needs: check
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # One at a time, in order: a newer push waits for the deploy before it, and replaces any older
+    # one still waiting.
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    steps:
+      - name: Deploy this commit over SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          SHA: ${{ github.sha }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 "$DEPLOY_USER@$DEPLOY_HOST" "deploy $SHA"

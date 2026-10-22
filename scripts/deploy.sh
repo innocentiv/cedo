@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Deploys the checkout this script lives in: the upgrade path of docs/09-deployment.md, as one
-# command. Run on the server, after `git pull` — by hand, or by .github/workflows/deploy.yml over
-# SSH. Every step must succeed, and `up --wait` returns only once every service is healthy, so a
+# command. Run on the server in the checkout to deploy — by hand, or by deploy-ssh.sh once CI has
+# passed the commit (.github/workflows/ci.yml). Every step must succeed, and `up --wait` returns only once every service is healthy, so a
 # broken build or a migration that fails fails the deploy instead of passing it.
 #
 # A failed BUILD leaves the running containers as they were: `up` is never reached.

@@ -56,13 +56,20 @@ pulls the latest Postgres minor release, rebuilds `api` and `web` on fresh base 
 them with `up --wait`, which returns only once every service is healthy. So a build or a migration
 that fails fails the deploy. A failed build leaves the running containers untouched.
 
-`.github/workflows/deploy.yml` runs it on every push to `main`, and on demand from the Actions tab.
-The runner only connects. It SSHes in with a key that the server's `authorized_keys` pins to one
-forced command, so the key can deploy and do nothing else:
+`.github/workflows/ci.yml` runs the gate, `bun run check`, on every push and pull request. Only on
+`main`, and only once the gate has passed, does it deploy that exact commit. The runner just
+connects. It SSHes in with a key that the server's `authorized_keys` pins to
+`scripts/deploy-ssh.sh`:
 
 ```
-command="cd /home/<user>/cedo && git pull --ff-only -q && exec ./scripts/deploy.sh",restrict ssh-ed25519 AAAA… github-actions-deploy
+command="/home/<user>/cedo/scripts/deploy-ssh.sh",restrict ssh-ed25519 AAAA… github-actions-deploy
 ```
+
+Whatever the client asks, that script runs. All it accepts is `deploy <sha>`, for a commit on
+`main`. It checks the commit out, and that commit's `deploy.sh` takes over. It deploys the exact
+commit that passed, never "the latest `main`". Otherwise a passing push followed quickly by a
+failing one would deploy the second on the first's green run. The checkout on the server is
+therefore a detached `HEAD` at whatever is live.
 
 The build runs on the server, which keeps its `.env` and volumes, so nothing secret leaves it. The
 server pulls the repository with a read-only deploy key of its own. The workflow needs four
