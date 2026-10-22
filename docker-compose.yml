@@ -88,8 +88,9 @@ services:
       api:
         condition: service_healthy
     ports:
-      # The ONLY host mapping. Browser, API and MCP all arrive here.
-      - '${WEB_PORT:-8080}:80'
+      # The ONLY host mapping. Browser, API and MCP all arrive here. WEB_BIND=127.0.0.1 behind a
+      # reverse proxy on the same host, which terminates TLS — see docs/09-deployment.md.
+      - '${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8080}:80'
     healthcheck:
       test: ['CMD', 'wget', '--spider', '-q', 'http://127.0.0.1/']
       interval: 10s

@@ -49,6 +49,31 @@ Each line does something the others do not:
 - A Postgres **minor** release is a restart; a **major** one (18 → 19) is a dump and restore, and
   is a deliberate change to the image tag, never something `pull` does on its own.
 
+## Deploying on push
+
+`scripts/deploy.sh` is the upgrade path above as one command, run on the server in its checkout. It
+pulls the latest Postgres minor release, rebuilds `api` and `web` on fresh base images, and starts
+them with `up --wait`, which returns only once every service is healthy. So a build or a migration
+that fails fails the deploy. A failed build leaves the running containers untouched.
+
+`.github/workflows/deploy.yml` runs it on every push to `main`, and on demand from the Actions tab.
+The runner only connects. It SSHes in with a key that the server's `authorized_keys` pins to one
+forced command, so the key can deploy and do nothing else:
+
+```
+command="cd /home/<user>/cedo && git pull --ff-only -q && exec ./scripts/deploy.sh",restrict ssh-ed25519 AAAA… github-actions-deploy
+```
+
+The build runs on the server, which keeps its `.env` and volumes, so nothing secret leaves it. The
+server pulls the repository with a read-only deploy key of its own. The workflow needs four
+repository secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` (the private half of the pinned
+key) and `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan <host>`, so the runner refuses an impostor).
+
+Behind a reverse proxy that already serves other sites, set `WEB_BIND=127.0.0.1` in `.env`, so the
+app is reachable only through that proxy, and let the proxy terminate TLS. Send the whole host to
+`127.0.0.1:${WEB_PORT}`. Allow request bodies of at least 16 MB, since uploads are 12 MB plus
+multipart framing. Forward `Host` and `X-Forwarded-Proto`.
+
 ## Installing the app
 
 The web app installs to a phone's home screen: no app store, and the same for every instance. It then

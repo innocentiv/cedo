@@ -1,0 +1,42 @@
+# Deploys `main` to the server on every push, and on demand.
+#
+# The runner only knocks: it SSHes in with a key the server's authorized_keys pins to one forced
+# command — pull, then scripts/deploy.sh — so the key can deploy and nothing else, whatever this
+# file asks for. The build runs on the server, which keeps its .env and volumes; nothing secret
+# leaves it. See docs/09-deployment.md, "Deploying on push".
+#
+# Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (the private half of that pinned key) and
+# DEPLOY_KNOWN_HOSTS (`ssh-keyscan <host>`, so the runner refuses an impostor).
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One at a time, in order: a second push waits for the first deploy rather than racing its build.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Deploy over SSH
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 "$DEPLOY_USER@$DEPLOY_HOST" deploy
