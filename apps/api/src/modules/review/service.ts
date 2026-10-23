@@ -177,9 +177,10 @@ async function workBetween(caller: Caller, from: Date, to: Date) {
          * ever happens: 500 kg × 50 reps × 100% is 2.5e9 against a 2.147e9 ceiling, and both those
          * inputs are well inside what the contract allows. It is not a rounding artefact — Postgres
          * raises `integer out of range`, so a single heavy sled set 500s that user's review for the
-         * whole window, and the one before it, until the log is deleted.
+         * whole window, and the one before it, until the log is deleted. `greatest(…, 0)`:
+         * negative added weight is assistance (#19) — help, not load, so it lifts nothing.
          */
-        sql<number>`coalesce(sum(${setLogs.weightG}::bigint * ${setLogs.reps} * ${exerciseMuscles.loadPct} / 100.0), 0)`.mapWith(
+        sql<number>`coalesce(sum(greatest(${setLogs.weightG}, 0)::bigint * ${setLogs.reps} * ${exerciseMuscles.loadPct} / 100.0), 0)`.mapWith(
           Number,
         ),
     })

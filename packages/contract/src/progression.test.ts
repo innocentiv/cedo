@@ -42,6 +42,18 @@ describe('nextTarget — double progression (3 sets of 8-12, +2.5kg)', () => {
     expect(run(target(12, 60), at60(12, 12, 12))).toEqual(target(8, 62.5))
   })
 
+  /** Assisted (#19): each step takes assistance away, toward bodyweight and on into added load. */
+  test('an assisted target steps toward bodyweight, then past it', () => {
+    expect(run(target(12, -20), sets(-20)(12, 12, 12))).toEqual(target(8, -17.5))
+    expect(run(target(12, -1), sets(-1)(12, 12, 12))).toEqual(target(8, 1.5))
+  })
+
+  /** On a bodyweight movement no added weight is 0, which clears any assisted target. */
+  test('sets with no band clear an assisted target', () => {
+    const unassisted: SessionAttempts = [12, 12, 12].map((reps) => ({ weightG: null, reps }))
+    expect(run(target(12, -20), unassisted)).toEqual(target(8, -17.5))
+  })
+
   test('one set misses the top -> hold', () => {
     expect(run(target(12, 60), at60(12, 12, 10))).toEqual(target(12, 60))
   })

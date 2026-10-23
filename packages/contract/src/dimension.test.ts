@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { DIMENSION_FIELDS, type Dimension, fieldFor, fieldsOf } from './dimension.ts'
+import {
+  DIMENSION_FIELDS,
+  type Dimension,
+  assistable,
+  fieldFor,
+  fieldsOf,
+  weightAllowed,
+} from './dimension.ts'
 import { TRACKING_MODES, type TrackingMode } from './exercise.ts'
 import { COUNT } from './typing.ts'
 
@@ -32,6 +39,29 @@ describe('typing a weight', () => {
     expect(weight.unit('weight_reps')).toBe('kg')
     // A progression increment has no mode: the plain unit.
     expect(weight.unit()).toBe('kg')
+  })
+
+  /** Assisted (#19): the number typed is the help, stored negative — the label says which. */
+  test('assisted, it is the assistance, so the unit says that instead', () => {
+    expect(weight.unit('bodyweight_reps', true)).toBe('kg assistance')
+  })
+})
+
+/** Negative added weight is assistance — on a bodyweight movement, and nowhere else (#19). */
+describe('which weights a movement can take', () => {
+  test('a bodyweight movement takes assistance, added load, or neither', () => {
+    expect(assistable('weight', 'bodyweight_reps')).toBe(true)
+    for (const weightG of [-20_000, 0, 20_000, null]) {
+      expect(weightAllowed(weightG, 'bodyweight_reps')).toBe(true)
+    }
+  })
+
+  test('nothing else can be assisted: a negative barbell is a mistake', () => {
+    expect(assistable('weight', 'weight_reps')).toBe(false)
+    expect(assistable('reps', 'bodyweight_reps')).toBe(false)
+    expect(weightAllowed(-20_000, 'weight_reps')).toBe(false)
+    expect(weightAllowed(20_000, 'weight_reps')).toBe(true)
+    expect(weightAllowed(null, 'weight_reps')).toBe(true)
   })
 })
 

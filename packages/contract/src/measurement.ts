@@ -20,9 +20,13 @@ export const MAX_DURATION_S = 86_400
 /** 1000 km. */
 export const MAX_DISTANCE_MM = 1_000_000_000
 
-/** Logged values allow zero: a set you failed is still a set that happened. */
+/**
+ * Logged values allow zero: a set you failed is still a set that happened. Weight may be negative:
+ * on a bodyweight movement that is assistance (#19). Whether a weight may be negative depends on the
+ * exercise, which these do not know — `weightAllowed` holds it, checked where the exercise is.
+ */
 export const LoggedReps = z.int().nonnegative().max(MAX_REPS)
-export const LoggedWeightG = z.int().nonnegative().max(MAX_WEIGHT_G)
+export const LoggedWeightG = z.int().min(-MAX_WEIGHT_G).max(MAX_WEIGHT_G)
 export const LoggedDurationS = z.int().nonnegative().max(MAX_DURATION_S)
 export const LoggedDistanceMm = z.int().nonnegative().max(MAX_DISTANCE_MM)
 
@@ -30,6 +34,6 @@ export const LoggedDistanceMm = z.int().nonnegative().max(MAX_DISTANCE_MM)
 const MORE_THAN_ZERO = 'Must be more than 0'
 const TOO_LARGE = 'Too large'
 export const TargetReps = z.int().positive(MORE_THAN_ZERO).max(MAX_REPS, TOO_LARGE)
-export const TargetWeightG = z.int().nonnegative('Cannot be negative').max(MAX_WEIGHT_G, TOO_LARGE)
+export const TargetWeightG = z.int().min(-MAX_WEIGHT_G, TOO_LARGE).max(MAX_WEIGHT_G, TOO_LARGE)
 export const TargetDurationS = z.int().positive(MORE_THAN_ZERO).max(MAX_DURATION_S, TOO_LARGE)
 export const TargetDistanceMm = z.int().positive(MORE_THAN_ZERO).max(MAX_DISTANCE_MM, TOO_LARGE)

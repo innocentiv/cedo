@@ -1,5 +1,5 @@
 import { inArray } from 'drizzle-orm'
-import type { LogSetInput, LoggedExercise } from '@cedo/contract'
+import { type LogSetInput, type LoggedExercise, weightAllowed } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { visibleExercises } from '../../db/visible.ts'
 import { invalid, notFound } from '../../lib/error.ts'
@@ -15,6 +15,15 @@ import { planEntries } from '../workout/plan.ts'
  *   Progression reads logs by entry, so visibility alone let a set from plan A's session count
  *   toward plan B; and existence alone, before that, let anyone attach a log to a guessed id.
  */
+/**
+ * A negative weight is assistance, which only a bodyweight movement takes (#19) — on the field, as
+ * any other invalid value is.
+ */
+export const assistanceRefused = () =>
+  invalid('Only a bodyweight movement can be assisted: a negative weight is assistance', [
+    { path: 'weightG', message: 'Cannot be negative for this exercise' },
+  ])
+
 export async function assertLoggable(
   caller: Caller,
   workoutId: string | null,
@@ -30,6 +39,10 @@ export async function assertLoggable(
   const visible = new Map(seen.map((e) => [e.id, { name: e.name, tracking: e.tracking }]))
   const hidden = exerciseIds.find((id) => !visible.has(id))
   if (hidden !== undefined) throw notFound('exercise')
+  for (const set of sets) {
+    const tracking = visible.get(set.exerciseId)?.tracking
+    if (tracking !== undefined && !weightAllowed(set.weightG, tracking)) throw assistanceRefused()
+  }
 
   const entryIds = [...new Set(sets.flatMap((s) => (s.entryId === null ? [] : [s.entryId])))]
   if (entryIds.length === 0) return visible

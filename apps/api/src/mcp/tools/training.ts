@@ -125,7 +125,9 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       description:
         'Replace the ENTIRE plan atomically — days, entries and sets. Send the complete plan, not ' +
         'a patch: anything omitted is removed. Order comes from array position; never send an ' +
-        'index. Every entry needs at least one non-warm-up set. Weights are in GRAMS. Send back ' +
+        'index. Every entry needs at least one non-warm-up set. Weights are in GRAMS; on a ' +
+        'bodyweight exercise a weight is ADDED load, and a negative one is assistance (a band ' +
+        'worth 20 kg is -20000), allowed there only. Send back ' +
         'the `id` of each day and entry you keep (from `workout_get_editable`): that keeps its ' +
         'logged history and progression. An entry with no id, or whose exercise you changed, ' +
         'starts with no history.',
@@ -197,7 +199,9 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       title: 'Log a training session',
       description:
         'Record a whole, finished session in ONE call. All or nothing: if any set is invalid, ' +
-        'nothing is logged, so fix it and retry. Weights are in GRAMS. Sets are numbered for you, ' +
+        'nothing is logged, so fix it and retry. Weights are in GRAMS; on a bodyweight exercise ' +
+        'a weight is ADDED load, and a negative one is assistance (a band), allowed there only. ' +
+        'Sets are numbered for you, ' +
         'per plan entry (or per exercise, without one), in the order you send them, warm-ups ' +
         'included — send them in the order they were done. Give `workoutId` and ' +
         '`dayId` to tie it to a plan (then `entryId` may name the plan entry a set fulfils), or ' +

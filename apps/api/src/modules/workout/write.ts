@@ -5,7 +5,7 @@ import { assertEditorOf, editable } from '../../db/ownable.ts'
 import { workouts } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { assertPlanCanUse } from './references.ts'
+import { assertAssistanceAllowed, assertPlanCanUse } from './references.ts'
 import { writePlan } from './write-plan.ts'
 
 /**
@@ -83,12 +83,13 @@ export async function savePlan(caller: Caller, id: string, plan: WorkoutPlanInpu
     // Saving is the third way an exercise reaches a group, after transfer and duplicate, and is
     // held to their rule. Against the owner read under the lock, so a concurrent transfer cannot
     // move the target between the check and the write.
-    await assertPlanCanUse(
+    const tracking = await assertPlanCanUse(
       caller,
       plan.days.flatMap((d) => d.entries.map((e) => e.exerciseId)),
       own.ownerGroupId,
       'request',
     )
+    assertAssistanceAllowed(plan, tracking)
 
     await writePlan(tx, caller, { id, ownerGroupId: own.ownerGroupId }, plan)
     await tx

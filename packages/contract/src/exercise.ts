@@ -62,7 +62,9 @@ const exerciseFields = {
   name: NonEmptyString.max(120),
   /**
    * For `bodyweight_reps`, a logged `weightG` means weight ADDED to bodyweight (a +20 kg pull-up),
-   * not total system load. Documented here because it is the only place the convention lives.
+   * not total system load — and, negative, assistance (a band worth −20 kg): one scale, so less
+   * help is simply heavier (#19, `assistable` in dimension.ts). Assistance lifts nothing.
+   * Documented here because it is the only place the convention lives.
    */
   tracking: TrackingMode.default('weight_reps'),
   description: z.string().max(4000).default(''),

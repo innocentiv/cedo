@@ -1,9 +1,14 @@
 import { and, eq, inArray } from 'drizzle-orm'
-import { DEFAULT_GROUP_SLUG } from '@cedo/contract'
+import {
+  DEFAULT_GROUP_SLUG,
+  type TrackingMode,
+  type WorkoutPlanInput,
+  weightAllowed,
+} from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groups } from '../../db/schema.ts'
 import { visibleExercises } from '../../db/visible.ts'
-import { conflict, notFound } from '../../lib/error.ts'
+import { conflict, invalid, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { planEntries } from './plan.ts'
 
@@ -39,15 +44,16 @@ export async function assertPlanCanUse(
   exerciseIds: readonly string[],
   groupId: string,
   referencedBy: ReferencedBy,
-): Promise<void> {
+): Promise<ReadonlyMap<string, TrackingMode>> {
   const ids = [...new Set(exerciseIds)]
-  if (ids.length === 0) return
+  if (ids.length === 0) return new Map()
 
   const visible = visibleExercises(caller)
   const seen = await db
     .select({
       id: visible.id,
       name: visible.name,
+      tracking: visible.tracking,
       ownerGroupId: visible.ownerGroupId,
       library: groups.id,
     })
@@ -55,10 +61,11 @@ export async function assertPlanCanUse(
     .leftJoin(groups, and(eq(groups.id, visible.ownerGroupId), eq(groups.slug, DEFAULT_GROUP_SLUG)))
     .where(inArray(visible.id, ids))
 
-  const known = new Set(seen.map((e) => e.id))
-  const hidden = ids.filter((id) => !known.has(id))
+  // Returned, read here anyway: how each is measured, for what the plan may prescribe it (#19).
+  const tracking = new Map(seen.map((e) => [e.id, e.tracking]))
+  const hidden = ids.filter((id) => !tracking.has(id))
   if (hidden.length > 0) throw refusedHidden(hidden, referencedBy)
-  if (groupId === caller.personalGroupId) return
+  if (groupId === caller.personalGroupId) return tracking
 
   const unreachable = seen.filter((e) => e.ownerGroupId !== groupId && e.library === null)
   if (unreachable.length > 0) {
@@ -67,6 +74,7 @@ export async function assertPlanCanUse(
       `That group cannot see ${names}. Share or duplicate ${unreachable.length === 1 ? 'it' : 'them'} into the group first.`,
     )
   }
+  return tracking
 }
 
 /**
@@ -84,6 +92,31 @@ function refusedHidden(hidden: readonly string[], referencedBy: ReferencedBy) {
       : `${unseen}, so the plan cannot be moved there. ` +
           `Ask its owner to share ${them} with you, or remove ${them} from the plan.`,
   )
+}
+
+/**
+ * A negative target weight is assistance, which only a bodyweight movement takes (#19). Over the
+ * modes `assertPlanCanUse` has already read, so it costs the save no query of its own.
+ */
+export function assertAssistanceAllowed(
+  plan: WorkoutPlanInput,
+  tracking: ReadonlyMap<string, TrackingMode>,
+): void {
+  plan.days.forEach((day, d) => {
+    day.entries.forEach((entry, e) => {
+      const mode = tracking.get(entry.exerciseId)
+      const s = entry.sets.findIndex(
+        (set) => mode !== undefined && !weightAllowed(set.targetWeightG, mode),
+      )
+      if (s === -1) return
+      throw invalid('Only a bodyweight movement can be assisted: a negative weight is assistance', [
+        {
+          path: `days.${d}.entries.${e}.sets.${s}.targetWeightG`,
+          message: 'Cannot be negative for this exercise',
+        },
+      ])
+    })
+  })
 }
 
 /** Before a transfer: the one rule, over whatever exercises the stored plan references. */

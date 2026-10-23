@@ -86,9 +86,15 @@ _Avoid_: clone, fork
 ## Measurement
 
 **Tracking mode**:
-What an exercise measures: weight and reps, bodyweight reps (with optional added weight), a
-duration, or a distance over a duration.
+What an exercise measures: weight and reps, bodyweight reps (with optional added weight, or
+assistance), a duration, or a distance over a duration.
 _Avoid_: exercise type, measurement type
+
+**Assistance**:
+Help on a bodyweight movement: a band, an assisted machine. Recorded as negative added weight, so a
+band worth 20 kg is −20 kg and less help is simply heavier, on the way to bodyweight and then added
+load. Help is not load, so it adds nothing to weight lifted.
+_Avoid_: counterweight, negative load
 
 **Dimension**:
 One measured quantity: weight, reps, duration or distance. A tracking mode is a set of them.

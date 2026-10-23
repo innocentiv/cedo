@@ -28,6 +28,18 @@ export const tracks = (mode: TrackingMode, dimension: Dimension): boolean =>
   DIMENSIONS_BY_TRACKING[mode].includes(dimension)
 
 /**
+ * Assistance — a band, an assisted machine — is NEGATIVE added weight, on a bodyweight movement
+ * only (#19). One scale, so less assistance is simply heavier, and ordering, stalls and progression
+ * take it as they take added load. Bounded by mode, not by the weight schemas, which do not know
+ * it: the API checks a set and a plan here, where the exercise is known.
+ */
+export const assistable = (dimension: Dimension, tracking: TrackingMode): boolean =>
+  dimension === 'weight' && tracking === 'bodyweight_reps'
+
+export const weightAllowed = (weightG: number | null, tracking: TrackingMode): boolean =>
+  weightG === null || weightG >= 0 || assistable('weight', tracking)
+
+/**
  * Everything a screen needs to let someone type one dimension: the unit it is typed in, whether it
  * takes decimals, and the round trip between the base-unit integer stored everywhere and the text
  * in the box.
@@ -45,10 +57,11 @@ export interface DimensionField extends Typing {
   readonly targetKey: TargetKey
   /**
    * The unit, as a field label. Only weight depends on the mode: on a bodyweight movement it is
-   * weight ADDED, `+kg`. Without a mode — a progression increment — it is the plain unit. And only
-   * weight depends on the person: `fieldFor(dimension, unit)` gives it in their kg or lb.
+   * weight ADDED, `+kg` — or, `assisted`, the assistance, typed as a positive number and stored
+   * negative. Without a mode — a progression increment — it is the plain unit. And only weight
+   * depends on the person: `fieldFor(dimension, unit)` gives it in their kg or lb.
    */
-  readonly unit: (tracking?: TrackingMode) => string
+  readonly unit: (tracking?: TrackingMode, assisted?: boolean) => string
 }
 
 /** A prescribed set's measured targets — derived from the schema, so a rename there breaks here. */
@@ -60,7 +73,10 @@ function weightField(unit: WeightUnit): DimensionField {
     dimension: 'weight',
     key: 'weightG',
     targetKey: 'targetWeightG',
-    unit: (tracking) => (tracking === 'bodyweight_reps' ? `+${unit}` : unit),
+    unit: (tracking, assisted = false) => {
+      if (tracking !== 'bodyweight_reps') return unit
+      return assisted ? `${unit} assistance` : `+${unit}`
+    },
     ...(unit === 'kg' ? typing(true, kgToG, gToKgShown) : typing(true, lbToG, gToLbShown)),
   }
 }

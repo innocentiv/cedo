@@ -890,6 +890,56 @@ test(
 )
 
 /**
+ * A band-assisted pull-up (#19). Assistance is negative added weight, typed as its size with a
+ * toggle, since a phone's number pad has no minus key. A plan prescribing it opens the logger
+ * assisted, and the set reads as help, never as "+-20 kg". Turned to Added, the same field is load.
+ */
+test(
+  'an assisted set is logged as assistance, and added load as load',
+  async () => {
+    await withApp('assisted-pull-up', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('band'))
+      const mine = await page.client()
+      const [pullUp] = (await mine.exercises.list({ q: 'Pull-Up', limit: 1 })).items
+      if (pullUp?.tracking !== 'bodyweight_reps') throw new Error('No bodyweight Pull-Up seeded')
+      const plan = await mine.workouts.create({ name: 'Band work', notes: null })
+      await mine.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [
+            {
+              name: 'Pull',
+              entries: [
+                { exerciseId: pullUp.id, sets: [{ targetReps: 8, targetWeightG: -20_000 }] },
+              ],
+            },
+          ],
+        }),
+      )
+
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await app.workouts.startDay(0)
+      await app.session.entry(0).log()
+      await page.until(
+        async () => await app.session.loggedLines(),
+        (lines) => lines.includes('8 × bodyweight −20 kg (assisted)'),
+      )
+
+      await app.session.entry(0).assistance('added')
+      await app.session.entry(0).fill('weight', '5')
+      await app.session.entry(0).log()
+      await page.until(
+        async () => await app.session.loggedLines(),
+        (lines) => lines.includes('8 × bodyweight +5 kg'),
+      )
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * No signal mid-session (#9). Sets logged offline show at once as waiting, and the server has none
  * of them; back online, they are sent in order. A set whose answer is lost on the way back — stored,
  * and the phone never told — is sent again under its key, and is still one set.

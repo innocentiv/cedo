@@ -112,8 +112,9 @@ const MEASURE: {
   readonly [M in TrackingMode]: (tops: readonly Effort[]) => (top: Effort) => number
 } = {
   weight_reps: () => (top) => top.weightG ?? 0,
+  // Assistance is negative added weight (#19), one scale with load: drawn when every session has one.
   bodyweight_reps: (tops) =>
-    tops.every((t) => (t.weightG ?? 0) > 0) ? (top) => top.weightG ?? 0 : (top) => top.reps ?? 0,
+    tops.every((t) => (t.weightG ?? 0) !== 0) ? (top) => top.weightG ?? 0 : (top) => top.reps ?? 0,
   duration: () => (top) => top.durationS ?? 0,
   distance_duration: (tops) => {
     const [first] = tops

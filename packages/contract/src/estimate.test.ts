@@ -138,6 +138,18 @@ describe("an exercise's trend", () => {
     expect(mixed.map((p) => p.value)).toEqual([8, 12, 6])
   })
 
+  /** Assisted then loaded is one scale (#19): every session with a weight draws that weight. */
+  test('for bodyweight work, assistance and added weight are one line', () => {
+    const climbing = trendOf(
+      history('bodyweight_reps', [
+        [working(5_000, 6)],
+        [working(-10_000, 8)],
+        [working(-20_000, 8)],
+      ]),
+    )
+    expect(climbing.map((p) => p.value)).toEqual([-20_000, -10_000, 5_000])
+  })
+
   /** A run ranks by distance, then by pace: over one distance, faster is progress. */
   test('for a run, is the distance — or, every run one distance, its speed', () => {
     const run = (distanceMm: number, durationS: number) => ({

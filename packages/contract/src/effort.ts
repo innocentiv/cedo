@@ -70,8 +70,10 @@ function lift(
   const weight = (grams: number) => formatWeight(grams, unit)
   if (count === null) return weightG === null ? null : weight(weightG)
   if (tracking === 'bodyweight_reps') {
-    return weightG === null || weightG === 0
-      ? `${count} × bodyweight`
+    if (weightG === null || weightG === 0) return `${count} × bodyweight`
+    // Negative added weight is assistance (#19): its size, said as help, never "+-20 kg".
+    return weightG < 0
+      ? `${count} × bodyweight −${weight(-weightG)} (assisted)`
       : `${count} × bodyweight +${weight(weightG)}`
   }
   return weightG === null ? `${count} reps` : `${count} × ${weight(weightG)}`

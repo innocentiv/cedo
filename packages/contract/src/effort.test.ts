@@ -22,6 +22,34 @@ describe('formatEffort renders what the tracking mode measures', () => {
     )
   })
 
+  /** Assistance — a band, an assisted machine — is negative added weight, and said as such (#19). */
+  test('assistance reads as assistance, never as "+-20 kg"', () => {
+    expect(formatEffort({ ...none, reps: 12, weightG: -20_000 }, 'bodyweight_reps', 'kg')).toBe(
+      '12 × bodyweight −20 kg (assisted)',
+    )
+    expect(
+      formatSets(
+        [
+          { ...none, reps: 12, weightG: -20_000 },
+          { ...none, reps: 10, weightG: -20_000 },
+        ],
+        'bodyweight_reps',
+        'kg',
+      ),
+    ).toBe('12, 10 × bodyweight −20 kg (assisted)')
+  })
+
+  /** One scale: less assistance is better, then no help, then added load. */
+  test('less assistance is the better set, and added load better still', () => {
+    const at = (weightG: number | null): Effort => ({ ...none, reps: 8, weightG })
+    const ladder = [at(-20_000), at(-10_000), at(null), at(5_000)]
+    for (const [lower, higher] of ladder.slice(1).map((e, i) => [ladder[i], e] as const)) {
+      if (lower === undefined) continue
+      expect(compareEfforts(higher, lower, 'bodyweight_reps')).toBeGreaterThan(0)
+    }
+    expect(topSet([at(-20_000), at(-10_000)], 'bodyweight_reps')).toEqual(at(-10_000))
+  })
+
   test('a hold is its duration, not "— × bodyweight"', () => {
     expect(formatEffort({ ...none, durationS: 60 }, 'duration', 'kg')).toBe('1:00')
   })

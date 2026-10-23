@@ -218,8 +218,8 @@ function clearsReps(
     const reps = attempt.reps ?? null
     if (reps === null || reps < repGoal) return false
     if (target.weightG === null) return true
-    const weight = attempt.weightG ?? null
-    return weight !== null && weight >= target.weightG
+    // Unrecorded is no load: 0, short of any load prescribed, past any assistance (#19).
+    return (attempt.weightG ?? 0) >= target.weightG
   })
 }
 

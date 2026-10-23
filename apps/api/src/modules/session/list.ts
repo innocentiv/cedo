@@ -124,8 +124,9 @@ async function totalsFor(sessionIds: string[]) {
       sets: sql<number>`count(*) filter (where not ${setLogs.isWarmup})`.mapWith(Number),
       lifted:
         // `::bigint` for the same reason as the review's weight-lifted sum: weight × reps overflows
-        // int4 at loads the contract permits. See modules/review/service.ts.
-        sql<number>`coalesce(sum(${setLogs.weightG}::bigint * ${setLogs.reps}) filter (where not ${setLogs.isWarmup}), 0)`.mapWith(
+        // int4 at loads the contract permits. And assistance — negative added weight (#19) — is
+        // help, not load: it lifts nothing. See modules/review/service.ts.
+        sql<number>`coalesce(sum(greatest(${setLogs.weightG}, 0)::bigint * ${setLogs.reps}) filter (where not ${setLogs.isWarmup}), 0)`.mapWith(
           Number,
         ),
     })

@@ -22,6 +22,10 @@ async function loggedIds(page: Page): Promise<string[]> {
 
 /** One logger: a plan entry's (`log-entry-0`) or an exercise's in a session without a plan. */
 const logger = (page: Page, id: string) => ({
+  /** On a bodyweight movement: whether the weight is added load or assistance (#19). */
+  assistance: async (choice: 'added' | 'assisted'): Promise<void> => {
+    await page.click(`[data-testid="${id}-weight-assistance-${choice}"]`)
+  },
   shown: async (): Promise<void> => {
     await page.waitFor(id)
   },
