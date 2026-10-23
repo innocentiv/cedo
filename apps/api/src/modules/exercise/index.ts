@@ -3,7 +3,7 @@ import { z } from 'zod'
 import {
   DuplicateInput,
   Exercise,
-  ExerciseCreate,
+  ExerciseCreateRequest,
   ExerciseQuery,
   ExerciseUpdate,
   Id,
@@ -24,9 +24,12 @@ export const exerciseRoutes = new Elysia({ prefix: '/exercises', tags: ['exercis
     detail: { summary: 'List exercises visible to the caller' },
   })
   .post('/', ({ caller, body }) => ExerciseService.create(caller, body), {
-    body: ExerciseCreate,
+    body: ExerciseCreateRequest,
     response: Exercise,
-    detail: { summary: "Create an exercise in the caller's personal group" },
+    detail: {
+      summary: "Create an exercise in the caller's personal group, or the shared library",
+      description: '`shared: true` puts it in the shared cedo library, which curators alone may.',
+    },
   })
   .get('/:id', ({ caller, params: { id } }) => ExerciseService.get(caller, id), {
     params,

@@ -83,6 +83,19 @@ export const ExerciseCreate = ExerciseFields.superRefine((value, ctx) => {
 export type ExerciseCreate = z.output<typeof ExerciseCreate>
 
 /**
+ * A create REQUEST: the exercise, and where it goes. Apart from `ExerciseCreate`, which is the
+ * exercise alone — what `exerciseInputFrom` gives back, and what duplicating writes into a group of
+ * its own. One shape for POST /exercises and MCP's `exercise_create`, so both make the same call.
+ */
+export const ExerciseCreateRequest = ExerciseCreate.safeExtend({
+  shared: z
+    .boolean()
+    .default(false)
+    .describe('Create in the shared cedo library rather than your own group — curators only'),
+})
+export type ExerciseCreateRequest = z.output<typeof ExerciseCreateRequest>
+
+/**
  * Every field optional and none defaulted (see `patchOf`); the muscle invariants apply only when
  * `muscles` is actually being set.
  */

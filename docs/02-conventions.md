@@ -29,15 +29,19 @@ function:
 ```ts
 // modules/exercise/index.ts
 .post('/', ({ caller, body }) => ExerciseService.create(caller, body),
-      { body: ExerciseCreate, response: Exercise })
+      { body: ExerciseCreateRequest, response: Exercise })
 
 // mcp/tools/library.ts
 server.registerTool('exercise_create',
-  { title: 'Create an exercise', description: '…', inputSchema: ExerciseCreate, annotations: WRITE },
-  async (input) => text(exerciseDetail(await ExerciseService.create(caller, input))))
+  { title: 'Create an exercise', description: '…', inputSchema: ExerciseCreateRequest, annotations: WRITE },
+  async (input) => text(`Created.\n\n${exerciseDetail(await ExerciseService.create(caller, input))}`))
 ```
 
-If a rule exists in only one of those two paths, it is a bug. Put it in the service.
+If a rule exists in only one of those two paths, it is a bug. Put it in the service. Choices too:
+`shared: true`, which creates into the shared library, is part of the one request shape, and the
+service decides where it goes and whether the caller may. The tool used to take `shared` on an
+extension of its own and branch between two service functions. That was logic in the adapter, and a
+field the HTTP route did not accept.
 
 ## The ACL invariant
 

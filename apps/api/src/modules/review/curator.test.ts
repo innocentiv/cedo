@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { ExerciseCreate } from '@cedo/contract'
+import { ExerciseCreateRequest } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupMembers } from '../../db/schema.ts'
 import { type Caller, resolveCaller } from '../../plugins/auth.ts'
@@ -36,16 +36,17 @@ async function callerOf(username: string, curator: boolean): Promise<Caller> {
   return caller
 }
 
-const squat = ExerciseCreate.parse({
+const squat = ExerciseCreateRequest.parse({
   name: 'Curated Squat',
   muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+  shared: true,
 })
 
 describe('a non-curator is refused, by the service itself, with a 404', () => {
   test.each([
     ['instance status', async (c: Caller) => await platformStatus(c, 'test')],
     ['the slow query log', async (c: Caller) => await slowQueries(c, 5)],
-    ['a shared exercise', async (c: Caller) => await ExerciseService.createShared(c, squat)],
+    ['a shared exercise', async (c: Caller) => await ExerciseService.create(c, squat)],
   ])('%s', async (_, act) => {
     const alice = await callerOf('alice', false)
     // Captured, not `expect(…).rejects`: an unawaited `rejects` can pass without ever running.
@@ -59,6 +60,6 @@ describe('a non-curator is refused, by the service itself, with a 404', () => {
 
 test('a curator writes to the shared library', async () => {
   const curator = await callerOf('carol', true)
-  const created = await ExerciseService.createShared(curator, squat)
+  const created = await ExerciseService.create(curator, squat)
   expect(created.ownerGroupId).toBe(h.groupId)
 })

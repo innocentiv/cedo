@@ -1,6 +1,7 @@
 import {
   type Exercise,
   type ExerciseCreate,
+  type ExerciseCreateRequest,
   type ExerciseQuery,
   type ExerciseUpdate,
   type Page,
@@ -31,20 +32,28 @@ export async function get(caller: Caller, id: string): Promise<Exercise> {
   return hydrated
 }
 
+/**
+ * Into the caller's own group, or — `shared` — into the shared library, which only a curator may
+ * write to. Decided here, not by whichever surface offers it, so none can forget the check: a
+ * non-curator gets a 404, like any write they may not make.
+ */
 export async function create(
   caller: Caller,
-  input: ExerciseCreate,
-  ownerGroupId = caller.personalGroupId,
+  { shared, ...input }: ExerciseCreateRequest,
 ): Promise<Exercise> {
-  return await get(caller, await insertExercise(caller, input, ownerGroupId))
+  return await createIn(
+    caller,
+    input,
+    shared ? await requireCurator(caller) : caller.personalGroupId,
+  )
 }
 
-/**
- * Into the shared library, which only a curator may write to — checked here, not by whichever
- * surface offers it, so none can forget. A non-curator gets a 404, like any write they may not make.
- */
-export async function createShared(caller: Caller, input: ExerciseCreate): Promise<Exercise> {
-  return await create(caller, input, await requireCurator(caller))
+async function createIn(
+  caller: Caller,
+  input: ExerciseCreate,
+  ownerGroupId: string,
+): Promise<Exercise> {
+  return await get(caller, await insertExercise(caller, input, ownerGroupId))
 }
 
 export async function update(caller: Caller, id: string, patch: ExerciseUpdate): Promise<Exercise> {
@@ -65,7 +74,7 @@ export async function duplicate(caller: Caller, id: string, toGroupId?: string):
   const target = toGroupId ?? caller.personalGroupId
   assertEditorOf(caller, target)
 
-  return await create(caller, exerciseInputFrom(await get(caller, id)), target)
+  return await createIn(caller, exerciseInputFrom(await get(caller, id)), target)
 }
 
 export async function transfer(caller: Caller, id: string, toGroupId: string): Promise<Exercise> {

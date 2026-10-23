@@ -22,16 +22,18 @@ server.registerTool(
   {
     title: 'Create an exercise',
     description: '…what it does, and when NOT to use it',
-    inputSchema: ExerciseCreate,          // the contract schema, never a new shape
+    inputSchema: ExerciseCreateRequest,   // the contract schema the route takes, never a new shape
     annotations: { readOnlyHint: false, openWorldHint: false },
   },
   // `text` and the formatters (`exerciseDetail`, `workoutDetail`, …) live in apps/api/src/mcp/format.ts
-  async (input) => text(exerciseDetail(await ExerciseService.create(caller, input))),
+  async (input) => text(`Created.\n\n${exerciseDetail(await ExerciseService.create(caller, input))}`),
 )
 ```
 
-The input schema comes from `@cedo/contract`. Redeclaring the shape is how the tool and the route
-start accepting different things.
+The input schema comes from `@cedo/contract`, and it is the one the matching route takes.
+Redeclaring the shape, or extending it in the tool, is how the tool and the route start accepting
+different things. A field only the tool needs, like `shared` here, belongs in the contract's request
+shape. Then the route accepts it too, and the one service call decides what it means.
 
 ## 3. Format for an AI, not for a UI
 

@@ -1,6 +1,12 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
-import { DuplicateInput, ExerciseCreate, ExerciseUpdate, MUSCLES, MuscleSlug } from '@cedo/contract'
+import {
+  DuplicateInput,
+  ExerciseCreateRequest,
+  ExerciseUpdate,
+  MUSCLES,
+  MuscleSlug,
+} from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import * as ExerciseService from '../../modules/exercise/service.ts'
 import * as MediaService from '../../modules/media/service.ts'
@@ -85,20 +91,11 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
         'Create an exercise. Muscle loads must sum to exactly 100 and no muscle may repeat. ' +
         'Set `shared: true` to put it in the shared library — that requires curator rights. ' +
         'Search first: duplicates are hard to undo, since nothing can be deleted through MCP.',
-      inputSchema: ExerciseCreate.safeExtend({
-        shared: z
-          .boolean()
-          .default(false)
-          .describe('Create in the shared cedo library rather than your own group'),
-      }),
+      inputSchema: ExerciseCreateRequest,
       annotations: WRITE,
     },
-    async ({ shared, ...input }) => {
-      const created = shared
-        ? await ExerciseService.createShared(caller, input)
-        : await ExerciseService.create(caller, input)
-      return text(`Created.\n\n${exerciseDetail(created)}`)
-    },
+    async (input) =>
+      text(`Created.\n\n${exerciseDetail(await ExerciseService.create(caller, input))}`),
   )
 
   server.registerTool(
