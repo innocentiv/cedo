@@ -152,6 +152,12 @@ conversion, and the parse. Which fields a set shows, and in what order, is `fiel
 No screen converts a unit or picks a label: the logger, the plan editor and the progression field
 each used to, and disagreed. `NumberInput` is for plain counts — sets, a rep range, a percentage.
 
+On a bodyweight movement the weight field also has an **Added / Assisted** toggle (#19). Assistance,
+such as a band or an assisted machine, is negative added weight. A phone's number pad has no minus
+key, so the number typed is the size and the toggle is the sign. A stored value carries its own
+sign, so an assisted target opens assisted. A field emptied on the way to retyping keeps the last
+sign seen. Those rules are the contract's `assistance`, tested there; the input only wires them.
+
 A logged set is held as an `Effort` and read and written through each field's `key`; a prescribed
 set's target through its `targetKey`. A screen therefore names no measurement field itself. The
 plan editor patches only the target that changed — never a whole `Effort` mapped back onto the

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test } from 'bun:test'
 import {
   ApiError,
   Exercise,
+  SessionLogInput,
   SetLog,
   Workout,
   WorkoutSession,
@@ -11,6 +12,7 @@ import {
 import { expectContract } from '../../test/contract.ts'
 import { type TestUser, makeApi } from '../../test/harness.ts'
 import { trainingReview } from '../review/service.ts'
+import { logWhole } from './start.ts'
 
 /**
  * Assistance — a band, an assisted machine — is NEGATIVE added weight, on a bodyweight movement
@@ -107,6 +109,24 @@ describe('a set logged with assistance', () => {
     )
     expect(lats?.weightedSets).toBe(1)
     expect(lats?.liftedG).toBe(0)
+  })
+})
+
+/** The MCP's `session_log` writes a whole session through `logWhole`: held to the same rule. */
+describe('a whole session logged at once, as the MCP does', () => {
+  test('keeps assistance on a bodyweight movement, and refuses it on a weight lift', async () => {
+    const pullUp = await anExercise('bodyweight_reps')
+    const bench = await anExercise('weight_reps')
+    const whole = (exerciseId: string) =>
+      SessionLogInput.parse({ sets: [{ exerciseId, weightG: -20_000, reps: 8 }] })
+
+    const kept = await logWhole(alice.caller, whole(pullUp))
+    expect(kept.logs[0]?.weightG).toBe(-20_000)
+    const refused = await logWhole(alice.caller, whole(bench)).then(
+      () => null,
+      (error: unknown) => error,
+    )
+    expect(refused).toMatchObject({ code: 'validation_failed' })
   })
 })
 

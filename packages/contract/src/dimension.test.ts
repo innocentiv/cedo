@@ -3,6 +3,7 @@ import {
   DIMENSION_FIELDS,
   type Dimension,
   assistable,
+  assistance,
   fieldFor,
   fieldsOf,
   weightAllowed,
@@ -54,6 +55,29 @@ describe('which weights a movement can take', () => {
     for (const weightG of [-20_000, 0, 20_000, null]) {
       expect(weightAllowed(weightG, 'bodyweight_reps')).toBe(true)
     }
+  })
+
+  /**
+   * The number typed is the size; the toggle is the sign. A value carries its own sign; only an
+   * empty field or a zero has none, and then the last sign seen holds — so clearing an assisted
+   * −20 to type 15 is −15, not +15.
+   */
+  test('the toggle reads, keeps and turns the sign of what is typed', () => {
+    expect(assistance.of(-20_000, false)).toBe(true)
+    expect(assistance.of(5_000, true)).toBe(false)
+    expect(assistance.of(null, true)).toBe(true)
+    expect(assistance.of(0, true)).toBe(true)
+    expect(assistance.remembered(-20_000, false)).toBe(true)
+    expect(assistance.remembered(null, true)).toBe(true)
+    expect(assistance.remembered(5_000, true)).toBe(false)
+    expect(assistance.shown(-20_000)).toBe(20_000)
+    expect(assistance.stored(15_000, true)).toBe(-15_000)
+    expect(assistance.stored(15_000, false)).toBe(15_000)
+    expect(assistance.stored(null, true)).toBeNull()
+    expect(assistance.turned(20_000, true)).toBe(-20_000)
+    expect(assistance.turned(-20_000, false)).toBe(20_000)
+    expect(assistance.turned(-20_000, true)).toBe(-20_000)
+    expect(assistance.turned(null, true)).toBeNull()
   })
 
   test('nothing else can be assisted: a negative barbell is a mistake', () => {

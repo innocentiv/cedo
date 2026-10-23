@@ -8,7 +8,8 @@ import {
 import { db } from '../../db/client.ts'
 import { groups } from '../../db/schema.ts'
 import { visibleExercises } from '../../db/visible.ts'
-import { conflict, invalid, notFound } from '../../lib/error.ts'
+import { conflict, notFound } from '../../lib/error.ts'
+import { assistanceRefused } from '../session/loggable.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { planEntries } from './plan.ts'
 
@@ -109,12 +110,7 @@ export function assertAssistanceAllowed(
         (set) => mode !== undefined && !weightAllowed(set.targetWeightG, mode),
       )
       if (s === -1) return
-      throw invalid('Only a bodyweight movement can be assisted: a negative weight is assistance', [
-        {
-          path: `days.${d}.entries.${e}.sets.${s}.targetWeightG`,
-          message: 'Cannot be negative for this exercise',
-        },
-      ])
+      throw assistanceRefused(`days.${d}.entries.${e}.sets.${s}.targetWeightG`)
     })
   })
 }

@@ -39,6 +39,31 @@ export const assistable = (dimension: Dimension, tracking: TrackingMode): boolea
 export const weightAllowed = (weightG: number | null, tracking: TrackingMode): boolean =>
   weightG === null || weightG >= 0 || assistable('weight', tracking)
 
+const unsigned = (value: number | null) => value === null || value === 0
+
+/**
+ * The Added / Assisted toggle's rules, for a field whose number is typed as a size because a phone's
+ * number pad has no minus key. A stored value carries its own sign; an empty field or a zero has
+ * none, and then the last sign seen — `remembered` — holds, so clearing an assisted −20 to type 15
+ * keeps it assisted. Plain, so they are tested here and the input only wires them.
+ */
+export const assistance = {
+  /** Whether the field reads as assistance now. */
+  of: (value: number | null, remembered: boolean): boolean =>
+    unsigned(value) ? remembered : value < 0,
+  /** What to remember after a value: its own sign, or — unsigned — what was remembered. */
+  remembered: (value: number | null, previously: boolean): boolean =>
+    unsigned(value) ? previously : value < 0,
+  /** The size the field shows. */
+  shown: (value: number | null): number | null => (value === null ? null : Math.abs(value)),
+  /** What a typed size is stored as. */
+  stored: (typed: number | null, assisted: boolean): number | null =>
+    typed === null || !assisted ? typed : -typed,
+  /** A value turned to the side chosen, its size kept. */
+  turned: (value: number | null, toAssisted: boolean): number | null =>
+    value === null ? null : toAssisted ? -Math.abs(value) : Math.abs(value),
+}
+
 /**
  * Everything a screen needs to let someone type one dimension: the unit it is typed in, whether it
  * takes decimals, and the round trip between the base-unit integer stored everywhere and the text

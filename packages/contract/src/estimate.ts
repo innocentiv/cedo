@@ -34,7 +34,9 @@ export function estimatedMax(
   tracking: TrackingMode,
 ): number | null {
   const { weightG, reps, rpe } = set
-  if (tracking !== 'weight_reps' || weightG === null || weightG === 0) return null
+  // Not positive: no load to estimate from — and a negative one is assistance left behind by an
+  // exercise whose mode changed from bodyweight (#19), never a max.
+  if (tracking !== 'weight_reps' || weightG === null || weightG <= 0) return null
   if (reps === null || reps < 1) return null
   const done = reps + (rpe === null ? 0 : reserveOf(rpe))
   if (done > MAX_ESTIMATE_REPS) return null
@@ -104,8 +106,9 @@ export const formatTrendPoint = (
 
 /**
  * How a series of top sets is drawn, decided over the whole series — one per mode, or this does not
- * compile. A weight lift is estimated before it gets here. Bodyweight work by added weight when
- * every session added some — added weight and reps are not one scale — else by reps. A run by
+ * compile. A weight lift is estimated before it gets here. Bodyweight work by its weight — added
+ * load, or assistance as negative (#19), one scale — when every session has one; weight and reps
+ * are not one scale, so else by reps. A run by
  * distance, as it ranks first; every run one distance, by speed — the farthest, then the fastest.
  */
 const MEASURE: {

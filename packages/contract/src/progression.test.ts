@@ -54,6 +54,12 @@ describe('nextTarget — double progression (3 sets of 8-12, +2.5kg)', () => {
     expect(run(target(12, -20), unassisted)).toEqual(target(8, -17.5))
   })
 
+  /** Only against assistance: on a weight lift an unrecorded weight still meets no target. */
+  test('a weight lift with no weight recorded clears nothing, even a 0 kg target', () => {
+    const unrecorded: SessionAttempts = [12, 12, 12].map((reps) => ({ weightG: null, reps }))
+    expect(run(target(12, 0), unrecorded)).toEqual(target(12, 0))
+  })
+
   test('one set misses the top -> hold', () => {
     expect(run(target(12, 60), at60(12, 12, 10))).toEqual(target(12, 60))
   })

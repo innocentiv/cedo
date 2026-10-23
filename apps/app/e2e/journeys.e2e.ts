@@ -927,6 +927,16 @@ test(
         (lines) => lines.includes('8 × bodyweight −20 kg (assisted)'),
       )
 
+      // Cleared key by key and retyped, as a thumb does: the empty field in between has no sign of
+      // its own, and the band it was must hold — 15 is −15, not +15.
+      await app.session.entry(0).focus('weight')
+      await page.keys(['Backspace', 'Backspace', '1', '5'])
+      await app.session.entry(0).log()
+      await page.until(
+        async () => await app.session.loggedLines(),
+        (lines) => lines.includes('8 × bodyweight −15 kg (assisted)'),
+      )
+
       await app.session.entry(0).assistance('added')
       await app.session.entry(0).fill('weight', '5')
       await app.session.entry(0).log()

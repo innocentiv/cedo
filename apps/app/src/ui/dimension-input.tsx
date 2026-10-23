@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { type Dimension, type TrackingMode, assistable, fieldFor } from '@cedo/contract'
+import { type Dimension, type TrackingMode, assistable, assistance, fieldFor } from '@cedo/contract'
 import { useWeightUnit } from '../lib/weight-unit.ts'
 import { type ChipOption, Chips } from './chips.tsx'
 import { CompactField, TypedNumber } from './input.tsx'
@@ -34,18 +34,21 @@ export function DimensionInput({
   const canAssist = tracking !== undefined && assistable(dimension, tracking)
   /**
    * Assistance is NEGATIVE added weight (#19), and a minus sign cannot be typed on a phone's number
-   * pad — so the number typed is always the size, and this says which way it goes. A stored value
-   * carries its own sign: an assisted target opens assisted. Only an empty field, or a zero, has
-   * no sign to read, so it keeps the choice here until a number is typed.
+   * pad — so the number typed is the size, and the toggle its sign. The rules are the contract's
+   * (`assistance`); this keeps only the last sign seen, for a field emptied on the way to retyping.
    */
-  const [assistedWhenUnsigned, setAssistedWhenUnsigned] = useState(false)
-  const assisted = canAssist && (value === null || value === 0 ? assistedWhenUnsigned : value < 0)
+  const [remembered, setRemembered] = useState(() => assistance.remembered(value, false))
+  const assisted = canAssist && assistance.of(value, remembered)
+  const change = (next: number | null) => {
+    setRemembered(assistance.remembered(next, assisted))
+    onChange(next)
+  }
   return (
     <CompactField label={label ?? field.unit(tracking, assisted)}>
       <TypedNumber
-        value={assisted && value !== null ? -value : value}
+        value={canAssist ? assistance.shown(value) : value}
         onChange={(typed) => {
-          onChange(typed === null || !assisted ? typed : -typed)
+          change(canAssist ? assistance.stored(typed, assisted) : typed)
         }}
         typing={field}
         testID={testID}
@@ -56,9 +59,8 @@ export function DimensionInput({
           value={assisted ? 'assisted' : 'added'}
           onChange={(chosen) => {
             const toAssisted = chosen === 'assisted'
-            setAssistedWhenUnsigned(toAssisted)
-            // A typed number keeps its size and turns round: 20 added becomes 20 of assistance.
-            if (value !== null && value !== 0 && toAssisted !== value < 0) onChange(-value)
+            setRemembered(toAssisted)
+            onChange(assistance.turned(value, toAssisted))
           }}
           testID={`${testID ?? 'weight'}-assistance`}
         />

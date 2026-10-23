@@ -67,6 +67,8 @@ describe('the estimated max of a set', () => {
     expect(estimatedMax(set(null, 5), 'weight_reps')).toBeNull()
     expect(estimatedMax(set(0, 5), 'weight_reps')).toBeNull()
     expect(estimatedMax(set(20_000, 5), 'bodyweight_reps')).toBeNull()
+    // Assistance left on an exercise whose mode changed from bodyweight is no max (#19).
+    expect(estimatedMax(set(-20_000, 5), 'weight_reps')).toBeNull()
   })
 })
 

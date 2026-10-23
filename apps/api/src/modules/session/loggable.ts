@@ -7,6 +7,15 @@ import type { Caller } from '../../plugins/auth.ts'
 import { planEntries } from '../workout/plan.ts'
 
 /**
+ * A negative weight is assistance, which only a bodyweight movement takes (#19) — refused on its
+ * field, as any other invalid value is. One message for a logged set and a prescribed one.
+ */
+export const assistanceRefused = (path = 'weightG') =>
+  invalid('Only a bodyweight movement can be assisted: a negative weight is assistance', [
+    { path, message: 'Cannot be negative for this exercise' },
+  ])
+
+/**
  * What a set may reference, checked for a whole batch in one query per kind — `logSet` passes one
  * set, `logWhole` a whole session.
  *
@@ -14,16 +23,8 @@ import { planEntries } from '../workout/plan.ts'
  * - An entry must be part of the plan the session is FOR, and prescribe the exercise being logged.
  *   Progression reads logs by entry, so visibility alone let a set from plan A's session count
  *   toward plan B; and existence alone, before that, let anyone attach a log to a guessed id.
+ * - A negative weight only on a bodyweight movement (`assistanceRefused`).
  */
-/**
- * A negative weight is assistance, which only a bodyweight movement takes (#19) — on the field, as
- * any other invalid value is.
- */
-export const assistanceRefused = () =>
-  invalid('Only a bodyweight movement can be assisted: a negative weight is assistance', [
-    { path: 'weightG', message: 'Cannot be negative for this exercise' },
-  ])
-
 export async function assertLoggable(
   caller: Caller,
   workoutId: string | null,
