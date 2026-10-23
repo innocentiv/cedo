@@ -618,7 +618,7 @@ test(
       await page.goto(`/workouts/${plan.id}`)
       // Why, and never the name: it is an exercise the athlete may not read.
       const refused = await app.workouts.duplicateRefused()
-      expect(refused).toContain('not visible to you')
+      expect(refused).toContain('not visible to you, so the plan cannot be copied')
       expect(refused).not.toContain('Squad Sled Drill')
       await app.workouts.shown()
       const mine = await (await page.client()).workouts.list({ scope: 'mine' })

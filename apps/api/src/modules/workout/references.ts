@@ -10,9 +10,11 @@ import { planEntries } from './plan.ts'
 /**
  * Where the exercise ids came from, which decides only how a refusal is said: an id the REQUEST
  * named and the caller cannot see is a 404, like any other id they cannot see; one the STORED plan
- * carries is a 409 — the plan exists, it just cannot go there.
+ * carries is a 409 — the plan exists, it just cannot go there. Which of the two the stored plan is
+ * being asked to do decides the words: a plan being MOVED, by an editor who may remove the
+ * exercise from it, or COPIED, quite possibly by a reader, who may not.
  */
-export type ReferencedBy = 'request' | 'plan'
+export type ReferencedBy = 'request' | 'transfer' | 'copy'
 
 /**
  * The one rule for which exercises a plan may use in a group — saved there, copied there, or transferred
@@ -74,9 +76,13 @@ export async function assertPlanCanUse(
 function refusedHidden(hidden: readonly string[], referencedBy: ReferencedBy) {
   if (referencedBy === 'request') return notFound(`exercise ${hidden[0]}`)
   const n = hidden.length
+  const [them, these] = n === 1 ? ['it', ' in this plan is'] : ['them', 's in this plan are']
+  const unseen = `${n} exercise${these} not visible to you`
   return conflict(
-    `${n} exercise${n === 1 ? ' in this plan is' : 's in this plan are'} not visible to you, so ` +
-      'the plan cannot go there. Ask its owner to share them, or remove them from the plan.',
+    referencedBy === 'copy'
+      ? `${unseen}, so the plan cannot be copied. Ask its owner to share ${them} with you.`
+      : `${unseen}, so the plan cannot be moved there. ` +
+          `Ask its owner to share ${them} with you, or remove ${them} from the plan.`,
   )
 }
 
@@ -92,6 +98,6 @@ export async function assertWorkoutCanTransferTo(
     caller,
     referenced.map((r) => r.id),
     toGroupId,
-    'plan',
+    'transfer',
   )
 }

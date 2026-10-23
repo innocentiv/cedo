@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { Exercise, GroupMembership, ProgressionSuggestion, Workout } from '@cedo/contract'
+import { ApiError, Exercise, GroupMembership, ProgressionSuggestion, Workout } from '@cedo/contract'
 import { z } from 'zod'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
@@ -250,6 +250,11 @@ describe('sharing a workout does not share its exercises', () => {
     const res = await bob.wire(`/workouts/${workout.id}/duplicate`, { method: 'POST', body: '{}' })
     expect(res.status).toBe(409)
     expect(JSON.stringify(res.body)).not.toContain('Alice Secret Movement')
+    // Said as a copy, with advice a READER can take — they cannot edit the plan to remove it.
+    expect(expectContract(ApiError, res.body).error.message).toBe(
+      '1 exercise in this plan is not visible to you, so the plan cannot be copied. ' +
+        'Ask its owner to share it with you.',
+    )
 
     const mine = expectContract(
       z.object({ items: z.array(z.object({ id: z.uuid() })) }),
@@ -289,6 +294,11 @@ describe('sharing a workout does not share its exercises', () => {
       })
       expect(res.status).toBe(409)
       expect(JSON.stringify(res.body)).not.toContain('Alice Secret Movement')
+      // An editor moving it can remove the exercise, so that advice stays.
+      expect(expectContract(ApiError, res.body).error.message).toBe(
+        '1 exercise in this plan is not visible to you, so the plan cannot be moved there. ' +
+          'Ask its owner to share it with you, or remove it from the plan.',
+      )
       expect(
         expectContract(Workout, (await alice.wire(`/workouts/${workout.id}`)).body).ownerGroupId,
       ).toBe(squad.id)

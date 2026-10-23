@@ -113,7 +113,7 @@ export async function insertCopy(
     caller,
     plan.days.flatMap((d) => d.entries.map((e) => e.exerciseId)),
     toGroupId,
-    'plan',
+    'copy',
   )
 
   return await db.transaction(async (tx) => {
