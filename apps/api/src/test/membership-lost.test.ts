@@ -50,6 +50,8 @@ interface World {
   /** On her own plan, which stays hers: its day still names Bob's exercise while she can see it. */
   readonly alicesOwnSessionId: string
   readonly alicesPat: string
+  /** Bob shares his training with the crew, which Alice edits: she coaches him (#11). */
+  readonly bobsSessionId: string
 }
 
 async function post(user: TestUser, path: string, body: unknown, method = 'POST') {
@@ -139,6 +141,19 @@ async function buildWorld(): Promise<World> {
     await post(alice, '/tokens', { name: 'claude' }),
   ).token
 
+  // Bob trains on his own plan, and shares it with the crew — Alice, its editor, coaches him.
+  await post(bob, `/groups/${crewId}/membership`, { sharesTraining: true }, 'PATCH')
+  const bobsSessionId = expectContract(
+    WorkoutSession,
+    await post(bob, '/sessions', { workoutId: bobsWorkoutId, dayId: day.id }),
+  ).id
+  await post(bob, `/sessions/${bobsSessionId}/logs`, {
+    exerciseId: bobsExerciseId,
+    entryId: entry.id,
+    weightG: 60_000,
+    reps: 5,
+  })
+
   return {
     crewId,
     bobsExerciseId,
@@ -147,6 +162,7 @@ async function buildWorld(): Promise<World> {
     alicesSessionId,
     alicesOwnSessionId,
     alicesPat,
+    bobsSessionId,
   }
 }
 
@@ -297,6 +313,25 @@ const ROUTES: Record<string, Case> = {
         http(`/sessions/${w.alicesSessionId}/targets`),
         http(`/sessions/${w.alicesOwnSessionId}/targets`),
       ]),
+  },
+  // Alice coaches Bob through the crew (#11): his training, named as she can see it — then nothing.
+  'GET /athletes/': { named: true, read: async () => await http('/athletes') },
+  'GET /athletes/:id/sessions': {
+    named: true,
+    read: async () => await http(`/athletes/${bob.userId}/sessions`),
+    allowed: async () => await httpAllowed(`/athletes/${bob.userId}/sessions`),
+  },
+  'GET /athletes/:id/sessions/:sessionId': {
+    named: true,
+    read: async (w) => await http(`/athletes/${bob.userId}/sessions/${w.bobsSessionId}`),
+    allowed: async (w) => await httpAllowed(`/athletes/${bob.userId}/sessions/${w.bobsSessionId}`),
+  },
+  'GET /athletes/:id/exercises/:exerciseId/history': {
+    // Dates and efforts, no name.
+    named: false,
+    read: async (w) => await http(`/athletes/${bob.userId}/exercises/${w.bobsExerciseId}/history`),
+    allowed: async (w) =>
+      await httpAllowed(`/athletes/${bob.userId}/exercises/${w.bobsExerciseId}/history`),
   },
   // Curator-only, and Alice is no curator: she is refused before and after.
   'GET /admin/status': { named: false, read: async () => await http('/admin/status') },
