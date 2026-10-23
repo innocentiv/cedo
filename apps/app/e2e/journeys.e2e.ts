@@ -379,6 +379,39 @@ test(
 )
 
 /**
+ * An athlete shares their training with a coach's group, and keeps it private again (#11). The
+ * switch is theirs, the group says who reads it, and a personal group offers no switch at all.
+ */
+test(
+  "an athlete shares their training with a group's editors, and takes it back",
+  async () => {
+    const athlete = unique('share')
+    await withApp('share-training', async (page) => {
+      const app = screens(page)
+      await app.auth.register(athlete)
+      const coach = await signUp(`${athlete}c`)
+      const squad = await coach.api.groups.create({ name: 'Squad' })
+      await coach.api.groups.addMember(squad.id, { username: athlete, role: 'reader' })
+
+      await app.groups.open()
+      await app.groups.openGroup('Squad')
+      expect(await app.groups.readers()).toEqual([])
+      await app.groups.shareTraining('shared')
+      await page.until(app.groups.readers, (readers) => readers.includes(coach.user.username))
+
+      const mine = await page.client()
+      const shared = (await mine.groups.list()).find((g) => g.id === squad.id)
+      expect(shared?.sharesTraining).toBe(true)
+
+      await app.groups.shareTraining('private')
+      await page.until(app.groups.readers, (readers) => readers.length === 0)
+      expect((await mine.groups.list()).find((g) => g.id === squad.id)?.sharesTraining).toBe(false)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * A row goes further at the same pace (#14). Distance is metric for everyone, so a person who reads
  * pounds is offered 500 m, not a pound-shaped step — and the rule is saved as the editor said it.
  */

@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
+  boolean,
   index,
   pgEnum,
   pgTable,
@@ -77,6 +78,11 @@ export const groupMembers = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     role: groupRole('role').notNull(),
+    /**
+     * The member lets the group's editors read their training (#11). On the membership, so leaving
+     * or being removed withdraws it with the row. See docs/adr/0021-coaching-through-groups.md.
+     */
+    sharesTraining: boolean('shares_training').notNull().default(false),
     joinedAt: timestamp('joined_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [

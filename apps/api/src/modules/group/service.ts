@@ -1,6 +1,5 @@
 import { and, count, eq, inArray, or } from 'drizzle-orm'
 import {
-  DEFAULT_GROUP_SLUG,
   type Group,
   type GroupAddMember,
   type GroupCreate,
@@ -12,49 +11,8 @@ import { db } from '../../db/client.ts'
 import { groupMembers, groups, users } from '../../db/schema.ts'
 import { conflict, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-
-/**
- * Must ALWAYS satisfy the contract's `Slug` schema. It does not merely name the group: `Group.slug`
- * is validated on the way out, and `GroupMembership` appears in `GET /groups` AND `GET /auth/me` —
- * so one bad slug 422s those routes permanently for every member of that group.
- *
- * The two ways the naive version broke: slicing to a fixed length could cut on a hyphen and leave
- * a trailing or doubled separator, and a name with no ASCII alphanumerics at all ('💪',
- * 'Тренировки', '!!!') reduced to an empty base.
- */
-const SLUG_BASE_LIMIT = 40
-
-export function slugify(name: string): string {
-  const base = name
-    .toLowerCase()
-    .replaceAll(/[^a-z0-9]+/gu, '-')
-    .slice(0, SLUG_BASE_LIMIT)
-    // Strip separators AFTER slicing — slicing is what creates a dangling one.
-    .replaceAll(/^-+|-+$/gu, '')
-
-  const suffix = crypto.randomUUID().slice(0, 8)
-  return base === '' ? `group-${suffix}` : `${base}-${suffix}`
-}
-
-type GroupRow = typeof groups.$inferSelect
-
-/**
- * Why a group's members do not change through the API, or null when they do. A personal group is
- * its owner's alone. The starter library keeps every account: each reads it from registration on,
- * and a shared group's plans may use its exercises for that reason (docs/03-domain-model.md) —
- * someone gone from it would be left with plans they cannot read.
- *
- * The one statement of the rule: `list` says it as `canManage` and `canLeave`, and both member
- * writes refuse with it.
- */
-const keepsItsMembers = (group: GroupRow): string | null => {
-  if (group.kind === 'personal')
-    return 'A personal group is its owner’s alone: nobody joins or leaves it'
-  if (group.slug === DEFAULT_GROUP_SLUG) {
-    return 'The starter library keeps every account: nobody joins it, leaves it or is removed from it'
-  }
-  return null
-}
+import { type GroupRow, keepsItsMembers, mayOf, readsTraining } from './rules.ts'
+import { slugify } from './slug.ts'
 
 /** The group, if its members change through the API; refused with the reason otherwise. */
 async function changingMembersOf(groupId: string): Promise<GroupRow> {
@@ -63,18 +21,6 @@ async function changingMembersOf(groupId: string): Promise<GroupRow> {
   const kept = keepsItsMembers(group)
   if (kept !== null) throw conflict(kept)
   return group
-}
-
-/** What a member may do with a group — what the member writes below will accept. */
-const mayOf = (group: GroupRow, role: GroupRole, editors: number) => {
-  const changes = keepsItsMembers(group) === null
-  return {
-    canManage: changes && role === 'editor',
-    // The last editor stays: a group with no editor cannot be administered again.
-    canLeave: changes && !(role === 'editor' && editors === 1),
-    // What `transferOwnable` asks of the target: the caller edits it.
-    canTransferInto: role === 'editor',
-  }
 }
 
 const toGroup = (row: typeof groups.$inferSelect): Group => ({
@@ -89,7 +35,7 @@ export async function list(caller: Caller): Promise<GroupMembership[]> {
   if (caller.groupIds.length === 0) return []
 
   const rows = await db
-    .select({ group: groups, role: groupMembers.role })
+    .select({ group: groups, role: groupMembers.role, sharesTraining: groupMembers.sharesTraining })
     .from(groupMembers)
     .innerJoin(groups, eq(groups.id, groupMembers.groupId))
     .where(eq(groupMembers.userId, caller.userId))
@@ -117,23 +63,37 @@ export async function list(caller: Caller): Promise<GroupMembership[]> {
       ? countOf(groupId, 'editor') + countOf(groupId, 'reader')
       : countOf(groupId, 'editor') + 1
 
-  return rows.map((r) => {
-    const group = toGroup(r.group)
-    group satisfies Group
-    const may = mayOf(r.group, r.role, countOf(r.group.id, 'editor'))
-    return {
-      id: group.id,
-      slug: group.slug,
-      name: group.name,
-      kind: group.kind,
-      createdAt: group.createdAt,
-      role: r.role,
+  return rows.map((r) =>
+    toMembership(r.group, r.role, {
       memberCount: memberCount(r.group.id, r.role),
-      canManage: may.canManage,
-      canLeave: may.canLeave,
-      canTransferInto: may.canTransferInto,
-    }
-  })
+      editors: countOf(r.group.id, 'editor'),
+      sharesTraining: r.sharesTraining,
+    }),
+  )
+}
+
+/** A group as one member sees it: their role in it, and what they may do with it. */
+function toMembership(
+  row: GroupRow,
+  role: GroupRole,
+  of: { readonly memberCount: number; readonly editors: number; readonly sharesTraining: boolean },
+): GroupMembership {
+  const group = toGroup(row)
+  const may = mayOf(row, role, of.editors)
+  return {
+    id: group.id,
+    slug: group.slug,
+    name: group.name,
+    kind: group.kind,
+    createdAt: group.createdAt,
+    role,
+    memberCount: of.memberCount,
+    sharesTraining: of.sharesTraining,
+    canManage: may.canManage,
+    canLeave: may.canLeave,
+    canTransferInto: may.canTransferInto,
+    canShareTraining: may.canShareTraining,
+  }
 }
 
 /** The creator becomes an editor, otherwise they could not put anything in it. */
@@ -148,12 +108,7 @@ export async function create(caller: Caller, input: GroupCreate): Promise<GroupM
     await tx
       .insert(groupMembers)
       .values({ groupId: created.id, userId: caller.userId, role: 'editor' })
-    return {
-      ...toGroup(created),
-      role: 'editor' as const,
-      memberCount: 1,
-      ...mayOf(created, 'editor', 1),
-    }
+    return toMembership(created, 'editor', { memberCount: 1, editors: 1, sharesTraining: false })
   })
 }
 
@@ -178,6 +133,7 @@ export async function members(caller: Caller, groupId: string): Promise<GroupMem
       displayName: users.displayName,
       createdAt: users.createdAt,
       role: groupMembers.role,
+      sharesTraining: groupMembers.sharesTraining,
       joinedAt: groupMembers.joinedAt,
     })
     .from(groupMembers)
@@ -191,6 +147,8 @@ export async function members(caller: Caller, groupId: string): Promise<GroupMem
       ),
     )
 
+  // The caller's own row is always among them: a reader sees themselves, an editor everyone.
+  const shares = rows.find((r) => r.id === caller.userId)?.sharesTraining === true
   return rows.map((r) => ({
     user: {
       id: r.id,
@@ -200,6 +158,7 @@ export async function members(caller: Caller, groupId: string): Promise<GroupMem
     },
     role: r.role,
     joinedAt: r.joinedAt.toISOString(),
+    readsYourTraining: readsTraining(shares, r.role, r.id === caller.userId),
   }))
 }
 
@@ -235,6 +194,10 @@ export async function addMember(
     .returning()
   if (added === undefined) throw conflict('Already a member')
 
+  const [mine] = await db
+    .select({ sharesTraining: groupMembers.sharesTraining })
+    .from(groupMembers)
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, caller.userId)))
   return {
     user: {
       id: user.id,
@@ -244,6 +207,7 @@ export async function addMember(
     },
     role: added.role,
     joinedAt: added.joinedAt.toISOString(),
+    readsYourTraining: readsTraining(mine?.sharesTraining === true, added.role, false),
   }
 }
 

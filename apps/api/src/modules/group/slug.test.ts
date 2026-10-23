@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { Slug } from '@cedo/contract'
-import { slugify } from './service.ts'
+import { slugify } from './slug.ts'
 
 /**
  * `Group.slug` is validated on every response, and `GroupMembership` appears in both `GET /groups`

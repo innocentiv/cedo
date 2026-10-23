@@ -54,6 +54,22 @@ An exercise a plan or a log still refers to that the reader can no longer see. I
 withheld, and nothing new can be logged against it.
 _Avoid_: deleted exercise, hidden exercise
 
+**Share training**:
+A member's own switch, per group, letting that group's editors read their training: sessions, sets
+and the training review, never to change. Off until they switch it on; off again, or the member
+gone from the group, nothing of it is readable, the past included. Not offered in a personal group
+or the library.
+_Avoid_: publish, follow
+
+**Athlete**:
+A member who shares their training with a group, as that group's editors see them.
+_Avoid_: client, trainee
+
+**Coach**:
+An editor of a group whose members share their training with it. Not a role of its own: a coach
+reads an athlete's training and changes none of it.
+_Avoid_: trainer, admin
+
 **Access token**:
 A credential a person makes for an AI to act as them, under exactly their permissions. Shown once.
 _Avoid_: API key, password

@@ -264,6 +264,13 @@ export const useCreateGroup = () =>
 export const useAddMember = (groupId: string) =>
   useWriteTo('group', async (input: GroupAddMember) => await api.groups.addMember(groupId, input))
 
+/** Whether this group's editors read your training (#11): yours alone to switch. */
+export const useShareTraining = (groupId: string) =>
+  useWriteTo(
+    'group',
+    async (sharesTraining: boolean) => await api.groups.setSharing(groupId, { sharesTraining }),
+  )
+
 export const useRemoveMember = (groupId: string) =>
   useWriteTo('group', async (userId: string) => await api.groups.removeMember(groupId, userId))
 

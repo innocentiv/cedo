@@ -45,6 +45,13 @@ export const GroupMembership = Group.extend({
   canLeave: z.boolean(),
   /** Transfer what they edit into it: any group they edit — the starter library, for a curator. */
   canTransferInto: z.boolean(),
+  /** They let this group's editors read their training (#11). See GLOSSARY.md, "Share training". */
+  sharesTraining: z.boolean(),
+  /**
+   * Switch `sharesTraining`: any member of a shared group other than the starter library — never
+   * a personal group, nor the library every account belongs to.
+   */
+  canShareTraining: z.boolean(),
 })
 export type GroupMembership = z.output<typeof GroupMembership>
 
@@ -52,8 +59,16 @@ export const GroupMember = z.object({
   user: User,
   role: GroupRole,
   joinedAt: Timestamp,
+  /** This member reads the caller's training through this group: an editor, and not the caller. */
+  readsYourTraining: z.boolean(),
 })
 export type GroupMember = z.output<typeof GroupMember>
+
+/** `PATCH /groups/:id/membership` — the caller's own membership. */
+export const GroupMembershipPatch = z.strictObject({
+  sharesTraining: z.boolean(),
+})
+export type GroupMembershipPatch = z.output<typeof GroupMembershipPatch>
 
 export const GroupCreate = z.strictObject({
   name: NonEmptyString.max(80),

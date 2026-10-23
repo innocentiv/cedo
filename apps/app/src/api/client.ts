@@ -11,6 +11,7 @@ import {
   type ExerciseUpdate,
   type GroupAddMember,
   type GroupCreate,
+  type GroupMembershipPatch,
   type LoginInput,
   Me,
   type MeUpdate,
@@ -162,7 +163,7 @@ const sessions = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
   removeLog: async (id: string, logId: string) => await DELETE(`/sessions/${id}/logs/${logId}`, Ok),
 })
 
-const groups = ({ GET, POST, DELETE }: Verbs) => ({
+const groups = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
   list: async () => await GET('/groups', z.array(GroupMembership)),
   create: async (body: GroupCreate) => await POST('/groups', GroupMembership, body),
   members: async (id: string) => await GET(`/groups/${id}/members`, z.array(GroupMember)),
@@ -170,6 +171,9 @@ const groups = ({ GET, POST, DELETE }: Verbs) => ({
     await POST(`/groups/${id}/members`, GroupMember, body),
   removeMember: async (id: string, userId: string) =>
     await DELETE(`/groups/${id}/members/${userId}`, Ok),
+  /** The caller's own membership: whether its editors read their training (#11). */
+  setSharing: async (id: string, body: GroupMembershipPatch) =>
+    await PATCH(`/groups/${id}/membership`, GroupMembership, body),
 })
 
 const media = ({ POST, UPLOAD }: Verbs) => ({

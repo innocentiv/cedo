@@ -74,6 +74,19 @@ export const groups = (page: Page) => {
       await page.click(`[data-testid="member-remove-${username}-confirm"]`)
       await page.until(members, (listed) => !listed.some((m) => m.startsWith(`${username}:`)))
     },
+    /** The members who read your training through this group, by username. */
+    readers: async (): Promise<string[]> => {
+      await page.waitFor('member-list')
+      return Object.entries(await shownRows(page, 'member-row-'))
+        .filter(([, lines]) => lines.some((l) => l.endsWith('reads your training')))
+        .map(([username]) => username)
+    },
+    /** Whether the group offers to share your training with it at all. */
+    canShareTraining: async (): Promise<boolean> => await page.exists('share-training'),
+    /** Shares your training with the group's editors, or keeps it private (#11). */
+    shareTraining: async (choice: 'shared' | 'private'): Promise<void> => {
+      await page.click(`[data-testid="share-training-${choice}"]`)
+    },
     /** Whether the group offers to let you leave it. */
     canLeave: async (): Promise<boolean> => await page.exists('group-leave'),
     /** Leaves the group, asked twice, and waits to be back on the list of groups. */

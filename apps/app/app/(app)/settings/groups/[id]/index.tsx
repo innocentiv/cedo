@@ -24,6 +24,7 @@ import {
   useGroups,
   useLeaveGroup,
   useRemoveMember,
+  useShareTraining,
 } from '../../../../../src/api/queries.ts'
 import { useAuth } from '../../../../../src/auth/auth-provider.tsx'
 import { useGoBack } from '../../../../../src/lib/use-go-back.ts'
@@ -32,6 +33,11 @@ import { useSubmit } from '../../../../../src/lib/use-submit.ts'
 const ROLE_OPTIONS: readonly ChipOption<GroupRole>[] = [
   { value: 'reader', label: 'Reader' },
   { value: 'editor', label: 'Editor' },
+]
+
+const SHARING_OPTIONS: readonly ChipOption<'private' | 'shared'>[] = [
+  { value: 'private', label: 'Private' },
+  { value: 'shared', label: 'Shared with editors' },
 ]
 
 /**
@@ -98,6 +104,8 @@ function Group({ group }: { readonly group: GroupMembership }): React.JSX.Elemen
         )}
       </Loaded>
 
+      {group.canShareTraining ? <ShareTraining group={group} /> : null}
+
       {group.canManage ? <AddMember groupId={group.id} /> : null}
 
       {group.canLeave ? (
@@ -134,7 +142,7 @@ function MemberRow({
     <Stack gap="xs">
       <ListRow
         title={member.user.displayName}
-        subtitle={`@${member.user.username}`}
+        subtitle={`@${member.user.username}${member.readsYourTraining ? ' · reads your training' : ''}`}
         trailing={member.role}
         testID={`member-row-${member.user.username}`}
       />
@@ -151,6 +159,38 @@ function MemberRow({
           testID={`member-remove-${member.user.username}`}
         />
       ) : null}
+    </Stack>
+  )
+}
+
+/**
+ * Your training — sessions, sets and the review — read by this group's editors, or not (#11). Off
+ * until you switch it on; off again, they read none of it, the past included.
+ */
+function ShareTraining({ group }: { readonly group: GroupMembership }): React.JSX.Element {
+  const share = useShareTraining(group.id)
+  const { submit, error } = useSubmit()
+  return (
+    <Stack gap="xs">
+      <Text variant="caption" tone="muted">
+        Your training
+      </Text>
+      <Chips
+        options={SHARING_OPTIONS}
+        value={group.sharesTraining ? 'shared' : 'private'}
+        onChange={(value) => {
+          void submit(async () => {
+            await share.mutateAsync(value === 'shared')
+          })
+        }}
+        testID="share-training"
+      />
+      <Text variant="caption" tone="faint">
+        {group.sharesTraining
+          ? 'Its editors read your sessions, sets and training review. Nothing of theirs changes.'
+          : 'Only you read your sessions. Shared, this group’s editors would read them too.'}
+      </Text>
+      <FormError message={error} testID="share-training-error" />
     </Stack>
   )
 }
