@@ -89,8 +89,16 @@ export const setLogs = pgTable(
     durationS: integer('duration_s'),
     distanceMm: integer('distance_mm'),
     loggedAt: timestamp('logged_at', { withTimezone: true }).notNull().defaultNow(),
+    /**
+     * The phone's key for this set, so a retry of the same request is answered with this row
+     * rather than logged again (`IDEMPOTENCY_KEY_HEADER` in the contract). Null for a client that
+     * does not retry, and for every set logged before keys existed.
+     */
+    idempotencyKey: uuid('idempotency_key'),
   },
   (t) => [
+    /** One set per key in a session — the backstop to the check `logSet` makes under its lock. */
+    uniqueIndex('set_logs_idempotency_idx').on(t.sessionId, t.idempotencyKey),
     /**
      * Per-exercise history, and the series a progress chart will read later without a schema
      * change. The largest table in the system by an order of magnitude.

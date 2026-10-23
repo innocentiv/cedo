@@ -167,6 +167,17 @@ export const LogSetInput = z.strictObject({
 export type LogSetInput = z.output<typeof LogSetInput>
 
 /**
+ * A set sent on a weak signal may reach the server and lose its answer, and the phone cannot tell
+ * which. So it sends the set again under the same key, made once for that set, and the server
+ * answers a key it has already stored in the session with the stored set — a retry is never a
+ * second set. A header, as the convention is, rather than a field: it says how the request is
+ * sent, not what was lifted. Optional, so a client that does not retry need not send one.
+ */
+export const IDEMPOTENCY_KEY_HEADER = 'idempotency-key'
+export const LogSetHeaders = z.object({ [IDEMPOTENCY_KEY_HEADER]: Id.optional() })
+export type LogSetHeaders = z.output<typeof LogSetHeaders>
+
+/**
  * A whole, finished session in one write — how an AI records training it was told about. All or
  * nothing: one invalid set and nothing is logged, so a retry cannot duplicate the valid ones.
  */

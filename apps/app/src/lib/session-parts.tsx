@@ -1,12 +1,14 @@
 import type {
   Effort,
   EntryTarget,
+  LoggedExercise,
   SessionDay,
   SessionExercise,
   SetLog,
   WorkoutEntry,
 } from '@cedo/contract'
 import { formatWithReserve, prescriptionOf, workingSetsDone } from '@cedo/contract'
+import { useWaitingSets } from '../api/queries.ts'
 import { useWeightUnit } from './weight-unit.ts'
 import { exerciseName } from './exercise-name.ts'
 import { Button, Card, ListRow, SetLogger, Stack, Text } from '../ui/index.ts'
@@ -24,6 +26,54 @@ export function PlanUnavailable(): React.JSX.Element {
       The plan behind this session is unavailable. Your sets are kept, and you can still log and
       finish.
     </Text>
+  )
+}
+
+/**
+ * Sets logged but not yet sent — no signal, or an answer lost on the way back (#9). Kept in memory,
+ * sent in order when the signal returns, so the screen asks for the app to stay open. Each is shown
+ * as soon as it is logged: a set not yet sent must not look like a set not logged. Not undoable
+ * until sent: there is nothing on the server to take back yet.
+ */
+export function WaitingSets({
+  sessionId,
+  day,
+  adHoc,
+}: {
+  readonly sessionId: string
+  /** Where a waiting set's exercise is named: the day's entries, or the session's ad-hoc picks. */
+  readonly day: SessionDay | undefined
+  readonly adHoc: readonly SessionExercise[]
+}): React.JSX.Element | null {
+  const unit = useWeightUnit()
+  const sets = useWaitingSets(sessionId)
+  if (sets.length === 0) return null
+  const exerciseOf = (exerciseId: string): LoggedExercise | null =>
+    day?.entries.find((e) => e.exerciseId === exerciseId)?.exercise ??
+    adHoc.find((e) => e.id === exerciseId) ??
+    null
+  const count = `${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`
+  return (
+    <Card testID="session-waiting">
+      <Stack gap="xs">
+        <Text variant="label" tone="warning">
+          {`Keep cedo open — ${count} will be sent when the signal is back.`}
+        </Text>
+        {sets.map((set, i) => {
+          const exercise = exerciseOf(set.exerciseId)
+          return (
+            <ListRow
+              // Not yet sent, so no id: the queue's order is the only identity it has.
+              // oxlint-disable-next-line react/no-array-index-key
+              key={i}
+              title={`${exerciseName(exercise)} · waiting for signal`}
+              subtitle={formatWithReserve(set, exercise?.tracking ?? null, unit)}
+              testID={`waiting-set-${i}`}
+            />
+          )
+        })}
+      </Stack>
+    </Card>
   )
 }
 

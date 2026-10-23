@@ -27,6 +27,7 @@ import {
   type SessionStart,
   type SessionUpdate,
   SetLog,
+  IDEMPOTENCY_KEY_HEADER,
   type LogSetInput,
   type TransferInput,
   Workout,
@@ -73,8 +74,12 @@ function verbs(request: SendRequest) {
   return {
     GET: async <S extends z.ZodType>(path: string, schema: S, query?: QueryInput) =>
       await request('GET', path, schema, { ...(query && { query }) }),
-    POST: async <S extends z.ZodType>(path: string, schema: S, body?: unknown) =>
-      await request('POST', path, schema, { body }),
+    POST: async <S extends z.ZodType>(
+      path: string,
+      schema: S,
+      body?: unknown,
+      headers?: Readonly<Record<string, string>>,
+    ) => await request('POST', path, schema, { body, ...(headers && { headers }) }),
     PATCH: async <S extends z.ZodType>(path: string, schema: S, body: unknown) =>
       await request('PATCH', path, schema, { body }),
     PUT: async <S extends z.ZodType>(path: string, schema: S, body: unknown) =>
@@ -143,7 +148,14 @@ const sessions = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
   start: async (body: SessionStart) => await POST('/sessions', WorkoutSession, body),
   update: async (id: string, body: SessionUpdate) =>
     await PATCH(`/sessions/${id}`, WorkoutSession, body),
-  logSet: async (id: string, body: LogSetInput) => await POST(`/sessions/${id}/logs`, SetLog, body),
+  /** `idempotencyKey`, made once per set, makes a retry of it safe — see `IDEMPOTENCY_KEY_HEADER`. */
+  logSet: async (id: string, body: LogSetInput, idempotencyKey?: string) =>
+    await POST(
+      `/sessions/${id}/logs`,
+      SetLog,
+      body,
+      idempotencyKey === undefined ? {} : { [IDEMPOTENCY_KEY_HEADER]: idempotencyKey },
+    ),
   removeLog: async (id: string, logId: string) => await DELETE(`/sessions/${id}/logs/${logId}`, Ok),
 })
 

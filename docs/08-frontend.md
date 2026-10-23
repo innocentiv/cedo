@@ -336,6 +336,28 @@ Nothing here wants server rendering: the whole app is behind authentication and 
 someone's NAS, so there is no SEO and no first-paint budget to defend. Caddy's fallback is
 correspondingly simple — `try_files {path} /index.html`.
 
+## Logging without a signal
+
+The app is online first. Offline it does one thing: log sets into a session started online, when
+the signal drops mid-workout (#9). Opening the app, starting a session and finishing one still need
+a signal. It is TanStack Query's own queue, kept in memory, with no persistence library:
+
+- A session's sets and its finish share one `scope` (`sessionQueue` in `src/api/write-to.ts`), so
+  they run one at a time, in the order made. A finish never overtakes a set logged before it.
+- Offline, they wait (TanStack's `onlineManager`, from the browser's online and offline events), and
+  go when the signal is back.
+- A set's `Idempotency-Key` is made once, when it is logged. A send that gets no answer, or a 5xx,
+  is retried under it, waiting 1 s and doubling to 30 s (`src/api/retry.ts`, a plain module with
+  its unit test). A refusal is not retried: the set is dropped, and the screen says why.
+- A set waiting shows at once, greyed, with "Keep cedo open — N sets will be sent when the signal
+  is back" (`WaitingSets`). The logger is held only while a set's first send is on its way, as
+  before. Once one waits, the next is logged behind it.
+- Closing or reloading the app before the signal returns loses the sets still waiting. Accepted:
+  offline is the rare case, and anything done online wins.
+
+A set is stamped when it reaches the server, as always. So after a late send, the rest timer counts
+from arrival.
+
 ## The installed app
 
 `public/` is copied into the export as is: `index.html` is the template Expo injects the bundle into,

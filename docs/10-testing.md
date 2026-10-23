@@ -6,7 +6,7 @@ suite becomes slow, flaky, or quietly stops proving anything.
 | Tier | Where | Answers | Cost |
 | ---- | ----- | ------- | ---- |
 | T1 contract | `packages/contract/**/*.test.ts` | Is the domain arithmetic right? | milliseconds |
-| T1 app modules | `apps/app/src/**/*.test.ts` | Do the app's own rules — who is signed in, what the installed app keeps — hold? | milliseconds |
+| T1 app modules | `apps/app/src/**/*.test.ts` | Do the app's own rules — who is signed in, what the installed app keeps, when a set is sent again — hold? | milliseconds |
 | T2 integration | `apps/api/src/**/*.test.ts` | Does the API behave, and does it match the contract? | seconds |
 | T3 UI | `apps/app/e2e/*.e2e.ts` | Does every route render without exploding? | seconds |
 | T4 performance | `apps/api/src/test/perf/*.perf.ts` | Will this survive real data on cheap hardware? | minutes |
@@ -28,7 +28,10 @@ The one exception is behaviour the app owns and no backend can: **who is signed 
 with `bun test`, a fake keychain and a fake API. So does **what the installed app keeps** to open
 without a signal — the shell's caching rules, in `src/pwa/shell-cache.ts`, tested with a fake cache
 and a fake network. The service worker wiring them to the browser is driven for real by a journey
-that registers it, takes the site down, and opens the app. Components are still never tested: see
+that registers it, takes the site down, and opens the app. And **when a logged set is sent again**
+— only for no answer or a 5xx, under its idempotency key — in `src/api/retry.ts`. A journey covers
+the queue itself: sets logged offline, sent once back online, and one whose answer is lost still
+stored once. Components are still never tested: see
 the amendment to `docs/adr/0017-webview-for-ui-verification.md`.
 
 ## T1 — contract

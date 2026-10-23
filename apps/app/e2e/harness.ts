@@ -239,6 +239,14 @@ export interface Page {
    * except what the page's service worker kept.
    */
   readonly cutNetwork: () => void
+  /**
+   * The browser says it lost, or regained, its connection — the events the app's query client
+   * listens to, so writes wait in its queue (#9). The network itself is untouched.
+   */
+  readonly goOffline: () => Promise<void>
+  readonly goOnline: () => Promise<void>
+  /** The next API request to `path` is stored, and its answer lost — see `StaticServer`. */
+  readonly loseNextAnswer: (path: RegExp) => void
   readonly errors: readonly string[]
 }
 
@@ -414,6 +422,15 @@ function makePage(view: Bun.WebView, site: StaticServer, errors: string[]): Page
     origin: siteUrl,
     cutNetwork: () => {
       site.stop()
+    },
+    goOffline: async () => {
+      await view.evaluate(`window.dispatchEvent(new Event('offline'))`)
+    },
+    goOnline: async () => {
+      await view.evaluate(`window.dispatchEvent(new Event('online'))`)
+    },
+    loseNextAnswer: (path) => {
+      site.loseNextAnswer(path)
     },
     get errors() {
       return errors

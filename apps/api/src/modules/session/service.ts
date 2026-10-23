@@ -158,10 +158,16 @@ export async function read(caller: Caller, id: string): Promise<WorkoutSession> 
   )
 }
 
+/**
+ * One performed set. With an `idempotencyKey`, a repeat of a key already stored in this session is
+ * answered with the stored set — the same request, so the same answer, even if the session was
+ * finished or its plan changed since. See `IDEMPOTENCY_KEY_HEADER` in the contract.
+ */
 export async function logSet(
   caller: Caller,
   sessionId: string,
   input: LogSetInput,
+  idempotencyKey?: string,
 ): Promise<SetLog> {
   const [session] = await db
     .select({ workoutId: workoutSessions.workoutId })
@@ -169,22 +175,60 @@ export async function logSet(
     .where(and(ownedBy(caller), eq(workoutSessions.id, sessionId)))
     .limit(1)
   if (session === undefined) throw notFound('session')
+  const stored = await storedByKey(caller, sessionId, idempotencyKey)
+  if (stored !== undefined) return stored
   const exercises = await assertLoggable(caller, session.workoutId, [input])
 
-  return await db.transaction(async (tx) => {
+  const created = await db.transaction(async (tx) => {
     // `workout_id` never changes after a session starts, so the validation above needs no lock.
     await lockInProgress(tx, caller, sessionId)
+    // Again under the lock: of two sends of one key at once, the second waited here for the first.
+    if (await keyStored(tx, sessionId, idempotencyKey)) return null
 
     const setIndex = await nextNumber(tx, caller, { id: sessionId, ...session }, input)
-    const [created] = await tx
+    const [row] = await tx
       .insert(setLogs)
-      .values({ sessionId, ...input, setIndex })
+      .values({ sessionId, ...input, setIndex, idempotencyKey })
       .returning()
       .catch(rethrowMissingEntry)
-    if (created === undefined) throw new Error('Could not record the set')
+    if (row === undefined) throw new Error('Could not record the set')
     // The entry it names was checked reachable by `assertLoggable`, so it is seen as stored.
-    return toLog(created, exercises.get(created.exerciseId) ?? null, created.entryId)
+    return toLog(row, exercises.get(row.exerciseId) ?? null, row.entryId)
   })
+  if (created !== null) return created
+  const replayed = await storedByKey(caller, sessionId, idempotencyKey)
+  if (replayed === undefined) throw new Error('A stored key has no set')
+  return replayed
+}
+
+async function keyStored(
+  tx: Transaction,
+  sessionId: string,
+  key: string | undefined,
+): Promise<boolean> {
+  if (key === undefined) return false
+  const [row] = await tx
+    .select({ id: setLogs.id })
+    .from(setLogs)
+    .where(and(eq(setLogs.sessionId, sessionId), eq(setLogs.idempotencyKey, key)))
+    .limit(1)
+  return row !== undefined
+}
+
+/** The set a key stored, as reading the session shows it now — names and entries as visible. */
+async function storedByKey(
+  caller: Caller,
+  sessionId: string,
+  key: string | undefined,
+): Promise<SetLog | undefined> {
+  if (key === undefined) return undefined
+  const [row] = await db
+    .select({ id: setLogs.id })
+    .from(setLogs)
+    .where(and(eq(setLogs.sessionId, sessionId), eq(setLogs.idempotencyKey, key)))
+    .limit(1)
+  if (row === undefined) return undefined
+  return (await read(caller, sessionId)).logs.find((log) => log.id === row.id)
 }
 
 /**

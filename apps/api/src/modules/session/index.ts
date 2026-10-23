@@ -5,6 +5,8 @@ import {
   ExerciseHistory,
   ExerciseHistoryQuery,
   Id,
+  IDEMPOTENCY_KEY_HEADER,
+  LogSetHeaders,
   LogSetInput,
   SessionQuery,
   SessionStart,
@@ -59,12 +61,19 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
   })
   .post(
     '/:id/logs',
-    ({ caller, params: { id }, body }) => SessionService.logSet(caller, id, body),
+    ({ caller, params: { id }, body, headers }) =>
+      SessionService.logSet(caller, id, body, headers[IDEMPOTENCY_KEY_HEADER]),
     {
       params,
       body: LogSetInput,
+      headers: LogSetHeaders,
       response: SetLog,
-      detail: { summary: 'Record one performed set' },
+      detail: {
+        summary: 'Record one performed set',
+        description:
+          'An `Idempotency-Key` header (a UUID) makes it safe to retry: a key already stored in ' +
+          'the session is answered with the stored set, never logged twice.',
+      },
     },
   )
   .delete(

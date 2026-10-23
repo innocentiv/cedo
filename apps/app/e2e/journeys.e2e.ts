@@ -890,6 +890,46 @@ test(
 )
 
 /**
+ * No signal mid-session (#9). Sets logged offline show at once as waiting, and the server has none
+ * of them; back online, they are sent in order. A set whose answer is lost on the way back — stored,
+ * and the phone never told — is sent again under its key, and is still one set.
+ */
+test(
+  'sets logged without a signal are sent when it is back, each exactly once',
+  async () => {
+    await withApp('offline-sets', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('off'))
+      await app.planEditor.create()
+      await app.planEditor.saveAndStart()
+      const sessionId = await app.session.id()
+      const mine = await page.client()
+      const stored = async () => (await mine.sessions.get(sessionId)).logs.length
+
+      await app.session.entry(0).fill('weight', '60')
+      await app.session.entry(0).log()
+
+      await page.goOffline()
+      await app.session.entry(0).logWhileOffline()
+      await app.session.entry(0).logWhileOffline()
+      expect(await app.session.waiting()).toBe(2)
+      expect(await stored()).toBe(1)
+
+      await page.goOnline()
+      await app.session.sent()
+      expect(await stored()).toBe(3)
+      expect(await app.session.loggedIds()).toHaveLength(3)
+
+      page.loseNextAnswer(/^\/api\/sessions\/[^/]+\/logs$/u)
+      await app.session.entry(0).log()
+      expect(await stored()).toBe(4)
+      expect(await app.session.loggedIds()).toHaveLength(4)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * A write refused because what it names is gone or out of reach says the screen's picture is
  * stale. The athlete is removed from the group mid-session, on the coach's device: the screen still
  * shows the plan, the next set against it is refused — and the session used to keep showing the plan

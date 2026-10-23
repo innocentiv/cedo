@@ -31,9 +31,9 @@ is designed to prevent.
    not a measurement, so it is `numeric(3,1)` — see `docs/adr/0020-rpe-is-numeric.md`.
 7. **All behaviour is tested on the backend.** UI code stays trivially thin and holds no domain
    logic. The one exception is state only the app owns — who is signed in on this device, and the
-   app shell it keeps for opening offline — which lives in plain modules
-   (`apps/app/src/auth/session.ts`, `apps/app/src/pwa/shell-cache.ts`; no React, no React Native)
-   and is unit-tested beside them. Components are never unit-tested; lint refuses it. See
+   app shell it keeps for opening offline, and when a set logged without a signal is sent again —
+   which lives in plain modules (`apps/app/src/auth/session.ts`, `apps/app/src/pwa/shell-cache.ts`,
+   `apps/app/src/api/retry.ts`; no React, no React Native) and is unit-tested beside them. Components are never unit-tested; lint refuses it. See
    `docs/10-testing.md` and the amendment to `docs/adr/0017-webview-for-ui-verification.md`.
 
 ## Commands

@@ -16,6 +16,7 @@ import {
   PlanUnavailable,
   PlannedDay,
   SessionFooter,
+  WaitingSets,
 } from '../../../../src/lib/session-parts.tsx'
 import {
   useLogSet,
@@ -24,6 +25,7 @@ import {
   useSessionTargets,
   useUpdateSession,
 } from '../../../../src/api/queries.ts'
+import { newIdempotencyKey } from '../../../../src/api/retry.ts'
 import { ExercisePicker } from '../../../../src/lib/exercise-picker.tsx'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
 
@@ -43,16 +45,21 @@ function useRecordSet(
     values: Effort,
     rpe: number | null,
   ): void => {
+    // Its key is made here, once: however many times it is sent, it is this one set (#9).
+    const key = newIdempotencyKey()
     void submit(async () => {
       await logSet.mutateAsync({
-        exerciseId,
-        entryId,
-        weightG: values.weightG,
-        reps: values.reps,
-        rpe,
-        durationS: values.durationS,
-        distanceMm: values.distanceMm,
-        isWarmup: false,
+        input: {
+          exerciseId,
+          entryId,
+          weightG: values.weightG,
+          reps: values.reps,
+          rpe,
+          durationS: values.durationS,
+          distanceMm: values.distanceMm,
+          isWarmup: false,
+        },
+        key,
       })
     })
   }
@@ -110,6 +117,9 @@ export default function LiveSession(): React.JSX.Element {
   const plan = session.data?.plan
   const targets = useSessionTargets(id, plan?.reachable === true)
   const logSet = useLogSet(id)
+  // Held only while a set's first send is on its way, as before. Once one is waiting for a signal,
+  // the next can be logged behind it: the queue keeps them in order.
+  const logging = logSet.isPending && !logSet.isPaused && logSet.failureCount === 0
   const removeLog = useRemoveLog(id)
   const finish = useUpdateSession(id)
   const { submit, busy, error } = useSubmit()
@@ -179,7 +189,7 @@ export default function LiveSession(): React.JSX.Element {
           onAdd={adHoc.startPicking}
           onLog={record.adHoc}
           logs={logs}
-          busy={logSet.isPending}
+          busy={logging}
         />
       ) : targets.data === undefined ? (
         // The day waits for its targets — each logger's inputs start from them, once — and says
@@ -194,11 +204,12 @@ export default function LiveSession(): React.JSX.Element {
           day={day}
           targets={targets.data}
           logs={logs}
-          busy={logSet.isPending}
+          busy={logging}
           onLog={record.planned}
         />
       )}
 
+      <WaitingSets sessionId={id} day={day} adHoc={adHoc.exercises} />
       <LoggedSets
         logs={logs}
         editable={!ended}

@@ -45,6 +45,11 @@ const CAPTURE_SHIM = `<script>
 export interface StaticServer {
   readonly url: string
   stop: () => void
+  /**
+   * The next API request whose path matches reaches the API — and its answer is lost on the way
+   * back, a 502 in its place: what a weak signal does, and what an idempotency key is for.
+   */
+  loseNextAnswer: (path: RegExp) => void
 }
 
 /**
@@ -61,6 +66,7 @@ async function resolveHtml(distDir: string, pathname: string): Promise<string | 
 }
 
 export function serveExport(distDir: string, apiUrl: string, port = 0): StaticServer {
+  let losing: RegExp | null = null
   const server = Bun.serve({
     port,
     idleTimeout: 30,
@@ -69,13 +75,19 @@ export function serveExport(distDir: string, apiUrl: string, port = 0): StaticSe
 
       if (url.pathname === '/api' || url.pathname.startsWith('/api/')) {
         const target = new URL(url.pathname.replace(/^\/api/u, '') + url.search, apiUrl)
-        return await fetch(target, {
+        const answer = await fetch(target, {
           method: request.method,
           headers: request.headers,
           body: request.body,
           // Streaming a request body to another origin requires this in Bun and Node alike.
           ...(request.body === null ? {} : { duplex: 'half' }),
         })
+        if (losing?.test(url.pathname) === true) {
+          losing = null
+          await answer.arrayBuffer()
+          return new Response('Bad gateway', { status: 502 })
+        }
+        return answer
       }
 
       // Decoded, as Caddy's file_server matches it: a chunk or asset name with an encodable
@@ -101,5 +113,11 @@ export function serveExport(distDir: string, apiUrl: string, port = 0): StaticSe
     },
   })
 
-  return { url: server.url.href.replace(/\/$/u, ''), stop: () => server.stop(true) }
+  return {
+    url: server.url.href.replace(/\/$/u, ''),
+    stop: () => server.stop(true),
+    loseNextAnswer: (path) => {
+      losing = path
+    },
+  }
 }

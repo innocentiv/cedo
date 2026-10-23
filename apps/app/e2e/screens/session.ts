@@ -78,7 +78,24 @@ const logger = (page: Page, id: string) => ({
       (rows) => rows > before,
     )
   },
+  /** Logs a set with no signal: it shows at once, as waiting to be sent (#9). */
+  logWhileOffline: async (): Promise<void> => {
+    const before = await waitingCount(page)
+    await page.click(`[data-testid="${id}-log"]`)
+    await page.until(
+      async () => await waitingCount(page),
+      (rows) => rows > before,
+    )
+  },
 })
+
+/** The sets shown as logged but not yet sent. */
+async function waitingCount(page: Page): Promise<number> {
+  const count = await page.evaluate(
+    `document.querySelectorAll('[data-testid^="waiting-set-"]').length`,
+  )
+  return typeof count === 'number' ? count : 0
+}
 
 export const session = (page: Page) => {
   const shown = async (): Promise<void> => {
@@ -131,6 +148,23 @@ export const session = (page: Page) => {
     loggedLines: async (): Promise<string[]> => {
       const text = await page.evaluate(`${VISIBLE_ROWS}.map((e) => e.innerText).join('\\n')`)
       return typeof text === 'string' ? text.split('\n').map((line) => line.trim()) : []
+    },
+    /** The open session's id, from the address it is shown at. */
+    id: async (): Promise<string> => {
+      await shown()
+      const path = String(await page.evaluate('location.pathname'))
+      const id = /^\/today\/session\/([^/]+)$/u.exec(path)?.[1]
+      if (id === undefined) throw new Error(`Not on a session: ${path}`)
+      return id
+    },
+    /** How many sets the screen shows as waiting to be sent. */
+    waiting: async (): Promise<number> => await waitingCount(page),
+    /** Waits until no set is waiting any more: every one sent, and shown among the logged. */
+    sent: async (): Promise<void> => {
+      await page.until(
+        async () => await waitingCount(page),
+        (rows) => rows === 0,
+      )
     },
     /** Undoes a logged set by its row's id. */
     undo: async (rowId: string): Promise<void> => {

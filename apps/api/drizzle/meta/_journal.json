@@ -50,6 +50,13 @@
       "when": 1792591191411,
       "tag": "0006_entry_cue",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1792760466543,
+      "tag": "0007_set_log_idempotency_key",
+      "breakpoints": true
     }
   ]
 }

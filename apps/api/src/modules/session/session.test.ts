@@ -5,6 +5,8 @@ import {
   Exercise,
   ExerciseHistory,
   GroupMembership,
+  IDEMPOTENCY_KEY_HEADER,
+  LogSetInput,
   MAX_SET_INDEX,
   ProgressionSuggestion,
   SessionLogInput,
@@ -22,6 +24,7 @@ import { seedLibrary } from '../../db/seed.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
+import { logSet } from './service.ts'
 import { logWhole } from './start.ts'
 
 const Page = page(WorkoutSessionSummary)
@@ -300,6 +303,90 @@ describe('logging sets', () => {
 })
 
 /** `session_log` over MCP: a whole, finished session in one write. */
+/**
+ * A set sent on a weak signal may reach the server and lose its answer; the phone cannot tell, so
+ * it sends it again with the same `Idempotency-Key`. Stored once, whatever happened since.
+ */
+describe('a retried log, by its idempotency key', () => {
+  const logOnce = async (user: TestUser, sessionId: string, exerciseId: string, key?: string) =>
+    await user.wire(`/sessions/${sessionId}/logs`, {
+      method: 'POST',
+      headers: key === undefined ? {} : { [IDEMPOTENCY_KEY_HEADER]: key },
+      body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 8 }),
+    })
+  const storedLogs = async (sessionId: string) =>
+    await db.select({ id: setLogs.id }).from(setLogs).where(eq(setLogs.sessionId, sessionId))
+
+  test('the same key twice is one set, and both answers are it', async () => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const key = crypto.randomUUID()
+
+    const first = expectContract(SetLog, (await logOnce(alice, session.id, exerciseId, key)).body)
+    const again = expectContract(SetLog, (await logOnce(alice, session.id, exerciseId, key)).body)
+    expect(again).toEqual(first)
+    expect(await storedLogs(session.id)).toHaveLength(1)
+  })
+
+  test('two keys, or none, are two sets — as two taps are', async () => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    await logOnce(alice, session.id, exerciseId, crypto.randomUUID())
+    await logOnce(alice, session.id, exerciseId, crypto.randomUUID())
+    await logOnce(alice, session.id, exerciseId)
+    await logOnce(alice, session.id, exerciseId)
+    expect(await storedLogs(session.id)).toHaveLength(4)
+  })
+
+  /** The repeat is the SAME request: its answer cannot change because the session ended since. */
+  test('a repeat after the session was finished is still the stored set, not a refusal', async () => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const key = crypto.randomUUID()
+    const first = expectContract(SetLog, (await logOnce(alice, session.id, exerciseId, key)).body)
+    await finishSession(alice, session.id)
+
+    const again = await logOnce(alice, session.id, exerciseId, key)
+    expect(again.status).toBe(200)
+    expect(expectContract(SetLog, again.body).id).toBe(first.id)
+  })
+
+  test('a key is the session’s own: the same key in another session logs there', async () => {
+    const exerciseId = await anExercise(alice)
+    const key = crypto.randomUUID()
+    const one = expectContract(WorkoutSession, (await startSession(alice)).body)
+    await logOnce(alice, one.id, exerciseId, key)
+    await finishSession(alice, one.id)
+
+    const two = expectContract(WorkoutSession, (await startSession(alice)).body)
+    expect((await logOnce(alice, two.id, exerciseId, key)).status).toBe(200)
+    expect(await storedLogs(one.id)).toHaveLength(1)
+    expect(await storedLogs(two.id)).toHaveLength(1)
+  })
+
+  /**
+   * Thirty sends of one key at once — a retry storm — store one set: the check runs again under
+   * the session's lock. Driven through the service, as the in-process harness may never race.
+   */
+  test('the same key sent many times at once is still one set', async () => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const key = crypto.randomUUID()
+    const input = LogSetInput.parse({ exerciseId, weightG: kgToG(60), reps: 8 })
+    const answers = await Promise.all(
+      Array.from({ length: 30 }, async () => await logSet(alice.caller, session.id, input, key)),
+    )
+    expect(new Set(answers.map((a) => a.id)).size).toBe(1)
+    expect(await storedLogs(session.id)).toHaveLength(1)
+  })
+
+  test('a key that is not a UUID is refused', async () => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    expect((await logOnce(alice, session.id, exerciseId, 'again')).status).toBe(422)
+  })
+})
+
 describe('logging a whole session at once', () => {
   /**
    * One INSERT shares one `now()`, and a session's logs read back by `logged_at`, then `set_index`

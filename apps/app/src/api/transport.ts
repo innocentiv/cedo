@@ -19,6 +19,8 @@ export interface RequestOptions {
   readonly body?: unknown
   /** Multipart uploads set their own content type, including a boundary Request generates. */
   readonly form?: FormData
+  /** Request headers of its own — an `Idempotency-Key`, on a write that may be retried. */
+  readonly headers?: Readonly<Record<string, string>>
 }
 
 export type SendRequest = <S extends z.ZodType>(
@@ -64,7 +66,7 @@ async function toApiError(response: Response, path: string): Promise<ApiError> {
 
 export function transport(config: TransportConfig): SendRequest {
   return async (method, path, schema, options = {}) => {
-    const headers: Record<string, string> = {}
+    const headers: Record<string, string> = { ...options.headers }
     const sent = config.token()
     if (sent !== null) headers['authorization'] = `Bearer ${sent}`
     if (options.body !== undefined) headers['content-type'] = 'application/json'

@@ -224,8 +224,13 @@ MCP:
 ```
 workout_sessions(id, user_id, workout_id?, day_id?, started_at, ended_at?, notes?)
 set_logs(id, session_id, entry_id?, exercise_id, set_index, is_warmup, weight_g, reps, rpe,
-         duration_s, distance_mm, logged_at)
+         duration_s, distance_mm, logged_at, idempotency_key?)
 ```
+
+`idempotency_key` is the phone's key for one logged set, unique within its session. A set sent on
+a weak signal may reach the server and lose its answer, so the app sends it again under the same
+key, and the server answers a stored key with the stored set rather than logging a second (#9).
+Null for a client that does not retry.
 
 `rpe` — and a prescribed set's `target_rpe` — is RPE as `GLOSSARY.md` defines it: 5 to 10 in
 half-points, or null when not said. A rating, not a measurement, so it is `numeric(3,1)` rather
@@ -290,6 +295,7 @@ against a realistic data volume — see [adr/0018](adr/0018-n1-detection.md).
 | `workout_days_order_idx`, `workout_entries_order_idx`, `workout_sets_order_idx` (unique, on `(parent_id, index)`) | ordering a plan, and — by their `parent_id` prefix — loading one without N+1 |
 | `set_logs_exercise_time_idx` | the review's per-exercise aggregates, and the `exercise_id` foreign key on the largest table by an order of magnitude |
 | `set_logs_session_idx`, `set_logs_entry_idx` | a session's own sets; a prescribed set's history |
+| `set_logs_idempotency_idx` (unique, on `(session_id, idempotency_key)`) | one set per key in a session: the backstop to the check `logSet` makes under the session's lock |
 | `workout_sessions_user_time_idx` on `(user_id, started_at desc nulls first, id desc nulls first)` | the session list, newest first — `id` included because the keyset cursor is a row comparison; `nulls first` because that is what `ORDER BY … DESC` means, and a mismatch turns the walk into a sort |
 | `workout_sessions_workout_idx` | sessions belonging to a workout |
 | `workout_sessions_in_progress_idx` (unique, partial: `ended_at is null`) on `user_id` | one session in progress per person, and finding it |

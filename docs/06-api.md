@@ -121,6 +121,16 @@ Services throw the typed helpers in `lib/error.ts` (`notFound`, `conflict`, `una
 input on every issue, which on a registration includes the plaintext password; only `path` and
 `message` are ever returned. A test asserts a distinctive password never appears in a 422 body.
 
+## Retrying a write safely
+
+`POST /sessions/:id/logs` takes an optional `Idempotency-Key` header, a UUID (`IDEMPOTENCY_KEY_HEADER`
+in the contract). A key already stored in the session is answered with the stored set, the same
+`200`, even if the session was finished since. It's the same request, so it gets the same answer.
+The app makes one key per logged set and retries under it when the answer is lost: no answer, or a
+5xx. So a set sent on a weak signal is never logged twice. A key is a header, not a body field,
+because it says how the request is sent, not what was lifted. It's the only write that takes one
+today, because it's the only one the app queues while offline (#9).
+
 ## Nested resources: replace, do not patch
 
 `PUT /workouts/:id/plan` replaces the **entire** nested plan — days, entries and sets — in one

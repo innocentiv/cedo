@@ -2,8 +2,8 @@ import {
   type UseMutationResult,
   type UseQueryResult,
   useMutation,
+  useMutationState,
   useQuery,
-  useQueryClient,
 } from '@tanstack/react-query'
 import type {
   EntryTarget,
@@ -34,10 +34,11 @@ import type {
   WorkoutSessionSummary,
   WorkoutSummary,
 } from '@cedo/contract'
-import { type Read, affectedBy, mcpAddress } from '@cedo/contract'
-import { ApiError } from './errors.ts'
+import { mcpAddress } from '@cedo/contract'
 import { api, apiRoot } from './http.ts'
 import { keys } from './query-client.ts'
+import { retryDelayMs, retryable } from './retry.ts'
+import { sessionQueue, useWriteTo } from './write-to.ts'
 
 /**
  * Every read and write a screen may perform, as hooks.
@@ -133,63 +134,6 @@ export function useTokens(): UseQueryResult<PersonalAccessToken[]> {
   return useQuery({ queryKey: keys.tokens, queryFn: async () => await api.tokens.list() })
 }
 
-/**
- * A write to `source` refreshes every read it makes stale (`affectedBy`): all copies of each,
- * whatever their arguments, since only what is mounted actually refetches. The reads OF the
- * source are awaited, because the next write reads them — the live session numbers the next set
- * from the refreshed logs. Reads that only embed it are marked stale at once and refetch behind.
- *
- * A refused write — gone, out of reach, or a conflict with what is stored — reads again what it
- * was OF, and nothing more: someone else's write may have moved the screen's picture on, and it is
- * a cheap re-read when it has not. See docs/08-frontend.md.
- *
- * Nothing reports a failure here — there is deliberately no `onError` that logs or swallows one.
- * A blanket handler cannot tell a failure nobody is watching from one a form is already showing —
- * it logged every rejected validation, including the ones `useSubmit` renders, and turned an
- * expected 422 into a failed e2e run. The rule instead: **every caller awaits `mutateAsync` inside
- * `submit()`**, so the message reaches `FormError` and, when it is not an `ApiError`, the console.
- * A bare `.mutate()` is the smell — it reads nothing back.
- */
-function useWriteTo<TInput, TResult>(
-  source: Source,
-  run: (input: TInput) => Promise<TResult>,
-  deletes?: (input: TInput) => string,
-): UseMutationResult<TResult, Error, TInput> {
-  const queryClient = useQueryClient()
-  /**
-   * Every cached read of `reads` — but none keyed by what the write deletes. `[read, id]` is the
-   * thing itself: just deleted, or already gone (404), it is not asked for again by the screen
-   * still showing it, which would be told it does not exist and say so on the console. Derived from
-   * the key shape, not listed per delete, so a new read keyed by the id is skipped without being
-   * remembered. Left to be collected once nothing shows it.
-   */
-  const refresh = async (reads: readonly Read[], deleted: string | undefined) => {
-    await Promise.all(
-      reads.map(async (read) =>
-        queryClient.invalidateQueries({
-          queryKey: [read],
-          predicate: (query) => deleted === undefined || query.queryKey[1] !== deleted,
-        }),
-      ),
-    )
-  }
-  return useMutation({
-    mutationFn: run,
-    onSuccess: async (_result, input) => {
-      const deleted = deletes?.(input)
-      const { awaited, background } = affectedBy(source)
-      void refresh(background, deleted)
-      await refresh(awaited, deleted)
-    },
-    // Not awaited: the refusal reaches the form at once, and the re-read follows it.
-    onError: (error, input) => {
-      if (error instanceof ApiError && (error.code === 'not_found' || error.code === 'conflict')) {
-        void refresh(affectedBy(source).awaited, deletes?.(input))
-      }
-    },
-  })
-}
-
 /** A delete of `source` by id: the reads keyed by that id are not refreshed — see `useWriteTo`. */
 const useDeleteOf = (source: Source, remove: (id: string) => Promise<unknown>) =>
   useWriteTo(source, remove, (id: string) => id)
@@ -251,14 +195,48 @@ export const useFavouriteWorkout = () =>
 export const useStartSession = () =>
   useWriteTo('session', async (input: SessionStart) => await api.sessions.start(input))
 
+/** In the session's queue: finishing waits for every set logged before it. */
 export const useUpdateSession = (id: string) =>
-  useWriteTo('session', async (input: SessionUpdate) => await api.sessions.update(id, input))
+  useWriteTo(
+    'session',
+    async (input: SessionUpdate) => await api.sessions.update(id, input),
+    undefined,
+    { mutationKey: ['updateSession', id], scope: sessionQueue(id).scope },
+  )
 
+/** One set, its idempotency key made once when it was logged, so every retry of it is the same. */
+export interface QueuedSet {
+  readonly input: LogSetInput
+  readonly key: string
+}
+
+/**
+ * Sent at once when there is a signal; without one, it waits in the session's queue and is sent
+ * when the signal is back — again, under its key, if the answer was lost (`retry.ts`).
+ */
 export const useLogSet = (sessionId: string) =>
   useWriteTo(
     'session',
-    async (input: LogSetInput): Promise<SetLog> => await api.sessions.logSet(sessionId, input),
+    async ({ input, key }: QueuedSet): Promise<SetLog> =>
+      await api.sessions.logSet(sessionId, input, key),
+    undefined,
+    {
+      mutationKey: sessionQueue(sessionId).logs,
+      scope: sessionQueue(sessionId).scope,
+      retry: (_failures, error) => retryable(error),
+      retryDelay: retryDelayMs,
+    },
   )
+
+/** The sets of this session still waiting to be sent: offline, or retried after a lost answer. */
+export const useWaitingSets = (sessionId: string): readonly LogSetInput[] =>
+  useMutationState({
+    filters: { mutationKey: sessionQueue(sessionId).logs, status: 'pending' },
+    select: (mutation) =>
+      mutation.state.isPaused || mutation.state.failureCount > 0
+        ? (mutation.state.variables as QueuedSet | undefined)?.input
+        : undefined,
+  }).filter((input): input is LogSetInput => input !== undefined)
 
 export const useRemoveLog = (sessionId: string) =>
   useWriteTo('session', async (logId: string) => await api.sessions.removeLog(sessionId, logId))
