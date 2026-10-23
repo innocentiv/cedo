@@ -24,6 +24,13 @@ users ──< workout_sessions ──< set_logs >── exercises
 `exercises` and `workouts` hang off `groups` through `owner_group_id`. `workout_sessions` hangs off
 `users` directly — logs are personal and are never shared, favourited or transferred.
 
+`group_members.shares_training` is a member's own switch letting that group's editors **read** their
+training — sessions, logs, notes, the review — and change none of it (#11). On the membership row, so
+leaving or being removed withdraws it with the row; never set in a personal group or the library.
+A read of training says whose sessions (`athleteId`) apart from who reads them (`reader`, whose
+visible relations name what was logged): `Training` in `modules/session/service.ts`. See
+`docs/adr/0021-coaching-through-groups.md`.
+
 `users.weight_unit` (`kg` | `lb`) is how a person reads and types weights. It changes no stored
 value — every weight is grams — only what is written for them: the app's screens and the AI's MCP
 text alike, which is why it lives on the account and travels on the caller. It is theirs alone: `Me`

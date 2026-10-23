@@ -28,7 +28,8 @@ role already means "runs this group".
   ADR-0019's "visibility is not permanent", applied to people.
 - **A coach reads; a coach never writes.** Everything the athlete reads of their own training —
   sessions (in progress too), set logs and notes, exercise history and stalls, the training review —
-  read-only, under `/athletes/:id/…`, never by pointing an existing "mine" route at someone else.
+  read-only — under `/athletes/:id/…` over HTTP, and with an `athlete` id over MCP — never by
+  pointing an existing "mine" route at someone else.
   Anyone not shared with the caller is a 404, as an invisible workout is, so a probe learns nothing.
 - **Names follow ADR-0019 unchanged.** An exercise, plan or day the coach cannot see is unavailable
   in the athlete's training as it is everywhere: sharing training does not share what it was logged
@@ -62,5 +63,9 @@ role already means "runs this group".
   person at all.
 - Every `/athletes` route is a GET in `test/membership-lost.test.ts`: each way of losing access ends
   in a 404.
+- The training review has no HTTP route, not even for one's own training: it is a read model the
+  MCP tool formats, typed inside the API. A coach reads it over MCP, with `athlete`, as the athlete
+  does without; `GET /athletes/:id/review` comes with the screen that needs it — authored in the
+  contract then, for both — in #23.
 - In the app, only the athlete's side exists at first — the switch on a group, and who reads your
   training. The coach's screens are #23.
