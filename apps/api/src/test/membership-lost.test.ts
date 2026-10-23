@@ -376,7 +376,11 @@ const TOOLS: Record<string, Case> = {
   },
   training_review: {
     named: true,
-    read: async (w) => await tool(w, 'training_review', { weeks: 4 }),
+    read: async (w) =>
+      await all([
+        tool(w, 'training_review', { weeks: 4 }),
+        tool(w, 'training_review', { weeks: 4, athlete: bob.userId }),
+      ]),
   },
   workout_list: { named: true, read: async (w) => await tool(w, 'workout_list') },
   workout_get: {
@@ -407,6 +411,14 @@ const TOOLS: Record<string, Case> = {
       ]),
     allowed: async (w) =>
       await toolAllowed(w, 'workout_progression', { workoutId: w.bobsWorkoutId }),
+  },
+  // Alice coaches Bob (#11): the list names the crew, his sessions his plan — then nothing.
+  athlete_list: { named: true, read: async (w) => await tool(w, 'athlete_list') },
+  session_list: {
+    named: true,
+    read: async (w) =>
+      await all([tool(w, 'session_list'), tool(w, 'session_list', { athlete: bob.userId })]),
+    allowed: async (w) => await toolAllowed(w, 'session_list', { athlete: bob.userId }),
   },
   // Curator-only.
   platform_status: { named: false, read: async (w) => await tool(w, 'platform_status') },

@@ -3,15 +3,16 @@ import { z } from 'zod'
 import {
   DuplicateInput,
   ExerciseHistoryQuery,
+  OfAthlete,
   SessionLogInput,
   WorkoutCreate,
   WorkoutPlanInput,
   planInputFrom,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
+import { trainingFor } from '../../modules/coaching/athletes.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import { logWhole } from '../../modules/session/start.ts'
-import { own } from '../../modules/session/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
 import { trainingReview } from '../../modules/review/service.ts'
 import {
@@ -44,13 +45,20 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         '(sessions per week, streak, longest gap), which planned days are being skipped, working ' +
         'sets per muscle (and weight lifted) against the preceding period, and which exercises ' +
         'have stalled.',
-      inputSchema: z.object({
-        weeks: z.int().min(1).max(52).default(8).describe('How far back to look'),
-      }),
+      inputSchema: z
+        .object({
+          weeks: z.int().min(1).max(52).default(8).describe('How far back to look'),
+        })
+        .safeExtend(OfAthlete.shape),
       annotations: READ,
     },
-    async ({ weeks }) =>
-      text(reviewSummary(await trainingReview(own(caller), weeks), caller.weightUnit)),
+    async ({ weeks, athlete: athleteId }) =>
+      text(
+        reviewSummary(
+          await trainingReview(await trainingFor(caller, athleteId), weeks),
+          caller.weightUnit,
+        ),
+      ),
   )
 
   server.registerTool(
@@ -185,12 +193,13 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'Logged sessions for one exercise, newest first, with each set and its RPE, the ' +
         "session's best estimated max for a weight lift, and — when it has stalled — how many " +
         'sessions it has repeated one top set.',
-      inputSchema: ExerciseHistoryQuery.safeExtend({ exerciseId: z.uuid() }),
+      inputSchema: ExerciseHistoryQuery.safeExtend({ exerciseId: z.uuid(), ...OfAthlete.shape }),
       annotations: READ,
     },
-    async ({ exerciseId, ...query }) => {
+    async ({ exerciseId, athlete: athleteId, ...query }) => {
       const { history } = await import('../../modules/session/history.ts')
-      return text(historyLines(await history(own(caller), exerciseId, query), caller.weightUnit))
+      const training = await trainingFor(caller, athleteId)
+      return text(historyLines(await history(training, exerciseId, query), caller.weightUnit))
     },
   )
 

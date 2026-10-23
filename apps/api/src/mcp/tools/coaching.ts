@@ -1,0 +1,54 @@
+import type { McpServer } from '@modelcontextprotocol/server'
+import { z } from 'zod'
+import { OfAthlete, SessionQuery } from '@cedo/contract'
+import type { Caller } from '../../plugins/auth.ts'
+import { athletes, trainingFor } from '../../modules/coaching/athletes.ts'
+import { list as listSessions } from '../../modules/session/list.ts'
+import { text } from '../format.ts'
+import { athleteLines, sessionLines } from '../format-coaching.ts'
+
+const READ = { readOnlyHint: true, openWorldHint: false } as const
+
+/**
+ * OBJECTIVE 2, for someone else — a coach's AI reading the athletes who share their training (#11).
+ * Read-only, every one: a coach changes nothing of an athlete's. `training_review` and
+ * `exercise_history` take the same optional `athlete`. See docs/adr/0021-coaching-through-groups.md.
+ */
+export function registerCoachingTools(server: McpServer, caller: Caller): void {
+  server.registerTool(
+    'athlete_list',
+    {
+      title: 'List the athletes you coach',
+      description:
+        'Members who share their training with a group you edit — read-only, and only while ' +
+        'they share it. Pass an id as `athlete` to training_review, session_list or ' +
+        'exercise_history to read theirs instead of yours. Names of what you cannot see stay ' +
+        'unavailable in their training.',
+      inputSchema: z.object({}),
+      annotations: READ,
+    },
+    async () => text(athleteLines(await athletes(caller))),
+  )
+
+  server.registerTool(
+    'session_list',
+    {
+      title: 'List sessions',
+      description:
+        'Sessions newest first, one line each: date, plan and day, working sets, weight lifted, ' +
+        'whether it is in progress, and the notes. Yours, or an athlete’s with `athlete`. For ' +
+        'the sets of one exercise use exercise_history.',
+      inputSchema: SessionQuery.pick({ limit: true, cursor: true, since: true }).safeExtend(
+        OfAthlete.shape,
+      ),
+      annotations: READ,
+    },
+    async ({ athlete: athleteId, ...query }) =>
+      text(
+        sessionLines(
+          await listSessions(await trainingFor(caller, athleteId), query),
+          caller.weightUnit,
+        ),
+      ),
+  )
+}

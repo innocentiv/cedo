@@ -4,7 +4,7 @@ import { db } from '../../db/client.ts'
 import { groupMembers, groups, users } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import type { Training } from '../session/service.ts'
+import { type Training, own } from '../session/service.ts'
 
 /**
  * A coach reading the training an athlete shares with them (#11): an editor of a group in which
@@ -71,3 +71,13 @@ export async function trainingOf(caller: Caller, athleteId: string): Promise<Tra
   if (shared === undefined) throw notFound('athlete')
   return { reader: caller, athleteId }
 }
+
+/**
+ * The caller's own training, or — named — an athlete's they coach: what an MCP tool reads, given
+ * the optional `athlete` every coaching tool takes. One seam, so no tool decides whose it is.
+ */
+export const trainingFor = async (
+  caller: Caller,
+  athleteId: string | undefined,
+): Promise<Training> =>
+  athleteId === undefined ? own(caller) : await trainingOf(caller, athleteId)

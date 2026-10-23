@@ -816,3 +816,86 @@ describe('the MCP caller has exactly the permissions of the user', () => {
     expect(out).toBe('No exercises matched.')
   })
 })
+
+/**
+ * A coach's AI reads the athletes who share their training with the coach (#11), through the same
+ * tools it reads the coach's own with — and nothing once the athlete stops sharing.
+ */
+describe('coaching', () => {
+  let athlete: TestUser
+  let squadId: string
+  let liftId: string
+
+  const post = async (user: TestUser, path: string, body: unknown, method = 'POST') =>
+    (await user.wire(path, { method, body: JSON.stringify(body) })).body
+
+  beforeEach(async () => {
+    athlete = await h.as('athlete')
+    squadId = expectContract(GroupMembership, await post(alice, '/groups', { name: 'Squad' })).id
+    await post(alice, `/groups/${squadId}/members`, { username: athlete.username, role: 'reader' })
+    liftId = expectContract(
+      Exercise,
+      await post(alice, '/exercises', {
+        name: 'Squad Sled Push',
+        muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+      }),
+    ).id
+    await post(alice, `/exercises/${liftId}/transfer`, { toGroupId: squadId })
+    await callTool(await mintPat(athlete), 'session_log', {
+      notes: 'felt heavy',
+      sets: [{ exerciseId: liftId, weightG: 80_000, reps: 5 }],
+    })
+  })
+
+  const share = async (sharesTraining: boolean) =>
+    await post(athlete, `/groups/${squadId}/membership`, { sharesTraining }, 'PATCH')
+
+  test('athlete_list names who shares with you, and their id', async () => {
+    const pat = await mintPat(alice)
+    expect(textOf((await callTool(pat, 'athlete_list')).body)).toBe(
+      'Nobody shares their training with a group you edit.',
+    )
+    await share(true)
+    expect(textOf((await callTool(pat, 'athlete_list')).body)).toBe(
+      `athlete (@athlete) · via Squad · ${athlete.userId}`,
+    )
+  })
+
+  test("the review, the sessions and an exercise's history are the athlete's, given their id", async () => {
+    await share(true)
+    const pat = await mintPat(alice)
+    const theirs = { athlete: athlete.userId }
+
+    expect(textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)).toContain(
+      '0 sessions',
+    )
+    expect(
+      textOf((await callTool(pat, 'training_review', { weeks: 4, ...theirs })).body),
+    ).toContain('1 sessions')
+
+    expect(textOf((await callTool(pat, 'session_list')).body)).toBe('No sessions.')
+    const sessions = textOf((await callTool(pat, 'session_list', theirs)).body)
+    expect(sessions).toContain('no plan · 1 sets · 400 kg · "felt heavy"')
+
+    const history = textOf(
+      (await callTool(pat, 'exercise_history', { exerciseId: liftId, ...theirs })).body,
+    )
+    expect(history).toContain('5 × 80 kg')
+  })
+
+  test('nothing of theirs once they stop sharing', async () => {
+    await share(true)
+    await share(false)
+    const pat = await mintPat(alice)
+    const theirs = { athlete: athlete.userId }
+    for (const [tool, args] of [
+      ['training_review', { weeks: 4, ...theirs }],
+      ['session_list', theirs],
+      ['exercise_history', { exerciseId: liftId, ...theirs }],
+    ] as const) {
+      const { body } = await callTool(pat, tool, args)
+      expect(body.result?.isError).toBe(true)
+      expect(textOf(body)).not.toContain('felt heavy')
+    }
+  })
+})

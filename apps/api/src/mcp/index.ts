@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { WeightUnit } from '@cedo/contract'
 import type { Caller } from '../plugins/auth.ts'
 import { VERSION } from '../version.ts'
+import { registerCoachingTools } from './tools/coaching.ts'
 import { registerDiagnosticTools } from './tools/diagnostics.ts'
 import { registerLibraryTools } from './tools/library.ts'
 import { registerTrainingTools } from './tools/training.ts'
@@ -53,6 +54,7 @@ export const mcpHandler = createMcpHandler(({ authInfo }) => {
 
   registerLibraryTools(server, caller)
   registerTrainingTools(server, caller)
+  registerCoachingTools(server, caller)
   registerDiagnosticTools(server, caller, VERSION)
 
   return server
