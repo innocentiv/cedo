@@ -1,4 +1,4 @@
-import type { SessionAttempts, SetTarget } from './progression.ts'
+import type { SetAttempt, SessionAttempts, SetTarget } from './progression.ts'
 
 /**
  * What a session must do to clear a prescription, one predicate per dimension a rule advances —
@@ -7,8 +7,20 @@ import type { SessionAttempts, SetTarget } from './progression.ts'
  */
 
 /**
+ * Every prescribed working set met `goal`. A session with fewer sets than prescribed cannot clear
+ * it — logging one set of an intended three is not a promotion — and sets past them are not judged.
+ */
+const everyWorkingSet = (
+  session: SessionAttempts,
+  workingSets: number,
+  goal: (attempt: SetAttempt) => boolean,
+): boolean =>
+  session.length >= workingSets && session.slice(0, workingSets).every((attempt) => goal(attempt))
+
+/**
  * A session clears a rep goal only when EVERY prescribed working set reached it at no less than the
  * target weight. A missing set, an unrecorded rep count, or a lighter load all mean "not cleared".
+ * The goal is its own argument: double progression asks for the top of its range, not the target.
  */
 export function clearsReps(
   session: SessionAttempts,
@@ -17,9 +29,7 @@ export function clearsReps(
   workingSets: number,
 ): boolean {
   if (repGoal === null) return false
-  if (session.length < workingSets) return false
-
-  return session.slice(0, workingSets).every((attempt) => {
+  return everyWorkingSet(session, workingSets, (attempt) => {
     const reps = attempt.reps ?? null
     if (reps === null || reps < repGoal) return false
     if (target.weightG === null) return true
@@ -33,36 +43,34 @@ export function clearsReps(
 /** Every prescribed working set must have been held for at least the target duration. */
 export function clearsDuration(
   session: SessionAttempts,
-  durationGoal: number | null,
+  target: SetTarget,
   workingSets: number,
 ): boolean {
-  if (durationGoal === null) return false
-  if (session.length < workingSets) return false
-
-  return session.slice(0, workingSets).every((attempt) => {
+  const { durationS: goal } = target
+  if (goal === null) return false
+  return everyWorkingSet(session, workingSets, (attempt) => {
     const held = attempt.durationS ?? null
-    return held !== null && held >= durationGoal
+    return held !== null && held >= goal
   })
 }
 
 /**
  * Every prescribed working set covered at least the target distance — and, when a time is
- * prescribed, within it: at no less than the target pace. Unrecorded is not covered.
+ * prescribed, at no less than its pace: 6 km in 33:00 clears 5 km in 30:00. Unrecorded is not
+ * covered. Compared multiplied out, in integers, so no pace is rounded to decide it.
  */
 export function clearsDistance(
   session: SessionAttempts,
   target: SetTarget,
   workingSets: number,
 ): boolean {
-  const { distanceMm: distanceGoal, durationS: timeLimit } = target
-  if (distanceGoal === null) return false
-  if (session.length < workingSets) return false
-
-  return session.slice(0, workingSets).every((attempt) => {
+  const { distanceMm: goal, durationS: goalTime } = target
+  if (goal === null) return false
+  return everyWorkingSet(session, workingSets, (attempt) => {
     const distance = attempt.distanceMm ?? null
-    if (distance === null || distance < distanceGoal) return false
-    if (timeLimit === null) return true
+    if (distance === null || distance < goal) return false
+    if (goalTime === null) return true
     const time = attempt.durationS ?? null
-    return time !== null && time <= timeLimit
+    return time !== null && time * goal <= goalTime * distance
   })
 }

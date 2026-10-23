@@ -78,18 +78,23 @@ them was taken to mean going _faster_, a decreasing target that contradicts adva
 have one that advances the other way: **further, at the prescribed pace.**
 
 A session is clean when every prescribed working set covered at least the target distance and, when
-a time is prescribed, finished within it. After `afterSuccesses` clean sessions the distance rises by
-`incrementMm`, and a prescribed time rises in proportion, to whole seconds — so a volume step never
-hides a pace jump. Given `5 km in 30:00, +500 m`:
+a time is prescribed, at no less than its pace. After `afterSuccesses` clean sessions the distance
+rises by `incrementMm`, and a prescribed time rises in proportion, to whole seconds rounded **up** —
+so a volume step never hides a pace jump, nor asks for a hair more pace. Given `5 km in 30:00,
++500 m`:
 
 | Logged | Next | Why |
 | --- | --- | --- |
-| `5 km in 29:00` | `5.5 km in 33:00` | covered, inside the time — one step, at the _prescribed_ pace |
-| `5 km in 31:00` | hold | covered, but slower than prescribed |
+| `5 km in 30:00` | `5.5 km in 33:00` | covered, exactly at the pace |
+| `5 km in 29:00` | `5.5 km in 33:00` | faster — still one step, at the _prescribed_ pace |
+| `6 km in 33:00` | `5.5 km in 33:00` | further, and faster than the pace |
+| `5 km in 31:00` | hold | covered, but slower than the pace |
+| `6 km in 36:30` | hold | further, but slower than the pace |
 | `4.8 km in 28:00` | hold | short of the distance, however fast |
-| `5 km`, no time | hold | a prescribed time unrecorded is not met |
+| `5 km`, no time | hold | a prescribed pace unrecorded is not met |
 
-With no time prescribed, the distance alone decides, and no time is added.
+And given `5 km, +500 m` with no time prescribed: `5 km` logged, with or without a time, advances to
+`5.5 km` — the distance alone decides, and no time is added.
 
 Rejected: a rule that shortens the time — the same distance, faster. Endurance work is
 conventionally built by adding volume first and changing intensity deliberately; a pace target is
@@ -103,6 +108,9 @@ rule never makes a prescription easier, and never makes it faster.
   target weight. A partially logged session cannot earn a promotion — otherwise logging one set of
   an intended three would advance the weight.
 - Adding a rule kind means extending the union and `nextTarget`, with **no migration**.
+- At a target's ceiling (`MAX_WEIGHT_G`, `MAX_DURATION_S`, …) every rule holds: a suggestion past
+  it would fail the API's own response schema, and with it the plan's whole progression and the
+  logger's pre-fill.
 - Because the rule is read back from JSONB, `nextTarget` guards its switch with a `never` check that
   throws on an unknown kind, rather than silently returning the target unchanged.
 - The truth table above is encoded verbatim in `packages/contract/src/progression.test.ts`. If the

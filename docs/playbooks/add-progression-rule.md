@@ -28,6 +28,12 @@ This one function is called by the API's progression service, whose answers the
 `workout_progression` MCP tool and the logger's pre-fill both render, so an AI's advice and the
 athlete's next target never compute differently (they read different sessions — see ADR-0012).
 
+What a session must do to count as clean is a predicate in `packages/contract/src/clears.ts`, one
+per dimension a rule advances (`clearsReps`, `clearsDuration`, `clearsDistance`), each built on
+`everyWorkingSet`. A rule that advances a dimension already there reuses its predicate; a new
+dimension adds one beside them. A target pushed past its ceiling is held by `nextTarget` itself, so
+a rule's maths need not check `MAX_*`.
+
 ## 3. Write the truth table first
 
 In `packages/contract/src/progression.test.ts`. No database, no DOM — this is where progression
@@ -49,5 +55,5 @@ parameter gets its input there.
 bun run check
 ```
 
-If anything outside those four files had to change, the union is not carrying its weight and the
-design deserves a second look.
+If anything outside those files (and `clears.ts`, for a new dimension) had to change, the union is
+not carrying its weight and the design deserves a second look.

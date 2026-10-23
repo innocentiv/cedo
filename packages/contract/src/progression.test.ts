@@ -3,9 +3,11 @@ import {
   type Progression,
   type SessionAttempts,
   type SetTarget,
+  describeProgression,
   nextTarget,
 } from './progression.ts'
-import { formatWeight, kgToG } from './units.ts'
+import { MAX_DURATION_S, MAX_WEIGHT_G } from './measurement.ts'
+import { formatWeight, kgToG, mToMm } from './units.ts'
 
 /** `sets(12, 12, 10)` at 60kg -> three attempts. */
 const sets =
@@ -299,14 +301,14 @@ describe('nextTarget — linear_distance (runs, rows)', () => {
     weightG: null,
     rpe: null,
     durationS: seconds,
-    distanceMm: metres * 1000,
+    distanceMm: mToMm(metres),
   })
   const ran = (...efforts: [metres: number, seconds: number | null][]): SessionAttempts =>
-    efforts.map(([metres, durationS]) => ({ distanceMm: metres * 1000, durationS }))
+    efforts.map(([metres, durationS]) => ({ distanceMm: mToMm(metres), durationS }))
   const next = (t: SetTarget, sessions: SessionAttempts[], workingSets = 1, rule = RULE) =>
     nextTarget({ rule, target: t, workingSets, sessions })
 
-  test('the distance within the time adds distance, at the same pace', () => {
+  test('the distance exactly at the pace adds distance, at the same pace', () => {
     expect(next(covered(5000, 1800), [ran([5000, 1800])])).toEqual(covered(5500, 1980))
   })
 
@@ -316,6 +318,14 @@ describe('nextTarget — linear_distance (runs, rows)', () => {
 
   test('the distance outside the time holds', () => {
     expect(next(covered(5000, 1800), [ran([5000, 1860])])).toEqual(covered(5000, 1800))
+  })
+
+  test('further, and faster than the pace, advances — the pace is what was asked of it', () => {
+    expect(next(covered(5000, 1800), [ran([6000, 1980])])).toEqual(covered(5500, 1980))
+  })
+
+  test('further, but slower than the pace, holds', () => {
+    expect(next(covered(5000, 1800), [ran([6000, 2190])])).toEqual(covered(5000, 1800))
   })
 
   test('short of the distance holds, however fast', () => {
@@ -328,11 +338,14 @@ describe('nextTarget — linear_distance (runs, rows)', () => {
 
   test('with no time prescribed, the distance alone advances it, and no time is added', () => {
     expect(next(covered(5000, null), [ran([5000, null])])).toEqual(covered(5500, null))
+    expect(next(covered(5000, null), [ran([5000, 2400])])).toEqual(covered(5500, null))
   })
 
-  test('the time grows to whole seconds', () => {
+  test('the time grows to whole seconds, rounded up — never a hair faster than the pace', () => {
     // 3 km in 1000 s is 0.333 s/m: 3.5 km takes 1166.67 s.
     expect(next(covered(3000, 1000), [ran([3000, 1000])])).toEqual(covered(3500, 1167))
+    // 5 km in 1801 s: 5.5 km takes 1981.1 s — 1981 would be faster than prescribed.
+    expect(next(covered(5000, 1801), [ran([5000, 1801])])).toEqual(covered(5500, 1982))
   })
 
   test('intervals advance only when every working set made it', () => {
@@ -375,5 +388,69 @@ describe('nextTarget — linear_distance (runs, rows)', () => {
       expect(after.distanceMm ?? 0).toBeGreaterThanOrEqual(t.distanceMm ?? 0)
       expect(after.durationS ?? 0).toBeGreaterThanOrEqual(t.durationS ?? 0)
     }
+  })
+})
+
+/**
+ * A suggestion past what a target may hold would be refused by the API's own response schema — a
+ * 500 for the whole plan's progression, and for the logger's pre-fill. At the ceiling, every rule
+ * holds instead.
+ */
+describe('nextTarget — a target at its ceiling holds', () => {
+  test('a weight that would pass the heaviest target', () => {
+    const t: SetTarget = { ...target(5, null), weightG: MAX_WEIGHT_G - 1000 }
+    expect(
+      nextTarget({
+        rule: LINEAR,
+        target: t,
+        workingSets: 1,
+        sessions: [[{ reps: 5, weightG: t.weightG }]],
+      }),
+    ).toEqual(t)
+  })
+
+  test('a hold that would pass the longest target', () => {
+    const rule: Progression = { kind: 'linear_duration', incrementS: 15, afterSuccesses: 1 }
+    const t = held(MAX_DURATION_S - 5)
+    expect(
+      nextTarget({ rule, target: t, workingSets: 1, sessions: [[{ durationS: t.durationS }]] }),
+    ).toEqual(t)
+  })
+
+  test('a run whose time, kept at its pace, would pass the longest target', () => {
+    const rule: Progression = { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 }
+    const t: SetTarget = { ...held(80_000), distanceMm: mToMm(1000) }
+    expect(
+      nextTarget({
+        rule,
+        target: t,
+        workingSets: 1,
+        sessions: [[{ distanceMm: t.distanceMm, durationS: 80_000 }]],
+      }),
+    ).toEqual(t)
+  })
+})
+
+/** The rule as the editor and the MCP tool both say it — a streak said wherever a rule has one. */
+describe('describeProgression', () => {
+  const kg = (g: number) => formatWeight(g, 'kg')
+
+  test.each<[Progression, string]>([
+    [LINEAR, 'Linear, +2.5 kg'],
+    [{ ...LINEAR, afterSuccesses: 2 }, 'Linear, +2.5 kg after 2 clean sessions'],
+    [
+      { kind: 'linear_duration', incrementS: 15, afterSuccesses: 3 },
+      'Linear, +0:15 after 3 clean sessions',
+    ],
+    [
+      { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 },
+      'Distance, +500 m at the same pace',
+    ],
+    [
+      { kind: 'linear_distance', incrementMm: 1_000_000, afterSuccesses: 2 },
+      'Distance, +1 km at the same pace after 2 clean sessions',
+    ],
+  ])('%o reads %p', (rule, said) => {
+    expect(describeProgression(rule, kg)).toBe(said)
   })
 })

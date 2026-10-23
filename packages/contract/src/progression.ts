@@ -134,8 +134,16 @@ export interface ProgressionInput {
  * It ADVANCES OR HOLDS, never decreases. Deloading is a judgement call needing context this
  * function does not have (illness, a bad week, form breakdown), so it stays with the user or the
  * AI, acting through `workout_save_plan`.
+ *
+ * At a target's ceiling it holds: a suggestion past what a target may be would be refused by the
+ * API's own response schema, failing the plan's whole progression and the logger's pre-fill.
  */
 export function nextTarget(input: ProgressionInput): SetTarget {
+  const next = advance(input)
+  return SetTarget.safeParse(next).success ? next : input.target
+}
+
+function advance(input: ProgressionInput): SetTarget {
   const { rule } = input
   switch (rule.kind) {
     case 'none':
@@ -171,7 +179,7 @@ function advanceDuration(
   { target, workingSets, sessions }: ProgressionInput,
 ): SetTarget {
   const clean = succeededFor(rule.afterSuccesses, sessions, (s) =>
-    clearsDuration(s, target.durationS, workingSets),
+    clearsDuration(s, target, workingSets),
   )
   if (!clean || target.durationS === null) return target
   return { ...target, durationS: target.durationS + rule.incrementS }
@@ -186,11 +194,12 @@ function advanceDistance(
   )
   if (!clean || target.distanceMm === null) return target
   const distanceMm = target.distanceMm + rule.incrementMm
-  // The prescribed pace, kept: the time grows in proportion, to whole seconds.
+  // The prescribed pace, kept: the time grows in proportion, to whole seconds rounded up — rounded
+  // down, it would ask for a hair faster than the pace.
   const durationS =
     target.durationS === null
       ? null
-      : Math.round((target.durationS * distanceMm) / target.distanceMm)
+      : Math.ceil((target.durationS * distanceMm) / target.distanceMm)
   return { ...target, distanceMm, durationS }
 }
 
@@ -261,15 +270,11 @@ export function describeProgression(
     case 'none':
       return 'Manual'
     case 'linear':
-      return rule.afterSuccesses === 1
-        ? `Linear, +${formatIncrement(rule.incrementG)}`
-        : `Linear, +${formatIncrement(rule.incrementG)} after ${rule.afterSuccesses} clean sessions`
+      return `Linear, +${formatIncrement(rule.incrementG)}${streak(rule.afterSuccesses)}`
     case 'linear_duration':
-      return `Linear, +${formatDuration(rule.incrementS)}`
+      return `Linear, +${formatDuration(rule.incrementS)}${streak(rule.afterSuccesses)}`
     case 'linear_distance':
-      return rule.afterSuccesses === 1
-        ? `Distance, +${formatDistance(rule.incrementMm)} at the same pace`
-        : `Distance, +${formatDistance(rule.incrementMm)} at the same pace after ${rule.afterSuccesses} clean sessions`
+      return `Distance, +${formatDistance(rule.incrementMm)} at the same pace${streak(rule.afterSuccesses)}`
     case 'double': {
       const [min, max] = normaliseRange(rule.repRange)
       return `Double ${min}–${max}, +${formatIncrement(rule.incrementG)}`
@@ -278,3 +283,7 @@ export function describeProgression(
       return unreachable(rule)
   }
 }
+
+/** How many clean sessions a rule waits for, said only when it waits for more than one. */
+const streak = (afterSuccesses: number): string =>
+  afterSuccesses === 1 ? '' : ` after ${afterSuccesses} clean sessions`

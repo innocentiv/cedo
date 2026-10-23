@@ -93,9 +93,7 @@ export function ProgressionField({
             testID={`${testID}-increment`}
           />
         ) : null}
-        {rule.kind === 'linear' ||
-        rule.kind === 'linear_duration' ||
-        rule.kind === 'linear_distance' ? (
+        {'afterSuccesses' in rule ? (
           <CompactField label="after">
             <NumberInput
               value={rule.afterSuccesses}
