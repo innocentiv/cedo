@@ -8,6 +8,7 @@ import {
   Card,
   ConfirmButton,
   ErrorNotice,
+  FormError,
   Loaded,
   NavButton,
   PinButton,
@@ -18,6 +19,7 @@ import {
 } from '../../../../src/ui/index.ts'
 import {
   useDeleteWorkout,
+  useDuplicateWorkout,
   useFavouriteWorkout,
   useSessions,
   useStartSession,
@@ -71,16 +73,7 @@ export default function WorkoutDetail(): React.JSX.Element {
     <Screen
       title={data.name}
       testID="workout-detail-screen"
-      footer={
-        data.canEdit ? (
-          <NavButton
-            title="Edit plan"
-            href={`/workouts/${data.id}/edit`}
-            variant="primary"
-            testID="edit-workout"
-          />
-        ) : undefined
-      }
+      footer={<PlanFooter workoutId={data.id} canEdit={data.canEdit} />}
     >
       {startError === null ? null : <Text tone="danger">{startError}</Text>}
       <PinButton
@@ -129,6 +122,51 @@ export default function WorkoutDetail(): React.JSX.Element {
         />
       ) : null}
     </Screen>
+  )
+}
+
+/**
+ * Edit, for a plan you can edit. A reader adapts a shared plan by copying it into their own group,
+ * straight into the copy's editor — as an exercise's copy is.
+ */
+function PlanFooter({
+  workoutId,
+  canEdit,
+}: {
+  readonly workoutId: string
+  readonly canEdit: boolean
+}): React.JSX.Element {
+  const router = useRouter()
+  const duplicate = useDuplicateWorkout()
+  const { submit, busy, error } = useSubmit()
+  if (canEdit) {
+    return (
+      <NavButton
+        title="Edit plan"
+        href={`/workouts/${workoutId}/edit`}
+        variant="primary"
+        testID="edit-workout"
+      />
+    )
+  }
+  return (
+    <Stack gap="xs">
+      <Text variant="caption" tone="faint" align="center">
+        Shared with you as a reader.
+      </Text>
+      <Button
+        title="Duplicate into my group"
+        onPress={() => {
+          void submit(async () => {
+            const copy = await duplicate.mutateAsync(workoutId)
+            router.replace(`/workouts/${copy.id}/edit`)
+          })
+        }}
+        busy={busy}
+        testID="duplicate-workout"
+      />
+      <FormError message={error} testID="duplicate-workout-error" />
+    </Stack>
   )
 }
 

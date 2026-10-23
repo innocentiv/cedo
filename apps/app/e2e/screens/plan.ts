@@ -118,6 +118,19 @@ export const workouts = (page: Page) => {
       )
       return Array.isArray(names) ? names.map(String) : []
     },
+    /**
+     * Copies a plan shared with you into your own group; lands in the editor for the copy, and
+     * returns the copy's id — from the address it landed on.
+     */
+    duplicate: async (): Promise<string> => {
+      await page.waitFor('duplicate-workout')
+      await page.click('[data-testid="duplicate-workout"]')
+      await page.waitFor('plan-edit-screen')
+      const path = String(await page.evaluate('location.pathname'))
+      const id = /^\/workouts\/([^/]+)\/edit$/u.exec(path)?.[1]
+      if (id === undefined) throw new Error(`Duplicating landed on ${path}, not a plan's editor`)
+      return id
+    },
     /** Opens the session in progress from the plan. */
     resume: async (): Promise<void> => {
       await page.click('[data-testid="workout-resume"]')

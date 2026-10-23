@@ -223,6 +223,9 @@ export const useDuplicateExercise = () =>
 export const useCreateWorkout = () =>
   useWriteTo('workout', async (input: WorkoutCreate) => await api.workouts.create(input))
 
+export const useDuplicateWorkout = () =>
+  useWriteTo('workout', async (id: string) => await api.workouts.duplicate(id))
+
 export const useReplacePlan = (id: string) =>
   useWriteTo(
     'workout',

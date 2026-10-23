@@ -576,6 +576,50 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/**
+ * A plan shared with you as a reader cannot be edited, so the way to adapt it is a copy in your own
+ * group — opened straight in the editor, as an exercise's copy is.
+ */
+test(
+  'a shared workout can be duplicated into my group and the copy edited',
+  async () => {
+    const athlete = unique('dupw')
+    await withApp('duplicate-workout', async (page) => {
+      const app = screens(page)
+      await app.auth.register(athlete)
+
+      const coach = await signUp(`${athlete}c`)
+      const squad = await coach.api.groups.create({ name: 'Squad' })
+      await coach.api.groups.addMember(squad.id, { username: athlete, role: 'reader' })
+      const [squat] = (await coach.api.exercises.list({ q: 'Back Squat', limit: 1 })).items
+      if (squat === undefined) throw new Error('The seeded library has no Back Squat')
+      const plan = await coach.api.workouts.create({ name: 'Coached', notes: null })
+      await coach.api.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [{ name: 'Legs', entries: [{ exerciseId: squat.id, sets: [{ targetReps: 5 }] }] }],
+        }),
+      )
+      await coach.api.workouts.transfer(plan.id, { toGroupId: squad.id })
+
+      await page.goto(`/workouts/${plan.id}`)
+      const copyId = await app.workouts.duplicate()
+
+      const mine = await page.client()
+      const personal = (await mine.auth.me()).groups.find((g) => g.kind === 'personal')
+      if (personal === undefined) throw new Error('The athlete has no personal group')
+      const copy = await mine.workouts.get(copyId)
+      expect(copyId).not.toBe(plan.id)
+      expect(copy.ownerGroupId).toBe(personal.id)
+      expect(copy.canEdit).toBe(true)
+      expect(copy.days.map((d) => [d.name, d.entries.map((e) => e.exercise?.id)])).toEqual([
+        ['Legs', [squat.id]],
+      ])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
 test(
   'a shared exercise can be duplicated and the copy edited',
   async () => {
