@@ -69,7 +69,7 @@ export function MusclePicker({ value, onChange }: MusclePickerProps): React.JSX.
 }
 
 /**
- * Wrapped, not a horizontal scroller. There are 32 muscles, and a one-line scroller puts most of
+ * Wrapped, not a horizontal scroller. There are 34 muscles, and a one-line scroller puts most of
  * them behind a sideways gesture nobody discovers.
  */
 function MuscleOptions({

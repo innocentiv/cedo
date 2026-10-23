@@ -443,6 +443,25 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     ],
   },
 
+  // ---- neck ----
+  {
+    name: 'Plate Neck Curl',
+    equipment: 'Weight plate',
+    description:
+      'Lying face up on a bench, head off the end, a plate held on the forehead: curl the chin to the chest.',
+    muscles: [['neck_flexors', 100]],
+  },
+  {
+    name: 'Plate Neck Extension',
+    equipment: 'Weight plate',
+    description:
+      'Lying face down on a bench, head off the end, a plate held on the back of the head: raise the head back.',
+    muscles: [
+      ['neck_extensors', 85],
+      ['trapezius_upper', 15],
+    ],
+  },
+
   // ---- lower leg ----
   {
     name: 'Standing Calf Raise',

@@ -16,6 +16,7 @@ import {
 } from '@cedo/contract'
 import { createApp } from '../app.ts'
 import { seedLibrary } from '../db/seed.ts'
+import { EXERCISE_LIBRARY } from '../db/seed-data/exercises.ts'
 import { expectContract } from '../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../test/harness.ts'
 import { reviewFixture } from '../modules/review/review-fixture.ts'
@@ -234,7 +235,7 @@ describe('library curation', () => {
     await seedLibrary(h.groupId, h.systemUserId)
     const pat = await mintPat(alice)
     const out = textOf((await callTool(pat, 'library_audit')).body)
-    expect(out).toContain('45 exercises')
+    expect(out).toContain(`${EXERCISE_LIBRARY.length} exercises`)
     expect(out).toMatch(/Possible duplicates|Thin muscle coverage/u)
   })
 })

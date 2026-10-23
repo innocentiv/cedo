@@ -135,7 +135,7 @@ member, so the rule cannot degenerate into "always return null".
 ### Muscles — a hardcoded set
 
 `MUSCLES` in `@cedo/contract` is the source of truth; the table is seeded from it so exercises get
-foreign-key integrity and joinability. **Never insert into `muscles` directly.** 32 muscles.
+foreign-key integrity and joinability. **Never insert into `muscles` directly.** 34 muscles.
 
 `exercise_muscles.load_pct` is a percentage of total load. The sum-to-100 and uniqueness invariants
 are enforced in the contract, because a cross-row constraint would need a trigger and the contract's

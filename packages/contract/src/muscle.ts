@@ -12,6 +12,9 @@ export const MuscleRegion = z.enum(MUSCLE_REGIONS)
 export type MuscleRegion = z.output<typeof MuscleRegion>
 
 export const MUSCLES = [
+  // upper — neck: flexion (curls) and extension trained, and so counted, apart
+  { slug: 'neck_flexors', name: 'Neck (front)', region: 'upper' },
+  { slug: 'neck_extensors', name: 'Neck (back)', region: 'upper' },
   // upper — shoulders and chest
   { slug: 'deltoid_anterior', name: 'Front delt', region: 'upper' },
   { slug: 'deltoid_lateral', name: 'Side delt', region: 'upper' },
