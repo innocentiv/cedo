@@ -1,5 +1,5 @@
 {
-  "id": "2460cb11-1ef7-4dff-980e-28f1f3954e87",
+  "id": "95ef55a3-f76c-4609-957b-90da29fdf347",
   "prevId": "2fc7f98a-2b7d-49a8-aeac-bc5520fc2371",
   "version": "7",
   "dialect": "postgresql",
@@ -1704,6 +1704,7 @@
             }
           ],
           "isUnique": true,
+          "where": "\"set_logs\".\"idempotency_key\" is not null",
           "concurrently": false,
           "method": "btree",
           "with": {}

@@ -16,7 +16,7 @@ import {
   PlanUnavailable,
   PlannedDay,
   SessionFooter,
-  WaitingSets,
+  UnsentSets,
 } from '../../../../src/lib/session-parts.tsx'
 import {
   useLogSet,
@@ -35,10 +35,14 @@ import { useSubmit } from '../../../../src/lib/use-submit.ts'
  * than each keeping a copy of the payload. The set's number is the server's to give: it numbers
  * within the series, under the session's lock, the same way for this screen and for an AI.
  */
-function useRecordSet(
-  logSet: ReturnType<typeof useLogSet>,
-  submit: ReturnType<typeof useSubmit>['submit'],
-) {
+function useRecordSet(sessionId: string) {
+  const logSet = useLogSet(sessionId)
+  // Its own submission, so a set waiting for a signal never holds Finish, nor clears its refusal.
+  const { submit, error } = useSubmit()
+  // Held only while a set's first send is on its way, as before. Once one waits — for a signal, or
+  // behind another — the next is logged behind it, the queue keeping the order. This reads the
+  // LATEST set's state, which is enough: one logged behind a held-up set is itself paused.
+  const busy = logSet.isPending && !logSet.isPaused && logSet.failureCount === 0
   const record = (
     exerciseId: string,
     entryId: string | null,
@@ -65,6 +69,8 @@ function useRecordSet(
   }
 
   return {
+    busy,
+    error,
     adHoc: (exercise: SessionExercise, values: Effort, rpe: number | null) => {
       record(exercise.id, null, values, rpe)
     },
@@ -116,14 +122,11 @@ export default function LiveSession(): React.JSX.Element {
   // Targets are for the day's entries, so they are asked for only when there is a day to show.
   const plan = session.data?.plan
   const targets = useSessionTargets(id, plan?.reachable === true)
-  const logSet = useLogSet(id)
-  // Held only while a set's first send is on its way, as before. Once one is waiting for a signal,
-  // the next can be logged behind it: the queue keeps them in order.
-  const logging = logSet.isPending && !logSet.isPaused && logSet.failureCount === 0
   const removeLog = useRemoveLog(id)
   const finish = useUpdateSession(id)
-  const { submit, busy, error } = useSubmit()
-  const record = useRecordSet(logSet, submit)
+  const { submit, busy, error: refused } = useSubmit()
+  const record = useRecordSet(id)
+  const error = record.error ?? refused
 
   const adHoc = useAdHocExercises(session.data?.logs ?? NO_LOGS)
 
@@ -189,7 +192,7 @@ export default function LiveSession(): React.JSX.Element {
           onAdd={adHoc.startPicking}
           onLog={record.adHoc}
           logs={logs}
-          busy={logging}
+          busy={record.busy}
         />
       ) : targets.data === undefined ? (
         // The day waits for its targets — each logger's inputs start from them, once — and says
@@ -204,12 +207,12 @@ export default function LiveSession(): React.JSX.Element {
           day={day}
           targets={targets.data}
           logs={logs}
-          busy={logging}
+          busy={record.busy}
           onLog={record.planned}
         />
       )}
 
-      <WaitingSets sessionId={id} day={day} adHoc={adHoc.exercises} />
+      <UnsentSets sessionId={id} day={day} adHoc={adHoc.exercises} />
       <LoggedSets
         logs={logs}
         editable={!ended}

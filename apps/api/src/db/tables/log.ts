@@ -97,8 +97,13 @@ export const setLogs = pgTable(
     idempotencyKey: uuid('idempotency_key'),
   },
   (t) => [
-    /** One set per key in a session — the backstop to the check `logSet` makes under its lock. */
-    uniqueIndex('set_logs_idempotency_idx').on(t.sessionId, t.idempotencyKey),
+    /**
+     * One set per key in a session: what `logSet`'s insert skips a repeat on. Partial, so the many
+     * sets logged without a key — every one before keys existed — cost the largest table nothing.
+     */
+    uniqueIndex('set_logs_idempotency_idx')
+      .on(t.sessionId, t.idempotencyKey)
+      .where(sql`${t.idempotencyKey} is not null`),
     /**
      * Per-exercise history, and the series a progress chart will read later without a schema
      * change. The largest table in the system by an order of magnitude.

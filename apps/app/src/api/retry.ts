@@ -5,18 +5,24 @@ import { ApiError, NetworkError } from './errors.ts'
  * server and lose its answer; the phone cannot tell, so it sends the set again under the same
  * idempotency key, and the server answers a key it has stored with the stored set. Offline sets are
  * kept in memory only (#9): retried while the app is open, gone if it is closed first. Plain, so
- * it is tested beside it; `useLogSet` wires it into the query client.
+ * it is tested beside it; `useLogSet` wires it into the query client, whose own wait between
+ * tries — a second, doubling to thirty — is kept.
  */
+
+/**
+ * Sends of one set, the first included — about three minutes of tries. A wait while the phone is
+ * offline is not a try: it is paused before sending. Past this the set is given up and the screen
+ * says so, rather than holding the session's queue — and its finish — forever.
+ */
+export const MAX_SENDS = 10
 
 /**
  * Nothing answered, or the server failed — the set may or may not be stored, and the key makes
  * sending it again safe. A refusal is an answer, and would be the same again.
  */
-export const retryable = (error: unknown): boolean =>
-  error instanceof NetworkError || (error instanceof ApiError && error.status >= 500)
-
-/** One second, doubling, to half a minute at most: a gym's dead zone, not a server to hammer. */
-export const retryDelayMs = (attempt: number): number => Math.min(1000 * 2 ** attempt, 30_000)
+export const sendAgain = (failures: number, error: unknown): boolean =>
+  failures < MAX_SENDS &&
+  (error instanceof NetworkError || (error instanceof ApiError && error.status >= 500))
 
 /**
  * A version 4 UUID from random bytes. Not `crypto.randomUUID`, which exists only in a secure

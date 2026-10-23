@@ -16,14 +16,20 @@ export interface Queued {
   readonly mutationKey: readonly unknown[]
   readonly scope: { readonly id: string }
   readonly retry?: (failureCount: number, error: Error) => boolean
-  readonly retryDelay?: (attempt: number) => number
 }
 
-/** The queue a session's writes wait in. Its key names the pending sets the screen shows. */
+/** The queue a session's writes wait in, and their keys — the sets' name what the screen shows. */
 export const sessionQueue = (sessionId: string) => ({
   logs: ['logSet', sessionId] as const,
+  update: ['updateSession', sessionId] as const,
   scope: { id: `session-${sessionId}` },
 })
+
+export interface WriteOptions<TInput> {
+  /** What the write deletes, by id: the reads keyed by it are not refreshed — see below. */
+  readonly deletes?: (input: TInput) => string
+  readonly queued?: Queued
+}
 
 /**
  * A write to `source` refreshes every read it makes stale (`affectedBy`): all copies of each,
@@ -46,8 +52,7 @@ export const sessionQueue = (sessionId: string) => ({
 export function useWriteTo<TInput, TResult>(
   source: Source,
   run: (input: TInput) => Promise<TResult>,
-  deletes?: (input: TInput) => string,
-  queued?: Queued,
+  { deletes, queued }: WriteOptions<TInput> = {},
 ): UseMutationResult<TResult, Error, TInput> {
   const queryClient = useQueryClient()
   /**

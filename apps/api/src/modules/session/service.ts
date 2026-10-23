@@ -1,4 +1,4 @@
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, sql } from 'drizzle-orm'
 import type {
   LogSetInput,
   LoggedExercise,
@@ -182,18 +182,20 @@ export async function logSet(
   const created = await db.transaction(async (tx) => {
     // `workout_id` never changes after a session starts, so the validation above needs no lock.
     await lockInProgress(tx, caller, sessionId)
-    // Again under the lock: of two sends of one key at once, the second waited here for the first.
-    if (await keyStored(tx, sessionId, idempotencyKey)) return null
 
     const setIndex = await nextNumber(tx, caller, { id: sessionId, ...session }, input)
+    // A key stored meanwhile — two sends of one set at once — is skipped, and answered below.
     const [row] = await tx
       .insert(setLogs)
       .values({ sessionId, ...input, setIndex, idempotencyKey })
+      .onConflictDoNothing({
+        target: [setLogs.sessionId, setLogs.idempotencyKey],
+        where: isNotNull(setLogs.idempotencyKey),
+      })
       .returning()
       .catch(rethrowMissingEntry)
-    if (row === undefined) throw new Error('Could not record the set')
     // The entry it names was checked reachable by `assertLoggable`, so it is seen as stored.
-    return toLog(row, exercises.get(row.exerciseId) ?? null, row.entryId)
+    return row === undefined ? null : toLog(row, exercises.get(row.exerciseId) ?? null, row.entryId)
   })
   if (created !== null) return created
   const replayed = await storedByKey(caller, sessionId, idempotencyKey)
@@ -201,21 +203,10 @@ export async function logSet(
   return replayed
 }
 
-async function keyStored(
-  tx: Transaction,
-  sessionId: string,
-  key: string | undefined,
-): Promise<boolean> {
-  if (key === undefined) return false
-  const [row] = await tx
-    .select({ id: setLogs.id })
-    .from(setLogs)
-    .where(and(eq(setLogs.sessionId, sessionId), eq(setLogs.idempotencyKey, key)))
-    .limit(1)
-  return row !== undefined
-}
-
-/** The set a key stored, as reading the session shows it now — names and entries as visible. */
+/**
+ * The set a key stored, as reading the session shows it now — names and entries as visible. A key
+ * names ONE request: a repeat is answered with what the first stored, its body not compared.
+ */
 async function storedByKey(
   caller: Caller,
   sessionId: string,

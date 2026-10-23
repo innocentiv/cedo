@@ -92,7 +92,7 @@ const logger = (page: Page, id: string) => ({
 /** The sets shown as logged but not yet sent. */
 async function waitingCount(page: Page): Promise<number> {
   const count = await page.evaluate(
-    `document.querySelectorAll('[data-testid^="waiting-set-"]').length`,
+    `document.querySelectorAll('[data-testid^="unsent-set-"]').length`,
   )
   return typeof count === 'number' ? count : 0
 }

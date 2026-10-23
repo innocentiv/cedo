@@ -37,7 +37,7 @@ import type {
 import { mcpAddress } from '@cedo/contract'
 import { api, apiRoot } from './http.ts'
 import { keys } from './query-client.ts'
-import { retryDelayMs, retryable } from './retry.ts'
+import { sendAgain } from './retry.ts'
 import { sessionQueue, useWriteTo } from './write-to.ts'
 
 /**
@@ -136,7 +136,7 @@ export function useTokens(): UseQueryResult<PersonalAccessToken[]> {
 
 /** A delete of `source` by id: the reads keyed by that id are not refreshed — see `useWriteTo`. */
 const useDeleteOf = (source: Source, remove: (id: string) => Promise<unknown>) =>
-  useWriteTo(source, remove, (id: string) => id)
+  useWriteTo(source, remove, { deletes: (id: string) => id })
 
 export const useCreateExercise = () =>
   useWriteTo('exercise', async (input: ExerciseInput) => await api.exercises.create(input))
@@ -197,12 +197,9 @@ export const useStartSession = () =>
 
 /** In the session's queue: finishing waits for every set logged before it. */
 export const useUpdateSession = (id: string) =>
-  useWriteTo(
-    'session',
-    async (input: SessionUpdate) => await api.sessions.update(id, input),
-    undefined,
-    { mutationKey: ['updateSession', id], scope: sessionQueue(id).scope },
-  )
+  useWriteTo('session', async (input: SessionUpdate) => await api.sessions.update(id, input), {
+    queued: { mutationKey: sessionQueue(id).update, scope: sessionQueue(id).scope },
+  })
 
 /** One set, its idempotency key made once when it was logged, so every retry of it is the same. */
 export interface QueuedSet {
@@ -219,24 +216,35 @@ export const useLogSet = (sessionId: string) =>
     'session',
     async ({ input, key }: QueuedSet): Promise<SetLog> =>
       await api.sessions.logSet(sessionId, input, key),
-    undefined,
     {
-      mutationKey: sessionQueue(sessionId).logs,
-      scope: sessionQueue(sessionId).scope,
-      retry: (_failures, error) => retryable(error),
-      retryDelay: retryDelayMs,
+      queued: {
+        mutationKey: sessionQueue(sessionId).logs,
+        scope: sessionQueue(sessionId).scope,
+        retry: sendAgain,
+      },
     },
   )
 
-/** The sets of this session still waiting to be sent: offline, or retried after a lost answer. */
-export const useWaitingSets = (sessionId: string): readonly LogSetInput[] =>
-  useMutationState({
+/**
+ * The sets of this session not yet sent, in the order logged — and whether any is held up: waiting
+ * for a signal, or sent again after a lost answer — which is when the screen asks to stay open.
+ */
+export function useUnsentSets(sessionId: string): {
+  readonly sets: readonly QueuedSet[]
+  readonly heldUp: boolean
+} {
+  const pending = useMutationState({
     filters: { mutationKey: sessionQueue(sessionId).logs, status: 'pending' },
-    select: (mutation) =>
-      mutation.state.isPaused || mutation.state.failureCount > 0
-        ? (mutation.state.variables as QueuedSet | undefined)?.input
-        : undefined,
-  }).filter((input): input is LogSetInput => input !== undefined)
+    select: (mutation) => ({
+      set: mutation.state.variables as QueuedSet | undefined,
+      heldUp: mutation.state.isPaused || mutation.state.failureCount > 0,
+    }),
+  })
+  return {
+    sets: pending.flatMap(({ set }) => (set === undefined ? [] : [set])),
+    heldUp: pending.some((p) => p.heldUp),
+  }
+}
 
 export const useRemoveLog = (sessionId: string) =>
   useWriteTo('session', async (logId: string) => await api.sessions.removeLog(sessionId, logId))

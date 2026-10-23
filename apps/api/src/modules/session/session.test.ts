@@ -302,7 +302,6 @@ describe('logging sets', () => {
   })
 })
 
-/** `session_log` over MCP: a whole, finished session in one write. */
 /**
  * A set sent on a weak signal may reach the server and lose its answer; the phone cannot tell, so
  * it sends it again with the same `Idempotency-Key`. Stored once, whatever happened since.
@@ -387,6 +386,7 @@ describe('a retried log, by its idempotency key', () => {
   })
 })
 
+/** `session_log` over MCP: a whole, finished session in one write. */
 describe('logging a whole session at once', () => {
   /**
    * One INSERT shares one `now()`, and a session's logs read back by `logged_at`, then `set_index`
