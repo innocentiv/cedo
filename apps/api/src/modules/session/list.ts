@@ -3,9 +3,8 @@ import type { Page, SessionQuery, WorkoutSessionSummary } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
-import type { Caller } from '../../plugins/auth.ts'
 import { afterCursor, cursorMicros, decodeCursor, encodeCursor } from './cursor.ts'
-import { ownedBy, type SessionRow } from './service.ts'
+import { type SessionRow, type Training, sessionsOf } from './service.ts'
 
 /**
  * `GET /sessions` — the landing screen's query, and the one read that must survive losing access to
@@ -16,8 +15,8 @@ import { ownedBy, type SessionRow } from './service.ts'
  * The page itself. Split from `list` because the joins carry the interesting decision and the
  * folding afterwards is bookkeeping.
  */
-async function page(caller: Caller, query: SessionQuery) {
-  const conditions = [ownedBy(caller)]
+async function page(training: Training, query: SessionQuery) {
+  const conditions = [sessionsOf(training)]
   if (query.workoutId !== undefined) conditions.push(eq(workoutSessions.workoutId, query.workoutId))
   if (query.since !== undefined)
     conditions.push(sql`${workoutSessions.startedAt} >= ${query.since}`)
@@ -38,8 +37,8 @@ async function page(caller: Caller, query: SessionQuery) {
   const after = decodeCursor(query.cursor)
   if (after !== null) conditions.push(afterCursor(after))
 
-  const workouts = visibleWorkouts(caller)
-  const days = visibleWorkoutDays(caller)
+  const workouts = visibleWorkouts(training.reader)
+  const days = visibleWorkoutDays(training.reader)
   return await db
     .select({
       session: workoutSessions,
@@ -66,10 +65,10 @@ async function page(caller: Caller, query: SessionQuery) {
 }
 
 export async function list(
-  caller: Caller,
+  training: Training,
   query: SessionQuery,
 ): Promise<Page<WorkoutSessionSummary>> {
-  const rows = await page(caller, query)
+  const rows = await page(training, query)
 
   const hasMore = rows.length > query.limit
   const items = rows.slice(0, query.limit)

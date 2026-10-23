@@ -11,6 +11,7 @@ import {
 import type { Caller } from '../../plugins/auth.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import { logWhole } from '../../modules/session/start.ts'
+import { own } from '../../modules/session/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
 import { trainingReview } from '../../modules/review/service.ts'
 import {
@@ -49,7 +50,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       annotations: READ,
     },
     async ({ weeks }) =>
-      text(reviewSummary(await trainingReview(caller, weeks), caller.weightUnit)),
+      text(reviewSummary(await trainingReview(own(caller), weeks), caller.weightUnit)),
   )
 
   server.registerTool(
@@ -189,7 +190,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ exerciseId, ...query }) => {
       const { history } = await import('../../modules/session/history.ts')
-      return text(historyLines(await history(caller, exerciseId, query), caller.weightUnit))
+      return text(historyLines(await history(own(caller), exerciseId, query), caller.weightUnit))
     },
   )
 

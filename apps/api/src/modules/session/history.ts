@@ -11,6 +11,7 @@ import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises } from '../../db/visible.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { type Training, sessionsOf } from './service.ts'
 
 /**
  * Per-exercise history, newest session first. One indexed read on
@@ -29,13 +30,13 @@ async function visibleTracking(caller: Caller, exerciseId: string): Promise<Trac
 }
 
 export async function history(
-  caller: Caller,
+  training: Training,
   exerciseId: string,
   query: ExerciseHistoryQuery,
 ): Promise<ExerciseHistory> {
-  const tracking = await visibleTracking(caller, exerciseId)
+  const tracking = await visibleTracking(training.reader, exerciseId)
 
-  const conditions = [eq(setLogs.exerciseId, exerciseId), eq(workoutSessions.userId, caller.userId)]
+  const conditions = [eq(setLogs.exerciseId, exerciseId), sessionsOf(training)]
   if (query.since !== undefined)
     conditions.push(sql`${workoutSessions.startedAt} >= ${query.since}`)
 

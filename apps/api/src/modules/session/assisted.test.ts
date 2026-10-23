@@ -13,6 +13,7 @@ import { expectContract } from '../../test/contract.ts'
 import { type TestUser, makeApi } from '../../test/harness.ts'
 import { trainingReview } from '../review/service.ts'
 import { logWhole } from './start.ts'
+import { own } from './service.ts'
 
 /**
  * Assistance — a band, an assisted machine — is NEGATIVE added weight, on a bodyweight movement
@@ -104,7 +105,7 @@ describe('a set logged with assistance', () => {
     const pullUp = await anExercise('bodyweight_reps')
     const session = await startSession()
     await logSet(session.id, pullUp, -20_000)
-    const lats = (await trainingReview(alice.caller, 4)).muscleWork.top.find(
+    const lats = (await trainingReview(own(alice.caller), 4)).muscleWork.top.find(
       (m) => m.muscle === 'latissimus_dorsi',
     )
     expect(lats?.weightedSets).toBe(1)

@@ -8,7 +8,7 @@ import {
   visibleWorkoutDays,
   visibleWorkouts,
 } from '../../db/visible.ts'
-import type { Caller } from '../../plugins/auth.ts'
+import { type Training, sessionsOf } from '../session/service.ts'
 import { adherenceOf } from './adherence.ts'
 import { muscleWorkOf } from './muscle-work.ts'
 import { type EffortDrift, type Falling, effortDriftOf, fallingOf } from './deload.ts'
@@ -96,7 +96,7 @@ export interface MuscleWork {
   readonly changePct: number | null
 }
 
-export async function trainingReview(caller: Caller, weeks: number): Promise<TrainingReview> {
+export async function trainingReview(training: Training, weeks: number): Promise<TrainingReview> {
   const since = new Date(Date.now() - weeks * 7 * DAY_MS)
   const previousSince = new Date(Date.now() - weeks * 14 * DAY_MS)
 
@@ -107,24 +107,24 @@ export async function trainingReview(caller: Caller, weeks: number): Promise<Tra
       dayId: workoutSessions.dayId,
     })
     .from(workoutSessions)
-    .where(and(eq(workoutSessions.userId, caller.userId), gte(workoutSessions.startedAt, since)))
+    .where(and(sessionsOf(training), gte(workoutSessions.startedAt, since)))
     .orderBy(desc(workoutSessions.startedAt))
 
   return {
     weeks,
     adherence: adherenceOf(sessions, weeks),
-    dayBalance: await dayBalance(caller, since),
+    dayBalance: await dayBalance(training, since),
     muscleWork: muscleWorkOf(
-      await workBetween(caller, since, new Date()),
-      await workBetween(caller, previousSince, since),
+      await workBetween(training, since, new Date()),
+      await workBetween(training, previousSince, since),
     ),
-    ...judgedOver(await latestWorkingSets(caller, since)),
+    ...judgedOver(await latestWorkingSets(training, since)),
   }
 }
 
-async function dayBalance(caller: Caller, since: Date): Promise<TrainingReview['dayBalance']> {
-  const days = visibleWorkoutDays(caller)
-  const workouts = visibleWorkouts(caller)
+async function dayBalance(training: Training, since: Date): Promise<TrainingReview['dayBalance']> {
+  const days = visibleWorkoutDays(training.reader)
+  const workouts = visibleWorkouts(training.reader)
   const rows = await db
     .select({
       day: days.name,
@@ -140,7 +140,7 @@ async function dayBalance(caller: Caller, since: Date): Promise<TrainingReview['
      */
     .innerJoin(days, eq(days.id, workoutSessions.dayId))
     .innerJoin(workouts, eq(workouts.id, days.workoutId))
-    .where(and(eq(workoutSessions.userId, caller.userId), gte(workoutSessions.startedAt, since)))
+    .where(and(sessionsOf(training), gte(workoutSessions.startedAt, since)))
     /**
      * By ID, not by name. Two days can share a name across two plans, and two plans can share a
      * name outright — duplicating one is the documented way to get an editable copy. Grouping on
@@ -157,7 +157,7 @@ async function dayBalance(caller: Caller, since: Date): Promise<TrainingReview['
  * Warm-ups are excluded — they are not work. One query for the current window and one for the
  * window before it, so the trend is a comparison rather than a number with no context.
  */
-async function workBetween(caller: Caller, from: Date, to: Date) {
+async function workBetween(training: Training, from: Date, to: Date) {
   /**
    * The third branch of this review, held to the same rule as `stalled` and `dayBalance`. Weaker
    * than those — it reveals a muscle slug, not a name — but it reads the CURRENT `load_pct` of an
@@ -166,7 +166,7 @@ async function workBetween(caller: Caller, from: Date, to: Date) {
    * gate. Leaving one of three inconsistent is how the next session concludes the rule does not
    * apply here.
    */
-  const exerciseMuscles = visibleExerciseMuscles(caller)
+  const exerciseMuscles = visibleExerciseMuscles(training.reader)
   return await db
     .select({
       muscle: exerciseMuscles.muscleSlug,
@@ -189,7 +189,7 @@ async function workBetween(caller: Caller, from: Date, to: Date) {
     .innerJoin(exerciseMuscles, eq(exerciseMuscles.exerciseId, setLogs.exerciseId))
     .where(
       and(
-        eq(workoutSessions.userId, caller.userId),
+        sessionsOf(training),
         eq(setLogs.isWarmup, false),
         gte(workoutSessions.startedAt, from),
         // `lt`, not raw sql: a JS Date interpolated into a template serialises via toString
@@ -204,8 +204,8 @@ async function workBetween(caller: Caller, from: Date, to: Date) {
  * Each exercise's working sets in its latest `STALL_DEPTH` sessions of the window — what a stall,
  * a fall and a drift are all judged over (./stalled.ts, ./deload.ts), read once.
  */
-async function latestWorkingSets(caller: Caller, since: Date): Promise<WorkingSet[]> {
-  const ranked = latestSessions(caller, since)
+async function latestWorkingSets(training: Training, since: Date): Promise<WorkingSet[]> {
+  const ranked = latestSessions(training, since)
   const rows = await db
     .select()
     .from(ranked)
@@ -234,7 +234,7 @@ const judgedOver = (sets: readonly WorkingSet[]) => ({
 })
 
 /**
- * The caller's working sets in the window, each with its exercise as they can still see it — an
+ * The athlete's working sets in the window, each with its exercise as the reader can still see it — an
  * INNER join onto the visible relation: an exercise can stop being visible after it was logged,
  * when a shared group loses them as a member, and there is nothing useful to say about a movement
  * whose name they cannot read. Omitted, matching `progression/service.ts`.
@@ -244,8 +244,8 @@ const judgedOver = (sets: readonly WorkingSet[]) => ({
  * years of a main lift reads ten sessions, not all. Ranked by start and then by id, so two sessions
  * started in the same instant still take two ranks, and the cap is exact.
  */
-function latestSessions(caller: Caller, since: Date) {
-  const exercises = visibleExercises(caller)
+function latestSessions(training: Training, since: Date) {
+  const exercises = visibleExercises(training.reader)
   return db
     .select({
       exerciseId: exercises.id,
@@ -267,11 +267,7 @@ function latestSessions(caller: Caller, since: Date) {
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
     .innerJoin(exercises, eq(exercises.id, setLogs.exerciseId))
     .where(
-      and(
-        eq(workoutSessions.userId, caller.userId),
-        eq(setLogs.isWarmup, false),
-        gte(workoutSessions.startedAt, since),
-      ),
+      and(sessionsOf(training), eq(setLogs.isWarmup, false), gte(workoutSessions.startedAt, since)),
     )
     .as('ranked')
 }

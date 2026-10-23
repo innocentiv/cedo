@@ -6,7 +6,7 @@ import {
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import { hydrateDay } from '../workout/plan.ts'
-import { read } from './service.ts'
+import { type Training, read } from './service.ts'
 
 /**
  * The plan a session follows, as its reader can reach it — read with the session on its own
@@ -14,9 +14,9 @@ import { read } from './service.ts'
  */
 
 /** A session with the plan it follows. */
-export async function get(caller: Caller, id: string): Promise<SessionDetail> {
-  const session = await read(caller, id)
-  return { ...session, plan: await planOf(caller, session) }
+export async function get(training: Training, id: string): Promise<SessionDetail> {
+  const session = await read(training, id)
+  return { ...session, plan: await planOf(training.reader, session) }
 }
 
 /**

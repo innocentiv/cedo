@@ -7,6 +7,7 @@ import * as ProgressionService from '../progression/service.ts'
 import { history } from '../session/history.ts'
 import { get as getSession } from '../session/plan.ts'
 import * as WorkoutService from './service.ts'
+import { own } from '../session/service.ts'
 
 let h: TestApi
 let alice: TestUser
@@ -167,13 +168,13 @@ describe('reads do not N+1', () => {
     }
 
     await logOne()
-    const one = await withQueryCount(() => history(alice.caller, exerciseId, { limit: 20 }))
+    const one = await withQueryCount(() => history(own(alice.caller), exerciseId, { limit: 20 }))
 
     for (let i = 0; i < 14; i++) {
       // oxlint-disable-next-line no-await-in-loop
       await logOne()
     }
-    const many = await withQueryCount(() => history(alice.caller, exerciseId, { limit: 20 }))
+    const many = await withQueryCount(() => history(own(alice.caller), exerciseId, { limit: 20 }))
 
     expect(one.result.sessions).toHaveLength(1)
     expect(many.result.sessions).toHaveLength(15)
@@ -195,10 +196,10 @@ describe('reads do not N+1', () => {
 
     // Each finished once read: one session is in progress at a time.
     const small = await sessionOn(await planned(1, 1, ids))
-    const smallCount = await withQueryCount(() => getSession(alice.caller, small))
+    const smallCount = await withQueryCount(() => getSession(own(alice.caller), small))
     await finish(small)
     const large = await sessionOn(await planned(6, 8, ids))
-    const largeCount = await withQueryCount(() => getSession(alice.caller, large))
+    const largeCount = await withQueryCount(() => getSession(own(alice.caller), large))
     await finish(large)
 
     const entries = (read: typeof smallCount.result) =>
@@ -213,7 +214,7 @@ describe('reads do not N+1', () => {
       WorkoutSession,
       (await alice.wire('/sessions', { method: 'POST', body: '{}' })).body,
     ).id
-    const adHocCount = await withQueryCount(() => getSession(alice.caller, adHoc))
+    const adHocCount = await withQueryCount(() => getSession(own(alice.caller), adHoc))
     expect(adHocCount.result.plan).toBeNull()
     expect(largeCount.count).toBe(adHocCount.count + 7)
   })

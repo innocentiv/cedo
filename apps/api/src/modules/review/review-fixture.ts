@@ -5,6 +5,7 @@ import { workoutSessions } from '../../db/schema.ts'
 import { resolveCaller } from '../../plugins/auth.ts'
 import { expectContract } from '../../test/contract.ts'
 import type { TestUser } from '../../test/harness.ts'
+import { own } from '../session/service.ts'
 import { type TrainingReview, trainingReview } from './service.ts'
 
 /** What the review's tests share: a person's exercises and sessions, made over the wire. */
@@ -66,7 +67,7 @@ export function reviewFixture(user: TestUser) {
     review: async (weeks = 4): Promise<TrainingReview> => {
       const caller = await resolveCaller(`Bearer ${user.token}`)
       if (caller === null) throw new Error(`${user.username} could not be resolved`)
-      return await trainingReview(caller, weeks)
+      return await trainingReview(own(caller), weeks)
     },
   }
 }

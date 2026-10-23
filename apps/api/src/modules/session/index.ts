@@ -30,7 +30,7 @@ const params = z.object({ id: Id })
 export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller, query }) => listSessions(caller, query), {
+  .get('/', ({ caller, query }) => listSessions(SessionService.own(caller), query), {
     query: SessionQuery,
     response: page(WorkoutSessionSummary),
     detail: { summary: 'Session history, newest first. Summaries only — no per-set detail.' },
@@ -40,7 +40,7 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
     response: WorkoutSession,
     detail: { summary: 'Start a session, from a workout day or ad hoc' },
   })
-  .get('/:id', ({ caller, params: { id } }) => getSession(caller, id), {
+  .get('/:id', ({ caller, params: { id } }) => getSession(SessionService.own(caller), id), {
     params,
     response: SessionDetail,
     detail: { summary: 'A session, with the plan it follows as the caller can reach it' },
@@ -94,7 +94,8 @@ export const exerciseHistoryRoutes = new Elysia({ prefix: '/exercises', tags: ['
   .guard({ auth: true })
   .get(
     '/:id/history',
-    ({ caller, params: { id }, query }) => HistoryService.history(caller, id, query),
+    ({ caller, params: { id }, query }) =>
+      HistoryService.history(SessionService.own(caller), id, query),
     {
       params,
       query: ExerciseHistoryQuery,

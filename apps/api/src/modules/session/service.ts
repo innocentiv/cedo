@@ -16,11 +16,30 @@ import { nextNumber } from './numbering.ts'
 import { planEntries } from '../workout/plan.ts'
 
 /**
- * Sessions are PERSONAL. They are not `ownable()` — they belong to a `user_id` directly and are
- * never shared, favourited or transferred, so every query here filters on the caller's own id
- * rather than on group membership. See docs/03-domain-model.md.
+ * Whose training a read is of, and who reads it — two things the caller used to be at once (#11).
+ * `reader` decides what is visible: ADR-0019's relations, so the names of exercises, plans and days.
+ * `athleteId` decides whose sessions are read, and nothing else.
+ *
+ * Reading your own is `own(caller)`. A coach reading an athlete gets one only from
+ * `coaching/service.ts`, once the athlete shares their training with a group the coach edits.
+ * See docs/adr/0021-coaching-through-groups.md.
  */
-export const ownedBy = (caller: Caller) => eq(workoutSessions.userId, caller.userId)
+export interface Training {
+  readonly reader: Caller
+  readonly athleteId: string
+}
+
+export const own = (caller: Caller): Training => ({ reader: caller, athleteId: caller.userId })
+
+/** The sessions of this training: whose they are, never what the reader may see of them. */
+export const sessionsOf = (training: Training) => eq(workoutSessions.userId, training.athleteId)
+
+/**
+ * Sessions are PERSONAL. They are not `ownable()` — they belong to a `user_id` directly and are
+ * never shared, favourited or transferred: a write is only ever to the caller's own, and a read of
+ * someone else's goes through `Training`. See docs/03-domain-model.md.
+ */
+export const ownedBy = (caller: Caller) => sessionsOf(own(caller))
 
 export type SessionRow = typeof workoutSessions.$inferSelect
 type LogRow = typeof setLogs.$inferSelect
@@ -83,7 +102,7 @@ export async function update(
    * "No values to set" on `.set({})`, which surfaces as a 500. Exercise and workout updates escape
    * this only because they always touch `updated_at`; `workout_sessions` has no such column.
    */
-  if (Object.keys(columns).length === 0) return await read(caller, id)
+  if (Object.keys(columns).length === 0) return await read(own(caller), id)
 
   await db.transaction(async (tx) => {
     // Finishing is final, and once: only a session in progress is finished. Notes are not a
@@ -97,7 +116,7 @@ export async function update(
     if (written.length === 0) throw notFound('session')
   })
 
-  return await read(caller, id)
+  return await read(own(caller), id)
 }
 
 /**
@@ -117,11 +136,11 @@ async function lockInProgress(tx: Transaction, caller: Caller, id: string): Prom
 }
 
 /** A session and its logs, as the caller sees them. Read on its own, it is `plan.ts`'s `get`. */
-export async function read(caller: Caller, id: string): Promise<WorkoutSession> {
+export async function read(training: Training, id: string): Promise<WorkoutSession> {
   const [row] = await db
     .select()
     .from(workoutSessions)
-    .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
+    .where(and(sessionsOf(training), eq(workoutSessions.id, id)))
     .limit(1)
   if (row === undefined) throw notFound('session')
 
@@ -132,8 +151,8 @@ export async function read(caller: Caller, id: string): Promise<WorkoutSession> 
    * without a plan, which is exactly how the server numbers it (see `nextNumber`): the screen's
    * "N done" and the next number cannot disagree.
    */
-  const exercises = visibleExercises(caller)
-  const plan = planEntries(caller, row.workoutId)
+  const exercises = visibleExercises(training.reader)
+  const plan = planEntries(training.reader, row.workoutId)
   const logs = await db
     .select({
       log: setLogs,
@@ -219,7 +238,7 @@ async function storedByKey(
     .where(and(eq(setLogs.sessionId, sessionId), eq(setLogs.idempotencyKey, key)))
     .limit(1)
   if (row === undefined) return undefined
-  return (await read(caller, sessionId)).logs.find((log) => log.id === row.id)
+  return (await read(own(caller), sessionId)).logs.find((log) => log.id === row.id)
 }
 
 /**

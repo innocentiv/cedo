@@ -184,7 +184,8 @@ export const HOT_PATHS: readonly HotPath[] = [
     noSeqScan: ['workout_sessions', 'set_logs'],
     indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
     ordered: ['workout_sessions'],
-    run: async (fixtures, size) => await listSessions(fixtures.large.caller, { limit: PAGE[size] }),
+    run: async (fixtures, size) =>
+      await listSessions(sessionService.own(fixtures.large.caller), { limit: PAGE[size] }),
   },
   {
     name: 'GET /sessions?inProgress=true',
@@ -195,7 +196,10 @@ export const HOT_PATHS: readonly HotPath[] = [
     noSeqScan: ['workout_sessions', 'set_logs'],
     indexes: ['workout_sessions_in_progress_idx'],
     run: async (fixtures, size) =>
-      await listSessions(pick(fixtures, size).caller, { limit: 1, inProgress: true }),
+      await listSessions(sessionService.own(pick(fixtures, size).caller), {
+        limit: 1,
+        inProgress: true,
+      }),
   },
   {
     name: 'GET /sessions (next page)',
@@ -209,8 +213,8 @@ export const HOT_PATHS: readonly HotPath[] = [
     ordered: ['workout_sessions'],
     run: async (fixtures, size) => {
       const caller = fixtures.large.caller
-      const first = await listSessions(caller, { limit: PAGE[size] })
-      return await listSessions(caller, {
+      const first = await listSessions(sessionService.own(caller), { limit: PAGE[size] })
+      return await listSessions(sessionService.own(caller), {
         limit: PAGE[size],
         cursor: first.nextCursor ?? undefined,
       })
@@ -228,7 +232,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     indexes: ['set_logs_session_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
-      return await getSession(profile.caller, profile.sessionId)
+      return await getSession(sessionService.own(profile.caller), profile.sessionId)
     },
   },
   {
@@ -263,7 +267,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
-      return await history(profile.caller, profile.exerciseId, { limit: 20 })
+      return await history(sessionService.own(profile.caller), profile.exerciseId, { limit: 20 })
     },
   },
   {
@@ -302,7 +306,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
-      return await trainingReview(profile.caller, 8)
+      return await trainingReview(sessionService.own(profile.caller), 8)
     },
   },
   {
