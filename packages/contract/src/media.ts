@@ -149,3 +149,31 @@ export function videoEmbedUrl(payload: VideoLinkPayload): string | null {
   if (payload.provider === 'vimeo') return `https://player.vimeo.com/video/${payload.externalId}`
   return null
 }
+
+/**
+ * What an upload may be — the API refuses anything else, and the app says so before you pick.
+ * Deliberately narrow: everything here decodes everywhere. The ONE table of accepted formats: the
+ * API's blob store derives its extensions from it, so a format added here cannot be stored
+ * extensionless.
+ */
+export const ACCEPTED_IMAGE_FORMATS = ['jpeg', 'png', 'webp', 'gif'] as const
+export type AcceptedImageFormat = (typeof ACCEPTED_IMAGE_FORMATS)[number]
+
+export const IMAGE_FORMATS: Readonly<
+  Record<AcceptedImageFormat, { mime: string; extension: string; name: string }>
+> = {
+  jpeg: { mime: 'image/jpeg', extension: '.jpg', name: 'JPEG' },
+  png: { mime: 'image/png', extension: '.png', name: 'PNG' },
+  webp: { mime: 'image/webp', extension: '.webp', name: 'WebP' },
+  gif: { mime: 'image/gif', extension: '.gif', name: 'GIF' },
+}
+
+/** 12 MB. A phone photo is 3–5 MB; anything larger is a mistake or an attack. */
+export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024
+
+/** The limits as a person reads them: "JPEG, PNG, WebP or GIF, up to 12 MB". */
+export function uploadLimits(): string {
+  const names = ACCEPTED_IMAGE_FORMATS.map((f) => IMAGE_FORMATS[f].name)
+  const formats = `${names.slice(0, -1).join(', ')} or ${names.at(-1) ?? ''}`
+  return `${formats}, up to ${Math.floor(MAX_UPLOAD_BYTES / 1024 / 1024)} MB`
+}

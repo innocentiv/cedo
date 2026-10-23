@@ -704,6 +704,48 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/** A real, if tiny, image: a 1×1 PNG. */
+const ONE_PIXEL_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='
+
+/**
+ * An image of the movement, uploaded from the device (#13). The limits are said before picking, and
+ * a file the API refuses says why, beside the upload; an image lands in the form and is saved with
+ * the exercise.
+ */
+test(
+  'an image can be uploaded to an exercise, and a file that is not one is refused, saying why',
+  async () => {
+    await withApp('upload-image', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('img'))
+
+      const form = await app.library.newExercise()
+      await form.name('Face Pull With Photo')
+      await form.load('deltoid_posterior', '100')
+      const refused = await form.upload({
+        name: 'notes.png',
+        type: 'image/png',
+        base64: btoa('not an image at all'),
+      })
+      expect('refused' in refused && refused.refused).toBeTruthy()
+
+      const landed = await form.upload({
+        name: 'face-pull.png',
+        type: 'image/png',
+        base64: ONE_PIXEL_PNG,
+      })
+      expect('row' in landed).toBe(true)
+      await form.save()
+
+      const mine = await page.client()
+      const [saved] = (await mine.exercises.list({ q: 'Face Pull With Photo', limit: 1 })).items
+      expect(saved?.media.map((m) => [m.kind, m.title])).toEqual([['image', 'face-pull.png']])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
 test(
   'an empty list still leaves its filter chips one row tall',
   async () => {

@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test'
-import { MediaPayload, parseMediaUrl, videoEmbedUrl, videoThumbnailUrl } from './media.ts'
+import {
+  MediaPayload,
+  parseMediaUrl,
+  uploadLimits,
+  videoEmbedUrl,
+  videoThumbnailUrl,
+} from './media.ts'
 
 const ID = 'dQw4w9WgXcQ'
 
@@ -93,5 +99,12 @@ describe('MediaPayload', () => {
     expect(MediaPayload.safeParse(image).success).toBe(true)
     expect(MediaPayload.safeParse({ ...image, sha256: 'short' }).success).toBe(false)
     expect(MediaPayload.safeParse({ ...image, kind: 'nonsense' }).success).toBe(false)
+  })
+})
+
+/** Said before a file is picked, as the API will hold it to (#13). */
+describe('the upload limits', () => {
+  test('read as a person reads them', () => {
+    expect(uploadLimits()).toBe('JPEG, PNG, WebP or GIF, up to 12 MB')
   })
 })

@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { type Media, parseMediaUrl } from '@cedo/contract'
+import { type Media, parseMediaUrl, uploadLimits } from '@cedo/contract'
 import { Button, FormError, Input, ListRow, Stack, Text } from '../ui/index.ts'
 import { apiUrl } from '../api/http.ts'
-import { useCreateMediaLink } from '../api/queries.ts'
+import { useCreateMediaLink, useUploadMedia } from '../api/queries.ts'
+import { pickImage } from './pick-image.ts'
 import { useSubmit } from './use-submit.ts'
 
 export interface MediaLinksProps {
@@ -20,7 +21,10 @@ export interface MediaLinksProps {
 export function MediaLinks({ value, onChange }: MediaLinksProps): React.JSX.Element {
   const [url, setUrl] = useState('')
   const create = useCreateMediaLink()
+  const upload = useUploadMedia()
   const { submit, busy, error } = useSubmit()
+  // Its own, so a refused upload is said beside the upload and not beside the link.
+  const uploading = useSubmit()
 
   const trimmed = url.trim()
   const unrecognised = error === null && trimmed !== '' && parseMediaUrl(trimmed) === null
@@ -73,6 +77,25 @@ export function MediaLinks({ value, onChange }: MediaLinksProps): React.JSX.Elem
           Not a link this recognises. It will be stored as a plain URL.
         </Text>
       ) : null}
+
+      {/* An image of the movement, from the device (#13). The limits are the API's, said first. */}
+      <Button
+        title="Upload image"
+        variant="secondary"
+        onPress={() => {
+          void uploading.submit(async () => {
+            const form = await pickImage()
+            if (form === null) return
+            onChange([...value, await upload.mutateAsync(form)])
+          })
+        }}
+        busy={uploading.busy}
+        testID="upload-image"
+      />
+      <Text variant="caption" tone="faint">
+        {uploadLimits()}
+      </Text>
+      <FormError message={uploading.error} testID="upload-error" />
     </Stack>
   )
 }

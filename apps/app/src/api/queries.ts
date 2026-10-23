@@ -283,3 +283,7 @@ export const useCreateMediaLink = (): UseMutationResult<
   Error,
   { url: string; title?: string }
 > => useMutation({ mutationFn: async (input) => await api.media.link(input) })
+
+/** An image uploaded for an exercise: like a link, it is the exercise's once the exercise is saved. */
+export const useUploadMedia = (): UseMutationResult<Media, Error, FormData> =>
+  useMutation({ mutationFn: async (form) => await api.media.upload(form) })

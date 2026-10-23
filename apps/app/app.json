@@ -6,7 +6,14 @@
     "scheme": "cedo",
     "orientation": "default",
     "userInterfaceStyle": "dark",
-    "plugins": [["expo-router", { "asyncRoutes": { "web": false } }], "expo-secure-store"],
+    "plugins": [
+      ["expo-router", { "asyncRoutes": { "web": false } }],
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        { "photosPermission": "cedo uses your photos to attach an image to an exercise." }
+      ]
+    ],
     "web": {
       "bundler": "metro",
       "output": "single"

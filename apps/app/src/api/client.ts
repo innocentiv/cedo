@@ -86,6 +86,9 @@ function verbs(request: SendRequest) {
       await request('PUT', path, schema, { body }),
     DELETE: async <S extends z.ZodType>(path: string, schema: S) =>
       await request('DELETE', path, schema),
+    /** A multipart POST: the form sets its own content type, boundary included. */
+    UPLOAD: async <S extends z.ZodType>(path: string, schema: S, form: FormData) =>
+      await request('POST', path, schema, { form }),
   }
 }
 
@@ -169,8 +172,10 @@ const groups = ({ GET, POST, DELETE }: Verbs) => ({
     await DELETE(`/groups/${id}/members/${userId}`, Ok),
 })
 
-const media = ({ POST }: Verbs) => ({
+const media = ({ POST, UPLOAD }: Verbs) => ({
   link: async (body: { url: string; title?: string }) => await POST('/media/link', Media, body),
+  /** An image, as a multipart form with a `file` field — the API's size and type limits apply. */
+  upload: async (form: FormData) => await UPLOAD('/media', Media, form),
 })
 
 const tokens = ({ GET, POST, DELETE }: Verbs) => ({

@@ -1,34 +1,21 @@
+import {
+  ACCEPTED_IMAGE_FORMATS,
+  type AcceptedImageFormat,
+  IMAGE_FORMATS,
+  MAX_UPLOAD_BYTES,
+} from '@cedo/contract'
 import { invalid } from './error.ts'
 
 /**
  * Image handling via `Bun.Image`, built into the runtime — no `sharp`, no native addon, nothing to
- * compile on a NAS.
+ * compile on a NAS. Which formats, and how large, are the contract's, so the app can say them
+ * before you pick (#13); re-exported here for the API's own modules.
  */
-
-/** Formats accepted on upload. Deliberately narrow: everything here decodes everywhere. */
-export const ACCEPTED_IMAGE_FORMATS = ['jpeg', 'png', 'webp', 'gif'] as const
-export type AcceptedImageFormat = (typeof ACCEPTED_IMAGE_FORMATS)[number]
-
-/**
- * The ONE table describing accepted formats. `LocalBlobStore` derives its extensions from here
- * rather than keeping its own mime map: with two maps, a format added to one and not the other
- * yields an extensionless blob key instead of a loud failure.
- */
-export const IMAGE_FORMATS: Readonly<
-  Record<AcceptedImageFormat, { mime: string; extension: string }>
-> = {
-  jpeg: { mime: 'image/jpeg', extension: '.jpg' },
-  png: { mime: 'image/png', extension: '.png' },
-  webp: { mime: 'image/webp', extension: '.webp' },
-  gif: { mime: 'image/gif', extension: '.gif' },
-}
+export { ACCEPTED_IMAGE_FORMATS, type AcceptedImageFormat, IMAGE_FORMATS, MAX_UPLOAD_BYTES }
 
 export const EXTENSION_BY_MIME: Readonly<Record<string, string>> = Object.fromEntries(
   Object.values(IMAGE_FORMATS).map((f) => [f.mime, f.extension]),
 )
-
-/** 12 MB. A phone photo is 3–5 MB; anything larger is a mistake or an attack. */
-export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024
 
 /** Long edge of the generated thumbnail. */
 const THUMBNAIL_EDGE = 480

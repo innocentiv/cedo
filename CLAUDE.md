@@ -130,6 +130,10 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   whose clock ran ahead of the browser's: a 5-second rest first counted down from 0:06. Anything
   timed from `logged_at` clamps where it can — `restLeft` never exceeds the rest — and a server
   clock behind the device still shortens it, unseen.
+- **A WebView cancels a file picker at once.** With no dialog to show, WebKit answers a synthetic
+  click on a file input with `cancel`, which Expo's picker reads as nothing picked — and removes the
+  input before a test can find it. Hand the input its file as it is appended, before the click:
+  see `upload` in `e2e/screens/library.ts`.
 - **`e2e` and `shot` serve `apps/app/dist`, so both rebuild first.** They used not to, which meant
   editing a screen and running either tested the PREVIOUS bundle and passed. Use `e2e:only` to skip
   the rebuild when you know the bundle is current.
