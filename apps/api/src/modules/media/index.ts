@@ -1,8 +1,7 @@
 import { Elysia } from 'elysia'
 import { z } from 'zod'
-import { Id, Media, MediaCreateLink } from '@cedo/contract'
+import { Id, MAX_UPLOAD_BYTES, Media, MediaCreateLink } from '@cedo/contract'
 import { invalid } from '../../lib/error.ts'
-import { MAX_UPLOAD_BYTES } from '../../lib/media.ts'
 import { authPlugin } from '../../plugins/auth.ts'
 import * as MediaService from './service.ts'
 

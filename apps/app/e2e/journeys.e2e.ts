@@ -710,11 +710,12 @@ const ONE_PIXEL_PNG =
 
 /**
  * An image of the movement, uploaded from the device (#13). The limits are said before picking, and
- * a file the API refuses says why, beside the upload; an image lands in the form and is saved with
- * the exercise.
+ * a file the API refuses says why, beside the upload — one too large to send is refused by the app
+ * in the API's words, since the server cuts such a body off before it can answer. An image lands in
+ * the form and is saved with the exercise.
  */
 test(
-  'an image can be uploaded to an exercise, and a file that is not one is refused, saying why',
+  'an image can be uploaded to an exercise, and a file that is not one, or too large, is refused, saying why',
   async () => {
     await withApp('upload-image', async (page) => {
       const app = screens(page)
@@ -723,12 +724,24 @@ test(
       const form = await app.library.newExercise()
       await form.name('Face Pull With Photo')
       await form.load('deltoid_posterior', '100')
+      expect(await form.uploadLimits()).toBe('JPEG, PNG, WebP or GIF, up to 12 MB')
+
       const refused = await form.upload({
         name: 'notes.png',
         type: 'image/png',
         base64: btoa('not an image at all'),
       })
-      expect('refused' in refused && refused.refused).toBeTruthy()
+      expect(refused).toEqual({ refused: 'That file could not be decoded as an image' })
+
+      const huge = await form.upload({
+        name: 'huge.png',
+        type: 'image/png',
+        // Past the server's body limit too, which would answer with a bare 413 — a phone panorama.
+        size: 20 * 1024 * 1024,
+      })
+      expect(huge).toEqual({
+        refused: 'Too large to upload: JPEG, PNG, WebP or GIF, up to 12 MB',
+      })
 
       const landed = await form.upload({
         name: 'face-pull.png',

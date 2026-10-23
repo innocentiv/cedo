@@ -3,6 +3,7 @@ import {
   MediaPayload,
   parseMediaUrl,
   uploadLimits,
+  uploadRefusal,
   videoEmbedUrl,
   videoThumbnailUrl,
 } from './media.ts'
@@ -106,5 +107,12 @@ describe('MediaPayload', () => {
 describe('the upload limits', () => {
   test('read as a person reads them', () => {
     expect(uploadLimits()).toBe('JPEG, PNG, WebP or GIF, up to 12 MB')
+  })
+
+  test('refuse a file over the size, and accept one at it', () => {
+    expect(uploadRefusal(12 * 1024 * 1024)).toBeNull()
+    expect(uploadRefusal(12 * 1024 * 1024 + 1)).toBe(
+      'Too large to upload: JPEG, PNG, WebP or GIF, up to 12 MB',
+    )
   })
 })

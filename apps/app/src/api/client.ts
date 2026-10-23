@@ -69,7 +69,7 @@ const asQuery = (query: Record<string, unknown>): QueryInput =>
     ),
   )
 
-/** The five verbs, over one `Request`. */
+/** The five HTTP verbs and a multipart upload, over one `Request`. */
 function verbs(request: SendRequest) {
   return {
     GET: async <S extends z.ZodType>(path: string, schema: S, query?: QueryInput) =>

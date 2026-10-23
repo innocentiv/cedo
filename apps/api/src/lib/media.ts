@@ -2,16 +2,16 @@ import {
   ACCEPTED_IMAGE_FORMATS,
   type AcceptedImageFormat,
   IMAGE_FORMATS,
-  MAX_UPLOAD_BYTES,
+  uploadLimits,
+  uploadRefusal,
 } from '@cedo/contract'
 import { invalid } from './error.ts'
 
 /**
  * Image handling via `Bun.Image`, built into the runtime — no `sharp`, no native addon, nothing to
- * compile on a NAS. Which formats, and how large, are the contract's, so the app can say them
- * before you pick (#13); re-exported here for the API's own modules.
+ * compile on a NAS. Which formats, and how large, are the contract's, so the app says them before
+ * you pick and the refusals here say them in the same words (#13).
  */
-export { ACCEPTED_IMAGE_FORMATS, type AcceptedImageFormat, IMAGE_FORMATS, MAX_UPLOAD_BYTES }
 
 export const EXTENSION_BY_MIME: Readonly<Record<string, string>> = Object.fromEntries(
   Object.values(IMAGE_FORMATS).map((f) => [f.mime, f.extension]),
@@ -38,9 +38,8 @@ export interface ProcessedImage {
  */
 export async function processImage(bytes: Uint8Array): Promise<ProcessedImage> {
   if (bytes.byteLength === 0) throw invalid('The uploaded file is empty')
-  if (bytes.byteLength > MAX_UPLOAD_BYTES) {
-    throw invalid(`Images must be under ${Math.floor(MAX_UPLOAD_BYTES / 1024 / 1024)} MB`)
-  }
+  const tooLarge = uploadRefusal(bytes.byteLength)
+  if (tooLarge !== null) throw invalid(tooLarge)
 
   let width: number
   let height: number
@@ -55,9 +54,7 @@ export async function processImage(bytes: Uint8Array): Promise<ProcessedImage> {
   }
 
   if (!isAccepted(format)) {
-    throw invalid(
-      `Unsupported image format '${format}'. Accepted: ${ACCEPTED_IMAGE_FORMATS.join(', ')}`,
-    )
+    throw invalid(`That image is ${format}, which is not accepted: ${uploadLimits()}`)
   }
 
   /**

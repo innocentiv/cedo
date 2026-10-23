@@ -11,7 +11,11 @@
       "expo-secure-store",
       [
         "expo-image-picker",
-        { "photosPermission": "cedo uses your photos to attach an image to an exercise." }
+        {
+          "photosPermission": "cedo uses your photos to attach an image to an exercise.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
       ]
     ],
     "web": {

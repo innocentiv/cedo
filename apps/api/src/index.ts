@@ -3,7 +3,7 @@ import { closeDatabase } from './db/client.ts'
 import { runMigrations } from './db/migrate.ts'
 import { runSeed } from './db/seed.ts'
 import { env } from './env.ts'
-import { MAX_UPLOAD_BYTES } from './lib/media.ts'
+import { MAX_UPLOAD_BYTES } from '@cedo/contract'
 
 /**
  * Migrations run before the server binds, so a container that is accepting traffic is a container

@@ -171,6 +171,13 @@ export const IMAGE_FORMATS: Readonly<
 /** 12 MB. A phone photo is 3–5 MB; anything larger is a mistake or an attack. */
 export const MAX_UPLOAD_BYTES = 12 * 1024 * 1024
 
+/**
+ * Why a file of `bytes` cannot be uploaded, or null when its size is fine — the same words from the
+ * API's refusal and from the app's check before sending one the API could not even receive.
+ */
+export const uploadRefusal = (bytes: number): string | null =>
+  bytes > MAX_UPLOAD_BYTES ? `Too large to upload: ${uploadLimits()}` : null
+
 /** The limits as a person reads them: "JPEG, PNG, WebP or GIF, up to 12 MB". */
 export function uploadLimits(): string {
   const names = ACCEPTED_IMAGE_FORMATS.map((f) => IMAGE_FORMATS[f].name)

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { type Media, parseMediaUrl, uploadLimits } from '@cedo/contract'
+import { type Media, parseMediaUrl, uploadLimits, uploadRefusal } from '@cedo/contract'
 import { Button, FormError, Input, ListRow, Stack, Text } from '../ui/index.ts'
 import { apiUrl } from '../api/http.ts'
 import { useCreateMediaLink, useUploadMedia } from '../api/queries.ts'
@@ -12,11 +12,12 @@ export interface MediaLinksProps {
 }
 
 /**
- * Attaching a demonstration video, which is what most exercise media is.
+ * Attaching a demonstration video, which is what most exercise media is, or uploading an image.
  *
- * `parseMediaUrl` is the contract's own pure function, so this recognises exactly the URLs the API
- * accepts and can say so before the request rather than after a 422. It is the only check the form
- * does; the server decides. See docs/adr/0009-media-model.md.
+ * `parseMediaUrl` and `uploadRefusal` are the contract's own pure functions, so this recognises
+ * exactly the URLs the API accepts, and refuses a file too large to send, before the request rather
+ * than after a 422 — in the API's own words. The server still decides. See
+ * docs/adr/0009-media-model.md.
  */
 export function MediaLinks({ value, onChange }: MediaLinksProps): React.JSX.Element {
   const [url, setUrl] = useState('')
@@ -25,6 +26,8 @@ export function MediaLinks({ value, onChange }: MediaLinksProps): React.JSX.Elem
   const { submit, busy, error } = useSubmit()
   // Its own, so a refused upload is said beside the upload and not beside the link.
   const uploading = useSubmit()
+  // Refused before sending: a file well over the limit is cut off by the server with a bare 413.
+  const [tooLarge, setTooLarge] = useState<string | null>(null)
 
   const trimmed = url.trim()
   const unrecognised = error === null && trimmed !== '' && parseMediaUrl(trimmed) === null
@@ -83,19 +86,25 @@ export function MediaLinks({ value, onChange }: MediaLinksProps): React.JSX.Elem
         title="Upload image"
         variant="secondary"
         onPress={() => {
+          setTooLarge(null)
           void uploading.submit(async () => {
-            const form = await pickImage()
-            if (form === null) return
-            onChange([...value, await upload.mutateAsync(form)])
+            const picked = await pickImage()
+            if (picked === null) return
+            const refusal = uploadRefusal(picked.bytes)
+            if (refusal !== null) {
+              setTooLarge(refusal)
+              return
+            }
+            onChange([...value, await upload.mutateAsync(picked.form)])
           })
         }}
         busy={uploading.busy}
         testID="upload-image"
       />
-      <Text variant="caption" tone="faint">
+      <Text variant="caption" tone="faint" testID="upload-limits">
         {uploadLimits()}
       </Text>
-      <FormError message={uploading.error} testID="upload-error" />
+      <FormError message={tooLarge ?? uploading.error} testID="upload-error" />
     </Stack>
   )
 }

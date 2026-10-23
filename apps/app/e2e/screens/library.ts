@@ -28,35 +28,47 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
    * no dialog to show, WebKit answers the picker's click with `cancel` at once, which Expo reads as
    * nothing picked. So the hidden input Expo opens it with (`file-input`, its own test id) is handed
    * `file` as it is added to the page — before that click — as a person picking it would; and its
-   * `change` is fired here if no `cancel` fires it first. Returns the media row it lands in, or
-   * what the form says it was refused for.
+   * `change` is fired here unless a `cancel` came first. What was patched is put back once the
+   * click is done, whether or not an input came. Only once the file is handed over does it read
+   * the result, so a refusal left from an earlier upload is not taken for this one's. Returns the
+   * media row it lands in, or what the form says it was refused for.
    */
-  upload: async (file: {
-    readonly name: string
-    readonly type: string
-    readonly base64: string
-  }): Promise<{ readonly row: string } | { readonly refused: string | null }> => {
+  upload: async (
+    file: { readonly name: string; readonly type: string } & (
+      | { readonly base64: string }
+      /** A file of this many zero bytes, made in the page rather than sent to it. */
+      | { readonly size: number }
+    ),
+  ): Promise<{ readonly row: string } | { readonly refused: string | null }> => {
     const rows = await page.evaluate(
       `document.querySelectorAll('[data-testid^="media-row-"]').length`,
     )
     await page.evaluate(`(() => {
       const append = document.body.appendChild
+      window.__restoreAppend = () => { document.body.appendChild = append }
+      window.__picked = false
       document.body.appendChild = function (node) {
         if (node.getAttribute?.('data-testid') !== 'file-input') return append.call(this, node)
-        document.body.appendChild = append
-        const bytes = Uint8Array.from(atob(${JSON.stringify(file.base64)}), (c) => c.charCodeAt(0))
+        window.__restoreAppend()
+        const bytes = ${'base64' in file ? `Uint8Array.from(atob(${JSON.stringify(file.base64)}), (c) => c.charCodeAt(0))` : `new Uint8Array(${String(file.size)})`}
         const picked = new DataTransfer()
         picked.items.add(new File([bytes], ${JSON.stringify(file.name)}, { type: ${JSON.stringify(file.type)} }))
         Object.defineProperty(node, 'files', { value: picked.files })
-        setTimeout(() => { if (node.isConnected) node.dispatchEvent(new Event('change')) }, 50)
+        let canceled = false
+        node.addEventListener('cancel', () => { canceled = true })
+        setTimeout(() => {
+          if (!canceled && node.isConnected) node.dispatchEvent(new Event('change'))
+          window.__picked = true
+        }, 50)
         return append.call(this, node)
       }
     })()`)
     await page.click('[data-testid="upload-image"]')
+    await page.evaluate(`window.__restoreAppend()`)
     const landed = await page.until(
       async () =>
         await page.evaluate(
-          `document.querySelector('[data-testid="upload-error"]') ? 'upload-error' : document.querySelectorAll('[data-testid^="media-row-"]').length > ${String(rows)} ? [...document.querySelectorAll('[data-testid^="media-row-"]')].at(-1).dataset.testid : null`,
+          `!window.__picked ? null : document.querySelector('[data-testid="upload-error"]') ? 'upload-error' : document.querySelectorAll('[data-testid^="media-row-"]').length > ${String(rows)} ? [...document.querySelectorAll('[data-testid^="media-row-"]')].at(-1).dataset.testid : null`,
         ),
       (seen): seen is string => typeof seen === 'string',
     )
@@ -64,6 +76,8 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
       ? { refused: await page.text('upload-error') }
       : { row: landed }
   },
+  /** What the form says may be uploaded, before anything is picked. */
+  uploadLimits: async (): Promise<string | null> => await page.text('upload-limits'),
   /** Saves, and waits for the form to close — see `closed`. */
   save: async (): Promise<void> => {
     await page.click(`[data-testid="${screen}-save"]`)
