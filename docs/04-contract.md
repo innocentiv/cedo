@@ -18,7 +18,7 @@ Author a shape once. Never redeclare it.
 
 ```ts
 // packages/contract/src/exercise.ts
-export const ExerciseCreate = z.strictObject({ name: ..., muscles: ... })
+export const ExerciseCreate = ExerciseFields.superRefine(/* muscle loads sum to 100, … */)
 // The request: the exercise, and where it goes — your group, or the shared library.
 export const ExerciseCreateRequest = ExerciseCreate.safeExtend({ shared: z.boolean().default(false) })
 export const Exercise = z.object({ id: Id, ...exerciseFields, canEdit: z.boolean(), ... })
@@ -34,10 +34,10 @@ server.registerTool('exercise_create',
   { title: 'Create an exercise', description: '…', inputSchema: ExerciseCreateRequest, annotations: WRITE },
   async (input) => text(`Created.\n\n${exerciseDetail(await ExerciseService.create(caller, input))}`))
 
-// 3. UI client — apps/app/src/api/client.ts. `ExerciseInput` is `z.input<typeof ExerciseCreate>`:
-//    what may be sent, before the schema's defaults fill it in. `shared` defaults to false, so the
-//    app's body is a valid request without it.
-create: (body: ExerciseInput) => POST('/exercises', Exercise, body)
+// 3. UI client — apps/app/src/api/client.ts. `ExerciseCreateRequestInput` is
+//    `z.input<typeof ExerciseCreateRequest>`: what may be sent, before the schema's defaults fill
+//    it in — the route's own body, so the two cannot drift.
+create: (body: ExerciseCreateRequestInput) => POST('/exercises', Exercise, body)
 
 // 4. OpenAPI — apps/api/src/plugins/openapi.ts
 openapi({ mapJsonSchema: { zod: (s) => z.toJSONSchema(s, { io: 'input' }) } })

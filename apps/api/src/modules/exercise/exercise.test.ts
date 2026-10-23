@@ -8,8 +8,6 @@ import {
   exerciseInputFrom,
   page,
 } from '@cedo/contract'
-import { db } from '../../db/client.ts'
-import { groupMembers } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
@@ -73,14 +71,7 @@ describe('create', () => {
   test('into the shared library: a curator’s to do, and a 404 for anyone else', async () => {
     expect((await createFor(alice, { shared: true })).status).toBe(404)
 
-    // Editor of the seeded shared group is what a curator is — there is no separate flag.
-    await db
-      .insert(groupMembers)
-      .values({ groupId: h.groupId, userId: bob.userId, role: 'editor' })
-      .onConflictDoUpdate({
-        target: [groupMembers.groupId, groupMembers.userId],
-        set: { role: 'editor' },
-      })
+    await h.curator(bob)
     expect((await created(bob, { shared: true })).ownerGroupId).toBe(h.groupId)
     expect((await created(bob)).ownerGroupId).toBe(bob.personalGroupId)
   })

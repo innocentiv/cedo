@@ -1,8 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { ExerciseCreateRequest } from '@cedo/contract'
-import { db } from '../../db/client.ts'
-import { groupMembers } from '../../db/schema.ts'
-import { type Caller, resolveCaller } from '../../plugins/auth.ts'
+import type { Caller } from '../../plugins/auth.ts'
 import { type TestApi, makeApi } from '../../test/harness.ts'
 import * as ExerciseService from '../exercise/service.ts'
 import { platformStatus, slowQueries } from './diagnostics.ts'
@@ -21,19 +19,7 @@ beforeEach(async () => {
 
 async function callerOf(username: string, curator: boolean): Promise<Caller> {
   const user = await h.as(username)
-  if (curator) {
-    // Editor of the seeded shared group — there is no separate admin flag. See docs/07-mcp.md.
-    await db
-      .insert(groupMembers)
-      .values({ groupId: h.groupId, userId: user.userId, role: 'editor' })
-      .onConflictDoUpdate({
-        target: [groupMembers.groupId, groupMembers.userId],
-        set: { role: 'editor' },
-      })
-  }
-  const caller = await resolveCaller(`Bearer ${user.token}`)
-  if (caller === null) throw new Error(`${username} could not be resolved`)
-  return caller
+  return curator ? await h.curator(user) : user.caller
 }
 
 const squat = ExerciseCreateRequest.parse({

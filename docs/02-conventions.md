@@ -37,11 +37,9 @@ server.registerTool('exercise_create',
   async (input) => text(`Created.\n\n${exerciseDetail(await ExerciseService.create(caller, input))}`))
 ```
 
-If a rule exists in only one of those two paths, it is a bug. Put it in the service. Choices too:
-`shared: true`, which creates into the shared library, is part of the one request shape, and the
-service decides where it goes and whether the caller may. The tool used to take `shared` on an
-extension of its own and branch between two service functions. That was logic in the adapter, and a
-field the HTTP route did not accept.
+If a rule exists in only one of those two paths, it is a bug. Put it in the service. So does a
+choice: `shared: true`, which creates into the shared library, is part of the one request shape, and
+the service decides where it goes and whether the caller may.
 
 ## The ACL invariant
 

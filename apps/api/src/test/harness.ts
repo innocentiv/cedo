@@ -4,6 +4,7 @@ import { createApp } from '../app.ts'
 import { db } from '../db/client.ts'
 import { ensureDatabaseExists } from '../db/ensure.ts'
 import { runMigrations } from '../db/migrate.ts'
+import { groupMembers } from '../db/schema.ts'
 import { seedCore } from '../db/seed.ts'
 import { type Caller, resolveCaller } from '../plugins/auth.ts'
 
@@ -73,6 +74,12 @@ export interface TestApi {
   readonly wire: Wire
   /** Register a fresh user and return clients that authenticate as them. */
   readonly as: (username: string) => Promise<TestUser>
+  /**
+   * Makes `user` a curator — an editor of the shared group; there is no separate flag (see
+   * docs/07-mcp.md) — and returns their caller resolved afresh: `user.caller` was resolved at
+   * registration and still says reader.
+   */
+  readonly curator: (user: TestUser) => Promise<Caller>
   readonly groupId: string
   readonly systemUserId: string
 }
@@ -156,5 +163,21 @@ export async function makeApi(): Promise<TestApi> {
     }
   }
 
-  return { api, wire: makeWire(), as, groupId, systemUserId }
+  const curator = async (user: TestUser) => await makeCurator(groupId, user)
+
+  return { api, wire: makeWire(), as, curator, groupId, systemUserId }
+}
+
+/** `TestApi.curator`: an editor of the shared group, and their caller resolved afresh. */
+async function makeCurator(sharedGroupId: string, user: TestUser): Promise<Caller> {
+  await db
+    .insert(groupMembers)
+    .values({ groupId: sharedGroupId, userId: user.userId, role: 'editor' })
+    .onConflictDoUpdate({
+      target: [groupMembers.groupId, groupMembers.userId],
+      set: { role: 'editor' },
+    })
+  const caller = await resolveCaller(`Bearer ${user.token}`)
+  if (caller === null) throw new Error(`Could not resolve the caller for ${user.username}`)
+  return caller
 }

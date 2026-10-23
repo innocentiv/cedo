@@ -94,6 +94,8 @@ export const ExerciseCreateRequest = ExerciseCreate.safeExtend({
     .describe('Create in the shared cedo library rather than your own group — curators only'),
 })
 export type ExerciseCreateRequest = z.output<typeof ExerciseCreateRequest>
+/** The request body as sent — what a client's `create` takes, so it cannot drift from the route's. */
+export type ExerciseCreateRequestInput = z.input<typeof ExerciseCreateRequest>
 
 /**
  * Every field optional and none defaulted (see `patchOf`); the muscle invariants apply only when

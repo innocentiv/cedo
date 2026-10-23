@@ -23,17 +23,22 @@ server.registerTool(
     title: 'Create an exercise',
     description: '…what it does, and when NOT to use it',
     inputSchema: ExerciseCreateRequest,   // the contract schema the route takes, never a new shape
-    annotations: { readOnlyHint: false, openWorldHint: false },
+    // WRITE is `{ readOnlyHint: false, destructiveHint: false, openWorldHint: false }`, at the top of
+    // each tools file. Spell `destructiveHint` out: MCP takes a write as destructive unless told.
+    annotations: WRITE,
   },
   // `text` and the formatters (`exerciseDetail`, `workoutDetail`, …) live in apps/api/src/mcp/format.ts
   async (input) => text(`Created.\n\n${exerciseDetail(await ExerciseService.create(caller, input))}`),
 )
 ```
 
-The input schema comes from `@cedo/contract`, and it is the one the matching route takes.
-Redeclaring the shape, or extending it in the tool, is how the tool and the route start accepting
-different things. A field only the tool needs, like `shared` here, belongs in the contract's request
-shape. Then the route accepts it too, and the one service call decides what it means.
+The input schema comes from `@cedo/contract`, and it is the one the matching route takes as its
+body. Redeclaring that shape is how the tool and the route start accepting different things. So is
+extending it with a field the body lacks: a field like `shared` here belongs in the contract's
+request shape, so the route accepts it too, and the one service call decides what it means. The one
+legitimate extension is what the route takes from its PATH. `exercise_update`, for example, is
+`ExerciseUpdate.safeExtend({ exerciseId })`, because `PATCH /exercises/:id` carries the id in the
+URL.
 
 ## 3. Format for an AI, not for a UI
 

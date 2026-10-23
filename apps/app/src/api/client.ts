@@ -4,7 +4,7 @@ import {
   type DuplicateInput,
   EntryTarget,
   Exercise,
-  type ExerciseInput,
+  type ExerciseCreateRequestInput,
   ExerciseHistory,
   type ExerciseHistoryQuery,
   type ExerciseQuery,
@@ -98,7 +98,7 @@ const exercises = ({ GET, POST, PATCH, PUT, DELETE }: Verbs) => ({
   list: async (query: Partial<ExerciseQuery> = {}) =>
     await GET('/exercises', page(Exercise), asQuery(query)),
   get: async (id: string) => await GET(`/exercises/${id}`, Exercise),
-  create: async (body: ExerciseInput) => await POST('/exercises', Exercise, body),
+  create: async (body: ExerciseCreateRequestInput) => await POST('/exercises', Exercise, body),
   update: async (id: string, body: ExerciseUpdate) =>
     await PATCH(`/exercises/${id}`, Exercise, body),
   remove: async (id: string) => await DELETE(`/exercises/${id}`, Ok),

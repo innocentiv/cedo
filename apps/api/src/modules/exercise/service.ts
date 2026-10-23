@@ -41,14 +41,14 @@ export async function create(
   caller: Caller,
   { shared, ...input }: ExerciseCreateRequest,
 ): Promise<Exercise> {
-  return await createIn(
+  return await createInGroup(
     caller,
     input,
     shared ? await requireCurator(caller) : caller.personalGroupId,
   )
 }
 
-async function createIn(
+async function createInGroup(
   caller: Caller,
   input: ExerciseCreate,
   ownerGroupId: string,
@@ -74,7 +74,7 @@ export async function duplicate(caller: Caller, id: string, toGroupId?: string):
   const target = toGroupId ?? caller.personalGroupId
   assertEditorOf(caller, target)
 
-  return await createIn(caller, exerciseInputFrom(await get(caller, id)), target)
+  return await createInGroup(caller, exerciseInputFrom(await get(caller, id)), target)
 }
 
 export async function transfer(caller: Caller, id: string, toGroupId: string): Promise<Exercise> {
