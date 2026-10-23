@@ -745,6 +745,43 @@ describe('editing a plan', () => {
     // A whole RPE reads whole: "8.0" would be a numeric read back as a string, unconverted.
     expect(outline).toMatch(/@ RPE 8(?![.\d])/u)
   })
+
+  /**
+   * A day is its name, as the app shows it (#20): numbered days were said twice — "Day 1: Day 1 ·
+   * Push" — and the outline's order already is the position.
+   */
+  test('a day reads as its name, once', async () => {
+    const pat = await mintPat(alice)
+    const { id: exerciseId } = expectContract(
+      Exercise,
+      (
+        await alice.wire('/exercises', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Press',
+            muscles: [{ muscle: 'pectoralis_major', loadPct: 100 }],
+          }),
+        })
+      ).body,
+    )
+    const workout = expectContract(
+      Workout,
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Split' }) }))
+        .body,
+    )
+    const day = (name: string) => ({ name, entries: [{ exerciseId, sets: [{ targetReps: 5 }] }] })
+    await callTool(pat, 'workout_save_plan', {
+      workoutId: workout.id,
+      days: [day('Day 1 · Push'), day('Pull')],
+    })
+
+    const lines = textOf(
+      (await callTool(pat, 'workout_get', { workoutId: workout.id })).body,
+    ).split('\n')
+    expect(lines).toContain('Day 1 · Push')
+    expect(lines).toContain('Pull')
+    expect(lines.filter((line) => line.includes('Day 1'))).toHaveLength(1)
+  })
 })
 
 /**

@@ -119,7 +119,9 @@ export function workoutDetail(workout: Workout, unit: WeightUnit): string {
         ...entry.sets.map((set) => `      ${setLine(set, entry.exercise?.tracking ?? null, unit)}`),
       ].join('\n')
     })
-    return [`Day ${day.index + 1}: ${day.name}`, ...entries].join('\n')
+    // Its name, as the app shows a day: the outline's order is already its position, and a day
+    // named the way people name them — "Day 1 · Push" — was said twice under a number of ours.
+    return [day.name, ...entries].join('\n')
   })
 
   return [header, ...notes, '', ...days].join('\n')
