@@ -8,7 +8,6 @@ import {
   Card,
   ConfirmButton,
   ErrorNotice,
-  FormError,
   Loaded,
   NavButton,
   PinButton,
@@ -26,6 +25,7 @@ import {
   useTransferWorkout,
   useWorkout,
 } from '../../../../src/api/queries.ts'
+import { DuplicateIntoMyGroup } from '../../../../src/lib/duplicate-into-my-group.tsx'
 import { GroupPlacement } from '../../../../src/lib/group-placement.tsx'
 import { useGoBack } from '../../../../src/lib/use-go-back.ts'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
@@ -125,10 +125,7 @@ export default function WorkoutDetail(): React.JSX.Element {
   )
 }
 
-/**
- * Edit, for a plan you can edit. A reader adapts a shared plan by copying it into their own group,
- * straight into the copy's editor — as an exercise's copy is.
- */
+/** Edit, for a plan you can edit; for a reader, a copy into their own group. */
 function PlanFooter({
   workoutId,
   canEdit,
@@ -136,9 +133,7 @@ function PlanFooter({
   readonly workoutId: string
   readonly canEdit: boolean
 }): React.JSX.Element {
-  const router = useRouter()
   const duplicate = useDuplicateWorkout()
-  const { submit, busy, error } = useSubmit()
   if (canEdit) {
     return (
       <NavButton
@@ -150,23 +145,11 @@ function PlanFooter({
     )
   }
   return (
-    <Stack gap="xs">
-      <Text variant="caption" tone="faint" align="center">
-        Shared with you as a reader.
-      </Text>
-      <Button
-        title="Duplicate into my group"
-        onPress={() => {
-          void submit(async () => {
-            const copy = await duplicate.mutateAsync(workoutId)
-            router.replace(`/workouts/${copy.id}/edit`)
-          })
-        }}
-        busy={busy}
-        testID="duplicate-workout"
-      />
-      <FormError message={error} testID="duplicate-workout-error" />
-    </Stack>
+    <DuplicateIntoMyGroup
+      duplicate={async () => await duplicate.mutateAsync(workoutId)}
+      editorOf={(copyId) => `/workouts/${copyId}/edit`}
+      testID="duplicate-workout"
+    />
   )
 }
 

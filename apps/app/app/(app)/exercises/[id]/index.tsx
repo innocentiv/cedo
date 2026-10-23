@@ -3,11 +3,9 @@ import { MUSCLES, formatEffort } from '@cedo/contract'
 import type { Exercise, ExerciseHistory, TrackingMode } from '@cedo/contract'
 import { useWeightUnit } from '../../../../src/lib/weight-unit.ts'
 import {
-  Button,
   Card,
   ConfirmButton,
   ErrorNotice,
-  FormError,
   ListRow,
   Loaded,
   type QueryLike,
@@ -27,6 +25,7 @@ import {
   useFavouriteExercise,
   useTransferExercise,
 } from '../../../../src/api/queries.ts'
+import { DuplicateIntoMyGroup } from '../../../../src/lib/duplicate-into-my-group.tsx'
 import { GroupPlacement } from '../../../../src/lib/group-placement.tsx'
 import { useGoBack } from '../../../../src/lib/use-go-back.ts'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
@@ -80,7 +79,6 @@ function RecentHistory({
 
 export default function ExerciseDetail(): React.JSX.Element {
   const { id } = useLocalSearchParams<{ id: string }>()
-  const router = useRouter()
   const { data, isPending, error, refetch } = useExercise(id ?? '')
   const history = useExerciseHistory(id ?? '')
   const favourite = useFavouriteExercise()
@@ -89,7 +87,6 @@ export default function ExerciseDetail(): React.JSX.Element {
   const remove = useDeleteExercise()
   const goBack = useGoBack('/exercises')
   // One submission each, so a refusal shows beside what was refused, and only that is busy.
-  const { submit, busy, error: copyError } = useSubmit()
   const pinning = useSubmit()
   const deleting = useSubmit()
 
@@ -120,27 +117,15 @@ export default function ExerciseDetail(): React.JSX.Element {
             testID="edit-exercise"
           />
         ) : (
-          <Stack gap="xs">
-            <Text variant="caption" tone="faint" align="center">
-              Shared with you as a reader.
-            </Text>
-            <Button
-              title="Duplicate into my group"
-              onPress={() => {
-                void submit(async () => {
-                  const copy = await duplicate.mutateAsync(data.id)
-                  router.replace(`/exercises/${copy.id}/edit`)
-                })
-              }}
-              busy={busy}
-              testID="duplicate-exercise"
-            />
-          </Stack>
+          <DuplicateIntoMyGroup
+            duplicate={async () => await duplicate.mutateAsync(data.id)}
+            editorOf={(copyId) => `/exercises/${copyId}/edit`}
+            testID="duplicate-exercise"
+          />
         )
       }
     >
       <Stack gap="md">
-        <FormError message={copyError} testID="exercise-detail-error" />
         <PinButton
           pinned={data.isFavourite}
           busy={pinning.busy}

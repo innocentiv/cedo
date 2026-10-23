@@ -580,8 +580,56 @@ test(
  * A plan shared with you as a reader cannot be edited, so the way to adapt it is a copy in your own
  * group — opened straight in the editor, as an exercise's copy is.
  */
+/**
+ * A copy may use only exercises its new owner can read. Once the coach takes the squad's exercise
+ * back into their own group, the shared plan uses one the athlete cannot see, so the copy is
+ * refused. The server says why without naming the exercise, which the athlete may not read. The
+ * message shows beside the button, on the plan, and nothing is created.
+ */
 test(
-  'a shared workout can be duplicated into my group and the copy edited',
+  'duplicating a shared workout that uses an exercise I cannot see says why',
+  async () => {
+    const athlete = unique('dupr')
+    await withApp('duplicate-workout-refused', async (page) => {
+      const app = screens(page)
+      await app.auth.register(athlete)
+
+      const coach = await signUp(`${athlete}c`)
+      const squad = await coach.api.groups.create({ name: 'Squad' })
+      await coach.api.groups.addMember(squad.id, { username: athlete, role: 'reader' })
+      const drill = await coach.api.exercises.create({
+        name: 'Squad Sled Drill',
+        muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+      })
+      await coach.api.exercises.transfer(drill.id, { toGroupId: squad.id })
+      const plan = await coach.api.workouts.create({ name: 'Coached', notes: null })
+      await coach.api.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [{ name: 'Sled', entries: [{ exerciseId: drill.id, sets: [{ targetReps: 5 }] }] }],
+        }),
+      )
+      await coach.api.workouts.transfer(plan.id, { toGroupId: squad.id })
+      const { user: coachUser, groups } = await coach.api.auth.me()
+      const coachOwn = groups.find((g) => g.kind === 'personal')
+      if (coachOwn === undefined) throw new Error(`${coachUser.username} has no personal group`)
+      await coach.api.exercises.transfer(drill.id, { toGroupId: coachOwn.id })
+
+      await page.goto(`/workouts/${plan.id}`)
+      // Why, and never the name: it is an exercise the athlete may not read.
+      const refused = await app.workouts.duplicateRefused()
+      expect(refused).toContain('not visible to you')
+      expect(refused).not.toContain('Squad Sled Drill')
+      await app.workouts.shown()
+      const mine = await (await page.client()).workouts.list({ scope: 'mine' })
+      expect(mine.items).toEqual([])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
+  'a shared workout can be duplicated into my group, landing in the copy’s editor',
   async () => {
     const athlete = unique('dupw')
     await withApp('duplicate-workout', async (page) => {
@@ -621,7 +669,7 @@ test(
 )
 
 test(
-  'a shared exercise can be duplicated and the copy edited',
+  'a shared exercise can be duplicated, landing in the copy’s editor',
   async () => {
     await withApp('duplicate-exercise', async (page) => {
       const app = screens(page)

@@ -56,7 +56,7 @@ src/ui/                      the entire visual vocabulary
 src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
-src/lib/                     use-submit.ts, plan-draft.ts, forms, pickers, group-placement.tsx
+src/lib/                     use-submit.ts, plan-draft.ts, forms, pickers, group-placement.tsx, duplicate-into-my-group.tsx
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts,
                              harness.e2e.ts (the harness's own tests), journeys.test.ts (the rules
                              journeys obey), screens/ (one driver per screen; test ids live here)
@@ -123,7 +123,10 @@ second only while a rest is running — so the line re-renders, not the day.
 A composite that reads through a query hook is not presentational, so it lives in `src/lib/`
 instead: the exercise picker, and `GroupPlacement` — which group an exercise or plan is in, and
 Transfer to group, on both detail screens. Where it may go is the server's `canTransferInto`, not a rule
-of its own; a plan the target group could not read is refused by the server, which says why.
+of its own; a plan the target group could not read is refused by the server, which says why. And
+`DuplicateIntoMyGroup`, which a reader is offered on both detail screens in place of Edit. It makes
+a copy in their own group and opens the copy's editor. A refusal is the server's, shown beside the
+button.
 
 Editing a plan follows the same split. How sets resize within an entry's total, what a target change
 applies to, what a new entry prescribes, and whether another day or exercise fits are

@@ -131,6 +131,13 @@ export const workouts = (page: Page) => {
       if (id === undefined) throw new Error(`Duplicating landed on ${path}, not a plan's editor`)
       return id
     },
+    /** Asks for a copy, and returns what it says beside the button it was refused for. */
+    duplicateRefused: async (): Promise<string | null> => {
+      await page.waitFor('duplicate-workout')
+      await page.click('[data-testid="duplicate-workout"]')
+      await page.waitFor('duplicate-workout-error')
+      return await page.text('duplicate-workout-error')
+    },
     /** Opens the session in progress from the plan. */
     resume: async (): Promise<void> => {
       await page.click('[data-testid="workout-resume"]')
