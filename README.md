@@ -69,7 +69,7 @@ bun run dev      # API on :3000 and the web app on :8081, in one terminal
 ```
 
 Open **http://localhost:8081** and register an account. You will land on Today with a library of
-45 exercises already there.
+47 exercises already there.
 
 Prefer separate terminals? `bun run dev:api` and `bun run dev:app`.
 

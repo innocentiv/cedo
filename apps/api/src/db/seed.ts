@@ -214,7 +214,7 @@ async function seedExercise(
 
 /**
  * Muscles, the `cedo` group and the system account — everything `register()` depends on, without
- * the 45-exercise library. Tests reset to this state; it is cheap enough to run between them.
+ * the exercise library. Tests reset to this state; it is cheap enough to run between them.
  */
 export async function seedCore(): Promise<{ userId: string; groupId: string }> {
   await seedMuscles()
@@ -261,7 +261,7 @@ export async function promoteCurator(sharedGroupId: string): Promise<boolean> {
 export async function seedLibrary(ownerGroupId: string, createdBy: string): Promise<number> {
   let created = 0
   for (const entry of EXERCISE_LIBRARY) {
-    // Deliberately sequential: parallelising ~45 transactions would exhaust the small connection
+    // Deliberately sequential: parallelising ~50 transactions would exhaust the small connection
     // pool a self-hosted box runs with, for no benefit in a one-off seed.
     // See docs/adr/0006-oxc-lint-and-format.md.
     // oxlint-disable-next-line no-await-in-loop

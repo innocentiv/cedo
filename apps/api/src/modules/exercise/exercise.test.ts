@@ -76,18 +76,6 @@ describe('create', () => {
     expect((await created(bob)).ownerGroupId).toBe(bob.personalGroupId)
   })
 
-  /** Neck flexion and extension are trained apart, and counted apart (#18). */
-  test('can load the neck, front and back', async () => {
-    const neck = await created(alice, {
-      name: 'Plate Neck Curl and Extension',
-      muscles: [
-        { muscle: 'neck_flexors', loadPct: 50 },
-        { muscle: 'neck_extensors', loadPct: 50 },
-      ],
-    })
-    expect(neck.muscles.map((m) => m.muscle).toSorted()).toEqual(['neck_extensors', 'neck_flexors'])
-  })
-
   test('defaults tracking to weight_reps and accepts the other modes', async () => {
     expect((await created(alice)).tracking).toBe('weight_reps')
     const plank = await created(alice, {

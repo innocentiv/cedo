@@ -5,16 +5,16 @@ import { z } from 'zod'
  * rather than user data. `seed.ts` upserts it into the `muscles` table so exercises still get
  * foreign-key integrity and joinability, but THIS ARRAY IS THE SOURCE OF TRUTH.
  *
- * To add a muscle: append here, then re-run the seed. Never insert one directly into the database.
+ * To add a muscle: add it at the end of its region, then re-run the seed — the order here is the
+ * picker's, re-derived into `sort_index` on every seed. The end of its region, not the top: the
+ * perf seed weights its data by that order, toward the first muscles. Never insert one directly
+ * into the database.
  */
 export const MUSCLE_REGIONS = ['upper', 'core', 'lower'] as const
 export const MuscleRegion = z.enum(MUSCLE_REGIONS)
 export type MuscleRegion = z.output<typeof MuscleRegion>
 
 export const MUSCLES = [
-  // upper — neck: flexion (curls) and extension trained, and so counted, apart
-  { slug: 'neck_flexors', name: 'Neck (front)', region: 'upper' },
-  { slug: 'neck_extensors', name: 'Neck (back)', region: 'upper' },
   // upper — shoulders and chest
   { slug: 'deltoid_anterior', name: 'Front delt', region: 'upper' },
   { slug: 'deltoid_lateral', name: 'Side delt', region: 'upper' },
@@ -36,6 +36,9 @@ export const MUSCLES = [
   { slug: 'triceps_brachii', name: 'Triceps', region: 'upper' },
   { slug: 'forearm_flexors', name: 'Forearm flexors', region: 'upper' },
   { slug: 'forearm_extensors', name: 'Forearm extensors', region: 'upper' },
+  // upper — neck: flexion (curls) and extension trained, and so counted, apart
+  { slug: 'neck_flexors', name: 'Neck (front)', region: 'upper' },
+  { slug: 'neck_extensors', name: 'Neck (back)', region: 'upper' },
   // core
   { slug: 'rectus_abdominis', name: 'Abs', region: 'core' },
   { slug: 'obliques', name: 'Obliques', region: 'core' },
