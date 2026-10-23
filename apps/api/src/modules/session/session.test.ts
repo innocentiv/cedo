@@ -687,6 +687,78 @@ describe('progression suggestions', () => {
     expect(suggestion?.suggested.reps).toBe(8)
   })
 
+  /** A run (#14): the distance goes up a step, and its time with it, at the prescribed pace. */
+  test('a run covered within its time goes further, at the same pace', async () => {
+    const run = expectContract(
+      Exercise,
+      (
+        await alice.wire('/exercises', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Easy Run',
+            tracking: 'distance_duration',
+            muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+          }),
+        })
+      ).body,
+    )
+    const created = expectContract(
+      Workout,
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Run' }) }))
+        .body,
+    )
+    const workout = expectContract(
+      Workout,
+      (
+        await alice.wire(`/workouts/${created.id}/plan`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            days: [
+              {
+                name: 'Run',
+                entries: [
+                  {
+                    exerciseId: run.id,
+                    progression: { kind: 'linear_distance', incrementMm: 500_000 },
+                    sets: [{ targetDistanceMm: 5_000_000, targetDurationS: 1800 }],
+                  },
+                ],
+              },
+            ],
+          }),
+        })
+      ).body,
+    )
+    const entry = workout.days[0]?.entries[0]
+    const session = expectContract(
+      WorkoutSession,
+      (await startSession(alice, { workoutId: workout.id, dayId: workout.days[0]?.id })).body,
+    )
+    await alice.wire(`/sessions/${session.id}/logs`, {
+      method: 'POST',
+      body: JSON.stringify({
+        exerciseId: run.id,
+        entryId: entry?.id,
+        distanceMm: 5_000_000,
+        durationS: 1770,
+      }),
+    })
+
+    const [suggestion] = expectContract(
+      Suggestions,
+      (await alice.wire(`/workouts/${workout.id}/progression`)).body,
+    )
+    expect(suggestion?.rule).toEqual({
+      kind: 'linear_distance',
+      incrementMm: 500_000,
+      afterSuccesses: 1,
+    })
+    expect(suggestion?.changed).toBe(true)
+    expect([suggestion?.suggested.distanceMm, suggestion?.suggested.durationS]).toEqual([
+      5_500_000, 1980,
+    ])
+  })
+
   test("uses the caller's own history, never someone else's", async () => {
     const squad = expectContract(
       z.object({ id: z.uuid() }),

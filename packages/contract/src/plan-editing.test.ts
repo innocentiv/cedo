@@ -218,6 +218,12 @@ describe('a new rule', () => {
     expect(progressionOf('linear_duration', NO_PROGRESSION, 'lb')).toMatchObject({ incrementS: 15 })
   })
 
+  test('a distance rule adds 500 m, whatever the weight unit — distance is metric only', () => {
+    expect(progressionOf('linear_distance', NO_PROGRESSION, 'lb')).toMatchObject({
+      incrementMm: 500_000,
+    })
+  })
+
   test('choosing the kind it already is keeps its settings', () => {
     const tuned = { kind: 'linear', incrementG: 5000, afterSuccesses: 3 } as const
     expect(progressionOf('linear', tuned, 'lb')).toBe(tuned)

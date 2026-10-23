@@ -379,6 +379,39 @@ test(
 )
 
 /**
+ * A row goes further at the same pace (#14). Distance is metric for everyone, so a person who reads
+ * pounds is offered 500 m, not a pound-shaped step — and the rule is saved as the editor said it.
+ */
+test(
+  'a row is planned to go further at the same pace, in metres even for someone who reads pounds',
+  async () => {
+    await withApp('distance-progression', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('row'))
+      await app.settings.chooseUnit('lb')
+
+      await app.planEditor.create('Rowing Machine', 'Row Day')
+      const planned = app.planEditor.entry(0, 0)
+      await planned.progression('linear_distance')
+      expect(await planned.progressionSummary()).toBe('Distance, +500 m at the same pace')
+      await app.planEditor.saveAndStart()
+
+      const mine = await page.client()
+      const [latest] = (await mine.sessions.list({ limit: 1 })).items
+      const started = latest === undefined ? null : await mine.sessions.get(latest.id)
+      if (started?.workoutId == null) throw new Error('The session did not start from the plan')
+      const plan = await mine.workouts.get(started.workoutId)
+      expect(plan.days[0]?.entries[0]?.progression).toEqual({
+        kind: 'linear_distance',
+        incrementMm: 500_000,
+        afterSuccesses: 1,
+      })
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * A person who reads pounds types and reads pounds everywhere, while every weight is still stored in
  * grams — key by key, through a half-typed "132." as a thumb would. Chosen in Settings, then the app
  * is RELOADED (`planEditor.create` navigates): the choice lives on the account, so it comes back

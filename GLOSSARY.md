@@ -189,8 +189,9 @@ Entries of one day performed alternating, marked by a shared letter.
 _Avoid_: circuit, pairing
 
 **Progression rule**:
-How an entry's prescription advances from what was logged: none, linear, double, or linear in
-duration.
+How an entry's prescription advances from what was logged: none, linear, double, linear in
+duration, or linear in distance at the same pace. It advances or holds; it never makes the
+prescription easier, and never makes it faster.
 _Avoid_: program, scheme
 
 **Prescription**:

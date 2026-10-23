@@ -1,5 +1,6 @@
 import {
   DEFAULT_INCREMENT_G,
+  DEFAULT_INCREMENT_MM,
   DEFAULT_INCREMENT_S,
   PROGRESSION_KINDS,
   type Progression,
@@ -17,13 +18,19 @@ import { Text } from './text.tsx'
 
 const PROGRESSION_OPTIONS = PROGRESSION_KINDS.map((value) => ({
   value,
-  label: { none: 'Manual', linear: 'Linear', double: 'Double', linear_duration: 'Duration' }[value],
+  label: {
+    none: 'Manual',
+    linear: 'Linear',
+    double: 'Double',
+    linear_duration: 'Duration',
+    linear_distance: 'Distance',
+  }[value],
 }))
 
 /**
  * The rule AND its settings, together.
  *
- * Showing only the four names made the control look inert — picking "Linear" changed nothing on
+ * Showing only the rules' names made the control look inert — picking "Linear" changed nothing on
  * screen and never said by how much. The increment and the streak are the whole rule, and
  * `describeProgression` is the contract's own sentence for it, so the plan editor and the MCP tool
  * describe a rule identically.
@@ -75,7 +82,20 @@ export function ProgressionField({
             testID={`${testID}-increment`}
           />
         ) : null}
-        {rule.kind === 'linear' || rule.kind === 'linear_duration' ? (
+        {rule.kind === 'linear_distance' ? (
+          <DimensionInput
+            dimension="distance"
+            label="Add metres"
+            value={rule.incrementMm}
+            onChange={(mm) => {
+              onChange({ ...rule, incrementMm: mm ?? DEFAULT_INCREMENT_MM })
+            }}
+            testID={`${testID}-increment`}
+          />
+        ) : null}
+        {rule.kind === 'linear' ||
+        rule.kind === 'linear_duration' ||
+        rule.kind === 'linear_distance' ? (
           <CompactField label="after">
             <NumberInput
               value={rule.afterSuccesses}

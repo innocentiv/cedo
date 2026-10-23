@@ -165,7 +165,7 @@ progression rule which dimension to advance:
 | `weight_reps` | back squat | the default |
 | `bodyweight_reps` | pull-up, push-up | a logged `weight_g` means weight **added** to bodyweight |
 | `duration` | plank, dead hang | progresses via `linear_duration` |
-| `distance_duration` | rowing, farmer's carry | no automatic progression; see [adr/0012](adr/0012-progression-rules.md) |
+| `distance_duration` | rowing, farmer's carry | progresses via `linear_distance`, at the prescribed pace; going faster is set deliberately — see [adr/0012](adr/0012-progression-rules.md) |
 
 ### Workouts — three levels, supersets as a tag
 

@@ -45,6 +45,9 @@ export const DEFAULT_INCREMENT_G: Readonly<Record<WeightUnit, number>> = { kg: 2
 /** The time a new duration rule adds. */
 export const DEFAULT_INCREMENT_S = 15
 
+/** The distance a new distance rule adds: 500 m. Distance is metric for everyone (units.ts). */
+export const DEFAULT_INCREMENT_MM = 500_000
+
 /** A new rule of each kind, in the person's unit — one per kind, or this does not compile. */
 const NEW_RULE: { readonly [K in Progression['kind']]: (unit: WeightUnit) => Progression } = {
   none: () => NO_PROGRESSION,
@@ -53,6 +56,11 @@ const NEW_RULE: { readonly [K in Progression['kind']]: (unit: WeightUnit) => Pro
   linear_duration: () => ({
     kind: 'linear_duration',
     incrementS: DEFAULT_INCREMENT_S,
+    afterSuccesses: 1,
+  }),
+  linear_distance: () => ({
+    kind: 'linear_distance',
+    incrementMm: DEFAULT_INCREMENT_MM,
     afterSuccesses: 1,
   }),
 }

@@ -1,8 +1,9 @@
 import { z } from 'zod'
+import { clearsDistance, clearsDuration, clearsReps } from './clears.ts'
 import { TrackingMode } from './exercise.ts'
 import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 import { Rpe } from './rpe.ts'
-import { formatDuration } from './units.ts'
+import { formatDistance, formatDuration } from './units.ts'
 
 /**
  * How a set's targets advance over time. Stored as JSONB on `workout_entries`, so adding a rule
@@ -43,10 +44,27 @@ export const Progression = z.discriminatedUnion('kind', [
     incrementS: z.int().positive().max(3600),
     afterSuccesses: z.int().min(1).max(10).default(1),
   }),
+
+  /**
+   * Go further at the same pace. For `distance_duration` exercises — runs, rows — where the time
+   * grows with the distance, so a volume step is never a pace jump (#14). Going faster stays a
+   * deliberate change: a shorter time would break advance-or-hold.
+   */
+  z.object({
+    kind: z.literal('linear_distance'),
+    incrementMm: z.int().positive().max(10_000_000),
+    afterSuccesses: z.int().min(1).max(10).default(1),
+  }),
 ])
 export type Progression = z.output<typeof Progression>
 
-export const PROGRESSION_KINDS = ['none', 'linear', 'double', 'linear_duration'] as const
+export const PROGRESSION_KINDS = [
+  'none',
+  'linear',
+  'double',
+  'linear_duration',
+  'linear_distance',
+] as const
 
 export const NO_PROGRESSION: Progression = { kind: 'none' }
 
@@ -126,6 +144,8 @@ export function nextTarget(input: ProgressionInput): SetTarget {
       return advanceWeight(rule, input)
     case 'linear_duration':
       return advanceDuration(rule, input)
+    case 'linear_distance':
+      return advanceDistance(rule, input)
     case 'double':
       return advanceDouble(rule, input)
     default:
@@ -155,6 +175,23 @@ function advanceDuration(
   )
   if (!clean || target.durationS === null) return target
   return { ...target, durationS: target.durationS + rule.incrementS }
+}
+
+function advanceDistance(
+  rule: RuleOf<'linear_distance'>,
+  { target, workingSets, sessions }: ProgressionInput,
+): SetTarget {
+  const clean = succeededFor(rule.afterSuccesses, sessions, (s) =>
+    clearsDistance(s, target, workingSets),
+  )
+  if (!clean || target.distanceMm === null) return target
+  const distanceMm = target.distanceMm + rule.incrementMm
+  // The prescribed pace, kept: the time grows in proportion, to whole seconds.
+  const durationS =
+    target.durationS === null
+      ? null
+      : Math.round((target.durationS * distanceMm) / target.distanceMm)
+  return { ...target, distanceMm, durationS }
 }
 
 function advanceDouble(
@@ -201,45 +238,6 @@ function working(session: SessionAttempts | undefined): SessionAttempts | null {
   return sets.length === 0 ? null : sets
 }
 
-/**
- * A session clears a rep goal only when EVERY prescribed working set reached it at no less than the
- * target weight. A missing set, an unrecorded rep count, or a lighter load all mean "not cleared".
- */
-function clearsReps(
-  session: SessionAttempts,
-  repGoal: number | null,
-  target: SetTarget,
-  workingSets: number,
-): boolean {
-  if (repGoal === null) return false
-  if (session.length < workingSets) return false
-
-  return session.slice(0, workingSets).every((attempt) => {
-    const reps = attempt.reps ?? null
-    if (reps === null || reps < repGoal) return false
-    if (target.weightG === null) return true
-    const weight = attempt.weightG ?? null
-    // Against assistance (#19) — a bodyweight target only — unrecorded is no help: past any band.
-    if (target.weightG < 0) return (weight ?? 0) >= target.weightG
-    return weight !== null && weight >= target.weightG
-  })
-}
-
-/** Every prescribed working set must have been held for at least the target duration. */
-function clearsDuration(
-  session: SessionAttempts,
-  durationGoal: number | null,
-  workingSets: number,
-): boolean {
-  if (durationGoal === null) return false
-  if (session.length < workingSets) return false
-
-  return session.slice(0, workingSets).every((attempt) => {
-    const held = attempt.durationS ?? null
-    return held !== null && held >= durationGoal
-  })
-}
-
 /** Tolerate a range stored the wrong way round rather than producing nonsense. */
 function normaliseRange(range: readonly [number, number]): [number, number] {
   const [a, b] = range
@@ -268,6 +266,10 @@ export function describeProgression(
         : `Linear, +${formatIncrement(rule.incrementG)} after ${rule.afterSuccesses} clean sessions`
     case 'linear_duration':
       return `Linear, +${formatDuration(rule.incrementS)}`
+    case 'linear_distance':
+      return rule.afterSuccesses === 1
+        ? `Distance, +${formatDistance(rule.incrementMm)} at the same pace`
+        : `Distance, +${formatDistance(rule.incrementMm)} at the same pace after ${rule.afterSuccesses} clean sessions`
     case 'double': {
       const [min, max] = normaliseRange(rule.repRange)
       return `Double ${min}–${max}, +${formatIncrement(rule.incrementG)}`

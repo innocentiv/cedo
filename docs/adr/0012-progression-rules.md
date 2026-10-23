@@ -13,8 +13,8 @@ assumed.
 
 ## Decision
 
-Four rule kinds, stored as a Zod discriminated union in a JSONB column on `workout_entries`:
-`none`, `linear`, `double`, `linear_duration`.
+Five rule kinds, stored as a Zod discriminated union in a JSONB column on `workout_entries`:
+`none`, `linear`, `double`, `linear_duration`, and `linear_distance` (added for #14, below).
 
 **`nextTarget()` is a pure function in `packages/contract`.** One implementation, called only by the
 API's progression service, whose answers both the `workout_progression` MCP tool and the logger's
@@ -71,9 +71,31 @@ at least one working set, enforced in the contract.
 `tracking: 'duration'` exercises — planks, dead hangs, loaded carries — progress by holding longer,
 not by adding weight. `linear_duration` adds seconds on the same advance-or-hold basis.
 
-`distance_duration` exercises (runs, rows) deliberately have **no** automatic rule: progressing them
-usually means going _faster_, which is a decreasing target, and that contradicts the advance-or-hold
-guarantee. They use `none` and are adjusted deliberately.
+### `linear_distance` for runs and rows — further, at the same pace
+
+**Amended 2026-10-24 (#14).** `distance_duration` exercises first had no automatic rule: progressing
+them was taken to mean going _faster_, a decreasing target that contradicts advance-or-hold. They now
+have one that advances the other way: **further, at the prescribed pace.**
+
+A session is clean when every prescribed working set covered at least the target distance and, when
+a time is prescribed, finished within it. After `afterSuccesses` clean sessions the distance rises by
+`incrementMm`, and a prescribed time rises in proportion, to whole seconds — so a volume step never
+hides a pace jump. Given `5 km in 30:00, +500 m`:
+
+| Logged | Next | Why |
+| --- | --- | --- |
+| `5 km in 29:00` | `5.5 km in 33:00` | covered, inside the time — one step, at the _prescribed_ pace |
+| `5 km in 31:00` | hold | covered, but slower than prescribed |
+| `4.8 km in 28:00` | hold | short of the distance, however fast |
+| `5 km`, no time | hold | a prescribed time unrecorded is not met |
+
+With no time prescribed, the distance alone decides, and no time is added.
+
+Rejected: a rule that shortens the time — the same distance, faster. Endurance work is
+conventionally built by adding volume first and changing intensity deliberately; a pace target is
+set from a test or training zones, not lowered by a fixed number of seconds per clean session. That
+is a judgement for the user or the AI, through `workout_save_plan`, and the guarantee stays whole: a
+rule never makes a prescription easier, and never makes it faster.
 
 ## Consequences
 

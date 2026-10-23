@@ -286,3 +286,94 @@ describe('nextTarget — linear_duration (planks, dead hangs, carries)', () => {
     ).toEqual(target(10, 60))
   })
 })
+
+/**
+ * Runs and rows (#14) go further at the pace the plan prescribes: the time grows with the distance,
+ * so a volume step never hides a pace jump. Going faster is left to the user or the AI — a shorter
+ * target time would break advance-or-hold. See docs/adr/0012-progression-rules.md.
+ */
+describe('nextTarget — linear_distance (runs, rows)', () => {
+  const RULE: Progression = { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 }
+  const covered = (metres: number, seconds: number | null): SetTarget => ({
+    reps: null,
+    weightG: null,
+    rpe: null,
+    durationS: seconds,
+    distanceMm: metres * 1000,
+  })
+  const ran = (...efforts: [metres: number, seconds: number | null][]): SessionAttempts =>
+    efforts.map(([metres, durationS]) => ({ distanceMm: metres * 1000, durationS }))
+  const next = (t: SetTarget, sessions: SessionAttempts[], workingSets = 1, rule = RULE) =>
+    nextTarget({ rule, target: t, workingSets, sessions })
+
+  test('the distance within the time adds distance, at the same pace', () => {
+    expect(next(covered(5000, 1800), [ran([5000, 1800])])).toEqual(covered(5500, 1980))
+  })
+
+  test('faster than prescribed still advances by one step, at the prescribed pace', () => {
+    expect(next(covered(5000, 1800), [ran([5000, 1740])])).toEqual(covered(5500, 1980))
+  })
+
+  test('the distance outside the time holds', () => {
+    expect(next(covered(5000, 1800), [ran([5000, 1860])])).toEqual(covered(5000, 1800))
+  })
+
+  test('short of the distance holds, however fast', () => {
+    expect(next(covered(5000, 1800), [ran([4800, 1680])])).toEqual(covered(5000, 1800))
+  })
+
+  test('no time recorded against a prescribed time holds', () => {
+    expect(next(covered(5000, 1800), [ran([5000, null])])).toEqual(covered(5000, 1800))
+  })
+
+  test('with no time prescribed, the distance alone advances it, and no time is added', () => {
+    expect(next(covered(5000, null), [ran([5000, null])])).toEqual(covered(5500, null))
+  })
+
+  test('the time grows to whole seconds', () => {
+    // 3 km in 1000 s is 0.333 s/m: 3.5 km takes 1166.67 s.
+    expect(next(covered(3000, 1000), [ran([3000, 1000])])).toEqual(covered(3500, 1167))
+  })
+
+  test('intervals advance only when every working set made it', () => {
+    const step: Progression = { ...RULE, incrementMm: 100_000 }
+    const t = covered(500, 105)
+    expect(next(t, [ran([500, 104], [500, 105], [500, 103], [500, 105])], 4, step)).toEqual(
+      covered(600, 126),
+    )
+    expect(next(t, [ran([500, 104], [500, 105], [500, 108], [500, 105])], 4, step)).toEqual(t)
+    expect(next(t, [ran([500, 104], [500, 105], [500, 103])], 4, step)).toEqual(t)
+  })
+
+  test('afterSuccesses=2 requires two consecutive clean sessions', () => {
+    const rule: Progression = { ...RULE, afterSuccesses: 2 }
+    const t = covered(5000, 1800)
+    const clean = ran([5000, 1800])
+    const missed = ran([4000, 1800])
+    expect(next(t, [clean], 1, rule)).toEqual(t)
+    expect(next(t, [clean, missed], 1, rule)).toEqual(t)
+    expect(next(t, [clean, clean], 1, rule)).toEqual(covered(5500, 1980))
+  })
+
+  test('warm-ups are excluded', () => {
+    const session: SessionAttempts = [
+      { distanceMm: 1_000_000, durationS: 420, isWarmup: true },
+      ...ran([5000, 1800]),
+    ]
+    expect(next(covered(5000, 1800), [session])).toEqual(covered(5500, 1980))
+  })
+
+  test('no distance target, or no history -> unchanged', () => {
+    expect(next(held(60), [ran([5000, 1800])])).toEqual(held(60))
+    expect(next(covered(5000, 1800), [])).toEqual(covered(5000, 1800))
+  })
+
+  test('never shortens the distance or the time', () => {
+    for (const sessions of [[], [ran([9000, 100])], [ran([1, 99_999])], [[]]]) {
+      const t = covered(5000, 1800)
+      const after = next(t, sessions)
+      expect(after.distanceMm ?? 0).toBeGreaterThanOrEqual(t.distanceMm ?? 0)
+      expect(after.durationS ?? 0).toBeGreaterThanOrEqual(t.durationS ?? 0)
+    }
+  })
+})
