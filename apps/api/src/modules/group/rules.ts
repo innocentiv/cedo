@@ -52,6 +52,12 @@ export const mayOf = (group: GroupRow, role: GroupRole, editors: number) => {
   }
 }
 
-/** Whether a member reads the caller's training through a group: its editors, once the caller shares. */
-export const readsTraining = (callerShares: boolean, role: GroupRole, isCaller: boolean): boolean =>
-  callerShares && role === 'editor' && !isCaller
+/**
+ * Whether a member reads the caller's training through a group: its editors, once the caller shares
+ * — never the caller. The rule `/athletes` asks of a membership too, in SQL (`coaching/athletes.ts`).
+ */
+export const readsTraining = (member: {
+  readonly callerShares: boolean
+  readonly role: GroupRole
+  readonly isCaller: boolean
+}): boolean => member.callerShares && member.role === 'editor' && !member.isCaller

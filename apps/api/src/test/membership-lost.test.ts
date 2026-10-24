@@ -363,11 +363,18 @@ const TOOLS: Record<string, Case> = {
     allowed: async (w) => await toolAllowed(w, 'exercise_get', { exerciseId: w.bobsExerciseId }),
   },
   exercise_history: {
-    // Dates and efforts, no name.
+    // Dates and efforts, no name — hers, and Bob's while she coaches him.
     named: false,
-    read: async (w) => await tool(w, 'exercise_history', { exerciseId: w.bobsExerciseId }),
+    read: async (w) =>
+      await all([
+        tool(w, 'exercise_history', { exerciseId: w.bobsExerciseId }),
+        tool(w, 'exercise_history', { exerciseId: w.bobsExerciseId, athlete: bob.userId }),
+      ]),
     allowed: async (w) =>
-      await toolAllowed(w, 'exercise_history', { exerciseId: w.bobsExerciseId }),
+      await toolAllowed(w, 'exercise_history', {
+        exerciseId: w.bobsExerciseId,
+        athlete: bob.userId,
+      }),
   },
   library_audit: {
     named: true,
@@ -419,6 +426,17 @@ const TOOLS: Record<string, Case> = {
     read: async (w) =>
       await all([tool(w, 'session_list'), tool(w, 'session_list', { athlete: bob.userId })]),
     allowed: async (w) => await toolAllowed(w, 'session_list', { athlete: bob.userId }),
+  },
+  session_get: {
+    // Each run of sets names its exercise while she can see it — hers, and Bob's as his coach.
+    named: true,
+    read: async (w) =>
+      await all([
+        tool(w, 'session_get', { sessionId: w.alicesSessionId }),
+        tool(w, 'session_get', { sessionId: w.bobsSessionId, athlete: bob.userId }),
+      ]),
+    allowed: async (w) =>
+      await toolAllowed(w, 'session_get', { sessionId: w.bobsSessionId, athlete: bob.userId }),
   },
   // Curator-only.
   platform_status: { named: false, read: async (w) => await tool(w, 'platform_status') },

@@ -18,11 +18,9 @@ import {
   page,
 } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
+import * as CoachingService from '../coaching/service.ts'
 import { targetsForSession } from '../progression/service.ts'
-import { get as getSession } from './plan.ts'
 import { start as startSession } from './start.ts'
-import * as HistoryService from './history.ts'
-import { list as listSessions } from './list.ts'
 import * as SessionService from './service.ts'
 
 const params = z.object({ id: Id })
@@ -30,7 +28,7 @@ const params = z.object({ id: Id })
 export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller, query }) => listSessions(SessionService.own(caller), query), {
+  .get('/', ({ caller, query }) => CoachingService.sessions(caller, undefined, query), {
     query: SessionQuery,
     response: page(WorkoutSessionSummary),
     detail: { summary: 'Session history, newest first. Summaries only — no per-set detail.' },
@@ -40,7 +38,7 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
     response: WorkoutSession,
     detail: { summary: 'Start a session, from a workout day or ad hoc' },
   })
-  .get('/:id', ({ caller, params: { id } }) => getSession(SessionService.own(caller), id), {
+  .get('/:id', ({ caller, params: { id } }) => CoachingService.session(caller, undefined, id), {
     params,
     response: SessionDetail,
     detail: { summary: 'A session, with the plan it follows as the caller can reach it' },
@@ -94,8 +92,7 @@ export const exerciseHistoryRoutes = new Elysia({ prefix: '/exercises', tags: ['
   .guard({ auth: true })
   .get(
     '/:id/history',
-    ({ caller, params: { id }, query }) =>
-      HistoryService.history(SessionService.own(caller), id, query),
+    ({ caller, params: { id }, query }) => CoachingService.history(caller, undefined, id, query),
     {
       params,
       query: ExerciseHistoryQuery,

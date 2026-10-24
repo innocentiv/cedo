@@ -98,7 +98,7 @@ const setLine = (
   `${set.isWarmup ? 'warm-up' : 'work'}: ${formatEffort(set.target, tracking, unit)}${atRpe(set.target.rpe)}`
 
 /** ` @ RPE 8.5` after a set prescribed or logged at one, and nothing after one without. */
-const atRpe = (rpe: number | null): string => (rpe === null ? '' : ` @ RPE ${rpe}`)
+export const atRpe = (rpe: number | null): string => (rpe === null ? '' : ` @ RPE ${rpe}`)
 
 /** The whole plan as an outline. A 6-day plan is ~60 short lines rather than ~40 KB of JSON. */
 export function workoutDetail(workout: Workout, unit: WeightUnit): string {

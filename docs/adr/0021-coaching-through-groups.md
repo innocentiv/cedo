@@ -31,12 +31,15 @@ role already means "runs this group".
   read-only — under `/athletes/:id/…` over HTTP, and with an `athlete` id over MCP — never by
   pointing an existing "mine" route at someone else.
   Anyone not shared with the caller is a 404, as an invisible workout is, so a probe learns nothing.
-- **Names follow ADR-0019 unchanged.** An exercise, plan or day the coach cannot see is unavailable
-  in the athlete's training as it is everywhere: sharing training does not share what it was logged
-  against. An athlete who wants a custom exercise named moves it into the shared group.
+- **Names follow ADR-0019 unchanged.** An exercise, plan or day the coach cannot see is treated in
+  the athlete's training as each read already treats one you have lost: a session keeps the set and
+  says "unavailable exercise", the review leaves its work out, its history is refused. Sharing
+  training does not share what it was logged against. An athlete who wants a custom exercise counted
+  and named moves it into the shared group.
 - **MCP adds nothing to tokens.** A coach's token acts as the coach, so it reads exactly the athletes
   the coach can. `athlete_list` names them; the review, history and session tools take an optional
-  athlete and call the same service functions.
+  athlete and call the same `coaching/service.ts` functions the HTTP routes do — one read, whoever
+  asks for it, told whose it is in one place (`ownOrCoached`).
 
 ## Rejected
 

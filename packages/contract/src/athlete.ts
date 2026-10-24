@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { Group } from './group.ts'
 import { Id } from './primitives.ts'
 import { User } from './user.ts'
 
@@ -10,7 +11,7 @@ import { User } from './user.ts'
 export const Athlete = z.object({
   user: User,
   /** The groups they share their training through: groups the caller edits, at least one. */
-  groups: z.array(z.object({ id: Id, name: z.string() })).min(1),
+  groups: z.array(Group.pick({ id: true, name: true })).min(1),
 })
 export type Athlete = z.output<typeof Athlete>
 

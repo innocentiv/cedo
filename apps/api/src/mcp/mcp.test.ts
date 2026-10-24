@@ -841,9 +841,19 @@ describe('coaching', () => {
       }),
     ).id
     await post(alice, `/exercises/${liftId}/transfer`, { toGroupId: squadId })
+    const privateId = expectContract(
+      Exercise,
+      await post(athlete, '/exercises', {
+        name: 'Athletes Private Lift',
+        muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+      }),
+    ).id
     await callTool(await mintPat(athlete), 'session_log', {
       notes: 'felt heavy',
-      sets: [{ exerciseId: liftId, weightG: 80_000, reps: 5 }],
+      sets: [
+        { exerciseId: liftId, weightG: 80_000, reps: 5 },
+        { exerciseId: privateId, weightG: 30_000, reps: 8 },
+      ],
     })
   })
 
@@ -875,7 +885,15 @@ describe('coaching', () => {
 
     expect(textOf((await callTool(pat, 'session_list')).body)).toBe('No sessions.')
     const sessions = textOf((await callTool(pat, 'session_list', theirs)).body)
-    expect(sessions).toContain('no plan · 1 sets · 400 kg · "felt heavy"')
+    expect(sessions).toContain('no plan · 2 sets · 640 kg · "felt heavy"')
+
+    // Set by set: the private exercise's sets are the athlete's, its name is not the coach's.
+    const sessionId = sessions.split(' · ').at(-1) ?? ''
+    const detail = textOf((await callTool(pat, 'session_get', { sessionId, ...theirs })).body)
+    expect(detail.split('\n').slice(1)).toEqual([
+      'Squad Sled Push: 5 × 80 kg',
+      'unavailable exercise: 8 × 30 kg',
+    ])
 
     const history = textOf(
       (await callTool(pat, 'exercise_history', { exerciseId: liftId, ...theirs })).body,
@@ -891,6 +909,7 @@ describe('coaching', () => {
     for (const [tool, args] of [
       ['training_review', { weeks: 4, ...theirs }],
       ['session_list', theirs],
+      ['session_get', { sessionId: crypto.randomUUID(), ...theirs }],
       ['exercise_history', { exerciseId: liftId, ...theirs }],
     ] as const) {
       const { body } = await callTool(pat, tool, args)

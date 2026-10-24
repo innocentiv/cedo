@@ -146,15 +146,21 @@ function that pre-fills the app's logger (`GET /sessions/:id/targets`), over the
 the one being logged. So the two agree whenever no session is in progress, and differ during one
 only by the sets it has logged: the AI already counts them, the logger waits for the next session.
 
-**Someone else's training** (#11) — `athlete_list` · `session_list` — is read through the same
-tools. A member who shares their training with a group (`GLOSSARY.md`, "Share training") is an
-**athlete** to its editors; `athlete_list` names them, each with the id that `training_review`,
-`session_list` and `exercise_history` take as `athlete` (`OfAthlete` in the contract) to read theirs
-instead of yours. Omitted, they read your own — `session_list` is also how an AI reads your own
-sessions' notes. Each is the athlete's own read, given their training: the same numbers, named as
-the coach can see them, so an exercise of the athlete's own is unavailable (ADR-0019). Nothing a
-coach's AI can call writes to an athlete's training, and an athlete who stops sharing is a refusal
-on the next call. See `docs/adr/0021-coaching-through-groups.md`.
+**Someone else's training** (#11) — `athlete_list` · `session_list` · `session_get` — is read
+through the same tools. A member who shares their training with a group (`GLOSSARY.md`, "Share
+training") is an **athlete** to its editors; `athlete_list` names them, each with the id that
+`training_review`, `session_list`, `session_get` and `exercise_history` take as `athlete`
+(`OfAthlete` in the contract) to read theirs instead of yours. Omitted, they read your own —
+`session_list` and `session_get` are also how an AI reads your own sessions, notes and all.
+
+Each is the athlete's own read, given their training, through the same `coaching/service.ts`
+function the HTTP routes call — so it computes as the athlete's does, and differs only by what the
+coach can see (ADR-0019). How each read treats what the coach cannot see is the rule it already
+has: a session keeps every set and says "unavailable exercise"; the review **leaves out** the work
+of an exercise or plan the coach cannot see, as it leaves out one you have lost; the history of
+such an exercise is refused. Nothing a coach's AI can call writes to an athlete's training, and an
+athlete who stops sharing is a refusal on the next call. See
+`docs/adr/0021-coaching-through-groups.md`.
 
 ### 3. Diagnosing a running instance
 

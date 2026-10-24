@@ -10,11 +10,10 @@ import {
   planInputFrom,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
-import { trainingFor } from '../../modules/coaching/athletes.ts'
+import * as CoachingService from '../../modules/coaching/service.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import { logWhole } from '../../modules/session/start.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
-import { trainingReview } from '../../modules/review/service.ts'
 import {
   historyLines,
   json,
@@ -54,10 +53,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ weeks, athlete: athleteId }) =>
       text(
-        reviewSummary(
-          await trainingReview(await trainingFor(caller, athleteId), weeks),
-          caller.weightUnit,
-        ),
+        reviewSummary(await CoachingService.review(caller, athleteId, weeks), caller.weightUnit),
       ),
   )
 
@@ -196,11 +192,13 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       inputSchema: ExerciseHistoryQuery.safeExtend({ exerciseId: z.uuid(), ...OfAthlete.shape }),
       annotations: READ,
     },
-    async ({ exerciseId, athlete: athleteId, ...query }) => {
-      const { history } = await import('../../modules/session/history.ts')
-      const training = await trainingFor(caller, athleteId)
-      return text(historyLines(await history(training, exerciseId, query), caller.weightUnit))
-    },
+    async ({ exerciseId, athlete: athleteId, ...query }) =>
+      text(
+        historyLines(
+          await CoachingService.history(caller, athleteId, exerciseId, query),
+          caller.weightUnit,
+        ),
+      ),
   )
 
   server.registerTool(

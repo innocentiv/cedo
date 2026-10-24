@@ -27,7 +27,7 @@ server.registerTool(
     // each tools file. Spell `destructiveHint` out: MCP takes a write as destructive unless told.
     annotations: WRITE,
   },
-  // `text` and the formatters (`exerciseDetail`, `workoutDetail`, …) live in apps/api/src/mcp/format.ts
+  // `text` and the formatters (`exerciseDetail`, `workoutDetail`, …) live in apps/api/src/mcp/format*.ts
   async (input) => text(`Created.\n\n${exerciseDetail(await ExerciseService.create(caller, input))}`),
 )
 ```
@@ -42,7 +42,7 @@ URL.
 
 ## 3. Format for an AI, not for a UI
 
-Return compact text from `mcp/format.ts`, not JSON. A list of exercises as JSON is an order of
+Return compact text from `mcp/format.ts` — or a `format-<area>.ts` beside it, as coaching's is — not JSON. A list of exercises as JSON is an order of
 magnitude more tokens than `Barbell Back Squat (uuid) · quadriceps 45%, glute_max 30%`.
 
 ## 4. Say what it may not do

@@ -2,10 +2,9 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { OfAthlete, SessionQuery } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
-import { athletes, trainingFor } from '../../modules/coaching/athletes.ts'
-import { list as listSessions } from '../../modules/session/list.ts'
+import * as CoachingService from '../../modules/coaching/service.ts'
 import { text } from '../format.ts'
-import { athleteLines, sessionLines } from '../format-coaching.ts'
+import { athleteLines, sessionDetail, sessionLines } from '../format-coaching.ts'
 
 const READ = { readOnlyHint: true, openWorldHint: false } as const
 
@@ -27,7 +26,7 @@ export function registerCoachingTools(server: McpServer, caller: Caller): void {
       inputSchema: z.object({}),
       annotations: READ,
     },
-    async () => text(athleteLines(await athletes(caller))),
+    async () => text(athleteLines(await CoachingService.athletes(caller))),
   )
 
   server.registerTool(
@@ -45,8 +44,25 @@ export function registerCoachingTools(server: McpServer, caller: Caller): void {
     },
     async ({ athlete: athleteId, ...query }) =>
       text(
-        sessionLines(
-          await listSessions(await trainingFor(caller, athleteId), query),
+        sessionLines(await CoachingService.sessions(caller, athleteId, query), caller.weightUnit),
+      ),
+  )
+
+  server.registerTool(
+    'session_get',
+    {
+      title: 'One session, set by set',
+      description:
+        'Every set of one session from session_list, in the order done, grouped by exercise — ' +
+        'w marks a warm-up — with the notes. Yours, or an athlete’s with `athlete`. An exercise ' +
+        'you cannot see reads "unavailable exercise", its sets still shown.',
+      inputSchema: z.object({ sessionId: z.uuid() }).safeExtend(OfAthlete.shape),
+      annotations: READ,
+    },
+    async ({ sessionId, athlete: athleteId }) =>
+      text(
+        sessionDetail(
+          await CoachingService.session(caller, athleteId, sessionId),
           caller.weightUnit,
         ),
       ),

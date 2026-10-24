@@ -76,10 +76,14 @@ export async function list(caller: Caller): Promise<GroupMembership[]> {
 function toMembership(
   row: GroupRow,
   role: GroupRole,
-  of: { readonly memberCount: number; readonly editors: number; readonly sharesTraining: boolean },
+  counts: {
+    readonly memberCount: number
+    readonly editors: number
+    readonly sharesTraining: boolean
+  },
 ): GroupMembership {
   const group = toGroup(row)
-  const may = mayOf(row, role, of.editors)
+  const may = mayOf(row, role, counts.editors)
   return {
     id: group.id,
     slug: group.slug,
@@ -87,8 +91,8 @@ function toMembership(
     kind: group.kind,
     createdAt: group.createdAt,
     role,
-    memberCount: of.memberCount,
-    sharesTraining: of.sharesTraining,
+    memberCount: counts.memberCount,
+    sharesTraining: counts.sharesTraining,
     canManage: may.canManage,
     canLeave: may.canLeave,
     canTransferInto: may.canTransferInto,
@@ -158,7 +162,11 @@ export async function members(caller: Caller, groupId: string): Promise<GroupMem
     },
     role: r.role,
     joinedAt: r.joinedAt.toISOString(),
-    readsYourTraining: readsTraining(shares, r.role, r.id === caller.userId),
+    readsYourTraining: readsTraining({
+      callerShares: shares,
+      role: r.role,
+      isCaller: r.id === caller.userId,
+    }),
   }))
 }
 
@@ -194,10 +202,7 @@ export async function addMember(
     .returning()
   if (added === undefined) throw conflict('Already a member')
 
-  const [mine] = await db
-    .select({ sharesTraining: groupMembers.sharesTraining })
-    .from(groupMembers)
-    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, caller.userId)))
+  const callerShares = await sharesTrainingIn(groupId, caller.userId)
   return {
     user: {
       id: user.id,
@@ -207,8 +212,21 @@ export async function addMember(
     },
     role: added.role,
     joinedAt: added.joinedAt.toISOString(),
-    readsYourTraining: readsTraining(mine?.sharesTraining === true, added.role, false),
+    readsYourTraining: readsTraining({
+      callerShares,
+      role: added.role,
+      isCaller: false,
+    }),
   }
+}
+
+/** Whether a member shares their training with a group. */
+async function sharesTrainingIn(groupId: string, userId: string): Promise<boolean> {
+  const [member] = await db
+    .select({ sharesTraining: groupMembers.sharesTraining })
+    .from(groupMembers)
+    .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.userId, userId)))
+  return member?.sharesTraining === true
 }
 
 /**

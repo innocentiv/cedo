@@ -58,10 +58,11 @@ export async function athletes(caller: Caller): Promise<Athlete[]> {
 }
 
 /**
- * The athlete's training, read by the caller — or a 404 when they do not share it with a group the
- * caller edits. Indistinguishable from an account that does not exist, as an invisible workout is.
+ * An athlete's training, read by the caller who coaches them — or a 404 when they do not share it
+ * with a group the caller edits. Indistinguishable from an account that does not exist, as an
+ * invisible workout is.
  */
-export async function trainingOf(caller: Caller, athleteId: string): Promise<Training> {
+async function coached(caller: Caller, athleteId: string): Promise<Training> {
   if (caller.editorGroupIds.length === 0) throw notFound('athlete')
   const [shared] = await db
     .select({ userId: groupMembers.userId })
@@ -73,11 +74,10 @@ export async function trainingOf(caller: Caller, athleteId: string): Promise<Tra
 }
 
 /**
- * The caller's own training, or — named — an athlete's they coach: what an MCP tool reads, given
- * the optional `athlete` every coaching tool takes. One seam, so no tool decides whose it is.
+ * The caller's own training, or — named — an athlete's they coach. The one place a read is told
+ * whose it is: `/athletes/:id/…` always names one, an MCP tool's `athlete` may.
  */
-export const trainingFor = async (
+export const ownOrCoached = async (
   caller: Caller,
   athleteId: string | undefined,
-): Promise<Training> =>
-  athleteId === undefined ? own(caller) : await trainingOf(caller, athleteId)
+): Promise<Training> => (athleteId === undefined ? own(caller) : await coached(caller, athleteId))
