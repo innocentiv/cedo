@@ -51,7 +51,7 @@ export function MuscleFilter({
           options={[{ value: ANY, label: 'Any muscle' }]}
           value={value ?? ANY}
           onChange={choose}
-          testID={testID}
+          testID={`${testID}-any`}
         />
         {MUSCLE_REGIONS.map((region) => (
           <Stack key={region} gap="sm">
@@ -65,7 +65,7 @@ export function MuscleFilter({
               }))}
               value={value ?? ANY}
               onChange={choose}
-              testID={testID}
+              testID={`${testID}-${region}`}
             />
           </Stack>
         ))}

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Platform, Pressable, StyleSheet, View } from 'react-native'
+import { playingUrl } from '@cedo/contract'
 import { Icon } from './icon.tsx'
 import { NavButton } from './nav-button.tsx'
 import { Stack } from './stack.tsx'
@@ -8,9 +9,8 @@ import { CONTROL_HEIGHT, color, radius } from './tokens.ts'
 
 /**
  * An exercise's video, played where it is shown (#27): its thumbnail with a play mark, and — tapped
- * — the provider's own player in its place. Nothing is fetched from the provider until then: a
- * self-hosted instance asks nothing of a third party a person did not ask for. Off the web, or for a
- * link no player can show, Watch the video opens it instead.
+ * — the provider's own player in its place. The player is not loaded until then, only the picture.
+ * Off the web, or for a link no player can show, Watch the video opens it instead.
  */
 export function VideoPlayer({
   embedUrl,
@@ -32,7 +32,7 @@ export function VideoPlayer({
     return (
       <View style={styles.frame} testID={`${testID}-player`}>
         <iframe
-          src={`${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`}
+          src={playingUrl(embedUrl)}
           title={label}
           allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
           style={FRAME_STYLE}
@@ -42,7 +42,7 @@ export function VideoPlayer({
   }
   return (
     <Stack gap="sm" testID={testID}>
-      {thumbnail === null ? null : playable ? (
+      {playable ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={`Play ${label}`}
@@ -51,19 +51,22 @@ export function VideoPlayer({
           }}
           testID={`${testID}-play`}
         >
-          <Thumbnail uri={thumbnail} label={label} />
+          {/* A player with no picture of its own — a Vimeo link — still plays where it is. */}
+          {thumbnail === null ? (
+            <View style={styles.frame} />
+          ) : (
+            <Thumbnail uri={thumbnail} label={label} />
+          )}
           <View style={styles.mark}>
             <View style={styles.disc}>
               <Icon name="play" tone="onAccent" />
             </View>
           </View>
         </Pressable>
-      ) : (
+      ) : thumbnail === null ? null : (
         <Thumbnail uri={thumbnail} label={label} />
       )}
-      {playable && thumbnail !== null ? null : (
-        <NavButton title="Watch the video" href={url} testID={`${testID}-link`} />
-      )}
+      {playable ? null : <NavButton title="Watch the video" href={url} testID={`${testID}-link`} />}
     </Stack>
   )
 }

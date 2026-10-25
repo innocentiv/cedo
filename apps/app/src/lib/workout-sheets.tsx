@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { type Exercise, musclesByLoad, notesToKeep } from '@cedo/contract'
-import { apiUrl } from '../api/http.ts'
-import { ConfirmButton, Field, Input, Sheet, Stack, Text, VideoPlayer } from '../ui/index.ts'
+import { ConfirmButton, Field, Input, Sheet, Stack, Text } from '../ui/index.ts'
+import { ExerciseVideo } from './exercise-media.tsx'
 
 /**
  * How to do an exercise, mid-set, without leaving the session (#24): its cue for this entry, what
@@ -39,10 +39,8 @@ export function HowTo({
           .join(', ')}
       </Text>
       {video === undefined ? null : (
-        <VideoPlayer
-          embedUrl={video.embedUrl}
-          thumbnail={video.thumbnailUrl === null ? null : apiUrl(video.thumbnailUrl)}
-          url={video.url}
+        <ExerciseVideo
+          video={video}
           label={`${exercise?.name ?? ''}, video`}
           testID="how-to-video"
         />

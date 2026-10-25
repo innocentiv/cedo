@@ -314,21 +314,25 @@ that totals 100, to adjust.
 
 As built (#27):
 
-- **A row** (`ExerciseRow`) is its picture — the video's thumbnail, or a quiet slot with its initial
-  holding the place, so every name starts on one edge — its name, and its three most loaded muscles
-  (`mainMuscles`). A tag says anything else short: Pinned, In this day.
+- **A row** (`ExerciseRow`) is its picture — its video's thumbnail (`videoThumbnailOf`, never an
+  uploaded image), or a quiet slot with its initial holding the place, so every name starts on one
+  edge — its name, and its three most loaded muscles (`mainMuscles`). A tag says anything else
+  short: Pinned, In this day.
 - **The muscle filter** (`MuscleFilter`) is one button — Any muscle, or the one chosen — opening the
   muscles grouped as Upper body, Core and Lower body (`MUSCLE_REGION_LABELS`).
 - **The picker** leads with the five exercises logged most lately (`GET /exercises/recent`: the
   person's own logs, latest first, of exercises they can still see), then All exercises; searched or
   filtered, only the matches. A tap chooses, with a check; Add N adds them together, in the order
-  chosen. What the day already has is tagged, and still pickable — a second squat is a real plan.
-- **A new exercise's muscles** are split evenly as each is chosen or dropped (`evenLoads`), so the
-  form is valid the moment one is chosen; the loads are there to adjust.
+  chosen, the first of them opened or put in focus — they are done in that order. What the day or the
+  session already has is tagged, and still pickable — a second squat is a real plan.
+- **A new exercise's muscles** are split evenly as each is chosen or dropped, so the form is valid
+  the moment one is chosen; once someone sets the loads, they are theirs — a muscle chosen joins at
+  nothing — so editing an exercise never undoes what was saved (`withMuscleToggled`).
 - **The video plays where it is shown** (`VideoPlayer`), on the exercise's page and in How to: its
-  thumbnail with a play mark, and the provider's player in its place once tapped. Nothing is asked of
-  the provider until then — a self-hosted instance asks nothing of a third party a person did not
-  ask for. Off the web, or for a link no player shows, Watch the video opens it.
+  thumbnail with a play mark, and the provider's player in its place once tapped — a link with no
+  thumbnail, as Vimeo's, a plain panel to tap. The player is not loaded until then; the thumbnail
+  is, from the provider's image host (YouTube's), wherever a row or a page shows it. Off the web, or
+  for a link no player shows, Watch the video opens it.
 
 ### Progress, and the tabs
 

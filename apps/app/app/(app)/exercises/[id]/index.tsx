@@ -7,7 +7,7 @@ import {
   formatEffort,
   musclesByLoad,
 } from '@cedo/contract'
-import { apiUrl } from '../../../../src/api/http.ts'
+import { ExerciseVideo, loadable } from '../../../../src/lib/exercise-media.tsx'
 import { useWeightUnit } from '../../../../src/lib/weight-unit.ts'
 import {
   Card,
@@ -23,7 +23,6 @@ import {
   Stack,
   Text,
   Thumbnail,
-  VideoPlayer,
   type QueryLike,
 } from '../../../../src/ui/index.ts'
 import {
@@ -211,18 +210,16 @@ function About({ exercise }: { readonly exercise: Exercise }): React.JSX.Element
           {exercise.media.map((m) =>
             m.kind === 'video_link' ? (
               // Played where it is shown (#27): the provider is asked only once it is tapped.
-              <VideoPlayer
+              <ExerciseVideo
                 key={m.id}
-                embedUrl={m.embedUrl}
-                thumbnail={m.thumbnailUrl === null ? null : apiUrl(m.thumbnailUrl)}
-                url={m.url}
-                label={m.title === '' ? `${exercise.name}, video` : m.title}
+                video={m}
+                label={`${exercise.name}, video`}
                 testID={`exercise-video-${m.id}`}
               />
             ) : (
               <Thumbnail
                 key={m.id}
-                uri={apiUrl(m.url)}
+                uri={loadable(m.url) ?? m.url}
                 label={m.title === '' ? `${exercise.name}, ${MEDIA_KIND_LABELS[m.kind]}` : m.title}
               />
             ),

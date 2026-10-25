@@ -133,3 +133,23 @@ export function entryAt(days: readonly DayDraft[], key: string): EntryAt | null 
   }
   return null
 }
+
+/**
+ * Exercises picked into a day together (#27), each a new entry at its foot in the order picked — the
+ * plan with them, and the key of the first, whose settings open: they are set up in the order they
+ * are done.
+ */
+export function withEntriesAdded(
+  days: readonly DayDraft[],
+  dayIndex: number,
+  exercises: readonly Parameters<typeof newEntry>[0][],
+): { readonly days: DayDraft[]; readonly first: string | null } {
+  let next = [...days]
+  let first: string | null = null
+  for (const exercise of exercises) {
+    const added = withEntryAdded(next, dayIndex, exercise)
+    next = added.days
+    first ??= next[added.at.day]?.entries[added.at.entry]?.key ?? null
+  }
+  return { days: next, first }
+}

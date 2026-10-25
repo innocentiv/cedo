@@ -11,18 +11,44 @@ export const MuscleLoad = z.object({
 })
 export type MuscleLoad = z.output<typeof MuscleLoad>
 
+const MUSCLE_LOAD_TOTAL = 100
+
 /**
  * Muscles chosen for a new exercise, their loads split evenly to total 100 (#27) — the first ones
  * taking the remainder, a point each: three muscles are 34, 33 and 33. A start to adjust from, so the
  * form is valid the moment a muscle is chosen.
  */
 export function evenLoads(muscles: readonly MuscleSlug[]): MuscleLoad[] {
-  const share = Math.floor(100 / Math.max(muscles.length, 1))
-  const left = 100 - share * muscles.length
+  const share = Math.floor(MUSCLE_LOAD_TOTAL / Math.max(muscles.length, 1))
+  const left = MUSCLE_LOAD_TOTAL - share * muscles.length
   return muscles.map((muscle, i) => ({ muscle, loadPct: share + (i < left ? 1 : 0) }))
 }
 
-const MUSCLE_LOAD_TOTAL = 100
+/**
+ * A muscle chosen, or dropped (#27). While the loads are still the even split they started as, they
+ * are split evenly again; once someone has set them, they are theirs — a muscle chosen joins at
+ * nothing, and one dropped takes its share with it — for that person to finish.
+ */
+export function withMuscleToggled(loads: readonly MuscleLoad[], muscle: MuscleSlug): MuscleLoad[] {
+  const chosen = loads.some((m) => m.muscle === muscle)
+  const untouched = JSON.stringify(loads) === JSON.stringify(evenLoads(loads.map((m) => m.muscle)))
+  if (untouched) {
+    const muscles = loads.map((m) => m.muscle)
+    return evenLoads(chosen ? muscles.filter((m) => m !== muscle) : [...muscles, muscle])
+  }
+  return chosen ? loads.filter((m) => m.muscle !== muscle) : [...loads, { muscle, loadPct: 0 }]
+}
+
+/**
+ * The picture an exercise is listed with (#27): its first video's thumbnail — never an uploaded
+ * image, which says less about the movement than its name does — or none. A path or a URL, as the
+ * API gives it: the app resolves it.
+ */
+export const videoThumbnailOf = (exercise: {
+  readonly media: readonly { readonly kind: string; readonly thumbnailUrl: string | null }[]
+}): string | null =>
+  exercise.media.find((m) => m.kind === 'video_link' && m.thumbnailUrl !== null)?.thumbnailUrl ??
+  null
 
 /**
  * How an exercise is measured. The UI reads this to decide which inputs to render, so screens
@@ -165,7 +191,7 @@ export type ExerciseQuery = z.output<typeof ExerciseQuery>
  * they can still see — for the picker to lead with. A handful, not a page.
  */
 export const RecentExercisesQuery = z.strictObject({
-  limit: z.coerce.number().int().min(1).max(20).default(8),
+  limit: z.coerce.number().int().min(1).max(20).default(5),
 })
 export type RecentExercisesQuery = z.output<typeof RecentExercisesQuery>
 

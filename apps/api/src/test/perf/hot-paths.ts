@@ -232,7 +232,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     noSeqScan: ['workout_sessions', 'set_logs', 'exercises'],
     indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
     run: async (fixtures, size) =>
-      await exerciseService.recent(pick(fixtures, size).caller, { limit: 8 }),
+      await exerciseService.recent(pick(fixtures, size).caller, { limit: 5 }),
   },
   {
     name: 'GET /today',

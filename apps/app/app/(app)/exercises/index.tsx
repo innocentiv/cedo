@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useRouter } from 'expo-router'
-import { type MuscleSlug, type OwnableScope, mainMuscles } from '@cedo/contract'
+import type { MuscleSlug, OwnableScope } from '@cedo/contract'
 import {
   Chips,
   Empty,
-  ExerciseRow,
   Input,
   Loaded,
   MuscleFilter,
@@ -14,7 +13,7 @@ import {
   Text,
 } from '../../../src/ui/index.ts'
 import { useExercises } from '../../../src/api/queries.ts'
-import { thumbnailOf } from '../../../src/lib/exercise-picker.tsx'
+import { ExerciseListRow } from '../../../src/lib/exercise-media.tsx'
 
 const SCOPES: readonly { value: OwnableScope; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -73,11 +72,9 @@ export default function ExerciseList(): React.JSX.Element {
           ) : (
             <Stack gap="xs" testID="exercise-list">
               {data.items.map((exercise) => (
-                <ExerciseRow
+                <ExerciseListRow
                   key={exercise.id}
-                  name={exercise.name}
-                  muscles={mainMuscles(exercise.muscles)}
-                  thumbnail={thumbnailOf(exercise)}
+                  exercise={exercise}
                   tag={exercise.isFavourite ? 'Pinned' : undefined}
                   onPress={() => {
                     router.push(`/exercises/${exercise.id}`)

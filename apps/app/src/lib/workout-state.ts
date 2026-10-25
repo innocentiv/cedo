@@ -60,6 +60,11 @@ export function useWorkout(id: string) {
       !ended &&
       picks.adHocExercises.length === 0 &&
       !picks.declined,
+    /** What the session already holds — its day's entries, and what was added — for the picker. */
+    inSession: new Set([
+      ...(plan?.reachable === true ? plan.day.entries.map((e) => e.exerciseId) : []),
+      ...picks.adHocExercises.map((e) => e.id),
+    ]),
     error: record.error ?? submission.error,
     refused: submission.error,
     busy: submission.busy,
@@ -110,12 +115,14 @@ function useAdHocPicks(logs: readonly SetLog[]) {
   const [picking, setPicking] = useState(false)
   const [declined, setDeclined] = useState(false)
   const [picked, setPicked] = useState<Exercise[]>([])
+  // The first of those picked together: they are done in the order picked.
+  const [added, setAdded] = useState<string | null>(null)
   return {
     adHocExercises: useMemo(() => exercisesInSession(logs, picked), [logs, picked]),
     /** Whole, as picked: how to do them can be shown. */
     picked,
-    /** The exercise added last: it takes the focus until the next set says otherwise. */
-    added: picked.at(-1)?.id ?? null,
+    /** The first exercise of those added last: it takes the focus until the next set says otherwise. */
+    added,
     picking,
     declined,
     startPicking: () => {
@@ -125,10 +132,11 @@ function useAdHocPicks(logs: readonly SetLog[]) {
       setPicking(false)
       setDeclined(true)
     },
-    /** Several at once (#27), in the order picked: the last takes the focus. */
+    /** Several at once (#27), in the order picked: the first takes the focus. */
     pick: (exercises: readonly Exercise[]) => {
       const ids = new Set(exercises.map((e) => e.id))
       setPicked((now) => [...now.filter((e) => !ids.has(e.id)), ...exercises])
+      setAdded(exercises[0]?.id ?? null)
       setPicking(false)
     },
   }

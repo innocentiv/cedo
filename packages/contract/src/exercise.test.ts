@@ -1,6 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import { MUSCLES } from './muscle.ts'
-import { Exercise, ExerciseCreate, evenLoads, exerciseInputFrom } from './exercise.ts'
+import {
+  Exercise,
+  ExerciseCreate,
+  evenLoads,
+  exerciseInputFrom,
+  videoThumbnailOf,
+  withMuscleToggled,
+} from './exercise.ts'
 
 /** An exercise with every input field set away from its default, so a dropped one shows. */
 const exercise = Exercise.parse({
@@ -51,5 +58,40 @@ describe("a new exercise's muscles (#27)", () => {
 
   test('are none for none', () => {
     expect(evenLoads([])).toEqual([])
+  })
+})
+
+describe('a muscle chosen or dropped (#27)', () => {
+  test('splits the loads evenly again while they are still the split they started as', () => {
+    const two = withMuscleToggled(evenLoads(['quadriceps']), 'gluteus_maximus')
+    expect(two.map((m) => m.loadPct)).toEqual([50, 50])
+    expect(withMuscleToggled(two, 'quadriceps')).toEqual([
+      { muscle: 'gluteus_maximus', loadPct: 100 },
+    ])
+  })
+
+  /** The bug it guards: ticking one more muscle on a saved exercise wiped the loads it was saved with. */
+  test('leaves loads someone set alone: a muscle chosen joins at nothing, one dropped takes its share', () => {
+    const set = [
+      { muscle: 'quadriceps' as const, loadPct: 70 },
+      { muscle: 'gluteus_maximus' as const, loadPct: 30 },
+    ]
+    expect(withMuscleToggled(set, 'adductors')).toEqual([
+      ...set,
+      { muscle: 'adductors', loadPct: 0 },
+    ])
+    expect(withMuscleToggled(set, 'gluteus_maximus')).toEqual([
+      { muscle: 'quadriceps', loadPct: 70 },
+    ])
+  })
+})
+
+describe('the picture an exercise is listed with (#27)', () => {
+  test("is its first video's thumbnail, never an uploaded image", () => {
+    const image = { kind: 'image', thumbnailUrl: '/media/1/thumbnail' }
+    const video = { kind: 'video_link', thumbnailUrl: 'https://img.youtube.com/vi/x/hq.jpg' }
+    expect(videoThumbnailOf({ media: [image, video] })).toBe(video.thumbnailUrl)
+    expect(videoThumbnailOf({ media: [image] })).toBeNull()
+    expect(videoThumbnailOf({ media: [{ kind: 'video_link', thumbnailUrl: null }] })).toBeNull()
   })
 })

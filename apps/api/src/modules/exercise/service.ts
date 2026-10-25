@@ -13,6 +13,7 @@ import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { requireCurator } from '../review/curation.ts'
 import { recentlyLogged } from '../session/recent.ts'
+import { own } from '../session/service.ts'
 import { exerciseLifecycle } from './lifecycle.ts'
 import { hydrate } from './mapper.ts'
 import { insertExercise, updateExercise } from './write.ts'
@@ -42,7 +43,7 @@ export async function get(caller: Caller, id: string): Promise<Exercise> {
 export async function recent(caller: Caller, query: RecentExercisesQuery): Promise<Exercise[]> {
   const seen = await exerciseLifecycle.getMany(
     caller,
-    await recentlyLogged(caller, query.limit * 2),
+    await recentlyLogged(own(caller), query.limit * 2),
   )
   return await hydrate(caller, seen.slice(0, query.limit))
 }

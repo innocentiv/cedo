@@ -1,23 +1,23 @@
-import { desc, eq, sql } from 'drizzle-orm'
+import { asc, desc, eq, sql } from 'drizzle-orm'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
-import type { Caller } from '../../plugins/auth.ts'
-import { ownedBy } from './service.ts'
+import { type Training, sessionsOf } from './service.ts'
 
 /**
- * The exercises the caller logged most lately, latest first, by id (#27) — whether they can still
- * see them or not: that is the reader's to decide (`exercise/service.ts`, `recent`). Ids only, so
- * nothing here names anything. Their own sessions, one grouped read, however long the history.
+ * The exercises a training logged most lately, latest first, by id (#27) — whether the reader can
+ * still see them or not: that is theirs to decide (`exercise/service.ts`, `recent`). Ids only, so
+ * nothing here names anything. One grouped read, however long the history; two logged at the same
+ * moment, by id.
  */
-export async function recentlyLogged(caller: Caller, limit: number): Promise<string[]> {
+export async function recentlyLogged(training: Training, limit: number): Promise<string[]> {
   const latest = sql`max(${setLogs.loggedAt})`
   const rows = await db
     .select({ exerciseId: setLogs.exerciseId })
     .from(setLogs)
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
-    .where(ownedBy(caller))
+    .where(sessionsOf(training))
     .groupBy(setLogs.exerciseId)
-    .orderBy(desc(latest))
+    .orderBy(desc(latest), asc(setLogs.exerciseId))
     .limit(limit)
   return rows.map((r) => r.exerciseId)
 }

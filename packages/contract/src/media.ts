@@ -148,6 +148,13 @@ export function videoThumbnailUrl(payload: VideoLinkPayload): string | null {
   return null
 }
 
+/**
+ * A player's URL, asked to start at once (#27): played in place only once tapped, it should not ask
+ * for a second tap.
+ */
+export const playingUrl = (embedUrl: string): string =>
+  `${embedUrl}${embedUrl.includes('?') ? '&' : '?'}autoplay=1`
+
 /** Pure. Embeddable player URL, or null when the link cannot be embedded. */
 export function videoEmbedUrl(payload: VideoLinkPayload): string | null {
   if (payload.externalId === null) return null

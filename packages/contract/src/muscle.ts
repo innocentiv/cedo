@@ -98,9 +98,8 @@ export const musclesByLoad = (
  */
 export const mainMuscles = (
   muscles: readonly { readonly muscle: string; readonly loadPct: number }[],
-  count = 3,
 ): string =>
   musclesByLoad(muscles)
-    .slice(0, count)
+    .slice(0, 3)
     .map((m) => m.name)
     .join(', ')

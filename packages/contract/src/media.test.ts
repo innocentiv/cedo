@@ -6,6 +6,7 @@ import {
   uploadRefusal,
   videoEmbedUrl,
   videoThumbnailUrl,
+  playingUrl,
 } from './media.ts'
 
 const ID = 'dQw4w9WgXcQ'
@@ -113,6 +114,17 @@ describe('the upload limits', () => {
     expect(uploadRefusal(12 * 1024 * 1024)).toBeNull()
     expect(uploadRefusal(12 * 1024 * 1024 + 1)).toBe(
       'Too large to upload: JPEG, PNG, WebP or GIF, up to 12 MB',
+    )
+  })
+})
+
+describe('a video played in place (#27)', () => {
+  test('starts at once, whether its address asks anything already or not', () => {
+    expect(playingUrl('https://www.youtube.com/embed/abc')).toBe(
+      'https://www.youtube.com/embed/abc?autoplay=1',
+    )
+    expect(playingUrl('https://player.vimeo.com/video/1?h=2')).toBe(
+      'https://player.vimeo.com/video/1?h=2&autoplay=1',
     )
   })
 })

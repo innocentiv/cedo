@@ -3,7 +3,7 @@ import type { Workout } from '@cedo/contract'
 import { Card, Columns, Screen, Sheet, Stack, Text, useLayout } from '../ui/index.ts'
 import { EntrySettings } from './entry-settings.tsx'
 import { ExercisePicker } from './exercise-picker.tsx'
-import { entryAt, withEntryAdded } from './plan-draft.ts'
+import { entryAt, withEntriesAdded } from './plan-draft.ts'
 import { usePlanEditor } from './use-plan-editor.ts'
 import { CopyFooter, InProgress, WorkoutAdmin, useStartDay } from './workout-actions.tsx'
 import { WorkoutHead } from './workout-head.tsx'
@@ -40,16 +40,10 @@ export function WorkoutBody({
         }}
         already={new Set(days[picking]?.entries.map((e) => e.exerciseId) ?? [])}
         onPick={(exercises) => {
-          let next = days
-          let last: string | null = null
-          for (const exercise of exercises) {
-            editor.pick(exercise)
-            const added = withEntryAdded(next, picking, exercise)
-            next = added.days
-            last = next[added.at.day]?.entries[added.at.entry]?.key ?? null
-          }
-          editor.change(next)
-          setSelected(last)
+          for (const exercise of exercises) editor.pick(exercise)
+          const added = withEntriesAdded(days, picking, exercises)
+          editor.change(added.days)
+          setSelected(added.first)
           setPicking(null)
         }}
       />

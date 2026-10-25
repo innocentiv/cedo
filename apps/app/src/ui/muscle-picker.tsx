@@ -1,4 +1,4 @@
-import { MUSCLES, type MuscleLoad, type MuscleSlug, evenLoads } from '@cedo/contract'
+import { MUSCLES, type MuscleLoad, type MuscleSlug, withMuscleToggled } from '@cedo/contract'
 import { Pressable, StyleSheet } from 'react-native'
 import { color, radius, space } from './tokens.ts'
 import { Stack } from './stack.tsx'
@@ -11,7 +11,8 @@ export interface MusclePickerProps {
 }
 
 /**
- * Which muscles a movement loads, and by how much: chosen, they start as an even split (#27).
+ * Which muscles a movement loads, and by how much: chosen, they start as an even split (#27), and
+ * keep to one until someone sets them.
  *
  * The screen does NOT decide whether the loads are valid — `ExerciseCreate` in the contract refuses
  * anything that does not sum to 100, and the API, the MCP tools and this form all fail the same way
@@ -22,11 +23,9 @@ export function MusclePicker({ value, onChange }: MusclePickerProps): React.JSX.
   const chosen = new Map(value.map((m) => [m.muscle, m.loadPct]))
   const total = value.reduce((sum, m) => sum + m.loadPct, 0)
 
-  // Choosing a muscle — or dropping one — splits the load evenly again (#27): the form is one the
-  // contract accepts as soon as a muscle is chosen, and the loads are there to adjust from.
+  // An even split while the loads are untouched; once someone set them, theirs (#27).
   const toggle = (slug: MuscleSlug) => {
-    const muscles = value.map((m) => m.muscle)
-    onChange(evenLoads(chosen.has(slug) ? muscles.filter((m) => m !== slug) : [...muscles, slug]))
+    onChange(withMuscleToggled(value, slug))
   }
 
   const setLoad = (slug: MuscleSlug, loadPct: number | null) => {

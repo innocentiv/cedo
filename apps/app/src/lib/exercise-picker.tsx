@@ -1,18 +1,8 @@
 import { useState } from 'react'
-import { type Exercise, type MuscleSlug, mainMuscles } from '@cedo/contract'
-import { apiUrl } from '../api/http.ts'
+import type { Exercise, MuscleSlug } from '@cedo/contract'
 import { useExercises, useRecentExercises } from '../api/queries.ts'
-import {
-  Button,
-  Empty,
-  ExerciseRow,
-  Input,
-  Loaded,
-  MuscleFilter,
-  Screen,
-  Stack,
-  Text,
-} from '../ui/index.ts'
+import { ExerciseListRow } from './exercise-media.tsx'
+import { Button, Empty, Input, Loaded, MuscleFilter, Screen, Stack, Text } from '../ui/index.ts'
 
 export interface ExercisePickerProps {
   /** The whole exercises, in the order picked — callers need their names and tracking modes. */
@@ -55,18 +45,17 @@ export function ExercisePicker({
         : [...now, exercise],
     )
   }
-  const row = (exercise: Exercise, place: string) => (
-    <ExerciseRow
-      key={`${place}-${exercise.id}`}
-      name={exercise.name}
-      muscles={mainMuscles(exercise.muscles)}
-      thumbnail={thumbnailOf(exercise)}
+  // Logged lately and in the library both: told apart by their test ids, which must not repeat.
+  const row = (exercise: Exercise, lately: boolean) => (
+    <ExerciseListRow
+      key={`${lately ? 'lately' : 'library'}-${exercise.id}`}
+      exercise={exercise}
       tag={already?.has(exercise.id) === true ? 'In this day' : undefined}
       chosen={chosen.some((e) => e.id === exercise.id)}
       onPress={() => {
         toggle(exercise)
       }}
-      testID={place === 'recent' ? `picker-recent-${exercise.id}` : `picker-row-${exercise.id}`}
+      testID={lately ? `picker-recent-${exercise.id}` : `picker-row-${exercise.id}`}
     />
   )
 
@@ -112,7 +101,7 @@ export function ExercisePicker({
           <Text variant="label" tone="muted">
             Logged lately
           </Text>
-          {recent.data.map((exercise) => row(exercise, 'recent'))}
+          {recent.data.map((exercise) => row(exercise, true))}
         </Stack>
       )}
       <Loaded query={exercises} testID="picker">
@@ -126,17 +115,11 @@ export function ExercisePicker({
                   All exercises
                 </Text>
               )}
-              {data.items.map((exercise) => row(exercise, 'library'))}
+              {data.items.map((exercise) => row(exercise, false))}
             </Stack>
           )
         }
       </Loaded>
     </Screen>
   )
-}
-
-/** The first video's thumbnail, resolved against the API, or none. */
-export const thumbnailOf = (exercise: Exercise): string | null => {
-  const thumbnail = exercise.media.find((m) => m.thumbnailUrl !== null)?.thumbnailUrl ?? null
-  return thumbnail === null ? null : apiUrl(thumbnail)
 }

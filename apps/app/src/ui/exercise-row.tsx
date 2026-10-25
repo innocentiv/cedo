@@ -6,10 +6,10 @@ import { Thumbnail } from './thumbnail.tsx'
 import { ROW_HEIGHT, ROW_THUMB_WIDTH, color, radius, space } from './tokens.ts'
 
 /**
- * An exercise in a list (#27): its picture — its video's thumbnail, or a quiet slot with its initial
- * holding the place, so every name starts on one edge — its name, and what it mostly works. Chosen, in a picker
- * that adds several at once, it says so with a check; `tag` says anything else short — "In this
- * day", "Pinned".
+ * An exercise in a list (#27): its picture — its video's thumbnail, or a quiet slot with its
+ * initial holding the place, so every name starts on one edge — its name, and what it mostly works.
+ * Chosen, in a picker that adds several at once, it says so with a check; `tag` says anything else
+ * short — "In this day", "Pinned".
  */
 export function ExerciseRow({
   name,
