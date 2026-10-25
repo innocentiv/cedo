@@ -5,8 +5,10 @@ import {
   ExerciseHistory,
   ExerciseHistoryQuery,
   Id,
+  ReviewQuery,
   SessionDetail,
   SessionQuery,
+  TrainingReview,
   WorkoutSessionSummary,
   page,
 } from '@cedo/contract'
@@ -57,3 +59,19 @@ export const coachingRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching
       detail: { summary: "An athlete's logged sessions for one exercise the caller can see" },
     },
   )
+
+/**
+ * Your own training, reviewed (#28): the Progress tab's one read — the same review `training_review`
+ * gives an AI, as `TrainingReview` says it. A coach's of an athlete comes with the coach's view.
+ */
+export const reviewRoutes = new Elysia({ prefix: '/review', tags: ['coaching'] })
+  .use(authPlugin)
+  .guard({ auth: true })
+  .get('/', ({ caller, query }) => CoachingService.review(caller, undefined, query.weeks), {
+    query: ReviewQuery,
+    response: TrainingReview,
+    detail: {
+      summary:
+        'Sessions a week and the streak, the days trained, work per muscle against the period before, and what has stalled, is falling or is drifting',
+    },
+  })

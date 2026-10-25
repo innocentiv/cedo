@@ -9,7 +9,7 @@ import { resolveTokenCaller } from './mcp/token.ts'
 import { createOpenapiPlugin } from './plugins/openapi.ts'
 import { adminRoutes } from './modules/admin/index.ts'
 import { authRoutes } from './modules/auth/index.ts'
-import { coachingRoutes } from './modules/coaching/index.ts'
+import { coachingRoutes, reviewRoutes } from './modules/coaching/index.ts'
 import { exerciseRoutes } from './modules/exercise/index.ts'
 import { groupRoutes } from './modules/group/index.ts'
 import { mediaBlobRoutes, mediaRoutes } from './modules/media/index.ts'
@@ -48,6 +48,7 @@ export function createApp() {
     .use(adminRoutes)
     .use(authRoutes)
     .use(coachingRoutes)
+    .use(reviewRoutes)
     .use(exerciseRoutes)
     .use(exerciseHistoryRoutes)
     .use(groupRoutes)

@@ -1,4 +1,4 @@
-import { type Effort, type LoggedExercise, stallOf } from '@cedo/contract'
+import { type LoggedExercise, type RatedEffort, stallOf } from '@cedo/contract'
 import type { TrainingReview } from './service.ts'
 
 /**
@@ -9,8 +9,8 @@ import type { TrainingReview } from './service.ts'
  * as the exercise's tracking mode measures it. See GLOSSARY.md, "Stalled".
  */
 
-/** A set's measures, and how hard it was when that was said — what a stall's set is worth needs both. */
-export type RatedEffort = Effort & { readonly rpe?: number | null }
+/** A set's measures, and how hard it was when that was said: the contract's `RatedEffort`. */
+export type { RatedEffort } from '@cedo/contract'
 
 /** One working set the caller logged, with the exercise and session it belongs to. */
 export interface WorkingSet {

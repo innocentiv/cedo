@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gte, lt, sql } from 'drizzle-orm'
-import { type LoggedExercise, STALL_DEPTH } from '@cedo/contract'
+import { STALL_DEPTH, type TrainingReview } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import {
@@ -11,11 +11,11 @@ import {
 import { type Training, sessionsOf } from '../session/service.ts'
 import { adherenceOf } from './adherence.ts'
 import { muscleWorkOf } from './muscle-work.ts'
-import { type EffortDrift, type Falling, effortDriftOf, fallingOf } from './deload.ts'
+import { effortDriftOf, fallingOf } from './deload.ts'
 
 /** The thresholds the review judges by, for whoever says its signals. */
 export { DRIFT_RPE, DRIFT_SESSIONS, FALLING_SESSIONS } from './deload.ts'
-import { type RatedEffort, type WorkingSet, stalledOf } from './stalled.ts'
+import { type WorkingSet, stalledOf } from './stalled.ts'
 
 /**
  * A READ MODEL for coaching, not new domain rules.
@@ -28,73 +28,11 @@ import { type RatedEffort, type WorkingSet, stalledOf } from './stalled.ts'
 
 const DAY_MS = 86_400_000
 
-export interface TrainingReview {
-  readonly weeks: number
-  readonly adherence: {
-    readonly sessions: number
-    readonly perWeek: number
-    readonly currentStreakDays: number
-    readonly longestGapDays: number
-    readonly lastSessionAt: string | null
-  }
-  /** Which planned days actually get trained, and which get skipped. */
-  readonly dayBalance: {
-    readonly day: string
-    readonly workout: string
-    readonly sessions: number
-  }[]
-  /**
-   * The work each muscle got, by its share of each exercise's load — this is what the muscle
-   * percentages are FOR — compared against the equivalent window immediately before. What is worth
-   * saying, not every muscle: the most worked, every declined muscle, and a count of the rest.
-   * See muscle-work.ts.
-   */
-  readonly muscleWork: {
-    /** The muscles worked most in this window, at most `TOP_MUSCLES`, most first. */
-    readonly top: readonly MuscleWork[]
-    /** Declined muscles not already in `top`, the most sets lost first. See GLOSSARY.md. */
-    readonly declined: readonly MuscleWork[]
-    /** Muscles worked in either window that neither list names. */
-    readonly omitted: number
-  }
-  /**
-   * Exercises that have stalled: the signal for "change something". See GLOSSARY.md, "Stalled".
-   * Each carries the top set it keeps repeating, and how its exercise is measured — so it reads as
-   * the app shows it: `6 × bodyweight +20 kg`, not a 20 kg lift; `1:00` for a plank, not nothing.
-   */
-  readonly stalled: {
-    readonly exercise: LoggedExercise
-    /** How many sessions running, the latest included, have shared that top set — at most ten. */
-    readonly sessions: number
-    /** The top set, and its RPE when one was said: its estimated max counts the reserve. */
-    readonly effort: RatedEffort
-  }[]
-  /**
-   * The deload triggers: weight lifts falling, and effort drift at the same set — see GLOSSARY.md
-   * for each, and ./deload.ts for the thresholds. The AI's to act on, by saving a lighter plan
-   * (ADR-0012).
-   */
-  readonly falling: readonly Falling[]
-  readonly effortDrift: readonly EffortDrift[]
-}
-
 /**
- * Measured in WORKING SETS: a set of a 70/30 exercise is 0.7 of a set for one muscle and 0.3 for
- * the other. It used to be weight × reps alone, which a plank, a run or an unweighted pull-up
- * cannot register: a muscle trained only by those read "0 kg", as if untrained. Sets count every
- * tracking mode alike; weight × reps stays beside them as what was LIFTED, for loaded work.
+ * What one call answers: `TrainingReview` in the contract, where each part is said (#28) — this
+ * module reads and judges it, and the HTTP route and the MCP tool both say it.
  */
-export interface MuscleWork {
-  readonly muscle: string
-  /**
-   * Working sets, each counted by this muscle's share of the exercise's load — so fractional: a
-   * set of a 70/30 exercise is 0.7 here. To one decimal; `changePct` compares the unrounded sums.
-   */
-  readonly weightedSets: number
-  /** Weight × reps, in grams — 0 for work that carries no load. */
-  readonly liftedG: number
-  readonly changePct: number | null
-}
+export type { MuscleWork, TrainingReview } from '@cedo/contract'
 
 export async function trainingReview(training: Training, weeks: number): Promise<TrainingReview> {
   const since = new Date(Date.now() - weeks * 7 * DAY_MS)

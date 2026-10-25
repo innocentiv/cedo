@@ -299,6 +299,11 @@ const ROUTES: Record<string, Case> = {
     allowed: async (w) => await httpAllowed(`/workouts/${w.bobsWorkoutId}/progression`),
   },
   'GET /sessions/': { named: true, read: async () => await http('/sessions') },
+  'GET /review/': {
+    // Her own sessions follow Bob's plan, on Bob's exercise: named while she can see them.
+    named: true,
+    read: async () => await http('/review?weeks=52'),
+  },
   'GET /today/': {
     // Her own plan is current — her session in progress follows it — and its next day is the one
     // around Bob's exercise, named while she can still see it.

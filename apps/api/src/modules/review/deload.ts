@@ -1,6 +1,6 @@
 import {
-  type Effort,
   type LoggedExercise,
+  type TrainingReview,
   compareEfforts,
   estimatedMax,
   topSet,
@@ -24,23 +24,9 @@ export const DRIFT_RPE = 1
 /** The latest sessions that must each have drifted: one hard session is a bad day. */
 export const DRIFT_SESSIONS = 2
 
-export interface Falling {
-  readonly exercise: LoggedExercise
-  /** How many latest sessions running each fell below the one before. */
-  readonly sessions: number
-  /** The estimated max before the fall, and now, from what was lifted. */
-  readonly fromG: number
-  readonly toG: number
-}
-
-export interface EffortDrift {
-  readonly exercise: LoggedExercise
-  /** The set compared: the latest top set, as its mode measures it. */
-  readonly effort: Effort
-  /** Its RPE averaged over the sessions before, and over the latest — to one decimal. */
-  readonly fromRpe: number
-  readonly toRpe: number
-}
+/** A weight lift falling, and the same set rated harder each time: as `TrainingReview` says them. */
+export type Falling = TrainingReview['falling'][number]
+export type EffortDrift = TrainingReview['effortDrift'][number]
 
 /**
  * A weight lift whose best estimated max fell in each of its latest `FALLING_SESSIONS` sessions or
