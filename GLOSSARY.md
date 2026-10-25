@@ -241,8 +241,9 @@ time held; for distance over time, by distance, then by pace over the same dista
 _Avoid_: PR, record
 
 **Current workout**:
-The workout someone is following now: the one their most recent session followed a day of. Training
-on a workout makes it current; nobody chooses it.
+The workout someone is following now: the one their most recent session followed a day of, of those
+they can still see. Training on a workout makes it current; nobody chooses it, and a session without
+a plan leaves it as it was.
 _Avoid_: active plan, selected workout
 
 **Next day**:

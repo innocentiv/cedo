@@ -134,6 +134,8 @@ export const WorkoutSessionSummary = WorkoutSession.omit({ logs: true }).extend(
    * work: `setCount` says that. See GLOSSARY.md, "Weight lifted".
    */
   liftedG: z.int().nonnegative(),
+  /** The personal bests it set (GLOSSARY.md), judged as its own read judges them (#25). */
+  personalBests: z.int().nonnegative(),
 })
 export type WorkoutSessionSummary = z.output<typeof WorkoutSessionSummary>
 

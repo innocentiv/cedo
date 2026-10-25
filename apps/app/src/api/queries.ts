@@ -27,6 +27,7 @@ import type {
   WorkoutPlanInput,
   WorkoutQuery,
   SessionDetail,
+  Today,
   WorkoutSessionSummary,
   WorkoutSummary,
 } from '@cedo/contract'
@@ -102,6 +103,14 @@ export function useSessions(
   return useQuery({
     queryKey: keys.sessionList(query),
     queryFn: async () => await api.sessions.list(query),
+  })
+}
+
+/** The first screen's one read (#25), for the week starting `weekStart` in the reader's own time. */
+export function useToday(weekStart: string): UseQueryResult<Today> {
+  return useQuery({
+    queryKey: keys.today(weekStart),
+    queryFn: async () => await api.today.get({ weekStart }),
   })
 }
 

@@ -44,8 +44,16 @@ export const READS = {
    * it alone.
    */
   sessionTargets: { of: 'workout', embeds: ['exercise', 'group'] },
-  /** Each session names its workout and day. */
-  sessionList: { of: 'session', embeds: ['workout', 'group'] },
+  /**
+   * Each session names its workout and day, and counts its personal bests — judged by each
+   * exercise's tracking mode, as far as the reader can see the exercise (#25).
+   */
+  sessionList: { of: 'session', embeds: ['exercise', 'workout', 'group'] },
+  /**
+   * The first screen (#25): the session in progress and this week's — sessions — and the next day
+   * of the current workout, by name and its exercises' names.
+   */
+  today: { of: 'session', embeds: ['exercise', 'workout', 'group'] },
   /**
    * Each logged set names its exercise and how it is measured. And the session points into its
    * plan — a workout, a day, an entry per set — which a plan save or delete can set to null.

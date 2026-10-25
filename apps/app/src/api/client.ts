@@ -25,6 +25,8 @@ import {
   ProgressionSuggestion,
   SessionDetail,
   type SessionQuery,
+  Today,
+  type TodayQuery,
   type SessionStart,
   type SessionUpdate,
   type SetLogUpdate,
@@ -167,6 +169,11 @@ const sessions = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
     await PATCH(`/sessions/${id}/logs/${logId}`, SetLog, body),
 })
 
+/** What to do next (#25): the session in progress, the next day, this week. */
+const today = ({ GET }: Verbs) => ({
+  get: async (query: TodayQuery) => await GET('/today', Today, asQuery(query)),
+})
+
 const groups = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
   list: async () => await GET('/groups', z.array(GroupMembership)),
   create: async (body: GroupCreate) => await POST('/groups', GroupMembership, body),
@@ -200,6 +207,7 @@ export function createApi(request: SendRequest) {
     exercises: exercises(v),
     workouts: workouts(v),
     sessions: sessions(v),
+    today: today(v),
     groups: groups(v),
     media: media(v),
     tokens: tokens(v),
