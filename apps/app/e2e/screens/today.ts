@@ -24,4 +24,37 @@ export const today = (page: Page) => ({
     )
     return Array.isArray(titles) ? titles.map(String) : []
   },
+  /** The next day Today offers to start — null when it offers none. */
+  nextDay: async (): Promise<string | null> => {
+    await page.waitFor('today-screen')
+    await page.until(
+      async () => (await page.shown('today-next')) || (await page.shown('today-start')),
+      (either) => either,
+    )
+    return await page.text('today-next-day')
+  },
+  /** Starts the next day, in one tap, and waits for its session. */
+  startNext: async (): Promise<void> => {
+    await page.click('[data-testid="today-start-next"]')
+    await page.waitFor('session-screen')
+  },
+  /** "2 sessions this week": the count, as the strip's heading says it. */
+  weekCount: async (): Promise<string | null> => {
+    await page.waitFor('today-week-count')
+    return await page.text('today-week-count')
+  },
+  /** Opens the history row at `index`, newest first: its session's summary. */
+  open: async (index: number): Promise<void> => {
+    await page.evaluate(
+      `[...document.querySelectorAll('[data-testid^="session-row-"]')].filter((e) => e.offsetParent != null)[${String(index)}].click()`,
+    )
+    await page.waitFor('session-finished')
+  },
+  /** Each history row as it reads, its lines joined: `A | Sat 25 Oct · 0 min · 1 set | PB`. */
+  rows: async (): Promise<string[]> => {
+    const rows = await page.evaluate(
+      `[...document.querySelectorAll('[data-testid^="session-row-"]')].filter((e) => e.offsetParent != null).map((e) => e.innerText.split('\\n').map((l) => l.trim()).filter(Boolean).join(' | '))`,
+    )
+    return Array.isArray(rows) ? rows.map(String) : []
+  },
 })

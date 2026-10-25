@@ -25,7 +25,8 @@ export function SessionHeader({
   readonly startedAt: string
   readonly endedAt: string | null
   readonly onBack: () => void
-  readonly onMenu: () => void
+  /** None once finished: what the menu held — notes, Finish — is on the summary, or done. */
+  readonly onMenu?: (() => void) | undefined
   readonly testID: string
 }): React.JSX.Element {
   const insets = useSafeAreaInsets()
@@ -50,14 +51,16 @@ export function SessionHeader({
         <Text variant="mono" tone="muted" testID={`${testID}-elapsed`}>
           {formatDuration(elapsed)}
         </Text>
-        <IconButton
-          name="more"
-          label="Session menu"
-          edge="end"
-          tone="default"
-          onPress={onMenu}
-          testID={`${testID}-menu`}
-        />
+        {onMenu === undefined ? null : (
+          <IconButton
+            name="more"
+            label="Session menu"
+            edge="end"
+            tone="default"
+            onPress={onMenu}
+            testID={`${testID}-menu`}
+          />
+        )}
       </Stack>
     </View>
   )

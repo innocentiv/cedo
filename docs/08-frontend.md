@@ -244,6 +244,24 @@ duration, sets and personal bests; tapping one opens its summary, its sets by ex
 notes, which stay editable. The screen reads `GET /today` — the session in progress, the current
 workout and its next day, the week — rather than joining reads to decide them.
 
+As built (#25), on a phone top to bottom, on a desktop in two `Columns`:
+
+- **What to do now** — one card. The next day: its workout, its name large, its exercises, and
+  Start {day}, yellow; Another day opens the workout. With a session in progress, the card is that
+  session and Resume instead, and the return bar is not shown on Today: the card says it, larger.
+  With no current workout, Choose a workout. Log without a plan sits under the card, quiet.
+- **The week** — "3 sessions this week" over a strip of seven days, Monday first (`WeekStrip`):
+  a day trained filled, today ringed in chalk. No plate colour: a day trained is a fact, not a
+  state to act on.
+- **History** — by week ("This week", "Last week", "Week of 6 Oct"), each row its day, `Thu 23 Oct ·
+  52 min · 18 sets`, and its personal bests in green as the gym says them, `PB` or `3 PBs`.
+- **A finished session** — its date, time, working sets and bests; its notes written in place, kept
+  as the field is left; its sets by exercise, a best marked `PB`. The menu is gone once finished:
+  what it held is on the page, or done.
+
+The app says where its week starts (`startOfWeek`, local Monday); the server cannot know the
+reader's time zone. Weeks and lines are the contract's `week.ts`.
+
 ### Editing a workout
 
 The workout's page is its outline: days, and each entry one line — "Barbell Back Squat · 5 × 5 ·

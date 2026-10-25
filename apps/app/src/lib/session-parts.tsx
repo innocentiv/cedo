@@ -1,5 +1,5 @@
 import type { LoggedExercise, SessionDay, SessionExercise, SetLog } from '@cedo/contract'
-import { formatWithReserve, loggedLabel } from '@cedo/contract'
+import { byExercise, formatWithReserve, loggedLabel, loggedTitle } from '@cedo/contract'
 import { useUnsentSets } from '../api/session-queries.ts'
 import { useWeightUnit } from './weight-unit.ts'
 import { exerciseName } from './exercise-name.ts'
@@ -111,6 +111,41 @@ export function LoggedSets({
           }
           testID={`logged-set-${log.id}`}
         />
+      ))}
+    </Stack>
+  )
+}
+
+/**
+ * A finished session's sets by exercise (#25), each exercise once in the order first done: how it
+ * is read back. Its personal bests marked green, as they were when logged. Nothing to undo: finishing
+ * is final.
+ */
+export function SetsByExercise({ logs }: { readonly logs: readonly SetLog[] }): React.JSX.Element {
+  const unit = useWeightUnit()
+  return (
+    <Stack gap="xl" testID="session-logs">
+      {byExercise(logs).map((sets) => (
+        <Stack key={sets[0]?.exerciseId} gap="xs">
+          <Text variant="label" tone="muted">
+            {exerciseName(sets[0]?.exercise ?? null)}
+          </Text>
+          {sets.map((log) => (
+            <ListRow
+              key={log.id}
+              title={loggedTitle(log, logs)}
+              subtitle={formatWithReserve(log, log.exercise?.tracking ?? null, unit)}
+              accessory={
+                log.personalBest ? (
+                  <Text variant="label" tone="best">
+                    PB
+                  </Text>
+                ) : undefined
+              }
+              testID={`logged-set-${log.id}`}
+            />
+          ))}
+        </Stack>
       ))}
     </Stack>
   )

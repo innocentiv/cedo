@@ -75,6 +75,8 @@ export interface InputProps {
   readonly multiline?: boolean
   readonly invalid?: boolean
   readonly onSubmitEditing?: (() => void) | undefined
+  /** When the field is left: where a text kept as it is written is saved. */
+  readonly onBlur?: (() => void) | undefined
   readonly testID?: string | undefined
 }
 
@@ -88,6 +90,7 @@ export function Input({
   multiline = false,
   invalid = false,
   onSubmitEditing,
+  onBlur,
   testID,
 }: InputProps): React.JSX.Element {
   return (
@@ -103,6 +106,7 @@ export function Input({
       autoCorrect={false}
       multiline={multiline}
       onSubmitEditing={onSubmitEditing}
+      onBlur={onBlur}
       submitBehavior={multiline ? 'newline' : 'blurAndSubmit'}
       style={[styles.input, multiline ? styles.multiline : null, invalid ? styles.invalid : null]}
     />

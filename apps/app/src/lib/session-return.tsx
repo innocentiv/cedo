@@ -18,7 +18,8 @@ export function SessionReturn({
   const pathname = usePathname()
   const router = useRouter()
   const open = useSessions({ inProgress: true, limit: 1 }).data?.items[0]
-  if (open === undefined || onWorkout(pathname)) return null
+  // Today says it itself, larger: the session in progress is its first thing (#25).
+  if (open === undefined || onWorkout(pathname) || pathname === '/today') return null
   return (
     <ReturnBar
       title={open.dayName ?? 'Session in progress'}

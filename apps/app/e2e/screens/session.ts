@@ -199,9 +199,17 @@ export const session = (page: Page) => {
     },
     /** Whether the screen says every set of the day is logged, offering Finish in Log's place. */
     dayDone: async (): Promise<boolean> => await page.shown('day-done'),
-    /** Back to the session left open, from anywhere else: the bar that follows it (#24). */
+    /**
+     * Back to the session left open: the bar that follows it everywhere (#24) — but on Today, which
+     * says it itself, larger, with Resume (#25).
+     */
     returnTo: async (): Promise<void> => {
-      await page.click('[data-testid="session-return"]')
+      await page.until(
+        async () => (await page.shown('session-return')) || (await page.shown('resume-session')),
+        (either) => either,
+      )
+      const onToday = await page.shown('resume-session')
+      await page.click(`[data-testid="${onToday ? 'resume-session' : 'session-return'}"]`)
       await shown()
     },
     /**
@@ -215,6 +223,12 @@ export const session = (page: Page) => {
       await page.click('[data-testid="session-header-menu"]')
       await page.fill('session-notes', text)
       await page.click('[data-testid="session-menu-close"]')
+    },
+    /** Writes a finished session's note on its summary, and leaves the field: nothing to save (#25). */
+    noteOnSummary: async (text: string): Promise<void> => {
+      await page.waitFor('session-finished')
+      await page.fill('session-notes', text)
+      await page.click('[data-testid="session-finished"]')
     },
     /** Navigates to the session by its URL — a reload, a shared link, coming back to the tab. */
     reopen: async (): Promise<void> => {

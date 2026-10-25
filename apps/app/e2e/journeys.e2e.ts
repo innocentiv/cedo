@@ -903,6 +903,67 @@ test(
 )
 
 /**
+ * What to do next (#25): the day after the one trained last, one tap from opening the app — and the
+ * history beside it, by week, a session's personal bests said on its row.
+ */
+test(
+  'Today offers the next day of the current workout, and starts it in one tap',
+  async () => {
+    await withApp('today-next', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('next'))
+      const mine = await page.client()
+      const [squat] = (await mine.exercises.list({ q: 'Back Squat', limit: 1 })).items
+      if (squat === undefined) throw new Error('The library has no squat')
+      const day = (name: string) => ({
+        name,
+        entries: [{ exerciseId: squat.id, sets: [{ targetReps: 5, targetWeightG: 100_000 }] }],
+      })
+      const plan = await mine.workouts.create({ name: 'Two days', notes: null })
+      const saved = await mine.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({ days: [day('Heavy'), day('Light')] }),
+      )
+      // Trained twice, Heavy both times: a heavier squat the second time is a personal best.
+      for (const kg of [100, 105]) {
+        // oxlint-disable-next-line no-await-in-loop -- one session at a time.
+        const session = await mine.sessions.start({
+          workoutId: plan.id,
+          dayId: saved.days[0]?.id ?? null,
+        })
+        // oxlint-disable-next-line no-await-in-loop -- in order.
+        await mine.sessions.logSet(session.id, {
+          exerciseId: squat.id,
+          entryId: null,
+          weightG: kg * 1000,
+          reps: 5,
+          rpe: null,
+          durationS: null,
+          distanceMm: null,
+          isWarmup: false,
+        })
+        // oxlint-disable-next-line no-await-in-loop -- finished before the next can start.
+        await mine.sessions.update(session.id, { endedAt: new Date().toISOString() })
+      }
+
+      // Trained from the test process, which this app's cache cannot know of: opened afresh.
+      await page.goto('/today')
+      expect(await app.today.nextDay()).toBe('Light')
+      expect(await app.today.weekCount()).toBe('2 sessions this week')
+      const rows = await app.today.rows()
+      expect(rows).toHaveLength(2)
+      expect(rows[0]).toMatch(/^Heavy \| .* · 1 set \| PB$/u)
+      expect(rows[1]).not.toContain('PB')
+
+      await app.today.startNext()
+      const [open] = (await mine.sessions.list({ inProgress: true, limit: 1 })).items
+      expect(open?.dayName).toBe('Light')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * The session's two ways out, told apart (#24 review): its menu's note is kept as the menu closes —
  * there is no Save to forget — and the header's back leaves it in progress, one tap from coming back.
  */
@@ -928,6 +989,16 @@ test(
       expect((await mine.sessions.get(id)).endedAt).toBeNull()
       await app.session.returnTo()
       expect(await app.session.id()).toBe(id)
+
+      // Finished, its note is written on its summary, opened from history (#25).
+      await app.session.finish()
+      await app.nav.tab('today')
+      await app.today.open(0)
+      await app.session.noteOnSummary('Felt strong, go up next time')
+      await page.until(
+        async () => (await mine.sessions.get(id)).notes,
+        (notes) => notes === 'Felt strong, go up next time',
+      )
     })
   },
   E2E_TIMEOUT_MS,
@@ -1223,7 +1294,7 @@ test(
       await app.nav.tab('today')
       await page.until(
         app.today.history,
-        (titles) => titles.join() === 'Ad-hoc session',
+        (titles) => titles.join() === 'Without a plan',
         BEFORE_STALE_MS,
       )
       expect(await app.workouts.listed('all')).toEqual([])

@@ -41,7 +41,7 @@ export default function LiveSession(): React.JSX.Element {
           startedAt={session.data.startedAt}
           endedAt={session.data.endedAt}
           onBack={goBack}
-          onMenu={w.menu.show}
+          onMenu={w.ended ? undefined : w.menu.show}
           testID="session-header"
         />
       }
