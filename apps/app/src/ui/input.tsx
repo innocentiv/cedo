@@ -42,22 +42,30 @@ export function Field({ label, error, hint, children }: FieldProps): React.JSX.E
 }
 
 /**
- * A small caption over a numeric control, for rows of numbers side by side: a set's targets, the
- * logger's inputs, a progression's increments. Labels are lowercase, like the units beside them.
+ * A small caption over a numeric control, for rows of numbers side by side: a set's targets, a
+ * progression's increments. Labels are lowercase, like the units beside them. `under`: the caption
+ * centred beneath a number shown large — the logger's — so the number, not its unit, is level with
+ * the − and + either side of it.
  */
 export function CompactField({
   label,
+  under = false,
   children,
 }: {
   readonly label: string
+  readonly under?: boolean
   readonly children: React.ReactNode
 }): React.JSX.Element {
+  const caption = (
+    <Text variant="caption" tone="faint" align={under ? 'center' : 'left'}>
+      {label}
+    </Text>
+  )
   return (
     <Stack gap="xs" grow>
-      <Text variant="caption" tone="faint">
-        {label}
-      </Text>
+      {under ? null : caption}
       {children}
+      {under ? caption : null}
     </Stack>
   )
 }
@@ -199,7 +207,8 @@ const styles = StyleSheet.create({
   },
   invalid: { borderColor: color.danger },
   large: {
-    minHeight: type.display.lineHeight + space.md,
+    height: type.display.lineHeight,
+    paddingVertical: 0,
     fontSize: type.display.fontSize,
     fontFamily: type.display.fontFamily,
     backgroundColor: 'transparent',

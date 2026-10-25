@@ -4,10 +4,12 @@
  */
 export { Button, type ButtonVariant } from './button.tsx'
 export { Card, ListRow } from './card.tsx'
+export { Columns } from './columns.tsx'
 export { type ChipOption, Chips } from './chips.tsx'
 export { ConfirmButton } from './confirm-button.tsx'
 export { DayEditor } from './day-editor.tsx'
 export { EntryEditor } from './entry-editor.tsx'
+export { Icon, IconButton, type IconName } from './icon.tsx'
 export { MusclePicker } from './muscle-picker.tsx'
 export { NavButton } from './nav-button.tsx'
 export { NavItem } from './nav-item.tsx'
@@ -28,16 +30,18 @@ export { SetMarks } from './set-marks.tsx'
 export { Sheet } from './sheet.tsx'
 export { Stepper } from './stepper.tsx'
 export { Thumbnail } from './thumbnail.tsx'
-export { UpNext, type UpNextItem } from './up-next.tsx'
+export { AddRow, UpNext, type UpNextItem } from './up-next.tsx'
 export { Stack } from './stack.tsx'
 export { Text, type Tone } from './text.tsx'
 export {
   CONTENT_MAX_WIDTH,
   CONTROL_HEIGHT,
+  ICON_SIZE,
   LOG_CONTROL_HEIGHT,
   MARK_SIZE,
   ROW_HEIGHT,
   TABLET_MIN_WIDTH,
+  WIDE_CONTENT_MAX_WIDTH,
   color,
   radius,
   space,

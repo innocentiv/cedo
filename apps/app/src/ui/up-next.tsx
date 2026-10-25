@@ -1,5 +1,6 @@
 import { Pressable, StyleSheet, View } from 'react-native'
 import { bySuperset } from '@cedo/contract'
+import { Icon } from './icon.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 import { ROW_HEIGHT, color, radius, space, stroke } from './tokens.ts'
@@ -86,12 +87,45 @@ export function UpNext({
   )
 }
 
+/**
+ * The last line of a list: one more for it — an exercise added to the day. A line of the list it
+ * adds to, quiet, not a button laid over the screen.
+ */
+export function AddRow({
+  title,
+  onPress,
+  testID,
+}: {
+  readonly title: string
+  readonly onPress: () => void
+  readonly testID: string
+}): React.JSX.Element {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      testID={testID}
+      style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}
+    >
+      <Icon name="plus" tone="muted" />
+      <Text variant="label" tone="muted">
+        {title}
+      </Text>
+    </Pressable>
+  )
+}
+
 const styles = StyleSheet.create({
+  /**
+   * Bled into the screen's gutter: the name lines up with every other line of text on the screen,
+   * and the current row's ground reaches past it.
+   */
   row: {
     minHeight: ROW_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
+    marginHorizontal: -space.md,
     paddingHorizontal: space.md,
     borderRadius: radius.md,
   },

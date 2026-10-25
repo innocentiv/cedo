@@ -101,8 +101,10 @@ export default function AppLayout(): React.JSX.Element {
             <NavItem label={tab.label} horizontal={!tablet} />
           </TabTrigger>
         ))}
+        {/* The navigator reads only the triggers in here; anything else is just drawn. */}
+        {tablet ? <SessionReturn inSidebar /> : null}
       </TabList>
-      <SessionReturn />
+      {tablet ? null : <SessionReturn />}
       <TabSlot />
     </Tabs>
   )

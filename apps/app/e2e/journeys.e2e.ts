@@ -903,6 +903,37 @@ test(
 )
 
 /**
+ * The session's two ways out, told apart (#24 review): its menu's note is kept as the menu closes —
+ * there is no Save to forget — and the header's back leaves it in progress, one tap from coming back.
+ */
+test(
+  'a note is kept as the menu closes, and back leaves the session going',
+  async () => {
+    await withApp('notes-on-close', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('notes'))
+      await app.session.startAdhoc()
+      await app.session.adhoc(await app.session.addExercise('Bench')).log()
+      const id = await app.session.id()
+      const mine = await page.client()
+
+      await app.session.note('Felt strong')
+      await page.until(
+        async () => (await mine.sessions.get(id)).notes,
+        (notes) => notes === 'Felt strong',
+      )
+
+      await app.session.back()
+      await app.nav.onToday()
+      expect((await mine.sessions.get(id)).endedAt).toBeNull()
+      await app.session.returnTo()
+      expect(await app.session.id()).toBe(id)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * An unavailable exercise: the plan is still yours, one of its exercises no longer is. Its logger
  * offered weight-and-reps fields — to a plank — and a Log button the server refused; its editor
  * offered the same fields, and a Save the server refused. See GLOSSARY.md, "Unavailable exercise".

@@ -1,5 +1,6 @@
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
+import { IconButton } from './icon.tsx'
 import { ReserveChips } from './reserve-chips.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
@@ -35,33 +36,42 @@ export function LastSet({
 }): React.JSX.Element {
   return (
     <Card testID={testID}>
-      <Stack gap="sm">
-        <Stack direction="row" align="center" gap="md">
+      <Stack gap="md">
+        <Stack direction="row" align="center" gap="sm">
           <Stack grow gap="xs">
-            <Text variant="caption" tone="muted">
+            <Text variant="caption" tone="muted" numberOfLines={1}>
               {title}
             </Text>
-            <Text variant="number" testID={`${testID}-effort`}>
-              {effort}
-            </Text>
+            <Stack direction="row" align="baseline" gap="md" wrap>
+              <Text variant="number" testID={`${testID}-effort`}>
+                {effort}
+              </Text>
+              {best ? (
+                <Text variant="label" tone="best" testID={`${testID}-best`}>
+                  Personal best
+                </Text>
+              ) : null}
+            </Stack>
           </Stack>
           {onAnother === undefined ? null : (
             <Button
               title="+ set"
               variant="secondary"
+              size="small"
               onPress={onAnother}
               testID={`${testID}-another`}
             />
           )}
           {onUndo === null ? null : (
-            <Button title="Undo" variant="ghost" onPress={onUndo} testID={`${testID}-undo`} />
+            <IconButton
+              name="undo"
+              label="Undo this set"
+              edge="end"
+              onPress={onUndo}
+              testID={`${testID}-undo`}
+            />
           )}
         </Stack>
-        {best ? (
-          <Text variant="label" tone="best" testID={`${testID}-best`}>
-            Personal best
-          </Text>
-        ) : null}
         {waiting ? (
           <Text variant="caption" tone="muted" testID={`${testID}-waiting`}>
             Waiting for a signal — kept, and sent when it is back.
@@ -69,7 +79,7 @@ export function LastSet({
         ) : null}
         {reserve === null ? null : (
           <ReserveChips
-            label="How many more could you have done?"
+            label="Reps in reserve"
             rpe={reserve.rpe}
             onChange={reserve.onChange}
             testID={`${testID}-reserve`}

@@ -11,8 +11,11 @@ export interface ButtonProps {
   readonly disabled?: boolean
   readonly busy?: boolean
   readonly grow?: boolean
-  /** `large` where a set is logged: a thumb, between sets, without looking. */
-  readonly size?: 'regular' | 'large'
+  /**
+   * `large` where a set is logged: a thumb, between sets, without looking. `small` beside other
+   * content in a row — +30 s on the rest — a pill a step shorter, still a full control to hit.
+   */
+  readonly size?: 'small' | 'regular' | 'large'
   readonly testID?: string | undefined
 }
 
@@ -36,12 +39,13 @@ export function Button({
       accessibilityRole="button"
       accessibilityState={{ disabled: inert, busy }}
       disabled={inert}
+      hitSlop={size === 'small' ? SMALL_SLOP : undefined}
       onPress={onPress}
       style={({ pressed }) => [
         styles.base,
         VARIANT[variant],
         grow ? styles.grow : null,
-        size === 'large' ? styles.large : null,
+        size === 'regular' ? null : styles[size],
         pressed ? styles.pressed : null,
         inert ? styles.inert : null,
       ]}
@@ -56,6 +60,9 @@ export function Button({
     </Pressable>
   )
 }
+
+const SMALL_HEIGHT = CONTROL_HEIGHT - space.md
+const SMALL_SLOP = { top: space.md / 2, bottom: space.md / 2 }
 
 const TONE = { secondary: 'default', ghost: 'muted', danger: 'danger' } as const
 
@@ -76,6 +83,7 @@ const styles = StyleSheet.create({
   },
   grow: { flex: 1 },
   large: { minHeight: LOG_CONTROL_HEIGHT, borderRadius: radius.lg },
+  small: { minHeight: SMALL_HEIGHT, paddingHorizontal: space.md, borderRadius: radius.pill },
   pressed: { opacity: 0.75 },
   inert: { opacity: 0.45 },
 })

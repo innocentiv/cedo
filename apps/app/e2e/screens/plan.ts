@@ -29,7 +29,7 @@ const planEntry = (page: Page, id: string) => ({
   cue: async (text: string): Promise<void> => {
     await page.fill(`${id}-cue`, text)
   },
-  /** The reps to leave in reserve, as offered: `2`, `1.5`, or `none`. */
+  /** The reps to leave in reserve, as offered: `0` to `5`. */
   reserve: async (reps: string): Promise<void> => {
     await page.click(`[data-testid="${id}-reserve-${reps}"]`)
   },

@@ -34,13 +34,16 @@ const logger = (page: Page, id: string, choose: string) => {
     await page.click(`[data-testid="${choose}"]`)
     await page.waitFor(id)
   }
-  /** The reserve offered on the set just logged, as chosen — `none`; null when none is asked. */
+  /**
+   * The reserve offered on the set just logged, as chosen — `1`, or `none` when nothing is said yet;
+   * null when none is asked.
+   */
   const reserveChosen = async (): Promise<string | null> => {
     if (!(await page.shown('last-set-reserve'))) return null
     const chosen = await page.evaluate(
       `document.querySelector('[data-testid^="last-set-reserve-"][aria-selected="true"]')?.dataset.testid ?? null`,
     )
-    return typeof chosen === 'string' ? chosen.slice('last-set-reserve-'.length) : null
+    return typeof chosen === 'string' ? chosen.slice('last-set-reserve-'.length) : 'none'
   }
   return {
     /** On a bodyweight movement: whether the weight is added load or assistance (#19). */
@@ -89,8 +92,8 @@ const logger = (page: Page, id: string, choose: string) => {
       return await page.text(`${id}-last`)
     },
     /**
-     * Says how many reps were left in the set just logged, as offered — `1`, `1.5`, or `none` — and
-     * waits until the server has it: asked after a set, not before (#24).
+     * Says how many reps were left in the set just logged, as offered — `0` to `5` — and waits until
+     * the server has it: asked after a set, not before (#24).
      */
     reserve: async (reps: string): Promise<void> => {
       await page.click(`[data-testid="last-set-reserve-${reps}"]`)
@@ -201,6 +204,18 @@ export const session = (page: Page) => {
       await page.click('[data-testid="session-return"]')
       await shown()
     },
+    /**
+     * Leaves the session with its header's back, in progress: only Finish ends it (#24 review).
+     */
+    back: async (): Promise<void> => {
+      await page.click('[data-testid="session-header-back"]')
+    },
+    /** Writes the session's note in its menu, and closes the menu: there is no Save to tap. */
+    note: async (text: string): Promise<void> => {
+      await page.click('[data-testid="session-header-menu"]')
+      await page.fill('session-notes', text)
+      await page.click('[data-testid="session-menu-close"]')
+    },
     /** Navigates to the session by its URL — a reload, a shared link, coming back to the tab. */
     reopen: async (): Promise<void> => {
       await page.goto(String(await page.evaluate('location.pathname')))
@@ -255,9 +270,9 @@ export const session = (page: Page) => {
         (rows) => rows === 0,
       )
     },
-    /** Undoes a logged set by its row's id. */
+    /** Undoes a logged set by its row's id, with the row's undo. */
     undo: async (rowId: string): Promise<void> => {
-      await page.click(`[data-testid="${rowId}"]`)
+      await page.click(`[data-testid="${rowId.replace(/^logged-set-/u, 'undo-set-')}"]`)
     },
 
     /** Whether Finish is offered: in the day's place once all is logged, else in the menu. */

@@ -1,6 +1,6 @@
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { CONTENT_MAX_WIDTH, color, space } from './tokens.ts'
+import { CONTENT_MAX_WIDTH, WIDE_CONTENT_MAX_WIDTH, color, space } from './tokens.ts'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
@@ -12,6 +12,8 @@ export interface ScreenProps {
   /** Pinned to the top, outside the scroll area, in place of the title — a session's own header. */
   readonly header?: React.ReactNode | undefined
   readonly scroll?: boolean
+  /** Room for two `Columns` side by side on a desktop; one column on a phone either way. */
+  readonly wide?: boolean
   readonly testID?: string | undefined
 }
 
@@ -25,6 +27,7 @@ export function Screen({
   footer,
   header,
   scroll = true,
+  wide = false,
   testID,
 }: ScreenProps): React.JSX.Element {
   const insets = useSafeAreaInsets()
@@ -43,17 +46,25 @@ export function Screen({
       {header}
       {scroll ? (
         <ScrollView
-          contentContainerStyle={styles.content}
+          contentContainerStyle={[styles.content, wide ? styles.wide : null]}
           keyboardShouldPersistTaps="handled"
           testID="screen-scroll"
         >
           {body}
         </ScrollView>
       ) : (
-        <View style={styles.content}>{body}</View>
+        <View style={[styles.content, wide ? styles.wide : null]}>{body}</View>
       )}
       {footer === undefined ? null : (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + space.md }]}>{footer}</View>
+        <View
+          style={[
+            styles.footer,
+            wide ? styles.wide : null,
+            { paddingBottom: insets.bottom + space.md },
+          ]}
+        >
+          {footer}
+        </View>
       )}
     </View>
   )
@@ -74,6 +85,7 @@ const styles = StyleSheet.create({
     maxWidth: CONTENT_MAX_WIDTH,
     alignSelf: 'center',
   },
+  wide: { maxWidth: WIDE_CONTENT_MAX_WIDTH },
   footer: {
     width: '100%',
     maxWidth: CONTENT_MAX_WIDTH,

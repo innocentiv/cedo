@@ -2,10 +2,8 @@ import { useState } from 'react'
 import { type Exercise, musclesByLoad } from '@cedo/contract'
 import { apiUrl } from '../api/http.ts'
 import {
-  Button,
   ConfirmButton,
   Field,
-  FormError,
   Input,
   NavButton,
   Sheet,
@@ -62,9 +60,11 @@ export function HowTo({
 }
 
 /**
- * The session's menu (#24): its notes; Finish, asked twice — finishing is final; and leaving it
- * open for later, the session kept in progress. Finish is also offered in the Log button's place
- * once every set of the day is logged.
+ * The session's menu (#24): its notes, kept as the menu closes — nothing to save, nothing to lose by
+ * closing — and Finish, asked twice, finishing being final. Leaving the session open is the
+ * header's back, not a choice in here: a menu of Close beside Leave it open asked the athlete to tell
+ * two ways out apart. Finish is also offered in the Log button's place once every set of the day is
+ * logged.
  */
 export function WorkoutMenu({
   open,
@@ -73,7 +73,6 @@ export function WorkoutMenu({
   notes,
   onSaveNotes,
   onFinish,
-  onLeave,
   busy,
   error,
 }: {
@@ -83,13 +82,18 @@ export function WorkoutMenu({
   readonly notes: string | null
   readonly onSaveNotes: (notes: string | null) => Promise<void>
   readonly onFinish: () => Promise<void>
-  readonly onLeave: () => void
   readonly busy: boolean
   readonly error: string | null
 }): React.JSX.Element {
   const [draft, setDraft] = useState(notes ?? '')
+  const close = () => {
+    const said = draft.trim() === '' ? null : draft.trim()
+    // A refusal is said on the workout, where the athlete is once this closes (`session-error`).
+    if (said !== notes) void onSaveNotes(said)
+    onClose()
+  }
   return (
-    <Sheet open={open} onClose={onClose} title="Session" testID="session-menu">
+    <Sheet open={open} onClose={close} title="Session" testID="session-menu">
       <Field label="Notes">
         <Input
           value={draft}
@@ -99,31 +103,14 @@ export function WorkoutMenu({
           testID="session-notes"
         />
       </Field>
-      <Button
-        title="Save notes"
-        variant="secondary"
-        busy={busy}
-        onPress={() => {
-          void onSaveNotes(draft.trim() === '' ? null : draft.trim())
-        }}
-        testID="session-notes-save"
-      />
-      <FormError message={error} testID="session-menu-error" />
       {ended ? null : (
-        <Stack gap="sm">
-          <ConfirmButton
-            title="Finish session"
-            busy={busy}
-            onConfirm={onFinish}
-            testID="finish-session"
-          />
-          <Button
-            title="Leave it open for later"
-            variant="ghost"
-            onPress={onLeave}
-            testID="leave-session-open"
-          />
-        </Stack>
+        <ConfirmButton
+          title="Finish session"
+          busy={busy}
+          error={error}
+          onConfirm={onFinish}
+          testID="finish-session"
+        />
       )}
     </Sheet>
   )

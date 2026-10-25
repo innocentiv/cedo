@@ -45,17 +45,21 @@ export function DimensionInput({
     setRemembered(assistance.remembered(next, assisted))
     onChange(next)
   }
+  const caption = label ?? field.unit(tracking, assisted)
+  const input = (
+    <TypedNumber
+      value={canAssist ? assistance.shown(value) : value}
+      onChange={(typed) => {
+        change(canAssist ? assistance.stored(typed, assisted) : typed)
+      }}
+      typing={field}
+      size={size}
+      testID={testID}
+    />
+  )
   return (
-    <CompactField label={label ?? field.unit(tracking, assisted)}>
-      <TypedNumber
-        value={canAssist ? assistance.shown(value) : value}
-        onChange={(typed) => {
-          change(canAssist ? assistance.stored(typed, assisted) : typed)
-        }}
-        typing={field}
-        size={size}
-        testID={testID}
-      />
+    <CompactField label={caption} under={size === 'large'}>
+      {input}
       {canAssist ? (
         <Chips
           options={ASSISTANCE}

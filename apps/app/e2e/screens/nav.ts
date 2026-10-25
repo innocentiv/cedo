@@ -10,12 +10,11 @@ type Tab = 'today' | 'workouts' | 'exercises' | 'settings'
 export const nav = (page: Page) => ({
   /**
    * Switches tab. A session in progress has the app to itself (#24), so from its screen this leaves
-   * it open first — its menu's Leave it open for later — as an athlete would.
+   * it open first — its header's back — as an athlete would.
    */
   tab: async (tab: Tab): Promise<void> => {
-    if (!(await page.shown(`nav-${tab}`)) && (await page.shown('session-header-menu'))) {
-      await page.click('[data-testid="session-header-menu"]')
-      await page.click('[data-testid="leave-session-open"]')
+    if (!(await page.shown(`nav-${tab}`)) && (await page.shown('session-header-back'))) {
+      await page.click('[data-testid="session-header-back"]')
       await page.until(
         async () => await page.shown(`nav-${tab}`),
         (shown) => shown,

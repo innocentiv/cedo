@@ -1,9 +1,10 @@
 import { Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CONTENT_MAX_WIDTH, color, radius, space } from './tokens.ts'
-import { Button } from './button.tsx'
+import { IconButton } from './icon.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
+import { useLayout } from './use-layout.ts'
 
 export interface SheetProps {
   readonly open: boolean
@@ -15,21 +16,37 @@ export interface SheetProps {
 
 /**
  * Something looked at without leaving where you are — how to do an exercise mid-set, a session's
- * menu. Rises from the bottom, under the thumb; a tap on the dimmed screen above, or Close, puts it
- * away. Never for a step of a flow: what is done in a sheet is done when it closes.
+ * menu. On a phone it rises from the bottom, under the thumb; on a desktop it opens in the middle,
+ * where the eye already is. A tap on the dimmed screen around it, or the × at the content's edge,
+ * puts it away. Never for a step of a flow: what is done in a sheet is done when it closes.
  */
 export function Sheet({ open, onClose, title, children, testID }: SheetProps): React.JSX.Element {
   const insets = useSafeAreaInsets()
+  const desk = useLayout() === 'tablet'
   return (
-    <Modal visible={open} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.backdrop}>
-        <Pressable style={styles.dismiss} onPress={onClose} accessibilityLabel="Close" />
-        <View testID={testID} style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }]}>
+    <Modal
+      visible={open}
+      transparent
+      animationType={desk ? 'fade' : 'slide'}
+      onRequestClose={onClose}
+    >
+      <View style={[styles.backdrop, desk ? styles.centred : null]}>
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Close" />
+        <View
+          testID={testID}
+          style={[styles.sheet, desk ? styles.dialog : { paddingBottom: insets.bottom + space.lg }]}
+        >
           <Stack direction="row" align="center" gap="md">
             <Stack grow>
               <Text variant="heading">{title}</Text>
             </Stack>
-            <Button title="Close" variant="ghost" onPress={onClose} testID={`${testID}-close`} />
+            <IconButton
+              name="close"
+              label="Close"
+              edge="end"
+              onPress={onClose}
+              testID={`${testID}-close`}
+            />
           </Stack>
           <ScrollView contentContainerStyle={styles.body}>{children}</ScrollView>
         </View>
@@ -40,7 +57,7 @@ export function Sheet({ open, onClose, title, children, testID }: SheetProps): R
 
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: 'flex-end', backgroundColor: color.scrim },
-  dismiss: { flex: 1 },
+  centred: { justifyContent: 'center', padding: space.xl },
   sheet: {
     width: '100%',
     maxWidth: CONTENT_MAX_WIDTH,
@@ -53,5 +70,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.lg,
     gap: space.md,
   },
+  dialog: { borderRadius: radius.lg, paddingBottom: space.lg },
   body: { gap: space.lg, paddingBottom: space.md },
 })

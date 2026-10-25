@@ -1,6 +1,7 @@
 import {
   type Exercise,
   NO_TARGET,
+  type Rest,
   type SessionExercise,
   adHocSetsOf,
   markedSets,
@@ -9,8 +10,8 @@ import {
   progressOf,
 } from '@cedo/contract'
 import type { PendingLog } from '../api/pending.ts'
-import { Button, FocusLogger, Stack, UpNext } from '../ui/index.ts'
-import { type Reopened, ShownSet } from './shown-set.tsx'
+import { AddRow, Columns, FocusLogger, Stack, UpNext } from '../ui/index.ts'
+import { JustDone, type Reopened, ShownSet } from './shown-set.tsx'
 import { useUntilNextSet } from './until-next-set.ts'
 import type { WorkoutSets } from './workout-state.ts'
 
@@ -37,15 +38,17 @@ export function adHocFocus(
 }
 
 /**
- * A session with no plan behind it (#24): the exercise in focus, the set shown above it, the others
- * below, and Add exercise. Nothing was prescribed, so there is always a next set until the athlete
+ * A session with no plan behind it (#24): what was just done and the exercise in focus, then the
+ * others, Add exercise, and every set — side by side on a desktop. Nothing was prescribed, so there is always a next set until the athlete
  * moves on.
  */
 export function AdHocDay({
   exercises,
   full,
   sets,
+  rest,
   added,
+  record,
   onAdd,
   onHowTo,
 }: {
@@ -54,7 +57,10 @@ export function AdHocDay({
   /** The exercises picked this open, whole: how to do them can be shown. */
   readonly full: readonly Exercise[]
   readonly sets: WorkoutSets
+  readonly rest: Rest | null
   readonly added: string | null
+  /** Every set the session holds, under its exercises. */
+  readonly record: React.ReactNode
   readonly onAdd: () => void
   readonly onHowTo: (exercise: Exercise) => void
 }): React.JSX.Element {
@@ -69,37 +75,48 @@ export function AdHocDay({
         null)
 
   return (
-    <Stack gap="xl" testID="session-adhoc">
-      <ShownSet
-        log={shown}
-        exercise={exercises.find((e) => e.id === shown?.exerciseId) ?? null}
-        sets={sets}
-      />
-      {focus === undefined ? null : (
-        <AdHocFocus
-          exercise={focus}
-          whole={full.find((e) => e.id === focus.id)}
-          sets={sets}
-          selected={reopened?.exerciseId === focus.id ? reopened.key : null}
-          onSelect={(key) => {
-            reopen({ entryId: null, exerciseId: focus.id, key })
-          }}
-          onHowTo={onHowTo}
-        />
-      )}
-      <AddedExercises
-        exercises={exercises}
-        sets={sets}
-        current={focus?.id ?? null}
-        onChoose={choose}
-      />
-      <Button
-        title="Add exercise"
-        variant="secondary"
-        onPress={onAdd}
-        testID="adhoc-add-exercise"
-      />
-    </Stack>
+    <Columns
+      testID="session-adhoc"
+      main={
+        <>
+          <JustDone rest={rest}>
+            {shown === null ? null : (
+              <ShownSet
+                log={shown}
+                exercise={exercises.find((e) => e.id === shown.exerciseId) ?? null}
+                sets={sets}
+              />
+            )}
+          </JustDone>
+          {focus === undefined ? null : (
+            <AdHocFocus
+              exercise={focus}
+              whole={full.find((e) => e.id === focus.id)}
+              sets={sets}
+              selected={reopened?.exerciseId === focus.id ? reopened.key : null}
+              onSelect={(key) => {
+                reopen({ entryId: null, exerciseId: focus.id, key })
+              }}
+              onHowTo={onHowTo}
+            />
+          )}
+        </>
+      }
+      side={
+        <>
+          <Stack gap="xs">
+            <AddedExercises
+              exercises={exercises}
+              sets={sets}
+              current={focus?.id ?? null}
+              onChoose={choose}
+            />
+            <AddRow title="Add exercise" onPress={onAdd} testID="adhoc-add-exercise" />
+          </Stack>
+          {record}
+        </>
+      }
+    />
   )
 }
 

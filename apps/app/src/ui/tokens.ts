@@ -104,6 +104,9 @@ export const CONTROL_HEIGHT = 48
 /** A row of a list: a thumb's height, and room for a name over a line of detail. */
 export const ROW_HEIGHT = 56
 
+/** A glyph (`icon.tsx`): drawn on a 24-point grid, shown at that size. */
+export const ICON_SIZE = 24
+
 /** One set's mark on the workout; a warm-up's is a step smaller. */
 export const MARK_SIZE = 40
 
@@ -115,3 +118,9 @@ export const LOG_CONTROL_HEIGHT = 56
  * not easier — a tablet gets more margin, not wider inputs.
  */
 export const CONTENT_MAX_WIDTH = 720
+
+/**
+ * A screen of two columns side by side (`Columns`) — the workout on a desktop: wider in all, each
+ * column still narrower than one column alone.
+ */
+export const WIDE_CONTENT_MAX_WIDTH = 1120

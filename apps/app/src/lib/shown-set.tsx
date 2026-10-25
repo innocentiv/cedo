@@ -1,6 +1,12 @@
-import { type LoggedExercise, asksReserveOf, formatEffort, loggedLabel } from '@cedo/contract'
+import {
+  type LoggedExercise,
+  type Rest,
+  asksReserveOf,
+  formatEffort,
+  loggedLabel,
+} from '@cedo/contract'
 import type { PendingLog } from '../api/pending.ts'
-import { LastSet } from '../ui/index.ts'
+import { LastSet, RestBand, Stack } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
 import type { WorkoutSets } from './workout-state.ts'
 import { useWeightUnit } from './weight-unit.ts'
@@ -11,6 +17,27 @@ export interface Reopened {
   readonly exerciseId: string
   /** The set's key among its entry's — or exercise's — sets (`SessionSet.key`). */
   readonly key: string
+}
+
+/**
+ * What was just done, as one group above the focus (#24 review): the rest it started, then the set.
+ * Nothing, before the first set.
+ */
+export function JustDone({
+  rest,
+  children,
+}: {
+  readonly rest: Rest | null
+  /** The set shown — null when there is none to show. */
+  readonly children: React.JSX.Element | null
+}): React.JSX.Element | null {
+  if (rest === null && children === null) return null
+  return (
+    <Stack gap="sm">
+      <RestBand rest={rest} testID="rest-band" />
+      {children}
+    </Stack>
+  )
 }
 
 /**

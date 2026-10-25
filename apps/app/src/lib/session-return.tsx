@@ -9,7 +9,12 @@ export const onWorkout = (pathname: string): boolean => pathname.startsWith('/to
  * The session in progress, followed everywhere but its own screen: one tap back to it (#24). Asked
  * only inside the signed-in shell — it is a read that needs the session's token.
  */
-export function SessionReturn(): React.JSX.Element | null {
+export function SessionReturn({
+  inSidebar = false,
+}: {
+  /** In a desktop's sidebar, under the tabs, rather than a bar over a phone's. */
+  readonly inSidebar?: boolean
+}): React.JSX.Element | null {
   const pathname = usePathname()
   const router = useRouter()
   const open = useSessions({ inProgress: true, limit: 1 }).data?.items[0]
@@ -18,6 +23,7 @@ export function SessionReturn(): React.JSX.Element | null {
     <ReturnBar
       title={open.dayName ?? 'Session in progress'}
       startedAt={open.startedAt}
+      inSidebar={inSidebar}
       onPress={() => {
         router.push(`/today/session/${open.id}`)
       }}

@@ -33,12 +33,14 @@ export default function LiveSession(): React.JSX.Element {
 
   return (
     <Screen
+      wide
       testID="session-screen"
       header={
         <SessionHeader
           title={w.day?.name ?? 'Session'}
           startedAt={session.data.startedAt}
           endedAt={session.data.endedAt}
+          onBack={goBack}
           onMenu={w.menu.show}
           testID="session-header"
         />
@@ -57,10 +59,6 @@ export default function LiveSession(): React.JSX.Element {
         notes={session.data.notes}
         onSaveNotes={w.saveNotes}
         onFinish={w.finish}
-        onLeave={() => {
-          w.menu.hide()
-          goBack()
-        }}
         busy={w.busy}
         error={w.refused}
       />

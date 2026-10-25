@@ -7,6 +7,8 @@ import {
   fieldsOf,
 } from '@cedo/contract'
 import { Button } from './button.tsx'
+import { Card } from './card.tsx'
+import { IconButton } from './icon.tsx'
 import { SetMarks } from './set-marks.tsx'
 import { Stack } from './stack.tsx'
 import { Stepper } from './stepper.tsx'
@@ -70,63 +72,80 @@ export function FocusLogger({
   })
   return (
     <Stack gap="lg" testID={testID}>
-      <Stack direction="row" align="center" gap="sm">
-        <Stack grow>
-          <Text variant="title" testID={`${testID}-name`}>
-            {name}
-          </Text>
+      <Stack gap="sm">
+        <Stack direction="row" align="center" gap="sm">
+          <Stack grow>
+            <Text variant="title" testID={`${testID}-name`}>
+              {name}
+            </Text>
+          </Stack>
+          {onHowTo === undefined ? null : (
+            <IconButton
+              name="info"
+              label="How to do it"
+              edge="end"
+              onPress={onHowTo}
+              testID={`${testID}-how-to`}
+            />
+          )}
         </Stack>
-        {onHowTo === undefined ? null : (
-          <Button title="How to" variant="ghost" onPress={onHowTo} testID={`${testID}-how-to`} />
+        {cue === null ? null : (
+          <Text tone="muted" testID={`${testID}-cue`}>
+            {cue}
+          </Text>
         )}
       </Stack>
-      {cue === null ? null : (
-        <Text tone="muted" testID={`${testID}-cue`}>
-          {cue}
-        </Text>
-      )}
       <SetMarks sets={sets} selected={selected} onSelect={onSelect} testID={`${testID}-sets`} />
 
-      <Stack gap="xs">
-        <Text variant="label" tone={next.isWarmup ? 'warmup' : 'accent'} testID={`${testID}-next`}>
-          {next.title}
-        </Text>
-        {progressed === null ? null : (
-          <Text variant="caption" tone="muted" testID={`${testID}-target`}>
-            {progressed}
-          </Text>
-        )}
-      </Stack>
-
-      <Stack gap="md">
-        {fieldsOf(tracking).map((field) => (
-          <Stepper
-            key={field.dimension}
-            dimension={field.dimension}
-            tracking={tracking}
-            value={effort[field.key]}
-            onChange={(value) => {
-              setEffort((current) => ({ ...current, [field.key]: value }))
-            }}
-            testID={`${testID}-${field.dimension}`}
-          />
-        ))}
-      </Stack>
-
-      <Button
-        title={next.action}
-        size="large"
-        busy={busy}
-        onPress={() => {
-          onLog(effort, next.isWarmup)
-        }}
-        testID={`${testID}-log`}
-      />
-      {last === null ? null : (
-        <Text variant="caption" tone="faint" testID={`${testID}-last`}>
-          {last}
-        </Text>
-      )}
+      <Card>
+        <Stack gap="lg">
+          <Stack gap="xs">
+            <Text
+              variant="label"
+              tone={next.isWarmup ? 'warmup' : 'accent'}
+              testID={`${testID}-next`}
+            >
+              {next.title}
+            </Text>
+            {progressed === null ? null : (
+              <Text variant="caption" tone="muted" testID={`${testID}-target`}>
+                {progressed}
+              </Text>
+            )}
+          </Stack>
+          <Stack gap="md">
+            {fieldsOf(tracking).map((field) => (
+              <Stack key={field.dimension} grow>
+                <Stepper
+                  dimension={field.dimension}
+                  tracking={tracking}
+                  value={effort[field.key]}
+                  onChange={(value) => {
+                    setEffort((current) => ({ ...current, [field.key]: value }))
+                  }}
+                  testID={`${testID}-${field.dimension}`}
+                />
+              </Stack>
+            ))}
+          </Stack>
+          <Stack gap="sm">
+            <Button
+              title={next.action}
+              size="large"
+              busy={busy}
+              onPress={() => {
+                onLog(effort, next.isWarmup)
+              }}
+              testID={`${testID}-log`}
+            />
+            {last === null ? null : (
+              <Text variant="caption" tone="faint" align="center" testID={`${testID}-last`}>
+                {last}
+              </Text>
+            )}
+          </Stack>
+        </Stack>
+      </Card>
     </Stack>
   )
 }

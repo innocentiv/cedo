@@ -3,7 +3,7 @@ import { formatWithReserve, loggedLabel } from '@cedo/contract'
 import { useUnsentSets } from '../api/session-queries.ts'
 import { useWeightUnit } from './weight-unit.ts'
 import { exerciseName } from './exercise-name.ts'
-import { Card, ListRow, Stack, Text } from '../ui/index.ts'
+import { Card, IconButton, ListRow, Stack, Text } from '../ui/index.ts'
 
 /** The pieces the live session screen is assembled from, so the route itself stays control flow. */
 
@@ -87,28 +87,31 @@ export function LoggedSets({
   const unit = useWeightUnit()
   if (logs.length === 0) return null
   return (
-    <Card testID="session-logs">
-      <Stack gap="xs">
-        <Text variant="label" tone="muted">
-          This session
-        </Text>
-        {logs.map((log) => (
-          <ListRow
-            key={log.id}
-            title={`${exerciseName(log.exercise)} · ${loggedLabel(log, logs)}`}
-            subtitle={formatWithReserve(log, log.exercise?.tracking ?? null, unit)}
-            trailing={editable ? 'Undo' : undefined}
-            onPress={
-              editable
-                ? () => {
-                    onRemove(log.id)
-                  }
-                : undefined
-            }
-            testID={`logged-set-${log.id}`}
-          />
-        ))}
-      </Stack>
-    </Card>
+    <Stack gap="xs" testID="session-logs">
+      <Text variant="label" tone="muted">
+        This session
+      </Text>
+      {logs.map((log) => (
+        <ListRow
+          key={log.id}
+          title={`${exerciseName(log.exercise)} · ${loggedLabel(log, logs)}`}
+          subtitle={formatWithReserve(log, log.exercise?.tracking ?? null, unit)}
+          accessory={
+            editable ? (
+              <IconButton
+                name="undo"
+                label="Undo this set"
+                edge="end"
+                onPress={() => {
+                  onRemove(log.id)
+                }}
+                testID={`undo-set-${log.id}`}
+              />
+            ) : undefined
+          }
+          testID={`logged-set-${log.id}`}
+        />
+      ))}
+    </Stack>
   )
 }

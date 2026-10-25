@@ -1,10 +1,10 @@
-import { Pressable, StyleSheet } from 'react-native'
+import { StyleSheet } from 'react-native'
 import { type Dimension, type TrackingMode, stepped } from '@cedo/contract'
 import { useWeightUnit } from '../lib/weight-unit.ts'
 import { DimensionInput } from './dimension-input.tsx'
-import { LOG_CONTROL_HEIGHT, color, radius } from './tokens.ts'
+import { IconButton } from './icon.tsx'
 import { Stack } from './stack.tsx'
-import { Text } from './text.tsx'
+import { type } from './tokens.ts'
 
 /**
  * One of the next set's numbers, as large as the screen allows, between − and +. The steps are the
@@ -28,9 +28,18 @@ export function Stepper({
   const step = (by: 1 | -1) => () => {
     onChange(stepped(value, by, dimension, tracking, unit))
   }
+  // Level with the number, not with the number and the unit under it.
   return (
-    <Stack direction="row" align="center" gap="sm">
-      <StepButton label="−" onPress={step(-1)} testID={`${testID}-less`} />
+    <Stack direction="row" align="flex-start" gap="sm">
+      <Stack justify="center" style={styles.level}>
+        <IconButton
+          name="minus"
+          label="One step less"
+          raised
+          onPress={step(-1)}
+          testID={`${testID}-less`}
+        />
+      </Stack>
       <Stack grow>
         <DimensionInput
           dimension={dimension}
@@ -41,41 +50,17 @@ export function Stepper({
           testID={testID}
         />
       </Stack>
-      <StepButton label="+" onPress={step(1)} testID={`${testID}-more`} />
+      <Stack justify="center" style={styles.level}>
+        <IconButton
+          name="plus"
+          label="One step more"
+          raised
+          onPress={step(1)}
+          testID={`${testID}-more`}
+        />
+      </Stack>
     </Stack>
   )
 }
 
-function StepButton({
-  label,
-  onPress,
-  testID,
-}: {
-  readonly label: string
-  readonly onPress: () => void
-  readonly testID: string
-}): React.JSX.Element {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityLabel={label === '+' ? 'One step more' : 'One step less'}
-      onPress={onPress}
-      testID={testID}
-      style={({ pressed }) => [styles.step, pressed ? styles.pressed : null]}
-    >
-      <Text variant="number">{label}</Text>
-    </Pressable>
-  )
-}
-
-const styles = StyleSheet.create({
-  step: {
-    width: LOG_CONTROL_HEIGHT,
-    height: LOG_CONTROL_HEIGHT,
-    borderRadius: radius.pill,
-    backgroundColor: color.surfaceRaised,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pressed: { backgroundColor: color.border },
-})
+const styles = StyleSheet.create({ level: { height: type.display.lineHeight } })
