@@ -116,3 +116,11 @@ export function loggedLabel<
   const working = logs.filter((l) => !l.isWarmup && sameSeries(l, log))
   return `set ${working.findIndex((l) => l.id === log.id) + 1}`
 }
+
+/** `Warm-up`, `Set 2`: a logged set's name standing alone, as a row of its exercise's sets (#25). */
+export function loggedTitle<
+  L extends SeriesMember & { readonly id: string; readonly isWarmup: boolean },
+>(log: L, logs: readonly L[]): string {
+  const label = loggedLabel(log, logs)
+  return `${label.charAt(0).toUpperCase()}${label.slice(1)}`
+}

@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  byExercise,
   type SeriesMember,
   type SetLog,
   exercisesInSession,
@@ -109,5 +110,16 @@ describe('the exercises a session without a plan is working through', () => {
 
   test('an exercise the caller can no longer see gets no logger', () => {
     expect(exercisesInSession([log(bench.id, null)], [])).toEqual([])
+  })
+})
+
+describe('a session read back by exercise (#25)', () => {
+  test('lists each exercise once, in the order first done, its sets in order', () => {
+    const log = (id: string, exerciseId: string) => ({ id, exerciseId })
+    const logs = [log('1', 'squat'), log('2', 'row'), log('3', 'squat'), log('4', 'row')]
+    expect(byExercise(logs).map((sets) => sets.map((s) => s.id))).toEqual([
+      ['1', '3'],
+      ['2', '4'],
+    ])
   })
 })

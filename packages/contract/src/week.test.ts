@@ -4,6 +4,7 @@ import {
   formatDay,
   formatMinutes,
   personalBestsLabel,
+  personalBestsShort,
   sessionLine,
   startOfWeek,
   weekStrip,
@@ -83,5 +84,6 @@ describe('a session in one line (#25)', () => {
       'A personal best',
       '3 personal bests',
     ])
+    expect([0, 1, 3].map((n) => personalBestsShort(n))).toEqual([null, 'PB', '3 PBs'])
   })
 })

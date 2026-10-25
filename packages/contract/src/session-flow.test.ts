@@ -11,7 +11,14 @@ import {
   sessionSummary,
   setsOf,
 } from './session-flow.ts'
-import { loggedLabel, markOf, markedSets, nextSetWords, progressOf } from './set-marks.ts'
+import {
+  loggedLabel,
+  loggedTitle,
+  markOf,
+  markedSets,
+  nextSetWords,
+  progressOf,
+} from './set-marks.ts'
 
 /** The workout screen's flow (#24): which set is next, where the focus goes, whose rest runs. */
 
@@ -293,6 +300,13 @@ describe('what a logged set is called', () => {
       'set 1',
       'set 1',
       'set 2',
+    ])
+    expect(logs.map((l) => loggedTitle(l, logs))).toEqual([
+      'Warm-up',
+      'Warm-up',
+      'Set 1',
+      'Set 1',
+      'Set 2',
     ])
   })
 })

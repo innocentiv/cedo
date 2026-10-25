@@ -238,6 +238,16 @@ export const nextSetIndex = (
     .filter((log) => sameSeries(log, member))
     .reduce((next, log) => Math.max(next, log.setIndex + 1), 0)
 
+/**
+ * A session's sets by exercise (#25), each exercise once, in the order first done — how a finished
+ * session reads back: a superset's two exercises alternate as they were done, and are still two.
+ */
+export function byExercise<L extends { readonly exerciseId: string }>(logs: readonly L[]): L[][] {
+  const groups = new Map<string, L[]>()
+  for (const log of logs) groups.set(log.exerciseId, [...(groups.get(log.exerciseId) ?? []), log])
+  return [...groups.values()]
+}
+
 /** The working sets done in `member`'s series — what a logger shows as "N done". */
 export const workingSetsDone = (
   logs: readonly (SeriesMember & { readonly isWarmup: boolean })[],

@@ -13,8 +13,8 @@ export const WEEKDAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
-/** The day of the week, Monday 0 to Sunday 6. */
-const dayOfWeek = (at: Date): number => (at.getDay() + 6) % 7
+/** The day of the week, Monday 0 to Sunday 6: where it sits on the week's strip. */
+export const dayOfWeek = (at: Date): number => (at.getDay() + 6) % 7
 
 /** Midnight starting the Monday of `at`'s week, local time. */
 export function startOfWeek(at: Date): Date {
@@ -95,6 +95,10 @@ export function sessionLine(session: {
   parts.push(`${String(session.setCount)} ${session.setCount === 1 ? 'set' : 'sets'}`)
   return parts.join(' · ')
 }
+
+/** `PB`, `3 PBs` — a history row's short word for them, said in the gym's own; nothing, for none. */
+export const personalBestsShort = (count: number): string | null =>
+  count === 0 ? null : count === 1 ? 'PB' : `${String(count)} PBs`
 
 /** `A personal best`, `3 personal bests` — and nothing, for none. */
 export const personalBestsLabel = (count: number): string | null =>
