@@ -1,7 +1,16 @@
 import { describe, expect, test } from 'bun:test'
 import type { Workout } from '@cedo/contract'
 import { type DayDraft, keyDay, keyEntry, toPlanInput } from './plan-draft.ts'
-import { type PlanSync, type SyncEvent, startSync, step, unsaved } from './plan-sync.ts'
+import { ApiError } from '../api/errors.ts'
+import {
+  type PlanSync,
+  RELOADED,
+  type SyncEvent,
+  saveOutcome,
+  startSync,
+  step,
+  unsaved,
+} from './plan-sync.ts'
 
 /**
  * A plan edited in place (#26, ADR-0022): every change saved as made, one save at a time, the ids
@@ -158,5 +167,40 @@ describe('a plan edited in place', () => {
     // Its own save, read back: not newer than what it already knows.
     const same = answer(sync.days, 1)
     expect(run(sync, [{ kind: 'fetched', workout: same }]).state).toBe(sync)
+  })
+})
+
+/** What one save comes to, as the page is told it. */
+describe('a save, answered', () => {
+  const plan = answer([keyDay({ name: 'A', entries: [] })], 2)
+  const stored = async (): Promise<Workout> => await Promise.resolve(plan)
+  const unread = async (): Promise<Workout | null> => await Promise.resolve(null)
+  const refusedWith = (answered: Error) => async (): Promise<Workout> =>
+    await Promise.reject(answered)
+
+  test('saved, with the plan as stored', async () => {
+    expect(await saveOutcome(stored, unread)).toEqual({ kind: 'saved', workout: plan })
+  })
+
+  test('refused, with the reason the server gave', async () => {
+    const refused = new ApiError(422, 'validation_failed', 'A plan holds at most 14 days')
+    expect(await saveOutcome(refusedWith(refused), unread)).toEqual({
+      kind: 'refused',
+      reason: 'A plan holds at most 14 days',
+    })
+  })
+
+  test('saved elsewhere since: the plan read again, and said so — refused, if it cannot be', async () => {
+    const stale = new ApiError(409, 'conflict', 'Changed elsewhere')
+    expect(await saveOutcome(refusedWith(stale), stored)).toEqual({
+      kind: 'reloaded',
+      workout: plan,
+      reason: RELOADED,
+    })
+    // Never left Saving: a refusal frees the page to send the next change.
+    expect(await saveOutcome(refusedWith(stale), unread)).toEqual({
+      kind: 'refused',
+      reason: 'Changed elsewhere',
+    })
   })
 })

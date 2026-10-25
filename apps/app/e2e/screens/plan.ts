@@ -69,10 +69,11 @@ const planEntry = (page: Page, day: number, index: number) => {
       await open()
       await page.click(`[data-testid="${id}-day-${String(to)}"]`)
     },
-    /** Out of the plan: the bin on an unavailable line, else in its settings. */
+    /** Out of the plan — asked twice: the bin on an unavailable line, else in its settings. */
     remove: async (): Promise<void> => {
       if (!(await page.shown(`${id}-remove`))) await open()
       await page.click(`[data-testid="${id}-remove"]`)
+      await page.click(`[data-testid="${id}-remove-confirm"]`)
     },
   }
 }
@@ -248,6 +249,10 @@ export const planEditor = (page: Page) => {
     focusDayName: async (day: number): Promise<void> => {
       await closeSettings()
       await page.click(`[data-testid="day-name-${String(day)}"]`)
+    },
+    /** Leaves the field being typed in, as a tap on the page around it would: it is kept. */
+    leaveField: async (): Promise<void> => {
+      await page.click('[data-testid="plan-status"]')
     },
     /** A day's name, as its field holds it. */
     dayName: async (day: number): Promise<unknown> => await page.value(`day-name-${String(day)}`),

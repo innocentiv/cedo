@@ -54,8 +54,11 @@ export async function updateWorkout(
   if (written.length === 0) throw notFound('workout')
 }
 
-/** What a save made from a copy of the plan older than the stored one is told (ADR-0022). */
-export const CHANGED = 'This workout changed since it was opened. It has been reloaded.'
+/**
+ * What a save made from a copy of the plan older than the stored one is told (ADR-0022) — what
+ * happened, not what to do: the app reads it again, an AI reads it with `workout_get_editable`.
+ */
+const CHANGED = 'This workout was changed elsewhere since this copy of it was read.'
 
 /**
  * Replaces the ENTIRE plan in one transaction.

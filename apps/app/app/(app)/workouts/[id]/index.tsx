@@ -25,7 +25,7 @@ export default function WorkoutPage(): React.JSX.Element {
   return (
     <WorkoutBody
       workout={workout.data}
-      reread={async () => (await workout.refetch()).data}
+      reread={async () => (await workout.refetch()).data ?? null}
       goBack={goBack}
     />
   )

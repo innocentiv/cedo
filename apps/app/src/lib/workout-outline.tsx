@@ -1,34 +1,12 @@
-import {
-  type Exercise,
-  canAddDay,
-  canAddEntry,
-  describeProgression,
-  formatPrescription,
-  formatWeight,
-  newDay,
-  setTargetOf,
-} from '@cedo/contract'
-import { AddRow, IconButton, Input, ListRow, Stack, Text } from '../ui/index.ts'
-import {
-  type DayDraft,
-  type EntryDraft,
-  keyDay,
-  moveItem,
-  removeAt,
-  replaceAt,
-} from './plan-draft.ts'
-import { useWeightUnit } from './weight-unit.ts'
-
-/** Where an entry is in the plan: its day, and its place in that day. */
-export interface EntryAt {
-  readonly day: number
-  readonly entry: number
-}
+import { type Exercise, canAddDay, canAddEntry, canRemoveDay, newDay } from '@cedo/contract'
+import { AddRow, Button, Stack, Text } from '../ui/index.ts'
+import { DayHead, type DayMoves, EntryLine } from './outline-parts.tsx'
+import { type DayDraft, keyDay, moveItem, removeAt, replaceAt } from './plan-draft.ts'
 
 /**
  * A workout's page is its outline (#26): days, and each entry one line — "Barbell Back Squat · 5 × 5
  * · 100 kg · Linear, +2.5 kg". A line opens the entry's settings; a day is renamed where its name
- * is, moved up or removed beside it, and given another exercise at its foot. Every change goes to
+ * is, moved or removed beside it, and given another exercise at its foot. Every change goes to
  * `onChange` whole, to be saved as made (ADR-0022). Read-only for a reader: the same outline, with
  * nothing to tap but Start. See docs/08-frontend.md, "Editing a workout".
  */
@@ -45,48 +23,97 @@ export function Outline({
   readonly days: readonly DayDraft[]
   readonly library: ReadonlyMap<string, Exercise>
   readonly canEdit: boolean
-  readonly selected: EntryAt | null
+  /** The entry whose settings are open, by its key: it stays the one open as the plan moves. */
+  readonly selected: string | null
   readonly onChange: (days: readonly DayDraft[]) => void
-  readonly onSelect: (at: EntryAt) => void
+  readonly onSelect: (entryKey: string) => void
   readonly onAddEntry: (day: number) => void
-  /** Start, beside each day — absent while a session is in progress, or not yet known. */
-  readonly start: ((dayIndex: number) => React.ReactNode) | null
+  /**
+   * Start, beside each saved day — none while a session is in progress, or before it is known; a day
+   * not saved yet has no id to start from, and gets its Start once it is.
+   */
+  readonly start: { readonly onStart: (dayId: string) => void; readonly busy: boolean } | null
 }): React.JSX.Element {
+  const movesOf = (d: number): DayMoves => ({
+    up:
+      d === 0
+        ? undefined
+        : () => {
+            onChange(moveItem(days, d, d - 1))
+          },
+    down:
+      d === days.length - 1
+        ? undefined
+        : () => {
+            onChange(moveItem(days, d, d + 1))
+          },
+    remove: canRemoveDay(days)
+      ? () => {
+          onChange(removeAt(days, d))
+        }
+      : undefined,
+  })
   return (
     <Stack gap="xxl" testID="plan-outline">
       {days.map((day, d) => (
-        <DayBlock
-          key={day.key}
-          day={day}
-          index={d}
-          library={library}
-          canEdit={canEdit}
-          selected={selected?.day === d ? selected.entry : null}
-          onChange={(next) => {
-            onChange(replaceAt(days, d, next))
-          }}
-          onMoveUp={
-            d === 0
-              ? undefined
-              : () => {
-                  onChange(moveItem(days, d, d - 1))
-                }
-          }
-          onRemove={
-            days.length === 1
-              ? undefined
-              : () => {
-                  onChange(removeAt(days, d))
-                }
-          }
-          onSelect={(entry) => {
-            onSelect({ day: d, entry })
-          }}
-          onAddEntry={() => {
-            onAddEntry(d)
-          }}
-          start={start?.(d) ?? null}
-        />
+        <Stack key={day.key} gap="xs" testID={`plan-day-${String(d)}`}>
+          <DayHead
+            name={day.name}
+            index={d}
+            canEdit={canEdit}
+            onRename={(name) => {
+              onChange(replaceAt(days, d, { ...day, name }))
+            }}
+            moves={movesOf(d)}
+            start={
+              start === null || day.id === undefined ? null : (
+                <Button
+                  title="Start"
+                  variant="secondary"
+                  size="small"
+                  busy={start.busy}
+                  onPress={() => {
+                    if (day.id !== undefined) start.onStart(day.id)
+                  }}
+                  testID={`start-day-${String(d)}`}
+                />
+              )
+            }
+          />
+          {day.entries.length === 0 ? <Text tone="muted">No exercises yet.</Text> : null}
+          {day.entries.map((entry, e) => (
+            <EntryLine
+              key={entry.key}
+              entry={entry}
+              exercise={library.get(entry.exerciseId)}
+              current={selected === entry.key}
+              onPress={
+                canEdit
+                  ? () => {
+                      onSelect(entry.key)
+                    }
+                  : undefined
+              }
+              onRemove={
+                canEdit
+                  ? () => {
+                      onChange(replaceAt(days, d, { ...day, entries: removeAt(day.entries, e) }))
+                    }
+                  : undefined
+              }
+              at={{ day: d, entry: e }}
+            />
+          ))}
+          {canEdit && canAddEntry(day) ? (
+            <AddRow
+              title="Add exercise"
+              onPress={() => {
+                onAddEntry(d)
+              }}
+              testID={`add-entry-${String(d)}`}
+            />
+          ) : null}
+        </Stack>
       ))}
       {canEdit && canAddDay(days) ? (
         <AddRow
@@ -98,158 +125,5 @@ export function Outline({
         />
       ) : null}
     </Stack>
-  )
-}
-
-/** One day: its name, what can be done to it, its entries one line each, and Add exercise. */
-function DayBlock({
-  day,
-  index,
-  library,
-  canEdit,
-  selected,
-  onChange,
-  onMoveUp,
-  onRemove,
-  onSelect,
-  onAddEntry,
-  start,
-}: {
-  readonly day: DayDraft
-  readonly index: number
-  readonly library: ReadonlyMap<string, Exercise>
-  readonly canEdit: boolean
-  readonly selected: number | null
-  readonly onChange: (day: DayDraft) => void
-  readonly onMoveUp: (() => void) | undefined
-  readonly onRemove: (() => void) | undefined
-  readonly onSelect: (entry: number) => void
-  readonly onAddEntry: () => void
-  readonly start: React.ReactNode
-}): React.JSX.Element {
-  return (
-    <Stack gap="xs" testID={`plan-day-${index}`}>
-      <Stack direction="row" align="center" gap="sm">
-        <Stack grow>
-          {canEdit ? (
-            <Input
-              value={day.name}
-              onChangeText={(name) => {
-                onChange({ ...day, name })
-              }}
-              autoCapitalize="sentences"
-              look="heading"
-              testID={`day-name-${index}`}
-            />
-          ) : (
-            <Text variant="heading">{day.name}</Text>
-          )}
-        </Stack>
-        {start}
-        {canEdit && onMoveUp !== undefined ? (
-          <IconButton
-            name="up"
-            label="Move the day up"
-            onPress={onMoveUp}
-            testID={`day-up-${index}`}
-          />
-        ) : null}
-        {canEdit && onRemove !== undefined ? (
-          <IconButton
-            name="remove"
-            label={`Remove ${day.name}`}
-            edge="end"
-            onPress={onRemove}
-            testID={`day-remove-${index}`}
-          />
-        ) : null}
-      </Stack>
-      {day.entries.length === 0 ? (
-        <Text tone="muted">No exercises yet.</Text>
-      ) : (
-        day.entries.map((entry, e) => (
-          <EntryLine
-            key={entry.key}
-            entry={entry}
-            exercise={library.get(entry.exerciseId)}
-            current={selected === e}
-            onPress={
-              canEdit
-                ? () => {
-                    onSelect(e)
-                  }
-                : undefined
-            }
-            onRemove={() => {
-              onChange({ ...day, entries: removeAt(day.entries, e) })
-            }}
-            testID={`plan-${index}-${e}`}
-          />
-        ))
-      )}
-      {canEdit && canAddEntry(day) ? (
-        <AddRow title="Add exercise" onPress={onAddEntry} testID={`add-entry-${index}`} />
-      ) : null}
-    </Stack>
-  )
-}
-
-/**
- * An entry as one line: its exercise — after its superset's letter — what it prescribes, and how it
- * progresses. An exercise out of the reader's reach has no settings to open: what it prescribes,
- * that it is unavailable, and the bin, which is the only way the plan saves again.
- */
-function EntryLine({
-  entry,
-  exercise,
-  current,
-  onPress,
-  onRemove,
-  testID,
-}: {
-  readonly entry: EntryDraft
-  readonly exercise: Exercise | undefined
-  readonly current: boolean
-  readonly onPress: (() => void) | undefined
-  readonly onRemove: () => void
-  readonly testID: string
-}): React.JSX.Element {
-  const unit = useWeightUnit()
-  const sets = entry.sets.map((set) => ({ isWarmup: set.isWarmup, target: setTargetOf(set) }))
-  const prescription = formatPrescription(sets, exercise?.tracking ?? null, unit)
-  const id = testID.replace(/^plan-/u, 'plan-entry-')
-  if (exercise === undefined) {
-    return (
-      <Stack direction="row" align="center" gap="sm" testID={id}>
-        <Stack grow gap="xs">
-          <Text variant="label" tone="muted" testID={`${id}-unavailable`}>
-            Unavailable exercise — remove it to save
-          </Text>
-          <Text variant="caption" tone="muted" testID={`${id}-target`}>
-            {prescription}
-          </Text>
-        </Stack>
-        <IconButton
-          name="remove"
-          label="Remove the unavailable exercise"
-          edge="end"
-          onPress={onRemove}
-          testID={`${id}-remove`}
-        />
-      </Stack>
-    )
-  }
-  const rule =
-    entry.progression.kind === 'none'
-      ? null
-      : describeProgression(entry.progression, (g) => formatWeight(g, unit))
-  return (
-    <ListRow
-      title={`${entry.supersetGroup === null ? '' : `${entry.supersetGroup} · `}${exercise.name}`}
-      subtitle={rule === null ? prescription : `${prescription} · ${rule}`}
-      onPress={onPress}
-      selected={current}
-      testID={`plan-line-${testID.slice('plan-'.length)}`}
-    />
   )
 }

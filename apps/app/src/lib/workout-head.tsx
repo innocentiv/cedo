@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { type Workout, notesToKeep } from '@cedo/contract'
+import { type Workout, type WorkoutUpdate, nameToKeep, notesToKeep } from '@cedo/contract'
 import { useUpdateWorkout } from '../api/queries.ts'
 import { IconButton, Input, Stack, Text } from '../ui/index.ts'
 import type { PlanEditor } from './use-plan-editor.ts'
@@ -23,7 +23,7 @@ export function WorkoutHead({
   const { submit, error } = useSubmit()
   const [name, setName] = useState(workout.name)
   const [notes, setNotes] = useState(workout.notes ?? '')
-  const keep = (patch: { name?: string; notes?: string | null }) => {
+  const keep = (patch: WorkoutUpdate) => {
     void submit(async () => {
       await update.mutateAsync(patch)
     })
@@ -49,9 +49,9 @@ export function WorkoutHead({
               autoCapitalize="sentences"
               look="title"
               onBlur={() => {
-                const said = name.trim()
-                if (said === '') setName(workout.name)
-                else if (said !== workout.name) keep({ name: said })
+                const kept = nameToKeep(name, workout.name)
+                if (kept === undefined) setName(workout.name)
+                else keep({ name: kept })
               }}
               testID="workout-name-edit"
             />

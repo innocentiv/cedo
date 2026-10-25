@@ -703,7 +703,7 @@ describe('editing a plan', () => {
     await callTool(pat, 'workout_save_plan', { workoutId: workout.id, ...editable })
     // Sent again from the same, now older, copy: refused, not a silent overwrite.
     const again = await callTool(pat, 'workout_save_plan', { workoutId: workout.id, ...editable })
-    expect(textOf(again.body)).toContain('changed since it was opened')
+    expect(textOf(again.body)).toContain('changed elsewhere')
 
     const after = expectContract(Workout, (await alice.wire(`/workouts/${workout.id}`)).body)
     expect(after.days[0]?.name).toBe('Back')

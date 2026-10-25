@@ -3,6 +3,8 @@ import { NO_PROGRESSION, describeProgression } from './progression.ts'
 import { formatWeight } from './units.ts'
 import {
   canAddDay,
+  canRemoveDay,
+  nameToKeep,
   canAddEntry,
   newDay,
   newEntry,
@@ -277,5 +279,19 @@ describe('a prescription in one line', () => {
     expect(formatPrescription([{ isWarmup: true, target: target(5, null) }], null, 'kg')).toBe(
       'no working sets',
     )
+  })
+})
+
+describe('a plan edited in place (#26)', () => {
+  test('keeps its last day: removing it would make a plan that can never be saved', () => {
+    const day = { name: 'A', entries: [] }
+    expect(canRemoveDay([day])).toBe(false)
+    expect(canRemoveDay([day, day])).toBe(true)
+  })
+
+  test('keeps a name trimmed, and sends nothing for the same name or none', () => {
+    expect(nameToKeep('  Legs ', 'Day 1')).toBe('Legs')
+    expect(nameToKeep('Day 1', 'Day 1')).toBeUndefined()
+    expect(nameToKeep('   ', 'Day 1')).toBeUndefined()
   })
 })

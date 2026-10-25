@@ -592,7 +592,7 @@ test(
         async () => await app.planEditor.said(),
         (shown) => shown !== null,
       )
-      expect(said).toContain('changed since it was opened')
+      expect(said).toContain('Changed elsewhere')
       const after = await mine.workouts.get(listed.id)
       expect(after.days[0]?.name).toBe('Theirs')
       expect(after.days[0]?.entries[0]?.sets.filter((s) => !s.isWarmup)).toHaveLength(3)
@@ -603,7 +603,7 @@ test(
 )
 
 test(
-  'the plan editor stops where the schema would, and says why before saving',
+  'the plan editor stops where the schema would, and never offers a plan it refuses',
   async () => {
     await withApp('plan-limits', async (page) => {
       const app = screens(page)
@@ -625,25 +625,25 @@ test(
       // Reading the field opened its settings again (#26): back to the day's name.
       await app.planEditor.focusDayName(0)
 
-      // A draft the schema would refuse says so in the footer, and cannot be saved. The name field
-      // is a plain text input: the tap left the caret wherever it landed, so go to the end and
-      // delete "Day 1" key by key.
+      // A day may not be nameless, and the page never offers a plan that says otherwise (#26): a
+      // name emptied and left is put back. The field is a plain text input — the tap left the
+      // caret wherever it landed, so go to the end and delete "Day 1" key by key.
       await page.press('End')
       await page.keys(['Backspace', 'Backspace', 'Backspace', 'Backspace', 'Backspace'])
-      const issues = await page.until(
-        async () => await app.planEditor.issues(),
-        (shown) => shown !== null,
-      )
-      expect(issues).toBe('Day 1, name: Cannot be empty')
-      expect(await app.planEditor.canSave()).toBe(false)
+      await app.planEditor.leaveField()
+      expect(await app.planEditor.dayName(0)).toBe('Day 1')
+      expect(await app.planEditor.issues()).toBeNull()
 
+      // Renamed: kept as the field is left, not on every key.
+      await app.planEditor.focusDayName(0)
+      await page.press('End')
+      await page.keys(['Backspace', 'Backspace', 'Backspace', 'Backspace', 'Backspace'])
       await page.keys(['L', 'e', 'g', 's'])
-      // Read once the render has caught up with the last key, not in the same tick.
-      await page.until(
-        async () => await app.planEditor.issues(),
-        (shown) => shown === null,
-      )
-      expect(await app.planEditor.canSave()).toBe(true)
+      await app.planEditor.leaveField()
+      await app.planEditor.saved()
+      const mine = await page.client()
+      const [listed] = (await mine.workouts.list({})).items
+      expect((await mine.workouts.get(listed?.id ?? '')).days[0]?.name).toBe('Legs')
     })
   },
   E2E_TIMEOUT_MS,

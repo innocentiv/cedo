@@ -78,8 +78,8 @@ export interface InputProps {
   /** When the field is left: where a text kept as it is written is saved. */
   readonly onBlur?: (() => void) | undefined
   /**
-   * `title`: a name edited where it is read (#26) — a workout's, a day's — set as the heading it
-   * is, with no box: tapping it is how it is renamed.
+   * A name edited where it is read (#26), with no box — tapping it is how it is renamed: `title`
+   * for a workout's, `heading` for a day's. `field`, the default, is a boxed input.
    */
   readonly look?: 'field' | 'title' | 'heading'
   readonly testID?: string | undefined

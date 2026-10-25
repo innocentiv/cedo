@@ -3,11 +3,11 @@ import type { Workout } from '@cedo/contract'
 import { Card, Columns, Screen, Sheet, Stack, Text, useLayout } from '../ui/index.ts'
 import { EntrySettings } from './entry-settings.tsx'
 import { ExercisePicker } from './exercise-picker.tsx'
-import { withEntryAdded } from './plan-draft.ts'
+import { entryAt, withEntryAdded } from './plan-draft.ts'
 import { usePlanEditor } from './use-plan-editor.ts'
 import { CopyFooter, InProgress, WorkoutAdmin, useStartDay } from './workout-actions.tsx'
 import { WorkoutHead } from './workout-head.tsx'
-import { type EntryAt, Outline } from './workout-outline.tsx'
+import { Outline } from './workout-outline.tsx'
 
 /**
  * A workout's page (#26): its outline, edited in place and saved as each change is made — no edit
@@ -20,12 +20,13 @@ export function WorkoutBody({
   goBack,
 }: {
   readonly workout: Workout
-  readonly reread: () => Promise<Workout | undefined>
+  readonly reread: () => Promise<Workout | null>
   /** Back to where the page was opened from: after Back, or after a delete. */
   readonly goBack: () => void
 }): React.JSX.Element {
   const editor = usePlanEditor(workout, reread)
-  const [selected, setSelected] = useState<EntryAt | null>(null)
+  // By key, not position: the entry stays the one open as it moves, and closes once it is gone.
+  const [selected, setSelected] = useState<string | null>(null)
   const [picking, setPicking] = useState<number | null>(null)
   const desk = useLayout() === 'tablet'
   const starting = useStartDay(workout.id)
@@ -41,24 +42,19 @@ export function WorkoutBody({
           editor.pick(exercise)
           const added = withEntryAdded(days, picking, exercise)
           editor.change(added.days)
-          setSelected(added.at)
+          setSelected(added.days[added.at.day]?.entries[added.at.entry]?.key ?? null)
           setPicking(null)
         }}
       />
     )
   }
 
-  const chosen = selected === null ? undefined : days[selected.day]?.entries[selected.entry]
+  const at = selected === null ? null : entryAt(days, selected)
+  const chosen = at === null ? undefined : days[at.day]?.entries[at.entry]
   const exercise = chosen === undefined ? undefined : editor.library.get(chosen.exerciseId)
   const settings =
-    selected === null || exercise === undefined ? null : (
-      <EntrySettings
-        days={days}
-        at={selected}
-        exercise={exercise}
-        onChange={editor.change}
-        onMoved={setSelected}
-      />
+    at === null || exercise === undefined ? null : (
+      <EntrySettings days={days} at={at} exercise={exercise} onChange={editor.change} />
     )
   const outline = (
     <>
@@ -72,7 +68,7 @@ export function WorkoutBody({
         onChange={editor.change}
         onSelect={setSelected}
         onAddEntry={setPicking}
-        start={starting.resume === undefined ? starting.startButton(days) : null}
+        start={starting.start === null ? null : { onStart: starting.start, busy: starting.busy }}
       />
       <WorkoutAdmin workout={workout} onDeleted={goBack} />
     </>
@@ -85,6 +81,8 @@ export function WorkoutBody({
       footer={workout.canEdit ? undefined : <CopyFooter workoutId={workout.id} />}
     >
       <WorkoutHead
+        // Read again with another name or notes — saved elsewhere — its fields start from those.
+        key={`${workout.name}\n${workout.notes ?? ''}`}
         workout={workout}
         status={workout.canEdit ? editor.status : null}
         onBack={goBack}

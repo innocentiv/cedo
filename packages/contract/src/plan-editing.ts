@@ -182,6 +182,21 @@ export const canAddEntry = (day: WorkoutDayInput): boolean =>
   day.entries.length < MAX_ENTRIES_PER_DAY
 
 /**
+ * A saved plan keeps one day at least (`WorkoutPlanInput`), and a plan edited in place is saved as
+ * each change is made (#26): its last day cannot be removed, or the change could never be saved.
+ */
+export const canRemoveDay = (days: readonly WorkoutDayInput[]): boolean => days.length > 1
+
+/**
+ * The name to keep from what was typed (#26): trimmed — or `undefined` when there is nothing to
+ * send, it being what is already kept, or nothing, which no workout or day may be called.
+ */
+export function nameToKeep(typed: string, kept: string): string | undefined {
+  const said = typed.trim()
+  return said === '' || said === kept ? undefined : said
+}
+
+/**
  * Why a draft would be refused on save, one line per problem, located by day and exercise — the
  * schema's own verdict, read before the request rather than after it. The editor prevents what it
  * can; this catches whatever it does not model, without restating a rule.

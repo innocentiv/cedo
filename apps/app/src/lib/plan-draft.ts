@@ -14,7 +14,8 @@ import { newEntry, planInputFrom } from '@cedo/contract'
  * and sent back with the next save (`plan-sync.ts`). Without it, every save would make the new
  * entries new again.
  *
- * Pure functions over plain data: no React, no network. The RULES of editing a plan — new days and
+ * Functions over plain data — pure, but for `newKey`'s count — with no React and no network. The
+ * RULES of editing a plan — new days and
  * entries, set counts, limits, what a target change applies to — are the contract's
  * (`plan-editing.ts`), where they are tested; this file only moves draft data around.
  */
@@ -23,6 +24,12 @@ export type EntryDraft = WorkoutEntryInput & { readonly key: string }
 export type DayDraft = Omit<WorkoutDayInput, 'entries'> & {
   readonly key: string
   readonly entries: EntryDraft[]
+}
+
+/** Where an entry is in the plan: its day, and its place in that day. */
+export interface EntryAt {
+  readonly day: number
+  readonly entry: number
 }
 
 let made = 0
@@ -82,16 +89,22 @@ export function moveItem<T>(items: readonly T[], from: number, to: number): T[] 
  */
 export function moveEntryToDay(
   days: readonly DayDraft[],
-  from: { readonly day: number; readonly entry: number },
+  from: EntryAt,
   toDay: number,
-): DayDraft[] {
+): { readonly days: DayDraft[]; readonly at: EntryAt } {
   const entry = days[from.day]?.entries[from.entry]
-  if (entry === undefined || toDay === from.day || days[toDay] === undefined) return [...days]
-  return days.map((day, i) => {
-    if (i === from.day) return { ...day, entries: removeAt(day.entries, from.entry) }
-    if (i === toDay) return { ...day, entries: [...day.entries, entry] }
-    return day
-  })
+  const target = days[toDay]
+  if (entry === undefined || target === undefined || toDay === from.day) {
+    return { days: [...days], at: from }
+  }
+  return {
+    days: days.map((day, i) => {
+      if (i === from.day) return { ...day, entries: removeAt(day.entries, from.entry) }
+      if (i === toDay) return { ...day, entries: [...day.entries, entry] }
+      return day
+    }),
+    at: { day: toDay, entry: target.entries.length },
+  }
 }
 
 /**
@@ -102,7 +115,7 @@ export function withEntryAdded(
   days: readonly DayDraft[],
   dayIndex: number,
   exercise: Parameters<typeof newEntry>[0],
-): { readonly days: DayDraft[]; readonly at: { readonly day: number; readonly entry: number } } {
+): { readonly days: DayDraft[]; readonly at: EntryAt } {
   const day = days[dayIndex]
   if (day === undefined) return { days: [...days], at: { day: dayIndex, entry: 0 } }
   const entries = [...day.entries, keyEntry(newEntry(exercise))]
@@ -110,4 +123,13 @@ export function withEntryAdded(
     days: replaceAt(days, dayIndex, { ...day, entries }),
     at: { day: dayIndex, entry: entries.length - 1 },
   }
+}
+
+/** Where the entry known by `key` is now — moved, or gone: null. */
+export function entryAt(days: readonly DayDraft[], key: string): EntryAt | null {
+  for (const [day, d] of days.entries()) {
+    const entry = d.entries.findIndex((e) => e.key === key)
+    if (entry !== -1) return { day, entry }
+  }
+  return null
 }

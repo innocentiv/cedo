@@ -1,4 +1,5 @@
 import type { Workout } from '@cedo/contract'
+import { ApiError } from '../api/errors.ts'
 import { type DayDraft, draftFrom } from './plan-draft.ts'
 
 /**
@@ -121,3 +122,28 @@ export const withIds = (days: readonly DayDraft[], ids: ReadonlyMap<string, stri
     id: ids.get(day.key) ?? day.id,
     entries: day.entries.map((entry) => ({ ...entry, id: ids.get(entry.key) ?? entry.id })),
   }))
+
+/** What a save made from an older copy is said to have done, on the page that made it. */
+export const RELOADED = 'Changed elsewhere since it was opened — this is the plan as saved there.'
+
+/**
+ * One save, and what came of it: saved; refused, with the server's reason; or — saved elsewhere
+ * since (409) — the plan as it is now, read again. Refused when even that read fails: the page puts
+ * back the plan as last saved, and is free to send the next change, which the server answers again.
+ */
+export async function saveOutcome(
+  save: () => Promise<Workout>,
+  reread: () => Promise<Workout | null>,
+): Promise<SyncEvent> {
+  try {
+    return { kind: 'saved', workout: await save() }
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 409) {
+      const fresh = await reread()
+      return fresh === null
+        ? { kind: 'refused', reason: error.message }
+        : { kind: 'reloaded', workout: fresh, reason: RELOADED }
+    }
+    return { kind: 'refused', reason: error instanceof Error ? error.message : 'Not saved' }
+  }
+}

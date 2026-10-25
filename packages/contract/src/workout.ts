@@ -240,6 +240,12 @@ export function planInputFrom(workout: Workout, { keepIds = true } = {}): Workou
   }
 }
 
+/** A saved plan as it goes back to be saved again: `planInputFrom`, and the version it was read at. */
+export const planSaveFrom = (workout: Workout): PlanSave => ({
+  ...planInputFrom(workout),
+  version: workout.version,
+})
+
 /** The ownable list query; a workout has no filters of its own. */
 export const WorkoutQuery = OwnableQuery
 export type WorkoutQuery = z.output<typeof WorkoutQuery>

@@ -11,18 +11,12 @@ import {
 import { Button, Card, ConfirmButton, PinButton, Stack, Text } from '../ui/index.ts'
 import { DuplicateIntoMyGroup } from './duplicate-into-my-group.tsx'
 import { GroupPlacement } from './group-placement.tsx'
-import type { DayDraft } from './plan-draft.ts'
 import { useSubmit } from './use-submit.ts'
 
 /**
- * What is done with a workout besides editing its plan (#26): starting a day of it, or resuming the
- * session in progress; pinning it, its group, deleting it; and, for a reader, a copy of their own.
- */
-
-/**
- * Starting a day of a workout from its page — or, while a session is in progress, resuming that one
- * instead: one session runs at a time, and until it is known whether one does, the page offers
- * neither. A day not yet saved has no id to start from: it gets its Start once it is saved.
+ * Starting a day of a workout from its page (#26) — or, while a session is in progress, resuming that
+ * one instead: one session runs at a time, and until it is known whether one does, the page offers
+ * neither.
  */
 export function useStartDay(workoutId: string) {
   const router = useRouter()
@@ -30,39 +24,25 @@ export function useStartDay(workoutId: string) {
   const { submit, busy, error } = useSubmit()
   const current = useSessions({ inProgress: true, limit: 1 })
   const open = current.data?.items[0]
-  const known = current.data !== undefined
-
   return {
     error,
+    busy,
     resume:
       open === undefined
         ? undefined
         : () => {
             router.push(`/today/session/${open.id}`)
           },
-    /** Start, beside the day at an index — or nothing, when it cannot be started yet. */
-    startButton: (days: readonly DayDraft[]) =>
-      known
-        ? (index: number): React.ReactNode => {
-            const dayId = days[index]?.id
-            if (dayId === undefined) return null
-            return (
-              <Button
-                title="Start"
-                variant="secondary"
-                size="small"
-                busy={busy}
-                onPress={() => {
-                  void submit(async () => {
-                    const session = await start.mutateAsync({ workoutId, dayId })
-                    router.push(`/today/session/${session.id}`)
-                  })
-                }}
-                testID={`start-day-${String(index)}`}
-              />
-            )
-          }
-        : null,
+    /** A day started, by its id — null while a session runs, or before it is known whether one does. */
+    start:
+      current.data === undefined || open !== undefined
+        ? null
+        : (dayId: string) => {
+            void submit(async () => {
+              const session = await start.mutateAsync({ workoutId, dayId })
+              router.push(`/today/session/${session.id}`)
+            })
+          },
   }
 }
 

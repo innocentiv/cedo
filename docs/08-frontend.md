@@ -278,19 +278,26 @@ As built (#26):
 
 - **The head** — back, the name set as the title it is and edited there, the notes under it, each
   kept as its field is left; then one line on the plan: Saved, Saving…, or Not saved and why.
-- **The outline** — each day its name (edited where it reads), Start, ↑ and the bin; each entry one
-  line, `5 sets · 5 × 100 kg · Linear, +2.5 kg`, a superset's letter before its name; Add exercise
+- **The outline** — each day its name (edited where it reads, kept as the field is left and put
+  back if left empty — no day is nameless), Start, ↑ ↓ and the bin; each entry one line, `5 sets · 5 × 100 kg · Linear, +2.5 kg`, a superset's letter before its name; Add exercise
   at the foot of a day, Add day at the foot of the plan. An unavailable exercise's line says so,
   with the bin.
 - **An entry's settings** — its fields (`EntryEditor`), then where it is in the plan: chips to move
   it to another day, ↑ ↓ within its day, the bin. In a sheet on a phone; on a desktop, a panel
-  beside the outline (`Columns`), which waits with a line until an entry is chosen.
+  beside the outline (`Columns`), which waits with a line until an entry is chosen. Kept open by
+  the entry's key, so it follows the entry as it moves and closes once it is gone.
+- **Removing** a day or an entry is asked twice (`RemoveButton`, `ConfirmButton`'s rule as a
+  glyph): it is saved at once, its id with it, and cannot be taken back. A plan keeps one day
+  (`canRemoveDay`).
 - **Saving** is `src/lib/plan-sync.ts`, unit-tested: a change is sent at once if the schema
   accepts the plan, one save at a time — a change made meanwhile goes when the last answer comes,
   as the plan then stands — each with the version it was made from. The ids the server gives what
   is new are learned from its answer by position and carried by key, so the next save keeps them.
-  A refusal puts the plan back as last saved and says why; a 409 reads the plan again and says it
-  changed elsewhere. A plan read meanwhile is taken only when it is newer and nothing is unsaved.
+  A refusal puts the plan back as last saved and says why — and with it any change made while the
+  refused one was on its way, which was built on it; a 409 reads the plan again and says it changed
+  elsewhere, and a failed read is a refusal, so the page is never left Saving. A plan read
+  meanwhile is taken only when it is newer and nothing is unsaved; a name and notes read again
+  with other values start their fields from those.
 - What is done to the workout whole — pin, its group, delete — sits under the outline; a reader
   sees the same outline with nothing to tap but Start, and Copy into my group under it.
 - `/workouts/:id/edit` redirects to the workout's page, for old links.

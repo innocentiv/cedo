@@ -1,9 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import { type Exercise, type Workout, planIssues } from '@cedo/contract'
-import { ApiError } from '../api/http.ts'
 import { useReplacePlan } from '../api/queries.ts'
 import { type DayDraft, toPlanInput } from './plan-draft.ts'
-import { type PlanSync, type SyncEvent, startSync, step, unsaved } from './plan-sync.ts'
+import {
+  type PlanSync,
+  type SyncEvent,
+  saveOutcome,
+  startSync,
+  step,
+  unsaved,
+} from './plan-sync.ts'
 
 /** Every exercise the plan can name: the ones it already resolves, and any picked since. */
 function knownExercises(workout: Workout, picked: ReadonlyMap<string, Exercise>) {
@@ -36,33 +42,11 @@ function usePicked(workout: Workout) {
 }
 
 /**
- * One save, and what came of it: saved; refused, with the server's reason; or — saved elsewhere
- * since (409) — the plan as it is now, read again. Null when even that read failed: the page keeps
- * what it shows, and the next change tries again.
- */
-async function saveOnce(
-  save: () => Promise<Workout>,
-  reread: () => Promise<Workout | undefined>,
-): Promise<SyncEvent | null> {
-  try {
-    return { kind: 'saved', workout: await save() }
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 409) {
-      const fresh = await reread()
-      return fresh === undefined
-        ? null
-        : { kind: 'reloaded', workout: fresh, reason: error.message }
-    }
-    return { kind: 'refused', reason: error instanceof Error ? error.message : 'Not saved' }
-  }
-}
-
-/**
  * A workout's plan, edited in place (#26, ADR-0022): the page's copy, every change saved as it is
  * made, and what to say about it. When to send and what a refusal does are `plan-sync.ts`'s; this
  * sends, and reads the plan again after a conflict.
  */
-export function usePlanEditor(workout: Workout, reread: () => Promise<Workout | undefined>) {
+export function usePlanEditor(workout: Workout, reread: () => Promise<Workout | null>) {
   const replace = useReplacePlan(workout.id)
   const { library, known, pick } = usePicked(workout)
   const [sync, setSync] = useState<PlanSync>(() => startSync(workout))
@@ -78,11 +62,11 @@ export function usePlanEditor(workout: Workout, reread: () => Promise<Workout | 
   }
 
   const send = async (days: readonly DayDraft[], version: number): Promise<void> => {
-    const outcome = await saveOnce(
+    const outcome = await saveOutcome(
       async () => await replace.mutateAsync({ ...toPlanInput(days), version }),
       reread,
     )
-    if (outcome !== null) dispatch(outcome)
+    dispatch(outcome)
   }
 
   // Read again elsewhere — another device saved it — it is taken while nothing here is unsaved.
