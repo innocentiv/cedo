@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { StyleSheet, TextInput } from 'react-native'
+import { StyleSheet, TextInput, View } from 'react-native'
 import {
   COUNT,
   type FieldEvent,
@@ -42,30 +42,25 @@ export function Field({ label, error, hint, children }: FieldProps): React.JSX.E
 }
 
 /**
- * A small caption over a numeric control, for rows of numbers side by side: a set's targets, a
- * progression's increments. Labels are lowercase, like the units beside them. `under`: the caption
- * centred beneath a number shown large — the logger's — so the number, not its unit, is level with
- * the − and + either side of it.
+ * A small caption over a numeric control, for rows of numbers side by side: a set's targets, the
+ * logger's inputs, a progression's increments. Labels are lowercase, like the units beside them.
+ * None over a number shown large: its unit is on its own line (`TypedNumber`'s `unit`).
  */
 export function CompactField({
   label,
-  under = false,
   children,
 }: {
-  readonly label: string
-  readonly under?: boolean
+  readonly label: string | null
   readonly children: React.ReactNode
 }): React.JSX.Element {
-  const caption = (
-    <Text variant="caption" tone="faint" align={under ? 'center' : 'left'}>
-      {label}
-    </Text>
-  )
   return (
     <Stack gap="xs" grow>
-      {under ? null : caption}
+      {label === null ? null : (
+        <Text variant="caption" tone="faint">
+          {label}
+        </Text>
+      )}
       {children}
-      {under ? caption : null}
     </Stack>
   )
 }
@@ -123,6 +118,11 @@ export interface TypedNumberProps {
   readonly placeholder?: string | undefined
   /** `large`: the next set's numbers on the workout screen — display size, typed where they stand. */
   readonly size?: 'regular' | 'large' | undefined
+  /**
+   * Large only: the unit, on the number's line just after it — smaller, quieter — the pair centred
+   * as one: "102.5 kg".
+   */
+  readonly unit?: string | undefined
   readonly testID?: string | undefined
 }
 
@@ -133,6 +133,7 @@ export function TypedNumber({
   typing,
   placeholder,
   size = 'regular',
+  unit,
   testID,
 }: TypedNumberProps): React.JSX.Element {
   const [edit, setEdit] = useState(() => fieldShowing(value))
@@ -145,10 +146,11 @@ export function TypedNumber({
   useEffect(() => {
     if (edit.own) send({ kind: 'settled' })
   })
-  return (
+  const shown = fieldText(edit, typing)
+  const input = (
     <TextInput
       testID={testID}
-      value={fieldText(edit, typing)}
+      value={shown}
       onBlur={() => {
         send({ kind: 'blur' })
       }}
@@ -170,6 +172,26 @@ export function TypedNumber({
       inputMode={typing.decimals ? 'decimal' : 'numeric'}
       style={[styles.input, styles.numeric, size === 'large' ? styles.large : null]}
     />
+  )
+  if (size === 'regular') return input
+  /**
+   * A text input is as wide as it is told, not as its text, so the unit could not sit just after
+   * the number: the number's own text, unseen, sizes the box the input fills.
+   */
+  return (
+    <Stack direction="row" align="baseline" justify="center" gap="xs">
+      <View>
+        <View style={styles.unseen} aria-hidden>
+          <Text variant="display">{shown === '' ? (placeholder ?? ' ') : shown}</Text>
+        </View>
+        <View style={StyleSheet.absoluteFill}>{input}</View>
+      </View>
+      {unit === undefined ? null : (
+        <Text variant="number" tone="faint">
+          {unit}
+        </Text>
+      )}
+    </Stack>
   )
 }
 
@@ -206,6 +228,7 @@ const styles = StyleSheet.create({
     fontSize: type.mono.fontSize,
   },
   invalid: { borderColor: color.danger },
+  unseen: { opacity: 0, paddingHorizontal: space.xs },
   large: {
     height: type.display.lineHeight,
     paddingVertical: 0,

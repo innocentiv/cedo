@@ -1,7 +1,7 @@
 import { formatPrescription, setTargetOf } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
 import { useWeightUnit } from '../lib/weight-unit.ts'
-import { Button } from './button.tsx'
+import { IconButton } from './icon.tsx'
 import { Card } from './card.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
@@ -34,7 +34,13 @@ export function UnavailableEntry({
           <Stack grow>
             <Text variant="label">{exerciseName}</Text>
           </Stack>
-          <Button title="Remove" variant="ghost" onPress={onRemove} testID={`${testID}-remove`} />
+          <IconButton
+            name="remove"
+            label={`Remove ${exerciseName}`}
+            edge="end"
+            onPress={onRemove}
+            testID={`${testID}-remove`}
+          />
         </Stack>
         <Text variant="caption" tone="muted" testID={`${testID}-target`}>
           {formatPrescription(sets, null, unit)}

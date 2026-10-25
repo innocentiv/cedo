@@ -1,6 +1,6 @@
 import { type SetKind, type TrackingMode, resizeSets, setCounts } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
-import { Button } from './button.tsx'
+import { IconButton } from './icon.tsx'
 import { Card } from './card.tsx'
 import { Chips } from './chips.tsx'
 import { PrescriptionFields } from './prescription-fields.tsx'
@@ -47,7 +47,13 @@ export function EntryEditor({
           <Stack grow>
             <Text variant="label">{exerciseName}</Text>
           </Stack>
-          <Button title="Remove" variant="ghost" onPress={onRemove} testID={`${testID}-remove`} />
+          <IconButton
+            name="remove"
+            label={`Remove ${exerciseName}`}
+            edge="end"
+            onPress={onRemove}
+            testID={`${testID}-remove`}
+          />
         </Stack>
 
         <Counts

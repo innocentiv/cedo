@@ -271,8 +271,9 @@ Two panes where reading side by side helps: a workout's outline beside the entry
 exercise list beside the exercise, Today's next session and week beside the history — and the
 session: what was just done and the exercise in focus, beside the day and its sets (`Columns`). One
 column 700 points wide made the Log button the loudest thing on a desk, which it is not there. A
-session left open is a line in the sidebar with a yellow mark, not a bar; a sheet opens in the
-middle of the screen, not from its bottom edge. The sidebar carries the product's name and the
+session left open is the same yellow band as on a phone, at the foot of the sidebar — a line with a
+yellow dot was tried and read as too little; a sheet opens in the middle of the screen, not from
+its bottom edge. The sidebar carries the product's name and the
 account.
 
 ### The look
@@ -300,10 +301,14 @@ which"). Three distances, no others: the widest (`xxl`) between groups — what 
 exercise in focus, the day, the session's sets; a middle one inside a group; the closest between a
 label and what it labels. One left edge: every line of text on a screen starts on it, and a list
 row's ground bleeds into the gutter rather than pushing its text in. A number shown large has its
-unit centred under it, so the number itself is level with the − and + either side.
+unit after it on the same line, smaller and quieter — "102.5 kg" — and the line is level with the
+− and + either side. (Centred under it was tried: the number read low, and apart from its unit.)
 
-**A secondary action is a glyph** — back, the menu, close, undo, how to — drawn in `icon.tsx`, a
-hand-drawn set on one grid, and always named aloud (`IconButton`'s `label`). Its touch area is a
+**A secondary action is a glyph** — back, the menu, close, undo, remove, how to, the arrow back to a
+session — drawn in `icon.tsx`, a hand-drawn set on one grid, and always named aloud (`IconButton`'s
+`label`). Undo is an arrow turning back, never a circle, which reads as reload; removing something
+from what is being edited is a bin. What cannot be taken back — deleting a workout, revoking a
+token, removing a member — keeps its words and is asked twice (`ConfirmButton`). Its touch area is a
 full control, pulled past the content's edge so the glyph lines up with the text beside it. What
 the screen is for keeps its words: Log set 2, Finish session, Add exercise. Every value is in `src/ui/tokens.ts`; the primitives are the
 only thing that reads them.

@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { type Media, parseMediaUrl, uploadLimits, uploadRefusal } from '@cedo/contract'
-import { Button, FormError, Input, ListRow, Stack, Text } from '../ui/index.ts'
+import { Button, FormError, IconButton, Input, ListRow, Stack, Text } from '../ui/index.ts'
 import { apiUrl } from '../api/http.ts'
 import { useCreateMediaLink, useUploadMedia } from '../api/queries.ts'
 import { pickImage } from './pick-image.ts'
@@ -47,10 +47,17 @@ export function MediaLinks({ value, onChange }: MediaLinksProps): React.JSX.Elem
           key={media.id}
           title={media.title === '' ? apiUrl(media.url) : media.title}
           subtitle={media.kind === 'video_link' ? 'Video' : 'Image'}
-          trailing="Remove"
-          onPress={() => {
-            onChange(value.filter((m) => m.id !== media.id))
-          }}
+          accessory={
+            <IconButton
+              name="remove"
+              label="Remove it"
+              edge="end"
+              onPress={() => {
+                onChange(value.filter((m) => m.id !== media.id))
+              }}
+              testID={`media-remove-${media.id}`}
+            />
+          }
           testID={`media-row-${media.id}`}
         />
       ))}

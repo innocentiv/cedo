@@ -46,6 +46,7 @@ export function DimensionInput({
     onChange(next)
   }
   const caption = label ?? field.unit(tracking, assisted)
+  const large = size === 'large'
   const input = (
     <TypedNumber
       value={canAssist ? assistance.shown(value) : value}
@@ -54,11 +55,13 @@ export function DimensionInput({
       }}
       typing={field}
       size={size}
+      // Shown large, the unit is said on the number's line; otherwise it labels the field.
+      unit={large ? caption : undefined}
       testID={testID}
     />
   )
   return (
-    <CompactField label={caption} under={size === 'large'}>
+    <CompactField label={large ? null : caption}>
       {input}
       {canAssist ? (
         <Chips

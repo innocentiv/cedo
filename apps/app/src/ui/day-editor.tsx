@@ -1,8 +1,8 @@
 import { type Exercise, canAddEntry } from '@cedo/contract'
 import { exerciseName } from '../lib/exercise-name.ts'
-import type { DayDraft, EntryDraft } from '../lib/plan-draft.ts'
-import { removeAt, replaceAt } from '../lib/plan-draft.ts'
+import { type DayDraft, type EntryDraft, removeAt, replaceAt } from '../lib/plan-draft.ts'
 import { Button } from './button.tsx'
+import { IconButton } from './icon.tsx'
 import { Card } from './card.tsx'
 import { EntryEditor } from './entry-editor.tsx'
 import { Field, Input } from './input.tsx'
@@ -53,10 +53,16 @@ export function DayEditor({
                 testID={`day-name-${index}`}
               />
             </Stack>
-            <Button title="↑" variant="ghost" onPress={onMoveUp} testID={`day-up-${index}`} />
-            <Button
-              title="Delete"
-              variant="ghost"
+            <IconButton
+              name="up"
+              label="Move the day up"
+              onPress={onMoveUp}
+              testID={`day-up-${index}`}
+            />
+            <IconButton
+              name="remove"
+              label="Remove the day"
+              edge="end"
               onPress={onRemove}
               testID={`day-remove-${index}`}
             />

@@ -28,7 +28,7 @@ export function Stepper({
   const step = (by: 1 | -1) => () => {
     onChange(stepped(value, by, dimension, tracking, unit))
   }
-  // Level with the number, not with the number and the unit under it.
+  // Level with the number's line, not with an assistance choice under it.
   return (
     <Stack direction="row" align="flex-start" gap="sm">
       <Stack justify="center" style={styles.level}>

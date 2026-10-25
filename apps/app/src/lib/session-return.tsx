@@ -12,7 +12,7 @@ export const onWorkout = (pathname: string): boolean => pathname.startsWith('/to
 export function SessionReturn({
   inSidebar = false,
 }: {
-  /** In a desktop's sidebar, under the tabs, rather than a bar over a phone's. */
+  /** At the foot of a desktop's sidebar, rather than over a phone's tabs. */
   readonly inSidebar?: boolean
 }): React.JSX.Element | null {
   const pathname = usePathname()
