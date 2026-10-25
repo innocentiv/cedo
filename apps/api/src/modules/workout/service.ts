@@ -3,7 +3,7 @@ import {
   type Page,
   type Workout,
   type WorkoutCreate,
-  type WorkoutPlanInput,
+  type PlanSave,
   type WorkoutQuery,
   type WorkoutSummary,
   type WorkoutUpdate,
@@ -76,11 +76,7 @@ export async function remove(caller: Caller, id: string): Promise<void> {
   await workoutLifecycle.remove(caller, id)
 }
 
-export async function replacePlan(
-  caller: Caller,
-  id: string,
-  plan: WorkoutPlanInput,
-): Promise<Workout> {
+export async function replacePlan(caller: Caller, id: string, plan: PlanSave): Promise<Workout> {
   await savePlan(caller, id, plan)
   return await get(caller, id)
 }

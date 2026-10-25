@@ -135,6 +135,15 @@ export const WorkoutPlanInput = z
   })
 export type WorkoutPlanInput = z.output<typeof WorkoutPlanInput>
 
+/**
+ * `PUT /workouts/:id/plan`: a whole plan, and the version of the workout it was made from — the
+ * workout page sends it with every change, and a save made from an older one is a 409 (ADR-0022).
+ * Without one the save is unconditional: for a caller writing a plan it composed whole, with no
+ * earlier copy to have gone stale.
+ */
+export const PlanSave = WorkoutPlanInput.safeExtend({ version: z.int().positive().optional() })
+export type PlanSave = z.output<typeof PlanSave>
+
 export const WorkoutSet = z.object({
   id: Id,
   index: OrderIndex,
@@ -191,6 +200,11 @@ export const WorkoutSummary = z.object({
   name: z.string(),
   notes: z.string().nullable(),
   dayCount: z.int().nonnegative(),
+  /**
+   * The plan's version, raised by every plan save. A save sends the one it was made from, and is
+   * refused when the plan has moved on since (ADR-0022).
+   */
+  version: z.int().positive(),
   ...ownableFields,
 })
 export type WorkoutSummary = z.output<typeof WorkoutSummary>

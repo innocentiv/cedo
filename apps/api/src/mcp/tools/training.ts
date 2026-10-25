@@ -6,7 +6,7 @@ import {
   OfAthlete,
   SessionLogInput,
   WorkoutCreate,
-  WorkoutPlanInput,
+  PlanSave,
   planInputFrom,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
@@ -102,11 +102,14 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'The same plan in exactly the shape `workout_save_plan` expects. Fetch this, modify it, ' +
         'and send it back — that round trip is why this returns JSON rather than an outline. ' +
         'Keep each day and entry `id` you are not replacing: logged history and progression ' +
-        'stay attached to them.',
+        'stay attached to them. Its `version` goes back with the save.',
       inputSchema: z.object({ workoutId: z.uuid() }),
       annotations: READ,
     },
-    async ({ workoutId }) => json(planInputFrom(await WorkoutService.get(caller, workoutId))),
+    async ({ workoutId }) => {
+      const workout = await WorkoutService.get(caller, workoutId)
+      return json({ ...planInputFrom(workout), version: workout.version })
+    },
   )
 
   server.registerTool(
@@ -135,13 +138,14 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'worth 20 kg is -20000), allowed there only. Send back ' +
         'the `id` of each day and entry you keep (from `workout_get_editable`): that keeps its ' +
         'logged history and progression. An entry with no id, or whose exercise you changed, ' +
-        'starts with no history.',
-      inputSchema: WorkoutPlanInput.safeExtend({ workoutId: z.uuid() }),
+        'starts with no history. Send the `version` workout_get_editable gave: if the plan was ' +
+        'changed since — by its owner, in the app — the save is refused, and you read it again.',
+      inputSchema: PlanSave.safeExtend({ workoutId: z.uuid() }),
       annotations: WRITE,
     },
-    async ({ workoutId, days }) =>
+    async ({ workoutId, ...plan }) =>
       text(
-        `Saved.\n\n${workoutDetail(await WorkoutService.replacePlan(caller, workoutId, { days }), caller.weightUnit)}`,
+        `Saved.\n\n${workoutDetail(await WorkoutService.replacePlan(caller, workoutId, plan), caller.weightUnit)}`,
       ),
   )
 

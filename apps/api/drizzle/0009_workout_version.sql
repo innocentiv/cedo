@@ -1,0 +1,1 @@
+ALTER TABLE "workouts" ADD COLUMN "version" integer DEFAULT 1 NOT NULL;

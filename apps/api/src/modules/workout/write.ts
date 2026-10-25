@@ -1,9 +1,9 @@
 import { and, eq, sql } from 'drizzle-orm'
-import type { WorkoutCreate, WorkoutPlanInput, WorkoutUpdate } from '@cedo/contract'
+import type { PlanSave, WorkoutCreate, WorkoutPlanInput, WorkoutUpdate } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { assertEditorOf, editable } from '../../db/ownable.ts'
 import { workouts } from '../../db/schema.ts'
-import { notFound } from '../../lib/error.ts'
+import { conflict, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { assertAssistanceAllowed, assertPlanCanUse } from './references.ts'
 import { writePlan } from './write-plan.ts'
@@ -54,6 +54,9 @@ export async function updateWorkout(
   if (written.length === 0) throw notFound('workout')
 }
 
+/** What a save made from a copy of the plan older than the stored one is told (ADR-0022). */
+export const CHANGED = 'This workout changed since it was opened. It has been reloaded.'
+
 /**
  * Replaces the ENTIRE plan in one transaction.
  *
@@ -62,7 +65,7 @@ export async function updateWorkout(
  * reordering — and it matches how the editor actually works. Indices come from array position, so
  * the client never sends one. See docs/06-api.md.
  */
-export async function savePlan(caller: Caller, id: string, plan: WorkoutPlanInput): Promise<void> {
+export async function savePlan(caller: Caller, id: string, plan: PlanSave): Promise<void> {
   await db.transaction(async (tx) => {
     /**
      * The permission check is INSIDE the transaction and takes a row lock.
@@ -73,12 +76,14 @@ export async function savePlan(caller: Caller, id: string, plan: WorkoutPlanInpu
      * rights to it. `for('update')` holds the row until this commits. See docs/02-conventions.md.
      */
     const [own] = await tx
-      .select({ ownerGroupId: workouts.ownerGroupId })
+      .select({ ownerGroupId: workouts.ownerGroupId, version: workouts.version })
       .from(workouts)
       .where(and(editable(workouts, caller), eq(workouts.id, id)))
       .limit(1)
       .for('update')
     if (own === undefined) throw notFound('workout')
+    // Against the version read under the lock: two saves from one copy cannot both pass (ADR-0022).
+    if (plan.version !== undefined && plan.version !== own.version) throw conflict(CHANGED)
 
     // Saving is the third way an exercise reaches a group, after transfer and duplicate, and is
     // held to their rule. Against the owner read under the lock, so a concurrent transfer cannot
@@ -94,7 +99,7 @@ export async function savePlan(caller: Caller, id: string, plan: WorkoutPlanInpu
     await writePlan(tx, caller, { id, ownerGroupId: own.ownerGroupId }, plan)
     await tx
       .update(workouts)
-      .set({ updatedAt: sql`now()` })
+      .set({ updatedAt: sql`now()`, version: sql`${workouts.version} + 1` })
       .where(and(editable(workouts, caller), eq(workouts.id, id)))
   })
 }

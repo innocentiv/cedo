@@ -64,6 +64,13 @@
       "when": 1792798081623,
       "tag": "0008_shares_training",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792963305887,
+      "tag": "0009_workout_version",
+      "breakpoints": true
     }
   ]
 }

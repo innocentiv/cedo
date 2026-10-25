@@ -14,6 +14,7 @@ export function toSummary(
     name: row.name,
     notes: row.notes,
     dayCount,
+    version: row.version,
     ...ownableFieldsOf(row, isFavourite, caller),
   }
 }

@@ -224,6 +224,48 @@ describe('the plan replace', () => {
   })
 })
 
+/** Each change is saved as it is made, from the version it was made from (ADR-0022). */
+describe('the plan version', () => {
+  const save = async (workoutId: string, body: Record<string, unknown>) =>
+    await alice.wire(`/workouts/${workoutId}/plan`, { method: 'PUT', body: JSON.stringify(body) })
+
+  test('is raised by every save, and a save from an older one is refused with nothing written', async () => {
+    const workout = await aWorkout(alice)
+    expect(workout.version).toBe(1)
+    const exerciseId = await anExercise(alice)
+
+    const first = await save(workout.id, { ...plan(exerciseId), version: 1 })
+    expect(expectContract(Workout, first.body).version).toBe(2)
+
+    // A second copy, opened at version 1, saving over the first copy's change.
+    const stale = await save(workout.id, {
+      days: [{ name: 'Stale', entries: [{ exerciseId, sets: [{ targetReps: 5 }] }] }],
+      version: 1,
+    })
+    expect(stale.status).toBe(409)
+    const now = expectContract(Workout, (await alice.wire(`/workouts/${workout.id}`)).body)
+    expect(now.version).toBe(2)
+    expect(now.days.map((d) => d.name)).toEqual(['Day 1 — Push', 'Day 2 — Pull'])
+  })
+
+  test('is not asked of a save that sends none: it replaces unconditionally', async () => {
+    const workout = await aWorkout(alice)
+    const exerciseId = await anExercise(alice)
+    await save(workout.id, plan(exerciseId))
+    const again = await save(workout.id, plan(exerciseId))
+    expect(expectContract(Workout, again.body).version).toBe(3)
+  })
+
+  test("is the plan's alone: renaming the workout leaves it", async () => {
+    const workout = await aWorkout(alice)
+    const renamed = await alice.wire(`/workouts/${workout.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ name: 'Renamed' }),
+    })
+    expect(expectContract(Workout, renamed.body).version).toBe(1)
+  })
+})
+
 describe('access control', () => {
   test("one user cannot see, edit or plan another's workout", async () => {
     const mine = await aWorkout(alice, 'Private Programme')

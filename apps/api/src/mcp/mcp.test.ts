@@ -11,7 +11,7 @@ import {
   mcpAddress,
   type TrackingMode,
   Workout,
-  WorkoutPlanInput,
+  PlanSave,
   page,
 } from '@cedo/contract'
 import { createApp } from '../app.ts'
@@ -690,15 +690,20 @@ describe('editing a plan', () => {
     )
 
     const pat = await mintPat(alice)
-    const editable = WorkoutPlanInput.parse(
+    const editable = PlanSave.parse(
       JSON.parse(
         textOf((await callTool(pat, 'workout_get_editable', { workoutId: workout.id })).body),
       ),
     )
+    // The version it was read at goes back with it (ADR-0022).
+    expect(editable.version).toBe(before.version)
     const day = editable.days[0]
     if (day === undefined) throw new Error('no day')
     day.name = 'Back'
     await callTool(pat, 'workout_save_plan', { workoutId: workout.id, ...editable })
+    // Sent again from the same, now older, copy: refused, not a silent overwrite.
+    const again = await callTool(pat, 'workout_save_plan', { workoutId: workout.id, ...editable })
+    expect(textOf(again.body)).toContain('changed since it was opened')
 
     const after = expectContract(Workout, (await alice.wire(`/workouts/${workout.id}`)).body)
     expect(after.days[0]?.name).toBe('Back')

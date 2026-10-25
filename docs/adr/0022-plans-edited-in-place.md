@@ -49,7 +49,10 @@ schema would — `planIssues` in the contract says so before the request.
 ## Consequences
 
 - `workouts` gains a version, and the plan save a precondition on it; a refusal is a `409` the
-  editor answers by reloading.
+  editor answers by reloading. The version is optional on the save (`PlanSave`): the workout page
+  and an AI that read the plan (`workout_get_editable` returns it) send it, and a caller writing a
+  plan it composed whole, with no earlier copy to have gone stale, may leave it out and replace
+  unconditionally. Renaming a workout or its notes leaves the version alone: it guards the plan.
 - Editing a plan needs a signal, unlike logging a set: a change made offline is not queued.
 - Saving whole on every change sends the plan each time — a few kilobytes for a large plan, which a
   self-hosted instance on a NAS takes in its stride.

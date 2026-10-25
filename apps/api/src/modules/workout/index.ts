@@ -7,7 +7,7 @@ import {
   TransferInput,
   Workout,
   WorkoutCreate,
-  WorkoutPlanInput,
+  PlanSave,
   WorkoutQuery,
   WorkoutSummary,
   WorkoutUpdate,
@@ -56,10 +56,13 @@ export const workoutRoutes = new Elysia({ prefix: '/workouts', tags: ['workouts'
     ({ caller, params: { id }, body }) => WorkoutService.replacePlan(caller, id, body),
     {
       params,
-      body: WorkoutPlanInput,
+      body: PlanSave,
       response: Workout,
       detail: {
         summary: 'Replace the entire plan atomically. Order is array position; send no indices.',
+        description:
+          'Send the `version` the plan was read at: a save made from an older one is refused with ' +
+          '409, and the plan should be read again. Without one the save is unconditional.',
       },
     },
   )

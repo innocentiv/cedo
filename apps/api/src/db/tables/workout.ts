@@ -22,6 +22,11 @@ export const workouts = pgTable(
   {
     ...ownable(),
     notes: text('notes'),
+    /**
+     * Raised by every plan save; a save made from an older one is refused (ADR-0022), so two copies
+     * of one plan open at once cannot quietly overwrite each other.
+     */
+    version: integer('version').notNull().default(1),
   },
   (t) => [
     /**
