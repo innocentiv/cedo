@@ -36,7 +36,7 @@ import {
   type TransferInput,
   Workout,
   type WorkoutCreate,
-  type WorkoutPlanInput,
+  type PlanSave,
   type WorkoutQuery,
   WorkoutSession,
   WorkoutSessionSummary,
@@ -133,7 +133,7 @@ const workouts = ({ GET, POST, PATCH, PUT, DELETE }: Verbs) => ({
   create: async (body: WorkoutCreate) => await POST('/workouts', Workout, body),
   update: async (id: string, body: WorkoutUpdate) => await PATCH(`/workouts/${id}`, Workout, body),
   remove: async (id: string) => await DELETE(`/workouts/${id}`, Ok),
-  replacePlan: async (id: string, body: WorkoutPlanInput) =>
+  replacePlan: async (id: string, body: PlanSave) =>
     await PUT(`/workouts/${id}/plan`, Workout, body),
   progression: async (id: string) =>
     await GET(`/workouts/${id}/progression`, z.array(ProgressionSuggestion)),

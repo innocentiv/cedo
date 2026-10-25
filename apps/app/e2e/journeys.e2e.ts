@@ -7,6 +7,7 @@ import {
   type TrackingMode,
   WorkoutPlanInput,
   kgToG,
+  planInputFrom,
 } from '@cedo/contract'
 import {
   E2E_STARTUP_TIMEOUT_MS,
@@ -523,6 +524,84 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/**
+ * A workout is edited in place (#26, ADR-0022): each change is saved as it is made — there is no
+ * Save — and an entry moved to another day keeps its history, its id going with it.
+ */
+test(
+  'a plan is saved as each change is made, and an entry moved to another day keeps its id',
+  async () => {
+    await withApp('plan-in-place', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('place'))
+      await app.planEditor.create()
+      const entry = app.planEditor.entry(0, 0)
+      await entry.focus('sets')
+      await page.keys(['Backspace', '4'])
+      await app.planEditor.saved()
+
+      const mine = await page.client()
+      const [listed] = (await mine.workouts.list({})).items
+      if (listed === undefined) throw new Error('The plan was not listed')
+      const first = await mine.workouts.get(listed.id)
+      expect(first.days[0]?.entries[0]?.sets.filter((s) => !s.isWarmup)).toHaveLength(4)
+      const entryId = first.days[0]?.entries[0]?.id
+
+      await app.planEditor.addDay()
+      await app.planEditor.saved()
+      await entry.moveToDay(1)
+      await app.planEditor.saved()
+      const moved = await mine.workouts.get(listed.id)
+      expect(moved.days.map((d) => d.entries.length)).toEqual([0, 1])
+      expect(moved.days[1]?.entries[0]?.id).toBe(entryId)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * Two copies of one plan, open at once (ADR-0022): a change made from the older is refused, and the
+ * page reads the plan again and says so — it does not quietly overwrite what was saved elsewhere.
+ */
+test(
+  'a change to a plan saved elsewhere since is refused, and the plan read again',
+  async () => {
+    await withApp('plan-conflict', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('both'))
+      await app.planEditor.create()
+      await app.planEditor.saved()
+      const mine = await page.client()
+      const [listed] = (await mine.workouts.list({})).items
+      if (listed === undefined) throw new Error('The plan was not listed')
+
+      // Elsewhere — another device — the day is renamed and saved.
+      const there = await mine.workouts.get(listed.id)
+      const plan = planInputFrom(there)
+      const [day] = plan.days
+      if (day === undefined) throw new Error('The plan has no day')
+      await mine.workouts.replacePlan(listed.id, {
+        days: [{ ...day, name: 'Theirs' }],
+        version: there.version,
+      })
+
+      // Here, from the copy opened before it: refused, and the plan as saved there shown instead.
+      await app.planEditor.entry(0, 0).focus('sets')
+      await page.keys(['Backspace', '2'])
+      const said = await page.until(
+        async () => await app.planEditor.said(),
+        (shown) => shown !== null,
+      )
+      expect(said).toContain('changed since it was opened')
+      const after = await mine.workouts.get(listed.id)
+      expect(after.days[0]?.name).toBe('Theirs')
+      expect(after.days[0]?.entries[0]?.sets.filter((s) => !s.isWarmup)).toHaveLength(3)
+      expect(await app.planEditor.dayName(0)).toBe('Theirs')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
 test(
   'the plan editor stops where the schema would, and says why before saving',
   async () => {
@@ -543,6 +622,8 @@ test(
       await app.planEditor.focusDayName(0)
       expect(await entry.value('sets')).toBe('15')
       expect(await app.planEditor.canSave()).toBe(true)
+      // Reading the field opened its settings again (#26): back to the day's name.
+      await app.planEditor.focusDayName(0)
 
       // A draft the schema would refuse says so in the footer, and cannot be saved. The name field
       // is a plain text input: the tap left the caret wherever it landed, so go to the end and

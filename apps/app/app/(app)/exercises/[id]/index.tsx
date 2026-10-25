@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { formatEffort, musclesByLoad } from '@cedo/contract'
+import { MEDIA_KIND_LABELS, formatEffort, musclesByLoad } from '@cedo/contract'
 import type { Exercise, ExerciseHistory, TrackingMode } from '@cedo/contract'
 import { useWeightUnit } from '../../../../src/lib/weight-unit.ts'
 import {
@@ -200,7 +200,11 @@ function About({ exercise }: { readonly exercise: Exercise }): React.JSX.Element
             Media
           </Text>
           {exercise.media.map((m) => (
-            <ListRow key={m.id} title={m.title === '' ? m.url : m.title} subtitle={m.kind} />
+            <ListRow
+              key={m.id}
+              title={m.title === '' ? m.url : m.title}
+              subtitle={MEDIA_KIND_LABELS[m.kind]}
+            />
           ))}
         </Stack>
       )}

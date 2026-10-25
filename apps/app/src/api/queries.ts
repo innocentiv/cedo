@@ -25,7 +25,8 @@ import type {
   SessionStart,
   Workout,
   WorkoutCreate,
-  WorkoutPlanInput,
+  PlanSave,
+  WorkoutUpdate,
   WorkoutQuery,
   SessionDetail,
   Today,
@@ -189,11 +190,13 @@ export const useCreateWorkout = () =>
 export const useDuplicateWorkout = () =>
   useWriteTo('workout', async (id: string) => await api.workouts.duplicate(id))
 
+/** One save of a plan edited in place, with the version it was made from (ADR-0022). */
 export const useReplacePlan = (id: string) =>
-  useWriteTo(
-    'workout',
-    async (input: WorkoutPlanInput) => await api.workouts.replacePlan(id, input),
-  )
+  useWriteTo('workout', async (input: PlanSave) => await api.workouts.replacePlan(id, input))
+
+/** A workout's name or notes, kept where they are shown (#26). */
+export const useUpdateWorkout = (id: string) =>
+  useWriteTo('workout', async (input: WorkoutUpdate) => await api.workouts.update(id, input))
 
 export const useDeleteWorkout = () =>
   useDeleteOf('workout', async (id) => await api.workouts.remove(id))

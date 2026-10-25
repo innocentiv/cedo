@@ -77,6 +77,11 @@ export interface InputProps {
   readonly onSubmitEditing?: (() => void) | undefined
   /** When the field is left: where a text kept as it is written is saved. */
   readonly onBlur?: (() => void) | undefined
+  /**
+   * `title`: a name edited where it is read (#26) — a workout's, a day's — set as the heading it
+   * is, with no box: tapping it is how it is renamed.
+   */
+  readonly look?: 'field' | 'title' | 'heading'
   readonly testID?: string | undefined
 }
 
@@ -91,6 +96,7 @@ export function Input({
   invalid = false,
   onSubmitEditing,
   onBlur,
+  look = 'field',
   testID,
 }: InputProps): React.JSX.Element {
   return (
@@ -108,7 +114,12 @@ export function Input({
       onSubmitEditing={onSubmitEditing}
       onBlur={onBlur}
       submitBehavior={multiline ? 'newline' : 'blurAndSubmit'}
-      style={[styles.input, multiline ? styles.multiline : null, invalid ? styles.invalid : null]}
+      style={[
+        styles.input,
+        multiline ? styles.multiline : null,
+        look === 'field' ? null : [styles.inline, type[look]],
+        invalid ? styles.invalid : null,
+      ]}
     />
   )
 }
@@ -232,6 +243,11 @@ const styles = StyleSheet.create({
     fontSize: type.mono.fontSize,
   },
   invalid: { borderColor: color.danger },
+  inline: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    paddingHorizontal: 0,
+  },
   unseen: { opacity: 0, paddingHorizontal: space.xs },
   large: {
     height: type.display.lineHeight,

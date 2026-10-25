@@ -36,6 +36,8 @@ export interface ListRowProps {
   readonly trailing?: string | undefined
   readonly onPress?: (() => void) | undefined
   readonly accessory?: React.ReactNode | undefined
+  /** The row whose detail is open beside the list, or above it (#26). */
+  readonly selected?: boolean | undefined
   readonly testID?: string | undefined
 }
 
@@ -49,6 +51,7 @@ export function ListRow({
   trailing,
   onPress,
   accessory,
+  selected = false,
   testID,
 }: ListRowProps): React.JSX.Element {
   const content = (
@@ -83,7 +86,12 @@ export function ListRow({
       testID={testID}
       accessibilityRole="button"
       onPress={onPress}
-      style={({ pressed }) => [styles.row, pressed ? styles.rowPressed : null]}
+      aria-selected={selected}
+      style={({ pressed }) => [
+        styles.row,
+        selected ? styles.rowSelected : null,
+        pressed ? styles.rowPressed : null,
+      ]}
     >
       {content}
     </Pressable>
@@ -104,4 +112,11 @@ const styles = StyleSheet.create({
     borderBottomColor: color.border,
   },
   rowPressed: { backgroundColor: color.surface },
+  /** Bled into the gutter, as `UpNext`'s current row: the text keeps the one left edge. */
+  rowSelected: {
+    backgroundColor: color.surface,
+    marginHorizontal: -space.md,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+  },
 })

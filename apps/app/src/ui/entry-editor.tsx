@@ -1,7 +1,5 @@
 import { type SetKind, type TrackingMode, resizeSets, setCounts } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
-import { IconButton } from './icon.tsx'
-import { Card } from './card.tsx'
 import { Chips } from './chips.tsx'
 import { PrescriptionFields } from './prescription-fields.tsx'
 import { ProgressionField } from './progression-field.tsx'
@@ -20,20 +18,21 @@ const SUPERSET_OPTIONS = [
 
 export interface EntryEditorProps {
   readonly entry: EntryDraft
-  readonly exerciseName: string
   /** Decides which target inputs exist. A plank has no kilograms. */
   readonly tracking: TrackingMode
   readonly onChange: (entry: EntryDraft) => void
-  readonly onRemove: () => void
   readonly testID: string
 }
 
+/**
+ * Everything one entry of a plan asks (#26): its sets, their targets, reserve, rest and cue, its
+ * superset and its progression. Only the fields: the sheet or panel it opens in says which exercise
+ * it is, and holds what is done to the entry as a whole — moving it, removing it.
+ */
 export function EntryEditor({
   entry,
-  exerciseName,
   tracking,
   onChange,
-  onRemove,
   testID,
 }: EntryEditorProps): React.JSX.Element {
   // The rules are the contract's: how bands resize within the entry's total, and what a target
@@ -41,49 +40,34 @@ export function EntryEditor({
   const counts = setCounts(entry)
 
   return (
-    <Card testID={testID}>
-      <Stack gap="sm">
-        <Stack direction="row" gap="sm" align="center">
-          <Stack grow>
-            <Text variant="label">{exerciseName}</Text>
-          </Stack>
-          <IconButton
-            name="remove"
-            label={`Remove ${exerciseName}`}
-            edge="end"
-            onPress={onRemove}
-            testID={`${testID}-remove`}
-          />
-        </Stack>
+    <Stack gap="lg" testID={testID}>
+      <Counts
+        warmups={counts.warmup}
+        working={counts.working}
+        onResize={(band, count) => {
+          onChange(resizeSets(entry, band, count))
+        }}
+        testID={testID}
+      />
 
-        <Counts
-          warmups={counts.warmup}
-          working={counts.working}
-          onResize={(band, count) => {
-            onChange(resizeSets(entry, band, count))
-          }}
-          testID={testID}
-        />
+      <PrescriptionFields entry={entry} tracking={tracking} onChange={onChange} testID={testID} />
 
-        <PrescriptionFields entry={entry} tracking={tracking} onChange={onChange} testID={testID} />
+      <Superset
+        value={entry.supersetGroup}
+        onChange={(supersetGroup) => {
+          onChange({ ...entry, supersetGroup })
+        }}
+        testID={testID}
+      />
 
-        <Superset
-          value={entry.supersetGroup}
-          onChange={(supersetGroup) => {
-            onChange({ ...entry, supersetGroup })
-          }}
-          testID={testID}
-        />
-
-        <ProgressionField
-          rule={entry.progression}
-          onChange={(progression) => {
-            onChange({ ...entry, progression })
-          }}
-          testID={testID}
-        />
-      </Stack>
-    </Card>
+      <ProgressionField
+        rule={entry.progression}
+        onChange={(progression) => {
+          onChange({ ...entry, progression })
+        }}
+        testID={testID}
+      />
+    </Stack>
   )
 }
 

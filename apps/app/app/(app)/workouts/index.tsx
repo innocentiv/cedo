@@ -33,7 +33,7 @@ export default function WorkoutList(): React.JSX.Element {
     void submit(async () => {
       const created = await create.mutateAsync({ name, notes: null })
       setName('')
-      router.push(`/workouts/${created.id}/edit`)
+      router.push(`/workouts/${created.id}`)
     })
   }
 
