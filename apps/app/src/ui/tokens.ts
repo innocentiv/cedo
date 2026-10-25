@@ -107,6 +107,9 @@ export const ROW_HEIGHT = 56
 /** A glyph (`icon.tsx`): drawn on a 24-point grid, shown at that size. */
 export const ICON_SIZE = 24
 
+/** An exercise's picture in a row of a list (#27): small, at the 16:9 a video is. */
+export const ROW_THUMB_WIDTH = 64
+
 /** One set's mark on the workout; a warm-up's is a step smaller. */
 export const MARK_SIZE = 40
 

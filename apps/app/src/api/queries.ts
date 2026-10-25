@@ -69,6 +69,14 @@ export function useExerciseHistory(id: string): UseQueryResult<ExerciseHistory> 
   })
 }
 
+/** The exercises logged most lately, latest first (#27): what a picker leads with. */
+export function useRecentExercises(): UseQueryResult<Exercise[]> {
+  return useQuery({
+    queryKey: keys.recentExercises,
+    queryFn: async () => await api.exercises.recent(),
+  })
+}
+
 export function useWorkouts(query: Partial<WorkoutQuery>): UseQueryResult<Page<WorkoutSummary>> {
   return useQuery({
     queryKey: keys.workoutList(query),

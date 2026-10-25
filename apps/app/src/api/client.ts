@@ -124,6 +124,8 @@ const exercises = ({ GET, POST, PATCH, PUT, DELETE }: Verbs) => ({
       : await DELETE(`/exercises/${id}/favourite`, Ok),
   history: async (id: string, query: Partial<ExerciseHistoryQuery> = {}) =>
     await GET(`/exercises/${id}/history`, ExerciseHistory, asQuery(query)),
+  /** What a picker leads with (#27): those logged most lately, latest first. */
+  recent: async () => await GET('/exercises/recent', z.array(Exercise), { limit: '5' }),
 })
 
 const workouts = ({ GET, POST, PATCH, PUT, DELETE }: Verbs) => ({

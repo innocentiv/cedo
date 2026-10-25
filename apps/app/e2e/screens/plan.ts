@@ -256,6 +256,19 @@ export const planEditor = (page: Page) => {
     },
     /** A day's name, as its field holds it. */
     dayName: async (day: number): Promise<unknown> => await page.value(`day-name-${String(day)}`),
+    /** Opens the picker to add exercises to a day (#27). */
+    addTo: async (day: number): Promise<void> => {
+      await closeSettings()
+      await page.click(`[data-testid="add-entry-${String(day)}"]`)
+      await page.waitFor('exercise-picker')
+    },
+    /** How many entries a day's outline shows. */
+    entries: async (day: number): Promise<number> => {
+      const count = await page.evaluate(
+        `document.querySelectorAll('[data-testid="plan-day-${String(day)}"] [data-testid^="plan-line-"]').length`,
+      )
+      return Number(count)
+    },
     /** Adds a day at the foot of the outline. */
     addDay: async (): Promise<void> => {
       await closeSettings()

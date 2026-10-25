@@ -1,6 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { MEDIA_KIND_LABELS, formatEffort, musclesByLoad } from '@cedo/contract'
-import type { Exercise, ExerciseHistory, TrackingMode } from '@cedo/contract'
+import {
+  type Exercise,
+  type ExerciseHistory,
+  MEDIA_KIND_LABELS,
+  type TrackingMode,
+  formatEffort,
+  musclesByLoad,
+} from '@cedo/contract'
+import { apiUrl } from '../../../../src/api/http.ts'
 import { useWeightUnit } from '../../../../src/lib/weight-unit.ts'
 import {
   Card,
@@ -8,7 +15,6 @@ import {
   ErrorNotice,
   ListRow,
   Loaded,
-  type QueryLike,
   NavButton,
   PinButton,
   ProgressTrend,
@@ -16,6 +22,9 @@ import {
   Spinner,
   Stack,
   Text,
+  Thumbnail,
+  VideoPlayer,
+  type QueryLike,
 } from '../../../../src/ui/index.ts'
 import {
   useDeleteExercise,
@@ -199,13 +208,25 @@ function About({ exercise }: { readonly exercise: Exercise }): React.JSX.Element
           <Text variant="label" tone="muted">
             Media
           </Text>
-          {exercise.media.map((m) => (
-            <ListRow
-              key={m.id}
-              title={m.title === '' ? m.url : m.title}
-              subtitle={MEDIA_KIND_LABELS[m.kind]}
-            />
-          ))}
+          {exercise.media.map((m) =>
+            m.kind === 'video_link' ? (
+              // Played where it is shown (#27): the provider is asked only once it is tapped.
+              <VideoPlayer
+                key={m.id}
+                embedUrl={m.embedUrl}
+                thumbnail={m.thumbnailUrl === null ? null : apiUrl(m.thumbnailUrl)}
+                url={m.url}
+                label={m.title === '' ? `${exercise.name}, video` : m.title}
+                testID={`exercise-video-${m.id}`}
+              />
+            ) : (
+              <Thumbnail
+                key={m.id}
+                uri={apiUrl(m.url)}
+                label={m.title === '' ? `${exercise.name}, ${MEDIA_KIND_LABELS[m.kind]}` : m.title}
+              />
+            ),
+          )}
         </Stack>
       )}
     </>

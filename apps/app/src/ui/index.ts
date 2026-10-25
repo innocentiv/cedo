@@ -9,6 +9,7 @@ export { type ChipOption, Chips } from './chips.tsx'
 export { ConfirmButton } from './confirm-button.tsx'
 export { EntryEditor } from './entry-editor.tsx'
 export { Icon, IconButton, type IconName } from './icon.tsx'
+export { MuscleFilter } from './muscle-filter.tsx'
 export { MusclePicker } from './muscle-picker.tsx'
 export { NavButton } from './nav-button.tsx'
 export { NavItem } from './nav-item.tsx'
@@ -16,6 +17,7 @@ export { PinButton } from './pin-button.tsx'
 export { ProgressTrend } from './progress-trend.tsx'
 export { Empty, ErrorNotice, FormError, Spinner } from './feedback.tsx'
 export { ErrorBoundary } from './error-boundary.tsx'
+export { ExerciseRow } from './exercise-row.tsx'
 export { CompactField, Field, Input, NumberInput } from './input.tsx'
 export { DimensionInput } from './dimension-input.tsx'
 export { Loaded, type QueryLike } from './loaded.tsx'
@@ -30,6 +32,7 @@ export { SetMarks } from './set-marks.tsx'
 export { Sheet } from './sheet.tsx'
 export { Stepper } from './stepper.tsx'
 export { Thumbnail } from './thumbnail.tsx'
+export { VideoPlayer } from './video-player.tsx'
 export { AddRow, UpNext, type UpNextItem } from './up-next.tsx'
 export { Stack } from './stack.tsx'
 export { WeekStrip } from './week-strip.tsx'
@@ -41,6 +44,7 @@ export {
   LOG_CONTROL_HEIGHT,
   MARK_SIZE,
   ROW_HEIGHT,
+  ROW_THUMB_WIDTH,
   TABLET_MIN_WIDTH,
   WIDE_CONTENT_MAX_WIDTH,
   color,

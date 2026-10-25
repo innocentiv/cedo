@@ -125,8 +125,10 @@ function useAdHocPicks(logs: readonly SetLog[]) {
       setPicking(false)
       setDeclined(true)
     },
-    pick: (exercise: Exercise) => {
-      setPicked((now) => [...now.filter((e) => e.id !== exercise.id), exercise])
+    /** Several at once (#27), in the order picked: the last takes the focus. */
+    pick: (exercises: readonly Exercise[]) => {
+      const ids = new Set(exercises.map((e) => e.id))
+      setPicked((now) => [...now.filter((e) => !ids.has(e.id)), ...exercises])
       setPicking(false)
     },
   }

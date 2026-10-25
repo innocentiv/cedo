@@ -28,7 +28,7 @@ const GLYPHS = {
   check: ['M20 6L9 17l-5-5'],
 } as const
 
-export type IconName = keyof typeof GLYPHS | 'more'
+export type IconName = keyof typeof GLYPHS | 'more' | 'play'
 
 const TINT = { default: color.text, muted: color.textMuted, onAccent: color.accentText } as const
 
@@ -42,18 +42,23 @@ export function Icon({
   const tint = TINT[tone]
   return (
     <Svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none">
-      {name === 'more'
-        ? [5, 12, 19].map((cx) => <Circle key={cx} cx={cx} cy={12} r={1.75} fill={tint} />)
-        : GLYPHS[name].map((d) => (
-            <Path
-              key={d}
-              d={d}
-              stroke={tint}
-              strokeWidth={stroke.bold}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ))}
+      {name === 'more' ? (
+        [5, 12, 19].map((cx) => <Circle key={cx} cx={cx} cy={12} r={1.75} fill={tint} />)
+      ) : name === 'play' ? (
+        // Filled, as every player's is: an outline reads as a shape, not as Play.
+        <Path d="M8 5v14l11-7z" fill={tint} />
+      ) : (
+        GLYPHS[name].map((d) => (
+          <Path
+            key={d}
+            d={d}
+            stroke={tint}
+            strokeWidth={stroke.bold}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ))
+      )}
     </Svg>
   )
 }

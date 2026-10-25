@@ -38,11 +38,18 @@ export function WorkoutBody({
         onCancel={() => {
           setPicking(null)
         }}
-        onPick={(exercise) => {
-          editor.pick(exercise)
-          const added = withEntryAdded(days, picking, exercise)
-          editor.change(added.days)
-          setSelected(added.days[added.at.day]?.entries[added.at.entry]?.key ?? null)
+        already={new Set(days[picking]?.entries.map((e) => e.exerciseId) ?? [])}
+        onPick={(exercises) => {
+          let next = days
+          let last: string | null = null
+          for (const exercise of exercises) {
+            editor.pick(exercise)
+            const added = withEntryAdded(next, picking, exercise)
+            next = added.days
+            last = next[added.at.day]?.entries[added.at.entry]?.key ?? null
+          }
+          editor.change(next)
+          setSelected(last)
           setPicking(null)
         }}
       />

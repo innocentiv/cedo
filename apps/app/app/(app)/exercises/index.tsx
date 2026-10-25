@@ -1,19 +1,20 @@
 import { useState } from 'react'
 import { useRouter } from 'expo-router'
-import { MUSCLES } from '@cedo/contract'
-import type { OwnableScope } from '@cedo/contract'
+import { type MuscleSlug, type OwnableScope, mainMuscles } from '@cedo/contract'
 import {
   Chips,
   Empty,
+  ExerciseRow,
   Input,
-  ListRow,
   Loaded,
+  MuscleFilter,
   NavButton,
   Screen,
   Stack,
   Text,
 } from '../../../src/ui/index.ts'
 import { useExercises } from '../../../src/api/queries.ts'
+import { thumbnailOf } from '../../../src/lib/exercise-picker.tsx'
 
 const SCOPES: readonly { value: OwnableScope; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -21,14 +22,18 @@ const SCOPES: readonly { value: OwnableScope; label: string }[] = [
   { value: 'favourites', label: 'Pinned' },
 ]
 
-const muscleName = (slug: string): string => MUSCLES.find((m) => m.slug === slug)?.name ?? slug
-
 export default function ExerciseList(): React.JSX.Element {
   const router = useRouter()
   const [scope, setScope] = useState<OwnableScope>('all')
   const [search, setSearch] = useState('')
+  const [muscle, setMuscle] = useState<MuscleSlug | null>(null)
 
-  const query = { scope, limit: 50, ...(search.trim() === '' ? {} : { q: search.trim() }) }
+  const query = {
+    scope,
+    limit: 50,
+    ...(search.trim() === '' ? {} : { q: search.trim() }),
+    ...(muscle === null ? {} : { muscle }),
+  }
   const exercises = useExercises(query)
 
   return (
@@ -44,13 +49,18 @@ export default function ExerciseList(): React.JSX.Element {
         />
       }
     >
-      <Input
-        value={search}
-        onChangeText={setSearch}
-        placeholder="Search"
-        testID="exercise-search"
-      />
-      <Chips options={SCOPES} value={scope} onChange={setScope} testID="exercise-scope" />
+      <Stack gap="sm">
+        <Input
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Search"
+          testID="exercise-search"
+        />
+        <Stack direction="row" align="center" gap="sm" wrap>
+          <Chips options={SCOPES} value={scope} onChange={setScope} testID="exercise-scope" />
+          <MuscleFilter value={muscle} onChange={setMuscle} testID="exercise-muscle" />
+        </Stack>
+      </Stack>
 
       <Loaded query={exercises} testID="exercises">
         {(data) =>
@@ -61,13 +71,14 @@ export default function ExerciseList(): React.JSX.Element {
               testID="exercises-empty"
             />
           ) : (
-            <Stack gap="sm" testID="exercise-list">
+            <Stack gap="xs" testID="exercise-list">
               {data.items.map((exercise) => (
-                <ListRow
+                <ExerciseRow
                   key={exercise.id}
-                  title={exercise.name}
-                  subtitle={exercise.muscles.map((m) => muscleName(m.muscle)).join(', ')}
-                  trailing={exercise.isFavourite ? '★' : undefined}
+                  name={exercise.name}
+                  muscles={mainMuscles(exercise.muscles)}
+                  thumbnail={thumbnailOf(exercise)}
+                  tag={exercise.isFavourite ? 'Pinned' : undefined}
                   onPress={() => {
                     router.push(`/exercises/${exercise.id}`)
                   }}

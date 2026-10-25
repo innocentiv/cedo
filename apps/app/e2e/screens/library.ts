@@ -11,6 +11,12 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
   name: async (name: string): Promise<void> => {
     await page.fill('exercise-name', name)
   },
+  /** Chooses a muscle, its load split evenly with the others chosen (#27). */
+  choose: async (muscle: string): Promise<void> => {
+    await page.click(`[data-testid="muscle-option-${muscle}"]`)
+  },
+  /** A chosen muscle's share of the load, as its field holds it. */
+  loadOf: async (muscle: string): Promise<unknown> => await page.value(`muscle-load-${muscle}`),
   /** Picks a muscle and gives it a share of the load. */
   load: async (muscle: string, percent: string): Promise<void> => {
     await page.click(`[data-testid="muscle-option-${muscle}"]`)

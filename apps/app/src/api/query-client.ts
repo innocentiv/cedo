@@ -54,6 +54,7 @@ export const keys = {
   exerciseList: (query: Record<string, unknown>) => ['exerciseList', query] as const,
   exercise: (id: string) => ['exercise', id] as const,
   exerciseHistory: (id: string) => ['exerciseHistory', id] as const,
+  recentExercises: ['recentExercises'] as const,
   workoutList: (query: Record<string, unknown>) => ['workoutList', query] as const,
   workout: (id: string) => ['workout', id] as const,
   progression: (id: string) => ['progression', id] as const,

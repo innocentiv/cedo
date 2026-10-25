@@ -106,6 +106,9 @@ Two constraints found by building it:
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |
 | `Loaded` | failed / not-yet / here, around any query. A screen never writes that ternary |
 | `ErrorBoundary` | the last line of defence |
+| `ExerciseRow`, `MuscleFilter` | an exercise in a list — picture, name, main muscles — and narrowing a list to one muscle, by region |
+| `VideoPlayer` | an exercise's video, played in place once tapped, never fetched before |
+| `RemoveButton` | removing a day or an entry from a plan edited in place: the bin, asked twice |
 | `Sheet` | something looked at without leaving where you are — a session's menu, how to do an exercise. From the bottom on a phone, in the middle on a desktop |
 | `Icon`, `IconButton` | a secondary action as a glyph alone — back, menu, close, undo, how to — named aloud by its label |
 | `Columns` | a screen's main part and what it sits within: one column on a phone, side by side on a desktop |
@@ -308,6 +311,24 @@ Search, and a muscle filter grouped by region; each row its main muscles, and th
 when there is one. The picker leads with what you have logged lately, marks what the day already
 has, and adds several at once. A new exercise starts from its muscles, their loads an even split
 that totals 100, to adjust.
+
+As built (#27):
+
+- **A row** (`ExerciseRow`) is its picture — the video's thumbnail, or a quiet slot with its initial
+  holding the place, so every name starts on one edge — its name, and its three most loaded muscles
+  (`mainMuscles`). A tag says anything else short: Pinned, In this day.
+- **The muscle filter** (`MuscleFilter`) is one button — Any muscle, or the one chosen — opening the
+  muscles grouped as Upper body, Core and Lower body (`MUSCLE_REGION_LABELS`).
+- **The picker** leads with the five exercises logged most lately (`GET /exercises/recent`: the
+  person's own logs, latest first, of exercises they can still see), then All exercises; searched or
+  filtered, only the matches. A tap chooses, with a check; Add N adds them together, in the order
+  chosen. What the day already has is tagged, and still pickable — a second squat is a real plan.
+- **A new exercise's muscles** are split evenly as each is chosen or dropped (`evenLoads`), so the
+  form is valid the moment one is chosen; the loads are there to adjust.
+- **The video plays where it is shown** (`VideoPlayer`), on the exercise's page and in How to: its
+  thumbnail with a play mark, and the provider's player in its place once tapped. Nothing is asked of
+  the provider until then — a self-hosted instance asks nothing of a third party a person did not
+  ask for. Off the web, or for a link no player shows, Watch the video opens it.
 
 ### Progress, and the tabs
 

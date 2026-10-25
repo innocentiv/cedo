@@ -4,6 +4,7 @@ import { groups } from './groups.ts'
 import { install } from './install.ts'
 import { exercise, library } from './library.ts'
 import { nav } from './nav.ts'
+import { picker } from './picker.ts'
 import { planEditor, workouts } from './plan.ts'
 import { session } from './session.ts'
 import { settings } from './settings.ts'
@@ -27,5 +28,6 @@ export const screens = (page: Page) => ({
   settings: settings(page),
   groups: groups(page),
   today: today(page),
+  picker: picker(page),
   install: install(page),
 })

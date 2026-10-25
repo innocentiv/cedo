@@ -61,6 +61,60 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/**
+ * Finding exercises (#27): the picker leads with what was logged lately, marks what the day already
+ * has, and adds several at once.
+ */
+test(
+  'the picker leads with what was logged lately, marks the day, and adds several at once',
+  async () => {
+    await withApp('picker-many', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('pick'))
+      await app.planEditor.create('Bench')
+      await app.planEditor.saveAndStart()
+      await app.session.entry(0).log()
+      await app.session.finish()
+      // The workouts tab kept its stack: back to the workout's page, as it was left.
+      await app.nav.tab('workouts')
+      await app.workouts.shown()
+      await app.planEditor.addTo(0)
+      expect((await app.picker.recent())[0]).toContain('Bench')
+      expect(await app.picker.row('Bench Press')).toContain('In this day')
+      await app.picker.pickAll(['Back Squat', 'Romanian'])
+      await page.until(
+        async () => await app.planEditor.entries(0),
+        (n) => n === 3,
+      )
+      await app.planEditor.saved()
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/** A new exercise starts from its muscles (#27): chosen, their loads split evenly to total 100. */
+test(
+  "a new exercise's muscles start as an even split, valid as they stand",
+  async () => {
+    await withApp('even-split', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('even'))
+      const form = await app.library.newExercise()
+      await form.name('Split Squat')
+      await form.choose('quadriceps')
+      await form.choose('gluteus_maximus')
+      expect([await form.loadOf('quadriceps'), await form.loadOf('gluteus_maximus')]).toEqual([
+        '50',
+        '50',
+      ])
+      await form.choose('adductors')
+      expect(await form.loadOf('quadriceps')).toBe('34')
+      expect(await form.total()).toContain('100%')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
 test(
   'a muscle load that does not sum to 100 is refused, with the message from the contract',
   async () => {
