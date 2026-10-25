@@ -106,16 +106,19 @@ Two constraints found by building it:
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |
 | `Loaded` | failed / not-yet / here, around any query. A screen never writes that ternary |
 | `ErrorBoundary` | the last line of defence |
-| `Sheet` | something looked at without leaving where you are — a session's menu, how to do an exercise |
+| `Sheet` | something looked at without leaving where you are — a session's menu, how to do an exercise. From the bottom on a phone, in the middle on a desktop |
+| `Icon`, `IconButton` | a secondary action as a glyph alone — back, menu, close, undo, how to — named aloud by its label |
+| `Columns` | a screen's main part and what it sits within: one column on a phone, side by side on a desktop |
 | `Thumbnail` | a picture of a movement: a video's thumbnail, an uploaded image |
-| `color`, `space`, `radius`, `type`, `font`, `CONTENT_MAX_WIDTH`, `CONTROL_HEIGHT`, `LOG_CONTROL_HEIGHT`, `ROW_HEIGHT` | the only source of visual values |
+| `color`, `space`, `radius`, `type`, `font`, `CONTENT_MAX_WIDTH`, `WIDE_CONTENT_MAX_WIDTH`, `CONTROL_HEIGHT`, `LOG_CONTROL_HEIGHT`, `ROW_HEIGHT`, `ICON_SIZE` | the only source of visual values |
 | `useAppFonts()` | the bundled faces `font` names, loaded beside the app at its root — never waited for |
 | `useLayout()`, `TABLET_MIN_WIDTH` | the only layout branch: `'phone' | 'tablet'`, and where it switches |
 
 Composites are here rather than in a screen, because each is used from more than one place or
 would otherwise be copied: `MusclePicker`, `EntryEditor`, `UnavailableEntry`, `DayEditor`, and the
 workout's (#24) — `FocusLogger` (the exercise in focus: its `SetMarks`, the next set's `Stepper`s,
-one Log button), `LastSet` (the set just logged: a best, its reserve, Undo), `RestBand`, `UpNext`,
+one Log button), `LastSet` (the set just logged: a best, its reserve, Undo), `RestBand`, `UpNext`
+and `AddRow`,
 `SessionHeader` and `ReturnBar`. They are still presentational — the rules they render (loads
 summing to 100, which inputs a tracking mode implies, what a progression rule contains, which set
 is next, where the focus goes, whose rest runs, what a set is called) all live in `@cedo/contract`:
@@ -126,7 +129,8 @@ the day editor gives it an `UnavailableEntry` — what it prescribes, and Remove
 Smaller parts serve those composites and no screen, so they are not in the list above:
 `ReserveChips` — RPE asked as reps in reserve, holding an RPE while the contract converts
 (`rpe.ts`) — used by `LastSet` and by `PrescriptionFields`: what an entry asks of the athlete,
-its targets, reserve, rest and cue. The rest band and the session's clock read `useNow`
+its targets, reserve, rest and cue. The rest band's clock is `useRestClock`
+(`src/lib/rest-clock.ts`); it and the session's clock read `useNow`
 (`src/lib/use-now.ts`), a clock of its own that ticks once a second only while it must — so the
 band re-renders, not the day. The tone at the end of a rest is `src/lib/chime.ts`, made by the
 browser, nothing bundled.
@@ -214,17 +218,19 @@ drawn as one item; tapping one makes it current, and tapping a logged set re-ope
 
 - **Logging moves the focus** to the entry's next set, then to the next entry in day order with
   sets left. Entries of a superset alternate, and rest starts after the pair.
-- **Rest starts on its own** when a set is logged: a countdown band with +30 s and Skip, the next set
-  still under it; at zero the band changes colour and sounds once if the app is open. No background
+- **Rest starts on its own** when a set is logged: a countdown band with +30 s and × to skip it,
+  above the set it follows; at zero the band changes colour and sounds once if the app is open. No background
   notification — an installed web app cannot send one reliably on an iPhone.
 - **Reserve is asked after**, as one optional row on the set just logged, and only for an exercise
-  measured in reps. Which those are is the contract's, not the screen's.
+  measured in reps. Which those are is the contract's, not the screen's. Whole reps, none to five,
+  one row of segments; tapping the chosen one again takes it back.
 - **"+ set"** logs one beyond the prescription; **Add exercise** logs one with no entry, as a swap
   when a machine is taken — today's ad-hoc logging, which leaves the entry's progression alone.
 - **ⓘ** opens how to do it — cue, instructions, muscles, the video — without leaving the session.
-- **A session in progress takes over the app**: its own header (the day, the time since it started,
-  a menu) in place of the tab bar; minimised, a bar on every screen returns to it. Notes and Finish
-  are in the menu, Finish asked twice; once every prescribed set is logged, Finish takes the Log
+- **A session in progress takes over the app**: its own header — back, the day, the time since it
+  started, the menu, on one line — in place of the tab bar. Back leaves it in progress, and a bar on
+  every screen returns to it; only Finish ends it. Notes and Finish are in the menu, Finish asked
+  twice, and notes kept as the menu closes — no Save; once every prescribed set is logged, Finish takes the Log
   button's place, and finishing shows the session's summary. A personal best is marked on the set as
   it is logged.
 - **A session without a plan** opens on the picker; each exercise added becomes the focus.
@@ -262,8 +268,11 @@ is falling or is drifting — the same read the AI gets, over HTTP.
 ### Desktop
 
 Two panes where reading side by side helps: a workout's outline beside the entry being edited, the
-exercise list beside the exercise, Today's next session and week beside the history. The session is
-one column on any width — it is done on a phone. The sidebar carries the product's name and the
+exercise list beside the exercise, Today's next session and week beside the history — and the
+session: what was just done and the exercise in focus, beside the day and its sets (`Columns`). One
+column 700 points wide made the Log button the loudest thing on a desk, which it is not there. A
+session left open is a line in the sidebar with a yellow mark, not a bar; a sheet opens in the
+middle of the screen, not from its bottom edge. The sidebar carries the product's name and the
 account.
 
 ### The look
@@ -284,7 +293,19 @@ a set re-opened are chalk, never yellow, so nothing chosen is taken for the next
 Condensed with tabular figures, everything else in Barlow — bundled with the app, so a self-hosted
 instance asks nothing of a third party and the installed app works offline. Fewer boxes: hierarchy
 from type and space, a card only around something acted on as one. Where a set is logged, nothing
-is smaller than 56px. Dark only, still. Every value is in `src/ui/tokens.ts`; the primitives are the
+is smaller than 56px. Dark only, still.
+
+**Space says what belongs together** (#24 review — "it is not clear which element is connected with
+which"). Three distances, no others: the widest (`xxl`) between groups — what was just done, the
+exercise in focus, the day, the session's sets; a middle one inside a group; the closest between a
+label and what it labels. One left edge: every line of text on a screen starts on it, and a list
+row's ground bleeds into the gutter rather than pushing its text in. A number shown large has its
+unit centred under it, so the number itself is level with the − and + either side.
+
+**A secondary action is a glyph** — back, the menu, close, undo, how to — drawn in `icon.tsx`, a
+hand-drawn set on one grid, and always named aloud (`IconButton`'s `label`). Its touch area is a
+full control, pulled past the content's edge so the glyph lines up with the text beside it. What
+the screen is for keeps its words: Log set 2, Finish session, Add exercise. Every value is in `src/ui/tokens.ts`; the primitives are the
 only thing that reads them.
 
 ## The API client
