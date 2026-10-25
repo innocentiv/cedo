@@ -162,3 +162,68 @@ export function restingAfter<E extends FlowEntry>(
     focus.index > last.index
   return midRound ? null : last
 }
+
+/**
+ * Whole seconds from `startedAt` to `until` (epoch ms) — a session's clock, never below zero: the
+ * server dated its start, the device reads the time, and the two disagree by a moment or more.
+ */
+export const elapsedS = (startedAt: string, until: number): number =>
+  Math.max(0, Math.floor((until - Date.parse(startedAt)) / 1000))
+
+/** What a finished session comes to — its summary at the end, and its row in history. */
+export interface SessionSummary<
+  L extends { readonly isWarmup: boolean; readonly personalBest: boolean },
+> {
+  /** From start to finish in whole seconds; null while it is in progress. */
+  readonly durationS: number | null
+  readonly workingSets: number
+  /** The sets that were personal bests, in the order done. */
+  readonly personalBests: readonly L[]
+}
+
+export function sessionSummary<
+  L extends { readonly isWarmup: boolean; readonly personalBest: boolean },
+>(session: {
+  readonly startedAt: string
+  readonly endedAt: string | null
+  readonly logs: readonly L[]
+}): SessionSummary<L> {
+  return {
+    durationS:
+      session.endedAt === null ? null : elapsedS(session.startedAt, Date.parse(session.endedAt)),
+    workingSets: session.logs.filter((l) => !l.isWarmup).length,
+    personalBests: session.logs.filter((l) => l.personalBest),
+  }
+}
+
+/**
+ * An exercise of a session without a plan, as sets: what was logged of it, then one more to do,
+ * starting from the last — or from nothing, the first time. Nothing is prescribed, so there is
+ * always a next set, until the athlete moves on.
+ */
+export function adHocSetsOf<L extends FlowLog & { readonly exerciseId: string }>(
+  exerciseId: string,
+  logs: readonly L[],
+): SessionSet<L>[] {
+  const done = logs.filter((l) => l.entryId === null && l.exerciseId === exerciseId)
+  const last = done.at(-1)
+  return [
+    ...done.map((log, i) => ({
+      key: `s${i}`,
+      isWarmup: log.isWarmup,
+      target: effortOf(log),
+      log,
+      extra: false,
+    })),
+    {
+      key: `s${done.length}`,
+      isWarmup: false,
+      target:
+        last === undefined
+          ? { reps: null, weightG: null, rpe: null, durationS: null, distanceMm: null }
+          : effortOf(last),
+      log: null,
+      extra: false,
+    },
+  ]
+}

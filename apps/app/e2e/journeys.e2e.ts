@@ -295,12 +295,16 @@ test(
       await page.until(rows, (n) => n === 2)
       await log(3)
 
-      // A count would have numbered the new set 3, beside the existing set 3. Rows read
-      // "Barbell Bench Press · set 1": the number is what follows the name.
+      // The server numbers a series without reusing a number: a count would have given the new
+      // set 3 again, beside the existing set 3.
+      const mine = await page.client()
+      const stored = (await mine.sessions.get(await app.session.id())).logs
+      expect(stored.map((l) => l.setIndex)).toEqual([0, 2, 3])
+      // The screen counts the working sets as the athlete reads them (#24): 1, 2, 3, no gap.
       const sets = (await app.session.loggedLines()).flatMap(
         (line) => / · (set \d+)$/u.exec(line)?.[1] ?? [],
       )
-      expect(sets).toEqual(['set 1', 'set 3', 'set 4'])
+      expect(sets).toEqual(['set 1', 'set 2', 'set 3'])
     })
   },
   E2E_TIMEOUT_MS,
@@ -480,9 +484,10 @@ test(
       if (latest === undefined) throw new Error('The session was not listed')
       expect((await mine.sessions.get(latest.id)).logs.map((l) => l.weightG)).toEqual([60_101])
 
-      // Back to kilograms with no reload: the open session (the tab kept its stack) follows at once.
+      // Back to kilograms with no reload: the open session, returned to, follows at once.
       await app.settings.chooseUnit('kg')
       await app.nav.tab('today')
+      await app.session.returnTo()
       await page.until(
         async () => await app.session.loggedLines(),
         (lines) => lines.includes('8 × 60.1 kg'),
@@ -1465,7 +1470,7 @@ test(
       const next = app.session.entry(0)
       expect(await next.value('weight')).toBe('62.5')
       expect(await next.target()).toBe('Progressed to 5 × 62.5 kg · the plan says 5 × 60 kg')
-      expect(await next.last()).toBe('Last: 5, 5, 5 × 60 kg')
+      expect(await next.last()).toBe('Last time 5, 5, 5 × 60 kg')
 
       // The plan is as its author wrote it: progression carries it, it does not rewrite it.
       const written = (await mine.workouts.get(plan.id)).days[0]?.entries[0]?.sets
@@ -1476,7 +1481,7 @@ test(
 )
 
 /**
- * RPE, asked as reps in reserve: a target set in the editor, said in the logger, logged per set —
+ * RPE, asked as reps in reserve: a target set in the editor, said of a set once it is done (#24) —
  * and never carried to the next set, which would be an answer the athlete did not give.
  */
 test(
@@ -1491,18 +1496,21 @@ test(
 
       const bench = app.session.entry(0)
       expect(await bench.target()).toContain('· 2 in reserve')
-      expect(await bench.reserveChosen()).toBe('none')
-      await bench.reserve('1')
-      // Refused — no bar holds 9999 kg — the answer stays for the retry, not lost with the tap.
+      // Nothing is asked before a set: there is no set yet to say it of.
+      expect(await bench.reserveChosen()).toBeNull()
+      // Refused — no bar holds 9999 kg — nothing logged, nothing to rate.
       await bench.fill('weight', '9999')
       await bench.attemptLog()
       expect(await app.session.error()).not.toBeNull()
-      expect(await bench.reserveChosen()).toBe('1')
+      expect(await bench.reserveChosen()).toBeNull()
       await bench.fill('weight', '60')
       await bench.log()
-      // Counted, it is gone: the next set is asked afresh.
+      // Asked of the set just logged, and said once the server has it.
       expect(await bench.reserveChosen()).toBe('none')
+      await bench.reserve('1')
+      // The next set is asked afresh: its answer is its own.
       await bench.log()
+      expect(await bench.reserveChosen()).toBe('none')
       expect(await app.session.loggedLines()).toContain('8 × 60 kg · 1 in reserve')
 
       const mine = await page.client()

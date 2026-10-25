@@ -20,78 +20,132 @@ async function loggedIds(page: Page): Promise<string[]> {
   return ids
 }
 
-/** One logger: a plan entry's (`log-entry-0`) or an exercise's in a session without a plan. */
-const logger = (page: Page, id: string) => ({
-  /** On a bodyweight movement: whether the weight is added load or assistance (#19). */
-  assistance: async (choice: 'added' | 'assisted'): Promise<void> => {
-    await page.click(`[data-testid="${id}-weight-assistance-${choice}"]`)
-  },
-  shown: async (): Promise<void> => {
+/** A working set's mark that is logged: done, a personal best, or waiting for a signal. */
+const LOGGED_MARK = /, (done|best|waiting)$/u
+
+/**
+ * The exercise in focus (#24): a plan entry's (`log-entry-0`), or an exercise's in a session
+ * without a plan (`adhoc-<id>`). Only the entry in focus has a logger on screen, so every action
+ * makes it current first — by tapping it in the day (`choose`), as an athlete would.
+ */
+const logger = (page: Page, id: string, choose: string) => {
+  const current = async (): Promise<void> => {
+    if (await page.shown(id)) return
+    await page.click(`[data-testid="${choose}"]`)
     await page.waitFor(id)
-  },
-  fill: async (dimension: Dimension, text: string): Promise<void> => {
-    await page.fill(`${id}-${dimension}`, text)
-  },
-  /** Taps a field, which selects its text: the next key replaces it. */
-  focus: async (dimension: Dimension): Promise<void> => {
-    await page.click(`[data-testid="${id}-${dimension}"]`)
-  },
-  value: async (dimension: Dimension): Promise<unknown> => await page.value(`${id}-${dimension}`),
-  /** "Prescribed 8 × 60 kg", or "Progressed to … · the plan says …". */
-  target: async (): Promise<string | null> => await page.text(`${id}-target`),
-  /** What the plan tells the athlete about this entry — null when nothing. */
-  cue: async (): Promise<string | null> => await page.text(`${id}-cue`),
-  /** "Rest 1:28", or "Rest over — ready for the next set"; null before the first working set. */
-  rest: async (): Promise<string | null> => await page.text(`${id}-rest`),
-  /** "Last: 5, 5, 5 × 60 kg" — null when the exercise was never done before. */
-  last: async (): Promise<string | null> => await page.text(`${id}-last`),
-  /** Says how many reps were left in reserve, as offered: `1`, `1.5`, or `none` for not said. */
-  reserve: async (reps: string): Promise<void> => {
-    await page.click(`[data-testid="${id}-reserve-${reps}"]`)
-  },
-  /** The reps in reserve chosen now, as offered — `none` when not said. */
-  reserveChosen: async (): Promise<string | null> => {
+  }
+  /** The reserve offered on the set just logged, as chosen — `none`; null when none is asked. */
+  const reserveChosen = async (): Promise<string | null> => {
+    if (!(await page.shown('last-set-reserve'))) return null
     const chosen = await page.evaluate(
-      `document.querySelector('[data-testid^="${id}-reserve-"][aria-selected="true"]')?.dataset.testid ?? null`,
+      `document.querySelector('[data-testid^="last-set-reserve-"][aria-selected="true"]')?.dataset.testid ?? null`,
     )
-    return typeof chosen === 'string' ? chosen.slice(`${id}-reserve-`.length) : null
-  },
-  /** Whether it offers a Log button at all. */
-  canLog: async (): Promise<boolean> => await page.exists(`${id}-log`),
-  /** Whether it is shown as an unavailable exercise. */
-  unavailable: async (): Promise<boolean> => await page.exists(`${id}-unavailable`),
-  /** Taps Log for a set the server will refuse: the screen says why (`session.error`). */
-  attemptLog: async (): Promise<void> => {
-    await page.click(`[data-testid="${id}-log"]`)
-  },
-  /** "2 done". */
-  done: async (): Promise<string | null> => {
-    await page.waitFor(`${id}-done`)
-    return await page.text(`${id}-done`)
-  },
-  /**
-   * Logs a set, and waits until it is a row: the next one is numbered from the refreshed logs. The
-   * rows before are counted from the same session read the logger is drawn from, so a logger on
-   * screen has its rows on screen too.
-   */
-  log: async (): Promise<void> => {
-    const before = (await loggedIds(page)).length
-    await page.click(`[data-testid="${id}-log"]`)
-    await page.until(
-      async () => (await loggedIds(page)).length,
-      (rows) => rows > before,
-    )
-  },
-  /** Logs a set with no signal: it shows at once, as waiting to be sent (#9). */
-  logWhileOffline: async (): Promise<void> => {
-    const before = await waitingCount(page)
-    await page.click(`[data-testid="${id}-log"]`)
-    await page.until(
-      async () => await waitingCount(page),
-      (rows) => rows > before,
-    )
-  },
-})
+    return typeof chosen === 'string' ? chosen.slice('last-set-reserve-'.length) : null
+  }
+  return {
+    /** On a bodyweight movement: whether the weight is added load or assistance (#19). */
+    assistance: async (choice: 'added' | 'assisted'): Promise<void> => {
+      await current()
+      await page.click(`[data-testid="${id}-weight-assistance-${choice}"]`)
+    },
+    shown: async (): Promise<void> => {
+      await current()
+    },
+    fill: async (dimension: Dimension, text: string): Promise<void> => {
+      await current()
+      await page.fill(`${id}-${dimension}`, text)
+    },
+    /** Taps a field, which selects its text: the next key replaces it. */
+    focus: async (dimension: Dimension): Promise<void> => {
+      await current()
+      await page.click(`[data-testid="${id}-${dimension}"]`)
+    },
+    value: async (dimension: Dimension): Promise<unknown> => {
+      await current()
+      return await page.value(`${id}-${dimension}`)
+    },
+    /** "Prescribed 8 × 60 kg", or "Progressed to … · the plan says …". */
+    target: async (): Promise<string | null> => {
+      await current()
+      return await page.text(`${id}-target`)
+    },
+    /** What the plan tells the athlete about this entry — null when nothing. */
+    cue: async (): Promise<string | null> => {
+      await current()
+      return await page.text(`${id}-cue`)
+    },
+    /**
+     * "Rest 1:28", or "Rest over — ready for the next set"; null when no rest runs. The band is the
+     * session's, across the top: the rest of the set logged last.
+     */
+    rest: async (): Promise<string | null> => {
+      if (!(await page.shown('rest-band'))) return null
+      const left = await page.text('rest-band-left')
+      return left === 'Next set' ? 'Rest over — ready for the next set' : `Rest ${left ?? ''}`
+    },
+    /** "Last time 5, 5, 5 × 60 kg" — null when the exercise was never done before. */
+    last: async (): Promise<string | null> => {
+      await current()
+      return await page.text(`${id}-last`)
+    },
+    /**
+     * Says how many reps were left in the set just logged, as offered — `1`, `1.5`, or `none` — and
+     * waits until the server has it: asked after a set, not before (#24).
+     */
+    reserve: async (reps: string): Promise<void> => {
+      await page.click(`[data-testid="last-set-reserve-${reps}"]`)
+      await page.until(reserveChosen, (chosen) => chosen === reps)
+    },
+    reserveChosen,
+    /** Whether it offers a Log button at all. */
+    canLog: async (): Promise<boolean> => {
+      await current()
+      return await page.exists(`${id}-log`)
+    },
+    /** Whether it is shown as an unavailable exercise. */
+    unavailable: async (): Promise<boolean> => await page.exists(`${id}-unavailable`),
+    /** Taps Log for a set the server will refuse: the screen says why (`session.error`). */
+    attemptLog: async (): Promise<void> => {
+      await current()
+      await page.click(`[data-testid="${id}-log"]`)
+    },
+    /** "2 done": its working sets logged, as its marks show them. */
+    done: async (): Promise<string | null> => {
+      await current()
+      const labels = await page.evaluate(
+        `[...document.querySelectorAll('[data-testid^="${id}-sets-s"], [data-testid^="${id}-sets-x"]')].map((e) => e.getAttribute('aria-label') ?? '')`,
+      )
+      const count = Array.isArray(labels)
+        ? labels.filter((l) => typeof l === 'string' && LOGGED_MARK.test(l)).length
+        : 0
+      return `${count} done`
+    },
+    /**
+     * Logs a set, and waits until it is a row: the next one is numbered from the refreshed logs. The
+     * rows before are counted from the same session read the logger is drawn from, so a logger on
+     * screen has its rows on screen too.
+     */
+    log: async (): Promise<void> => {
+      await current()
+      const before = (await loggedIds(page)).length
+      await page.click(`[data-testid="${id}-log"]`)
+      await page.until(
+        async () => (await loggedIds(page)).length,
+        (rows) => rows > before,
+      )
+    },
+    /** Logs a set with no signal: it shows at once, as waiting to be sent (#9). */
+    logWhileOffline: async (): Promise<void> => {
+      await current()
+      const before = await waitingCount(page)
+      await page.click(`[data-testid="${id}-log"]`)
+      await page.until(
+        async () => await waitingCount(page),
+        (rows) => rows > before,
+      )
+    },
+  }
+}
 
 /** The sets shown as logged but not yet sent. */
 async function waitingCount(page: Page): Promise<number> {
@@ -107,8 +161,8 @@ export const session = (page: Page) => {
   }
   return {
     shown,
-    entry: (index: number) => logger(page, `log-entry-${index}`),
-    adhoc: (exerciseId: string) => logger(page, `adhoc-${exerciseId}`),
+    entry: (index: number) => logger(page, `log-entry-${index}`, `up-next-${index}`),
+    adhoc: (exerciseId: string) => logger(page, `adhoc-${exerciseId}`, `adhoc-row-${exerciseId}`),
 
     /** Starts a session without a plan, from Today. */
     startAdhoc: async (): Promise<void> => {
@@ -125,6 +179,11 @@ export const session = (page: Page) => {
       return exerciseId
     },
 
+    /** Back to the session left open, from anywhere else: the bar that follows it (#24). */
+    returnTo: async (): Promise<void> => {
+      await page.click('[data-testid="session-return"]')
+      await shown()
+    },
     /** Navigates to the session by its URL — a reload, a shared link, coming back to the tab. */
     reopen: async (): Promise<void> => {
       await page.goto(String(await page.evaluate('location.pathname')))
@@ -175,11 +234,28 @@ export const session = (page: Page) => {
       await page.click(`[data-testid="${rowId}"]`)
     },
 
-    canFinish: async (): Promise<boolean> => await page.exists('finish-session'),
-    /** Finishes the session; where that goes depends on where it was reached from. */
+    /** Whether Finish is offered: in the day's place once all is logged, else in the menu. */
+    canFinish: async (): Promise<boolean> => {
+      if (await page.shown('finish-session')) return true
+      await page.click('[data-testid="session-header-menu"]')
+      await page.waitFor('session-menu')
+      const offered = await page.exists('finish-session')
+      await page.click('[data-testid="session-menu-close"]')
+      return offered
+    },
+    /**
+     * Finishes the session — asked twice, finishing being final — reads what it came to, and leaves
+     * with Done: where that goes depends on where it was reached from.
+     */
     finish: async (): Promise<void> => {
-      await page.waitFor('finish-session')
+      if (!(await page.shown('finish-session'))) {
+        await page.click('[data-testid="session-header-menu"]')
+        await page.waitFor('finish-session')
+      }
       await page.click('[data-testid="finish-session"]')
+      await page.click('[data-testid="finish-session-confirm"]')
+      await page.waitFor('session-finished')
+      await page.click('[data-testid="leave-session"]')
     },
   }
 }

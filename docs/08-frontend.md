@@ -8,7 +8,8 @@ two-pane layout. It depends on **`@cedo/contract` and nothing else** from this r
 This is the rule the whole frontend is organised around, and the reason the test suite can be as
 small as it is.
 
-> A screen **may**: call the hooks in `src/api/queries.ts` (never `api.*` or `fetch` directly),
+> A screen **may**: call the hooks in `src/api/queries.ts` and `src/api/session-queries.ts` (never
+> `api.*` or `fetch` directly),
 > render UI primitives, hold form state, and call pure helpers from `@cedo/contract`
 > (`formatEffort`, `formatWeight`, `formatPrescription`, `workingSetsDone`, `planInputFrom`).
 >
@@ -53,7 +54,9 @@ app/(app)/exercises/        index · new · [id]/index · [id]/edit
 app/(app)/settings/         index · groups/index · groups/[id]/index · tokens · connect
 
 src/ui/                      the entire visual vocabulary
-src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts
+src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts,
+                             session-queries.ts (a session's writes and its offline queue),
+                             retry.ts and pending.ts (+ their unit tests)
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
 src/lib/                     use-submit.ts, plan-draft.ts, forms, pickers, group-placement.tsx, duplicate-into-my-group.tsx
@@ -103,22 +106,35 @@ Two constraints found by building it:
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |
 | `Loaded` | failed / not-yet / here, around any query. A screen never writes that ternary |
 | `ErrorBoundary` | the last line of defence |
-| `color`, `space`, `radius`, `type`, `CONTENT_MAX_WIDTH`, `CONTROL_HEIGHT` | the only source of visual values |
+| `Sheet` | something looked at without leaving where you are — a session's menu, how to do an exercise |
+| `Thumbnail` | a picture of a movement: a video's thumbnail, an uploaded image |
+| `color`, `space`, `radius`, `type`, `font`, `CONTENT_MAX_WIDTH`, `CONTROL_HEIGHT`, `LOG_CONTROL_HEIGHT`, `ROW_HEIGHT` | the only source of visual values |
+| `useAppFonts()` | the bundled faces `font` names, loaded beside the app at its root — never waited for |
 | `useLayout()`, `TABLET_MIN_WIDTH` | the only layout branch: `'phone' | 'tablet'`, and where it switches |
 
-Five composites are here rather than in a screen, because each is used from more than one place or
-would otherwise be copied: `MusclePicker`, `SetLogger`, `EntryEditor`, `UnavailableEntry`,
-`DayEditor`. They are still presentational — the rules they render (loads summing to 100, which
-inputs a tracking mode implies, what a progression rule contains, a prescription in one line) all
-live in `@cedo/contract`. An unavailable exercise has no mode, so no inputs: `SetLogger` shows it
-without any, and the day editor gives it an `UnavailableEntry` — what it prescribes, and Remove.
+Composites are here rather than in a screen, because each is used from more than one place or
+would otherwise be copied: `MusclePicker`, `EntryEditor`, `UnavailableEntry`, `DayEditor`, and the
+workout's (#24) — `FocusLogger` (the exercise in focus: its `SetMarks`, the next set's `Stepper`s,
+one Log button), `LastSet` (the set just logged: a best, its reserve, Undo), `RestBand`, `UpNext`,
+`SessionHeader` and `ReturnBar`. They are still presentational — the rules they render (loads
+summing to 100, which inputs a tracking mode implies, what a progression rule contains, which set
+is next, where the focus goes, whose rest runs, what a set is called) all live in `@cedo/contract`:
+`session-flow.ts` and `set-marks.ts` for the workout. An unavailable exercise has no mode, so no
+inputs: the workout shows what it prescribed and that nothing more can be logged against it, and
+the day editor gives it an `UnavailableEntry` — what it prescribes, and Remove.
 
-Two smaller parts serve those composites and no screen, so they are not in the list above:
+Smaller parts serve those composites and no screen, so they are not in the list above:
 `ReserveChips` — RPE asked as reps in reserve, holding an RPE while the contract converts
-(`rpe.ts`) — used by `SetLogger` and by `PrescriptionFields`: what an entry asks of the athlete,
-its targets, reserve, rest and cue. The logger's rest countdown is `RestCountdown`: the contract's
-`restLeft` read against `useNow` (`src/lib/use-now.ts`), a clock of its own that ticks once a
-second only while a rest is running — so the line re-renders, not the day.
+(`rpe.ts`) — used by `LastSet` and by `PrescriptionFields`: what an entry asks of the athlete,
+its targets, reserve, rest and cue. The rest band and the session's clock read `useNow`
+(`src/lib/use-now.ts`), a clock of its own that ticks once a second only while it must — so the
+band re-renders, not the day. The tone at the end of a rest is `src/lib/chime.ts`, made by the
+browser, nothing bundled.
+
+Sets logged without a signal (#9) count as done on the workout — the next set comes up, rest
+starts — through `withPending` (`src/api/pending.ts`): app-owned state with no React in it, so
+unit-tested beside it, like `retry.ts`. Each is dated after the latest stored set, so a server
+clock ahead of the device cannot send the focus back to a set already done.
 
 A composite that reads through a query hook is not presentational, so it lives in `src/lib/`
 instead: the exercise picker, and `GroupPlacement` — which group an exercise or plan is in, and

@@ -25,6 +25,8 @@ export const color = {
   surface: '#232427',
   surfaceRaised: '#2c2d31',
   border: '#3a3b40',
+  /** Over the screen behind a sheet: dimmed, still there. */
+  scrim: 'rgba(0, 0, 0, 0.55)',
 
   /** Chalk, and two dustings of it. */
   text: plate.white,

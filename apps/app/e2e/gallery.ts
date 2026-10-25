@@ -393,6 +393,14 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
 
   await show(page, `/today/session/${sessionId}`, 'session-screen')
   await snap('03-session-live')
+  await page.click('[data-testid="session-header-menu"]')
+  await page.waitFor('session-menu')
+  await snap('03b-session-menu')
+  await page.click('[data-testid="session-menu-close"]')
+  await page.click('[data-testid="log-entry-0-how-to"]')
+  await page.waitFor('how-to')
+  await snap('03c-session-how-to')
+  await page.click('[data-testid="how-to-close"]')
 
   await show(page, '/workouts', 'workouts-screen')
   await snap('04-workouts')
@@ -425,6 +433,14 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await snap('16-tokens')
   await show(page, '/settings/connect', 'connect-screen')
   await snap('17-connect')
+
+  // Last, as it ends the session every screen above showed in progress.
+  await show(page, `/today/session/${sessionId}`, 'session-screen')
+  await page.click('[data-testid="session-header-menu"]')
+  await page.click('[data-testid="finish-session"]')
+  await page.click('[data-testid="finish-session-confirm"]')
+  await page.waitFor('session-finished')
+  await snap('18-session-finished')
 }
 
 function index(): string {

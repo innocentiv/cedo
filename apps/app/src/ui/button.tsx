@@ -1,5 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet } from 'react-native'
-import { CONTROL_HEIGHT, color, radius, space } from './tokens.ts'
+import { CONTROL_HEIGHT, LOG_CONTROL_HEIGHT, color, radius, space } from './tokens.ts'
 import { Text } from './text.tsx'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
@@ -11,6 +11,8 @@ export interface ButtonProps {
   readonly disabled?: boolean
   readonly busy?: boolean
   readonly grow?: boolean
+  /** `large` where a set is logged: a thumb, between sets, without looking. */
+  readonly size?: 'regular' | 'large'
   readonly testID?: string | undefined
 }
 
@@ -21,6 +23,7 @@ export function Button({
   disabled = false,
   busy = false,
   grow = false,
+  size = 'regular',
   testID,
 }: ButtonProps): React.JSX.Element {
   // Busy implies disabled: a second tap while a mutation is in flight is the easiest way for a
@@ -38,6 +41,7 @@ export function Button({
         styles.base,
         VARIANT[variant],
         grow ? styles.grow : null,
+        size === 'large' ? styles.large : null,
         pressed ? styles.pressed : null,
         inert ? styles.inert : null,
       ]}
@@ -71,6 +75,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   grow: { flex: 1 },
+  large: { minHeight: LOG_CONTROL_HEIGHT, borderRadius: radius.lg },
   pressed: { opacity: 0.75 },
   inert: { opacity: 0.45 },
 })

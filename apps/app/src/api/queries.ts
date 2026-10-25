@@ -2,7 +2,6 @@ import {
   type UseMutationResult,
   type UseQueryResult,
   useMutation,
-  useMutationState,
   useQuery,
 } from '@tanstack/react-query'
 import type {
@@ -16,7 +15,6 @@ import type {
   GroupCreate,
   GroupMember,
   GroupMembership,
-  LogSetInput,
   Media,
   Page,
   PersonalAccessToken,
@@ -24,8 +22,6 @@ import type {
   Source,
   SessionQuery,
   SessionStart,
-  SessionUpdate,
-  SetLog,
   Workout,
   WorkoutCreate,
   WorkoutPlanInput,
@@ -37,8 +33,7 @@ import type {
 import { mcpAddress } from '@cedo/contract'
 import { api, apiRoot } from './http.ts'
 import { keys } from './query-client.ts'
-import { sendAgain } from './retry.ts'
-import { sessionQueue, useWriteTo } from './write-to.ts'
+import { useWriteTo } from './write-to.ts'
 
 /**
  * Every read and write a screen may perform, as hooks.
@@ -194,60 +189,6 @@ export const useFavouriteWorkout = () =>
 
 export const useStartSession = () =>
   useWriteTo('session', async (input: SessionStart) => await api.sessions.start(input))
-
-/** In the session's queue: finishing waits for every set logged before it. */
-export const useUpdateSession = (id: string) =>
-  useWriteTo('session', async (input: SessionUpdate) => await api.sessions.update(id, input), {
-    queued: { mutationKey: sessionQueue(id).update, scope: sessionQueue(id).scope },
-  })
-
-/** One set, its idempotency key made once when it was logged, so every retry of it is the same. */
-export interface QueuedSet {
-  readonly input: LogSetInput
-  readonly key: string
-}
-
-/**
- * Sent at once when there is a signal; without one, it waits in the session's queue and is sent
- * when the signal is back — again, under its key, if the answer was lost (`retry.ts`).
- */
-export const useLogSet = (sessionId: string) =>
-  useWriteTo(
-    'session',
-    async ({ input, key }: QueuedSet): Promise<SetLog> =>
-      await api.sessions.logSet(sessionId, input, key),
-    {
-      queued: {
-        mutationKey: sessionQueue(sessionId).logs,
-        scope: sessionQueue(sessionId).scope,
-        retry: sendAgain,
-      },
-    },
-  )
-
-/**
- * The sets of this session not yet sent, in the order logged — and whether any is held up: waiting
- * for a signal, or sent again after a lost answer — which is when the screen asks to stay open.
- */
-export function useUnsentSets(sessionId: string): {
-  readonly sets: readonly QueuedSet[]
-  readonly heldUp: boolean
-} {
-  const pending = useMutationState({
-    filters: { mutationKey: sessionQueue(sessionId).logs, status: 'pending' },
-    select: (mutation) => ({
-      set: mutation.state.variables as QueuedSet | undefined,
-      heldUp: mutation.state.isPaused || mutation.state.failureCount > 0,
-    }),
-  })
-  return {
-    sets: pending.flatMap(({ set }) => (set === undefined ? [] : [set])),
-    heldUp: pending.some((p) => p.heldUp),
-  }
-}
-
-export const useRemoveLog = (sessionId: string) =>
-  useWriteTo('session', async (logId: string) => await api.sessions.removeLog(sessionId, logId))
 
 /** This instance's MCP address, as an AI's client must be told it. Not a read: nothing to fetch. */
 export const useMcpAddress = (): string => mcpAddress(apiRoot())

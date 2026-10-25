@@ -113,6 +113,8 @@ export interface TypedNumberProps {
   /** The text for a value, and what typed text means: `COUNT`, or a dimension's `fieldFor`. */
   readonly typing: Typing
   readonly placeholder?: string | undefined
+  /** `large`: the next set's numbers on the workout screen — display size, typed where they stand. */
+  readonly size?: 'regular' | 'large' | undefined
   readonly testID?: string | undefined
 }
 
@@ -122,6 +124,7 @@ export function TypedNumber({
   onChange,
   typing,
   placeholder,
+  size = 'regular',
   testID,
 }: TypedNumberProps): React.JSX.Element {
   const [edit, setEdit] = useState(() => fieldShowing(value))
@@ -157,7 +160,7 @@ export function TypedNumber({
       placeholder={placeholder}
       placeholderTextColor={color.textFaint}
       inputMode={typing.decimals ? 'decimal' : 'numeric'}
-      style={[styles.input, styles.numeric]}
+      style={[styles.input, styles.numeric, size === 'large' ? styles.large : null]}
     />
   )
 }
@@ -195,4 +198,12 @@ const styles = StyleSheet.create({
     fontSize: type.mono.fontSize,
   },
   invalid: { borderColor: color.danger },
+  large: {
+    minHeight: type.display.lineHeight + space.md,
+    fontSize: type.display.fontSize,
+    fontFamily: type.display.fontFamily,
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    paddingHorizontal: 0,
+  },
 })

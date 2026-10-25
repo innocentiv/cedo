@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native'
-import { Redirect } from 'expo-router'
+import { Redirect, usePathname } from 'expo-router'
 import { TabList, TabSlot, TabTrigger, Tabs } from 'expo-router/ui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
@@ -14,6 +14,7 @@ import {
 } from '../../src/ui/index.ts'
 import { useAuth } from '../../src/auth/auth-provider.tsx'
 import { useSubmit } from '../../src/lib/use-submit.ts'
+import { SessionReturn, onWorkout } from '../../src/lib/session-return.tsx'
 
 /**
  * Signed in, but the server could not be asked who by: no signal, or the server down. The session
@@ -72,6 +73,7 @@ export default function AppLayout(): React.JSX.Element {
   const { status, retry, signOut } = useAuth()
   const layout = useLayout()
   const insets = useSafeAreaInsets()
+  const pathname = usePathname()
   const tablet = layout === 'tablet'
 
   if (status === 'loading') return <Spinner testID="boot-spinner" />
@@ -86,11 +88,13 @@ export default function AppLayout(): React.JSX.Element {
      */
     <Tabs testID={`shell-${layout}`} style={[styles.fill, tablet ? styles.row : styles.column]}>
       <TabList
-        style={
+        style={[
           tablet
             ? [styles.sidebar, { paddingTop: insets.top + space.md }]
-            : [styles.bottomBar, { paddingBottom: insets.bottom + space.xs }]
-        }
+            : [styles.bottomBar, { paddingBottom: insets.bottom + space.xs }],
+          // A session has the app to itself: its header stands where the tabs were (#24).
+          onWorkout(pathname) ? styles.hidden : null,
+        ]}
       >
         {TABS.map((tab) => (
           <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
@@ -98,6 +102,7 @@ export default function AppLayout(): React.JSX.Element {
           </TabTrigger>
         ))}
       </TabList>
+      <SessionReturn />
       <TabSlot />
     </Tabs>
   )
@@ -120,6 +125,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm,
     gap: space.xs,
   },
+  hidden: { display: 'none' },
   bottomBar: {
     flexDirection: 'row',
     borderTopWidth: 1,

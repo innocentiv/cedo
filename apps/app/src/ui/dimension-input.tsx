@@ -13,6 +13,7 @@ export interface DimensionInputProps {
   readonly onChange: (value: number | null) => void
   /** Defaults to the dimension's unit. A progression increment says "Add kg". */
   readonly label?: string | undefined
+  readonly size?: 'regular' | 'large' | undefined
   readonly testID?: string | undefined
 }
 
@@ -27,6 +28,7 @@ export function DimensionInput({
   value,
   onChange,
   label,
+  size,
   testID,
 }: DimensionInputProps): React.JSX.Element {
   // Weight in the person's own unit; every other dimension is the same for everyone.
@@ -51,6 +53,7 @@ export function DimensionInput({
           change(canAssist ? assistance.stored(typed, assisted) : typed)
         }}
         typing={field}
+        size={size}
         testID={testID}
       />
       {canAssist ? (

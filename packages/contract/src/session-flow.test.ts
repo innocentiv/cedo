@@ -3,11 +3,14 @@ import type { SetTarget } from './progression.ts'
 import {
   type FlowEntry,
   type FlowLog,
+  adHocSetsOf,
   focusOf,
   nextSet,
   restingAfter,
+  sessionSummary,
   setsOf,
 } from './session-flow.ts'
+import { loggedLabel, markOf, markedSets, nextSetWords, progressOf } from './set-marks.ts'
 
 /** The workout screen's flow (#24): which set is next, where the focus goes, whose rest runs. */
 
@@ -164,5 +167,130 @@ describe('whose rest runs', () => {
     const squat = [log('squat', true), log('squat'), log('squat')]
     expect(restingAfter(day, [...squat, log('pull')])).toBeNull()
     expect(restingAfter(day, [...squat, log('pull'), log('raise')])?.id).toBe('raise')
+  })
+})
+
+describe("a session's summary", () => {
+  const done = (isWarmup: boolean, personalBest: boolean) => ({ isWarmup, personalBest })
+
+  test('how long it took, its working sets, and its personal bests', () => {
+    const best = done(false, true)
+    const logs = [done(true, false), done(false, false), best, done(false, false)]
+    expect(
+      sessionSummary({
+        startedAt: '2026-10-25T18:00:00Z',
+        endedAt: '2026-10-25T19:12:30Z',
+        logs,
+      }),
+    ).toEqual({ durationS: 4350, workingSets: 3, personalBests: [best] })
+  })
+
+  test('no duration while in progress, and none below zero against a skewed clock', () => {
+    expect(
+      sessionSummary({ startedAt: '2026-10-25T18:00:00Z', endedAt: null, logs: [] }).durationS,
+    ).toBeNull()
+    expect(
+      sessionSummary({
+        startedAt: '2026-10-25T18:00:05Z',
+        endedAt: '2026-10-25T18:00:00Z',
+        logs: [],
+      }).durationS,
+    ).toBe(0)
+  })
+})
+
+describe('how a set shows', () => {
+  const squat = entry('squat', 0, { working: 3 })
+
+  test('done, a personal best, waiting for a signal, next, to do', () => {
+    const best = { ...log('squat'), personalBest: true }
+    const plain = { ...log('squat'), personalBest: false }
+    const sets = setsOf(squat, [plain, best], null)
+    const next = nextSet(sets)
+    expect(sets.map((s) => markOf(s, next, new Set()))).toEqual(['done', 'best', 'next'])
+    expect(markOf(sets[0]!, next, new Set([plain.id]))).toBe('waiting')
+    const fresh = setsOf(entry('rdl', 1, { working: 2 }), [], null)
+    expect(fresh.map((s) => markOf(s, nextSet(fresh), new Set()))).toEqual(['next', 'todo'])
+  })
+})
+
+describe('an exercise of a session without a plan', () => {
+  test('its logged sets, then one more starting from the last', () => {
+    const adHoc = (exerciseId: string) => ({ ...log(null), exerciseId, weightG: 60_000 })
+    const [first, other, second] = [adHoc('curl'), adHoc('row'), adHoc('curl')]
+    const logs = [first, other, second]
+    const sets = adHocSetsOf('curl', logs)
+    expect(sets.map((s) => s.log?.id ?? null)).toEqual([first.id, second.id, null])
+    expect(nextSet(sets)?.target.weightG).toBe(60_000)
+    expect(nextSet(adHocSetsOf('press', logs))?.target.weightG).toBeNull()
+  })
+})
+
+describe('what the next set is called', () => {
+  const squat = entry('squat', 0, { warmups: 2, working: 3 })
+
+  test('a warm-up, a working set of the prescription, another beyond it', () => {
+    const fresh = setsOf(squat, [], null)
+    expect(nextSetWords(fresh, nextSet(fresh), true)).toEqual({
+      title: 'Warm-up 1 of 2',
+      action: 'Log warm-up',
+    })
+    const warmed = setsOf(squat, [log('squat', true), log('squat', true), log('squat')], null)
+    expect(nextSetWords(warmed, nextSet(warmed), true)).toEqual({
+      title: 'Set 2 of 3',
+      action: 'Log set 2',
+    })
+    expect(nextSetWords(warmed, null, true)).toEqual({
+      title: 'Another set',
+      action: 'Log another set',
+    })
+  })
+
+  test('without a plan, no "of"', () => {
+    const sets = adHocSetsOf('curl', [{ ...log(null), exerciseId: 'curl' }])
+    expect(nextSetWords(sets, nextSet(sets), false)).toEqual({
+      title: 'Set 2',
+      action: 'Log set 2',
+    })
+  })
+})
+
+describe('an entry at a glance', () => {
+  test('each set marked and labelled — W, then its number — and how far along it is', () => {
+    const squat = entry('squat', 0, { warmups: 1, working: 3 })
+    const [warm, first] = [log('squat', true), log('squat')]
+    const sets = setsOf(squat, [warm, first], null)
+    expect(markedSets(sets, new Set([first.id])).map((m) => [m.label, m.mark])).toEqual([
+      ['W', 'done'],
+      ['1', 'waiting'],
+      ['2', 'next'],
+      ['3', 'todo'],
+    ])
+    expect(progressOf(sets)).toBe('1 of 3')
+  })
+})
+
+describe('what a logged set is called', () => {
+  test('a warm-up, or its number among the working sets of its series', () => {
+    const series = (isWarmup: boolean, entryId: string) => ({
+      id: crypto.randomUUID(),
+      entryId,
+      exerciseId: 'squat',
+      isWarmup,
+    })
+    const logs = [
+      series(true, 'a'),
+      series(true, 'a'),
+      series(false, 'a'),
+      series(false, 'b'),
+      series(false, 'a'),
+    ]
+    expect(logs.map((l) => loggedLabel(l, logs))).toEqual([
+      'warm-up',
+      'warm-up',
+      'set 1',
+      'set 1',
+      'set 2',
+    ])
   })
 })

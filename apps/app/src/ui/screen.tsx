@@ -9,6 +9,8 @@ export interface ScreenProps {
   readonly children: React.ReactNode
   /** Pinned to the bottom, outside the scroll area — where a primary action belongs. */
   readonly footer?: React.ReactNode | undefined
+  /** Pinned to the top, outside the scroll area, in place of the title — a session's own header. */
+  readonly header?: React.ReactNode | undefined
   readonly scroll?: boolean
   readonly testID?: string | undefined
 }
@@ -21,6 +23,7 @@ export function Screen({
   title,
   children,
   footer,
+  header,
   scroll = true,
   testID,
 }: ScreenProps): React.JSX.Element {
@@ -33,7 +36,11 @@ export function Screen({
   )
 
   return (
-    <View testID={testID} style={[styles.page, { paddingTop: insets.top }]}>
+    <View
+      testID={testID}
+      style={[styles.page, { paddingTop: header === undefined ? insets.top : 0 }]}
+    >
+      {header}
       {scroll ? (
         <ScrollView
           contentContainerStyle={styles.content}
