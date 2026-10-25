@@ -408,6 +408,7 @@ against Metro. See `docs/09-deployment.md`.
 ```bash
 bun run shot /exercises            # render, screenshot to .artifacts/, print console errors
 bun run shot /workouts --tablet
+bun run gallery                    # every screen in use, mobile and desktop, to .artifacts/gallery/
 bun run e2e                        # static routes at phone width, the tablet shell, the journeys;
                                    # fails on any console error, including any failed read
 ```
@@ -415,6 +416,14 @@ bun run e2e                        # static routes at phone width, the tablet sh
 `bun run shot` is the inner loop: edit a screen, run it, **read the PNG**, read the errors. Both the
 sidebar bug and the platform-resolution bug above were found by looking at the picture, not by an
 assertion.
+
+`bun run gallery` is the outer one, for judging how the app looks and flows rather than whether a
+route renders. It seeds an athlete three weeks into a block — a four-day plan, dated history, a
+session half done with rest running, an exercise with a video, a coach's club — and photographs
+every screen and the states inside them (the picker open, a set mid-rest) at a phone's width and a
+laptop's, each down to its end, a frame per viewport. `.artifacts/gallery/index.html` lays mobile
+and desktop side by side. `--only <state>` and `--layout mobile|desktop` narrow it. An empty
+account cut at the fold hid every problem in `docs/ux/2026-10-ui-review.md`; this is what found them.
 
 The harness reveals a target before touching it (`scrollIntoView`, then click) and can wait for a
 selector whose id is not known ahead of time. Both exist because their absence produced failures

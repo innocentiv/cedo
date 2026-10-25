@@ -46,6 +46,7 @@ is designed to prevent.
 | `bun run db:reset` | Empty volume → migrate → seed, in one command. |
 | `bun run db:test` | The throwaway Postgres the test suite needs. |
 | `bun run shot <route>` | Rebuild, render a UI route, screenshot to `.artifacts/`, print console errors. |
+| `bun run gallery` | Rebuild, seed an athlete mid-block, photograph every screen and state, mobile and desktop, to `.artifacts/gallery/`. |
 | `bun run e2e` | Rebuild, then the full UI journeys; fails on any console error. Foreground only. |
 | `bun run perf` | N+1 and missing-index guards against its own 250k-row database. Pre-release. |
 | `bun run perf:report` | Writes `.artifacts/perf.md` — every hot path's query counts and full plans. |

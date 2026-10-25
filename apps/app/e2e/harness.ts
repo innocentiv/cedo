@@ -19,7 +19,7 @@ const ROOT = join(import.meta.dir, '..', '..', '..')
 const DIST = join(ROOT, 'apps', 'app', 'dist')
 const ARTIFACTS = join(ROOT, '.artifacts')
 
-const TEST_DATABASE_URL =
+export const TEST_DATABASE_URL =
   Bun.env['E2E_DATABASE_URL'] ??
   (Bun.env['TEST_DATABASE_URL'] ?? 'postgres://cedo:cedo@localhost:55433/cedo_test').replace(
     /\/[^/]*$/u,
@@ -149,10 +149,11 @@ async function clientAs(token: string | null): Promise<ApiClient> {
 /** A second person — a coach, a training partner — signed up over HTTP, with a client acting as them. */
 export async function signUp(
   username: string,
+  displayName = username,
 ): Promise<{ readonly user: User; readonly api: ApiClient }> {
   const created = await (
     await clientAs(null)
-  ).auth.register({ username, displayName: username, password: `${username}-password` })
+  ).auth.register({ username, displayName, password: `${username}-password` })
   return { user: created.user, api: await clientAs(created.token) }
 }
 
@@ -248,10 +249,15 @@ export interface Page {
   /** The next API request to `path` is stored, and its answer lost — see `StaticServer`. */
   readonly loseNextAnswer: (path: RegExp) => void
   readonly errors: readonly string[]
+  /**
+   * Writes what is on screen now to `.artifacts/<name>.png` — for a run that pictures several
+   * states, as the gallery does. `withApp` still writes its own at the end.
+   */
+  readonly screenshot: (name: string) => Promise<void>
 }
 
 export interface RunOptions {
-  readonly layout?: 'phone' | 'tablet'
+  readonly layout?: Layout
   /**
    * Console errors this journey EXPECTS — a read it deliberately makes fail, such as a plan the
    * user has just lost access to. Each pattern must match at least one error, or the run fails:
@@ -260,7 +266,13 @@ export interface RunOptions {
   readonly allowErrors?: readonly RegExp[]
 }
 
-const SIZE = { phone: { width: 420, height: 900 }, tablet: { width: 1280, height: 900 } } as const
+/** A phone; the smallest width the sidebar shell takes; and a laptop's browser window. */
+const SIZE = {
+  phone: { width: 420, height: 900 },
+  tablet: { width: 1280, height: 900 },
+  desktop: { width: 1440, height: 900 },
+} as const
+export type Layout = keyof typeof SIZE
 
 /**
  * Runs one journey.
@@ -434,6 +446,9 @@ function makePage(view: Bun.WebView, site: StaticServer, errors: string[]): Page
     },
     get errors() {
       return errors
+    },
+    screenshot: async (name) => {
+      await Bun.write(join(ARTIFACTS, `${name}.png`), await view.screenshot())
     },
   }
   return page
