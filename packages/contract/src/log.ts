@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { LoggedDistanceMm, LoggedDurationS, LoggedReps, LoggedWeightG } from './measurement.ts'
 import { Rpe } from './rpe.ts'
-import { Exercise, TrackingMode } from './exercise.ts'
+import { Exercise } from './exercise.ts'
 import { Id, PaginationQuery, Timestamp } from './primitives.ts'
 import { WorkoutDay, WorkoutEntry } from './workout.ts'
 
@@ -45,6 +45,11 @@ export const SetLog = z.object({
   distanceMm: LoggedDistanceMm.nullable(),
   isWarmup: z.boolean(),
   loggedAt: Timestamp,
+  /**
+   * Better than every earlier working set of its exercise, when it was logged (GLOSSARY.md,
+   * "Personal best") — judged by the server, against history the device does not hold.
+   */
+  personalBest: z.boolean(),
 })
 export type SetLog = z.output<typeof SetLog>
 
@@ -150,6 +155,14 @@ export const SessionUpdate = z.strictObject({
 export type SessionUpdate = z.output<typeof SessionUpdate>
 
 /**
+ * `PATCH /sessions/:id/logs/:logId` — how hard a set was, said once it is done (#24): the workout
+ * screen asks reserve after a set, not before. Only of a session in progress; what was lifted is
+ * never changed — a mistake is undone and logged again.
+ */
+export const SetLogUpdate = z.strictObject({ rpe: Rpe.nullable() })
+export type SetLogUpdate = z.output<typeof SetLogUpdate>
+
+/**
  * One set as done. No `setIndex`: the server numbers every set within its series (`nextSetIndex`),
  * so the app and an AI cannot number them two different ways. Strict, so a caller still sending
  * one is told, not ignored.
@@ -240,27 +253,6 @@ export const SessionQuery = PaginationQuery.extend({
 })
 export type SessionQuery = z.output<typeof SessionQuery>
 
-/**
- * One past performance of an exercise, grouped by session. This is the shape progression rules
- * consume, and the shape a progress chart will consume later without a schema change.
- */
-export const ExerciseHistoryEntry = z.object({
-  sessionId: Id,
-  performedAt: Timestamp,
-  sets: z.array(
-    z.object({
-      setIndex: z.int().nonnegative(),
-      weightG: LoggedWeightG.nullable(),
-      reps: LoggedReps.nullable(),
-      rpe: Rpe.nullable(),
-      durationS: LoggedDurationS.nullable(),
-      distanceMm: LoggedDistanceMm.nullable(),
-      isWarmup: z.boolean(),
-    }),
-  ),
-})
-export type ExerciseHistoryEntry = z.output<typeof ExerciseHistoryEntry>
-
 /** What a logged set measured. A logged set's measures, no more. */
 export const LoggedEffort = SetLog.pick({
   reps: true,
@@ -269,24 +261,3 @@ export const LoggedEffort = SetLog.pick({
   distanceMm: true,
 })
 export type LoggedEffort = z.output<typeof LoggedEffort>
-
-/** Most recent session first. */
-export const ExerciseHistory = z.object({
-  exerciseId: Id,
-  /** So a reader renders the sets in the exercise's terms — `formatEffort(set, tracking, unit)`. */
-  tracking: TrackingMode,
-  sessions: z.array(ExerciseHistoryEntry),
-  /**
-   * Whether it has stalled (GLOSSARY.md) — its latest sessions, three or more running, sharing one
-   * top set — judged as `training_review` judges it, over the sessions this read returns. The run's
-   * length and the top set it is stuck at; null when it has not.
-   */
-  stalled: z.object({ sessions: z.int().min(1), effort: LoggedEffort }).nullable(),
-})
-export type ExerciseHistory = z.output<typeof ExerciseHistory>
-
-export const ExerciseHistoryQuery = z.strictObject({
-  since: Timestamp.optional(),
-  limit: z.coerce.number().int().min(1).max(200).default(20),
-})
-export type ExerciseHistoryQuery = z.output<typeof ExerciseHistoryQuery>

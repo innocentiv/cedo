@@ -9,6 +9,7 @@ import {
   LogSetInput,
   MAX_SET_INDEX,
   ProgressionSuggestion,
+  SessionDetail,
   SessionLogInput,
   SetLog,
   Workout,
@@ -24,7 +25,7 @@ import { seedLibrary } from '../../db/seed.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
-import { logSet } from './service.ts'
+import { logSet } from './log-set.ts'
 import { logWhole } from './start.ts'
 
 const Page = page(WorkoutSessionSummary)
@@ -1315,5 +1316,115 @@ describe('RPE in half-points', () => {
     })
     const plan = expectContract(Workout, saved.body)
     expect(plan.days[0]?.entries[0]?.sets[0]?.target.rpe).toBe(7.5)
+  })
+})
+
+/**
+ * The workout screen asks reserve after a set, not before (#24): how hard it was is said once it is
+ * done — and only while the session is in progress, finishing being final.
+ */
+describe("a set's reserve, said after it", () => {
+  test('sets the RPE of a set already logged, and answers it as read', async () => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const set = expectContract(
+      SetLog,
+      (
+        await alice.wire(`/sessions/${session.id}/logs`, {
+          method: 'POST',
+          body: JSON.stringify({ exerciseId, weightG: kgToG(100), reps: 5 }),
+        })
+      ).body,
+    )
+    expect(set.rpe).toBeNull()
+
+    const amend = (rpe: number | null) =>
+      alice.wire(`/sessions/${session.id}/logs/${set.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ rpe }),
+      })
+    expect(expectContract(SetLog, (await amend(8)).body)).toMatchObject({
+      id: set.id,
+      rpe: 8,
+      reps: 5,
+    })
+
+    await finishSession(alice, session.id)
+    expect((await amend(9)).status).toBe(409)
+  })
+
+  test("is a 404 for a set of another session, or someone else's", async () => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const set = expectContract(
+      SetLog,
+      (
+        await alice.wire(`/sessions/${session.id}/logs`, {
+          method: 'POST',
+          body: JSON.stringify({ exerciseId, weightG: kgToG(100), reps: 5 }),
+        })
+      ).body,
+    )
+    const bobs = expectContract(WorkoutSession, (await startSession(bob)).body)
+    const patch = { method: 'PATCH', body: JSON.stringify({ rpe: 8 }) }
+    expect((await alice.wire(`/sessions/${bobs.id}/logs/${set.id}`, patch)).status).toBe(404)
+    expect((await bob.wire(`/sessions/${session.id}/logs/${set.id}`, patch)).status).toBe(404)
+  })
+})
+
+/** A personal best is marked as it is logged (#24) — by the server, which holds the history. */
+describe('personal bests', () => {
+  const logAt = async (sessionId: string, exerciseId: string, kg: number, isWarmup = false) =>
+    expectContract(
+      SetLog,
+      (
+        await alice.wire(`/sessions/${sessionId}/logs`, {
+          method: 'POST',
+          body: JSON.stringify({ exerciseId, weightG: kgToG(kg), reps: 5, isWarmup }),
+        })
+      ).body,
+    )
+
+  test('a set better than every earlier one is a best; the first time, a warm-up, or a match is not', async () => {
+    const exerciseId = await anExercise(alice)
+    const first = expectContract(WorkoutSession, (await startSession(alice)).body)
+    expect((await logAt(first.id, exerciseId, 100)).personalBest).toBe(false)
+    await finishSession(alice, first.id)
+
+    const second = expectContract(WorkoutSession, (await startSession(alice)).body)
+    expect((await logAt(second.id, exerciseId, 140, true)).personalBest).toBe(false)
+    expect((await logAt(second.id, exerciseId, 100)).personalBest).toBe(false)
+    expect((await logAt(second.id, exerciseId, 105)).personalBest).toBe(true)
+    // Against the sets before it in this session too.
+    expect((await logAt(second.id, exerciseId, 105)).personalBest).toBe(false)
+
+    const read = expectContract(SessionDetail, (await alice.wire(`/sessions/${second.id}`)).body)
+    expect(read.logs.map((l) => l.personalBest)).toEqual([false, false, true, false])
+  })
+
+  test("judged against the athlete's own history only", async () => {
+    const exerciseId = await anExercise(alice)
+    const crew = expectContract(
+      GroupMembership,
+      (await alice.wire('/groups', { method: 'POST', body: JSON.stringify({ name: 'Crew' }) }))
+        .body,
+    )
+    await alice.wire(`/groups/${crew.id}/members`, {
+      method: 'POST',
+      body: JSON.stringify({ username: 'bob', role: 'reader' }),
+    })
+    await alice.wire(`/exercises/${exerciseId}/transfer`, {
+      method: 'POST',
+      body: JSON.stringify({ toGroupId: crew.id }),
+    })
+    const bobs = expectContract(WorkoutSession, (await startSession(bob)).body)
+    const bobsSet = await bob.wire(`/sessions/${bobs.id}/logs`, {
+      method: 'POST',
+      body: JSON.stringify({ exerciseId, weightG: kgToG(50), reps: 5 }),
+    })
+    expect(bobsSet.status).toBe(200)
+    const mine = expectContract(WorkoutSession, (await startSession(alice)).body)
+    // Bob's lighter set does not make Alice's first one a best: she has nothing earlier to beat.
+    expect((await logAt(mine.id, exerciseId, 100)).personalBest).toBe(false)
   })
 })

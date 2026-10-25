@@ -5,6 +5,7 @@ import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 import { resolveCaller } from '../../plugins/auth.ts'
 import { list as listSessions } from '../session/list.ts'
+import { logSet } from '../session/log-set.ts'
 import * as SessionService from '../session/service.ts'
 import { start as startSession } from '../session/start.ts'
 import { trainingReview } from './service.ts'
@@ -139,7 +140,7 @@ test('a set heavy enough to overflow int4 does not break the review', async () =
   if (caller === null) throw new Error('alice could not be resolved')
 
   const session = await startSession(caller, { workoutId: shared.workoutId, dayId: null })
-  await SessionService.logSet(caller, session.id, {
+  await logSet(caller, session.id, {
     exerciseId: shared.exerciseId,
     entryId: null,
     weightG: 500_000,

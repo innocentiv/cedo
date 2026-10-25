@@ -1,6 +1,6 @@
 import { type Effort, formatEffort, topSet } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
-import type { ExerciseHistory } from './log.ts'
+import type { ExerciseHistory } from './history.ts'
 import { reserveOf } from './rpe.ts'
 import { type WeightUnit, formatWeight, roundToIncrement } from './units.ts'
 

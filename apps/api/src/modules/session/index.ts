@@ -12,6 +12,7 @@ import {
   SessionStart,
   SessionUpdate,
   SetLog,
+  SetLogUpdate,
   SessionDetail,
   WorkoutSession,
   WorkoutSessionSummary,
@@ -21,6 +22,7 @@ import { authPlugin } from '../../plugins/auth.ts'
 import * as CoachingService from '../coaching/service.ts'
 import { targetsForSession } from '../progression/service.ts'
 import { start as startSession } from './start.ts'
+import { logSet } from './log-set.ts'
 import * as SessionService from './service.ts'
 
 const params = z.object({ id: Id })
@@ -60,7 +62,7 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
   .post(
     '/:id/logs',
     ({ caller, params: { id }, body, headers }) =>
-      SessionService.logSet(caller, id, body, headers[IDEMPOTENCY_KEY_HEADER]),
+      logSet(caller, id, body, headers[IDEMPOTENCY_KEY_HEADER]),
     {
       params,
       body: LogSetInput,
@@ -72,6 +74,16 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
           'An `Idempotency-Key` header (a UUID) makes it safe to retry: a key already stored in ' +
           'the session is answered with the stored set, never logged twice.',
       },
+    },
+  )
+  .patch(
+    '/:id/logs/:logId',
+    ({ caller, params: { id, logId }, body }) => SessionService.amendLog(caller, id, logId, body),
+    {
+      params: z.object({ id: Id, logId: Id }),
+      body: SetLogUpdate,
+      response: SetLog,
+      detail: { summary: 'How hard a set was, said after it — while the session is in progress' },
     },
   )
   .delete(

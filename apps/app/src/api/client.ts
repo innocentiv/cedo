@@ -27,6 +27,7 @@ import {
   type SessionQuery,
   type SessionStart,
   type SessionUpdate,
+  type SetLogUpdate,
   SetLog,
   IDEMPOTENCY_KEY_HEADER,
   type LogSetInput,
@@ -161,6 +162,9 @@ const sessions = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
       idempotencyKey === undefined ? {} : { [IDEMPOTENCY_KEY_HEADER]: idempotencyKey },
     ),
   removeLog: async (id: string, logId: string) => await DELETE(`/sessions/${id}/logs/${logId}`, Ok),
+  /** How hard a set was, said after it — while the session is in progress (#24). */
+  amendLog: async (id: string, logId: string, body: SetLogUpdate) =>
+    await PATCH(`/sessions/${id}/logs/${logId}`, SetLog, body),
 })
 
 const groups = ({ GET, POST, PATCH, DELETE }: Verbs) => ({

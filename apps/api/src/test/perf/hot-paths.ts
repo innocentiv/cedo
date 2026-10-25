@@ -3,6 +3,7 @@ import type { PerfFixtures } from '../../db/seed-perf/index.ts'
 import { resolveCaller } from '../../plugins/auth.ts'
 import * as exerciseService from '../../modules/exercise/service.ts'
 import * as workoutService from '../../modules/workout/service.ts'
+import { logSet } from '../../modules/session/log-set.ts'
 import * as sessionService from '../../modules/session/service.ts'
 import { get as getSession } from '../../modules/session/plan.ts'
 import { list as listSessions } from '../../modules/session/list.ts'
@@ -224,8 +225,9 @@ export const HOT_PATHS: readonly HotPath[] = [
     name: 'GET /sessions/:id',
     why: 'Read back during a live workout, with the day it follows. Must not issue one query per logged set, nor per entry of the day.',
     dimension: 'logged sets (9 vs 60), and the entries of the day followed',
-    // The session and its logs; then the day, its entries, their sets, and the four exercise reads.
-    maxQueries: 9,
+    // The session and its logs; then the day, its entries, their sets, and the four exercise reads;
+    // and one grouped read of its exercises' earlier bests, to mark a personal best (#24).
+    maxQueries: 10,
     budgetMs: 60,
     // Its logs LEFT JOIN the plan's entries, which reach the days, and its day reads their sets.
     noSeqScan: ['set_logs', 'exercises', 'workout_entries', 'workout_days', 'workout_sets'],
@@ -277,14 +279,15 @@ export const HOT_PATHS: readonly HotPath[] = [
       'the only guarded path that mutates, so its plans are read without ANALYZE.',
     dimension: 'sets already logged in the session (9 vs 60)',
     // Four, plus reading the set's series under the lock to number it — its logs LEFT JOINed onto
-    // the plan entries the caller can still reach, in the same query.
-    maxQueries: 5,
+    // the plan entries the caller can still reach, in the same query — then the set answered as its
+    // session reads it, personal best and all (#24): the session, its logs, its earlier bests.
+    maxQueries: 8,
     budgetMs: 40,
     noSeqScan: ['workout_sessions', 'set_logs', 'workout_entries', 'workout_days'],
     indexes: [],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
-      return await sessionService.logSet(profile.caller, profile.openSessionId, {
+      return await logSet(profile.caller, profile.openSessionId, {
         exerciseId: profile.exerciseId,
         entryId: null,
         weightG: 60_000,

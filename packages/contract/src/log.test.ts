@@ -87,6 +87,7 @@ describe('the exercises a session without a plan is working through', () => {
     distanceMm: null,
     isWarmup: false,
     loggedAt: new Date().toISOString(),
+    personalBest: false,
   })
 
   /** Regression: picked exercises were local state, so a reload showed no logger at all. */

@@ -1,18 +1,18 @@
-import { and, asc, eq, isNotNull, sql } from 'drizzle-orm'
-import type {
-  LogSetInput,
-  LoggedExercise,
-  SessionUpdate,
-  SetLog,
-  WorkoutSession,
+import { and, asc, eq, sql } from 'drizzle-orm'
+import {
+  type LoggedExercise,
+  type SessionUpdate,
+  type SetLogUpdate,
+  type SetLog,
+  type WorkoutSession,
+  personalBestsIn,
 } from '@cedo/contract'
 import { type Transaction, db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises } from '../../db/visible.ts'
 import { conflict, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { assertLoggable } from './loggable.ts'
-import { nextNumber } from './numbering.ts'
+import { earlierBests } from './bests.ts'
 import { planEntries } from '../workout/plan.ts'
 
 /**
@@ -45,7 +45,12 @@ export type SessionRow = typeof workoutSessions.$inferSelect
 type LogRow = typeof setLogs.$inferSelect
 
 /** `entryId` as the caller sees it — see `get`. */
-const toLog = (row: LogRow, exercise: LoggedExercise | null, entryId: string | null): SetLog => ({
+const toLog = (
+  row: LogRow,
+  exercise: LoggedExercise | null,
+  entryId: string | null,
+  personalBest: boolean,
+): SetLog => ({
   id: row.id,
   entryId,
   exerciseId: row.exerciseId,
@@ -58,12 +63,14 @@ const toLog = (row: LogRow, exercise: LoggedExercise | null, entryId: string | n
   durationS: row.durationS,
   distanceMm: row.distanceMm,
   loggedAt: row.loggedAt.toISOString(),
+  personalBest,
 })
 
 interface LoggedRow {
   readonly log: LogRow
   readonly exercise: LoggedExercise | null
   readonly entryId: string | null
+  readonly personalBest: boolean
 }
 
 export const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutSession => ({
@@ -73,7 +80,7 @@ export const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutS
   startedAt: row.startedAt.toISOString(),
   endedAt: row.endedAt?.toISOString() ?? null,
   notes: row.notes,
-  logs: logs.map((l) => toLog(l.log, l.exercise, l.entryId)),
+  logs: logs.map((l) => toLog(l.log, l.exercise, l.entryId, l.personalBest)),
 })
 
 /** Said by every write only a session in progress takes. */
@@ -125,7 +132,7 @@ export async function update(
  * landing between the check and the write let a set into a session that was already over, or out
  * of one. See GLOSSARY.md, "Session".
  */
-async function lockInProgress(tx: Transaction, caller: Caller, id: string): Promise<void> {
+export async function lockInProgress(tx: Transaction, caller: Caller, id: string): Promise<void> {
   const [locked] = await tx
     .select({ endedAt: workoutSessions.endedAt })
     .from(workoutSessions)
@@ -166,6 +173,15 @@ export async function read(training: Training, id: string): Promise<WorkoutSessi
     .where(eq(setLogs.sessionId, id))
     .orderBy(asc(setLogs.loggedAt), asc(setLogs.setIndex))
 
+  // Judged only of what the reader can see: an exercise out of reach has no mode to judge it by.
+  const tracking = new Map(
+    logs.flatMap((l) => (l.tracking === null ? [] : [[l.log.exerciseId, l.tracking] as const])),
+  )
+  const bests = personalBestsIn(
+    logs.map((l) => l.log),
+    await earlierBests(sessionsOf(training), row.startedAt, [...tracking.keys()]),
+    (exerciseId) => tracking.get(exerciseId) ?? null,
+  )
   return toSession(
     row,
     logs.map((l) => ({
@@ -173,72 +189,9 @@ export async function read(training: Training, id: string): Promise<WorkoutSessi
       exercise:
         l.name === null || l.tracking === null ? null : { name: l.name, tracking: l.tracking },
       entryId: l.entryId,
+      personalBest: bests.has(l.log.id),
     })),
   )
-}
-
-/**
- * One performed set. With an `idempotencyKey`, a repeat of a key already stored in this session is
- * answered with the stored set — the same request, so the same answer, even if the session was
- * finished or its plan changed since. See `IDEMPOTENCY_KEY_HEADER` in the contract.
- */
-export async function logSet(
-  caller: Caller,
-  sessionId: string,
-  input: LogSetInput,
-  idempotencyKey?: string,
-): Promise<SetLog> {
-  const [session] = await db
-    .select({ workoutId: workoutSessions.workoutId })
-    .from(workoutSessions)
-    .where(and(ownedBy(caller), eq(workoutSessions.id, sessionId)))
-    .limit(1)
-  if (session === undefined) throw notFound('session')
-  const stored = await storedByKey(caller, sessionId, idempotencyKey)
-  if (stored !== undefined) return stored
-  const exercises = await assertLoggable(caller, session.workoutId, [input])
-
-  const created = await db.transaction(async (tx) => {
-    // `workout_id` never changes after a session starts, so the validation above needs no lock.
-    await lockInProgress(tx, caller, sessionId)
-
-    const setIndex = await nextNumber(tx, caller, { id: sessionId, ...session }, input)
-    // A key stored meanwhile — two sends of one set at once — is skipped, and answered below.
-    const [row] = await tx
-      .insert(setLogs)
-      .values({ sessionId, ...input, setIndex, idempotencyKey })
-      .onConflictDoNothing({
-        target: [setLogs.sessionId, setLogs.idempotencyKey],
-        where: isNotNull(setLogs.idempotencyKey),
-      })
-      .returning()
-      .catch(rethrowMissingEntry)
-    // The entry it names was checked reachable by `assertLoggable`, so it is seen as stored.
-    return row === undefined ? null : toLog(row, exercises.get(row.exerciseId) ?? null, row.entryId)
-  })
-  if (created !== null) return created
-  const replayed = await storedByKey(caller, sessionId, idempotencyKey)
-  if (replayed === undefined) throw new Error('A stored key has no set')
-  return replayed
-}
-
-/**
- * The set a key stored, as reading the session shows it now — names and entries as visible. A key
- * names ONE request: a repeat is answered with what the first stored, its body not compared.
- */
-async function storedByKey(
-  caller: Caller,
-  sessionId: string,
-  key: string | undefined,
-): Promise<SetLog | undefined> {
-  if (key === undefined) return undefined
-  const [row] = await db
-    .select({ id: setLogs.id })
-    .from(setLogs)
-    .where(and(eq(setLogs.sessionId, sessionId), eq(setLogs.idempotencyKey, key)))
-    .limit(1)
-  if (row === undefined) return undefined
-  return (await read(own(caller), sessionId)).logs.find((log) => log.id === row.id)
 }
 
 /**
@@ -249,6 +202,27 @@ async function storedByKey(
 export function rethrowMissingEntry(error: unknown): never {
   if (isForeignKeyRefusal(error)) throw notFound('entry')
   throw error
+}
+
+/** How hard a set was, said after it — only while its session is in progress (#24). */
+export async function amendLog(
+  caller: Caller,
+  sessionId: string,
+  logId: string,
+  patch: SetLogUpdate,
+): Promise<SetLog> {
+  await db.transaction(async (tx) => {
+    await lockInProgress(tx, caller, sessionId)
+    const amended = await tx
+      .update(setLogs)
+      .set({ rpe: patch.rpe })
+      .where(and(eq(setLogs.id, logId), eq(setLogs.sessionId, sessionId)))
+      .returning({ id: setLogs.id })
+    if (amended.length === 0) throw notFound('log')
+  })
+  const amended = (await read(own(caller), sessionId)).logs.find((log) => log.id === logId)
+  if (amended === undefined) throw notFound('log')
+  return amended
 }
 
 /** An undo: only of a session in progress — finishing is final, and nothing is undone after it. */

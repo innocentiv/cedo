@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { ExerciseHistory } from './log.ts'
+import type { ExerciseHistory } from './history.ts'
 import {
   MAX_ESTIMATE_REPS,
   estimatedMax,
