@@ -6,7 +6,7 @@ import { Platform, StatusBar } from 'react-native'
 import { createQueryClient } from '../src/api/query-client.ts'
 import { AuthProvider } from '../src/auth/auth-provider.tsx'
 import { registerShell } from '../src/pwa/register.ts'
-import { ErrorBoundary } from '../src/ui/index.ts'
+import { ErrorBoundary, useAppFonts } from '../src/ui/index.ts'
 
 /**
  * The one place providers are mounted. Everything below is a route.
@@ -17,6 +17,10 @@ import { ErrorBoundary } from '../src/ui/index.ts'
  */
 export default function RootLayout(): React.JSX.Element {
   const queryClient = useMemo(() => createQueryClient(), [])
+  // Loaded alongside, never waited for: the router must mount its navigator on the first render,
+  // and holding the tree back until the faces were in left a blank page that never routed. A
+  // moment of the system face, at worst, on the very first open.
+  useAppFonts()
 
   useEffect(() => {
     if (Platform.OS === 'web' && !__DEV__) registerShell()

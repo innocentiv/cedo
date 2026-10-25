@@ -185,8 +185,14 @@ const styles = StyleSheet.create({
     borderColor: color.border,
     color: color.text,
     fontSize: type.body.fontSize,
+    fontFamily: type.body.fontFamily,
   },
   multiline: { minHeight: CONTROL_HEIGHT * 2, paddingTop: space.md, textAlignVertical: 'top' },
-  numeric: { textAlign: 'center', fontVariant: ['tabular-nums'] },
+  numeric: {
+    textAlign: 'center',
+    fontVariant: ['tabular-nums'],
+    fontFamily: type.mono.fontFamily,
+    fontSize: type.mono.fontSize,
+  },
   invalid: { borderColor: color.danger },
 })

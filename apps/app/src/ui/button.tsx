@@ -45,7 +45,7 @@ export function Button({
       {busy ? (
         <ActivityIndicator color={variant === 'primary' ? color.accentText : color.text} />
       ) : (
-        <Text variant="label" tone={variant === 'primary' ? 'default' : TONE[variant]}>
+        <Text variant="label" tone={variant === 'primary' ? 'onAccent' : TONE[variant]}>
           {title}
         </Text>
       )}

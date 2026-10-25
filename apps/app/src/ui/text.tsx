@@ -1,7 +1,18 @@
 import { StyleSheet, Text as RNText, type TextProps as RNTextProps } from 'react-native'
 import { type TypeVariant, color, type as typeScale } from './tokens.ts'
 
-export type Tone = 'default' | 'muted' | 'faint' | 'danger' | 'warning' | 'success' | 'accent'
+export type Tone =
+  | 'default'
+  | 'muted'
+  | 'faint'
+  | 'danger'
+  | 'warning'
+  | 'success'
+  | 'accent'
+  | 'rest'
+  | 'warmup'
+  /** Written on the accent's yellow: the floor's colour. */
+  | 'onAccent'
 
 const TONE: Record<Tone, string> = {
   default: color.text,
@@ -11,6 +22,9 @@ const TONE: Record<Tone, string> = {
   warning: color.warning,
   success: color.success,
   accent: color.accent,
+  rest: color.rest,
+  warmup: color.warmup,
+  onAccent: color.accentText,
 }
 
 export interface TextProps extends Omit<RNTextProps, 'style'> {

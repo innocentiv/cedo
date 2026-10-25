@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, View } from 'react-native'
-import { color, radius, space } from './tokens.ts'
+import { ROW_HEIGHT, color, radius, space } from './tokens.ts'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
@@ -39,7 +39,10 @@ export interface ListRowProps {
   readonly testID?: string | undefined
 }
 
-/** The single row shape every list in the app uses. */
+/**
+ * The single row shape every list in the app uses: a line on the floor, not a box — a list of boxes
+ * is a wall of borders the eye has to read past to the names in them.
+ */
 export function ListRow({
   title,
   subtitle,
@@ -48,37 +51,57 @@ export function ListRow({
   accessory,
   testID,
 }: ListRowProps): React.JSX.Element {
-  return (
-    <Card onPress={onPress} testID={testID}>
-      <Stack direction="row" gap="md" align="center">
-        <Stack gap="xs" grow>
-          <Text variant="label" numberOfLines={1}>
-            {title}
-          </Text>
-          {subtitle === undefined ? null : (
-            <Text variant="caption" tone="muted" numberOfLines={1}>
-              {subtitle}
-            </Text>
-          )}
-        </Stack>
-        {trailing === undefined ? null : (
-          <Text variant="mono" tone="muted">
-            {trailing}
+  const content = (
+    <Stack direction="row" gap="md" align="center">
+      <Stack gap="xs" grow>
+        <Text variant="label" numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle === undefined ? null : (
+          <Text variant="caption" tone="muted" numberOfLines={1}>
+            {subtitle}
           </Text>
         )}
-        {accessory}
       </Stack>
-    </Card>
+      {trailing === undefined ? null : (
+        <Text variant="mono" tone="muted">
+          {trailing}
+        </Text>
+      )}
+      {accessory}
+    </Stack>
+  )
+  if (onPress === undefined) {
+    return (
+      <View testID={testID} style={styles.row}>
+        {content}
+      </View>
+    )
+  }
+  return (
+    <Pressable
+      testID={testID}
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.row, pressed ? styles.rowPressed : null]}
+    >
+      {content}
+    </Pressable>
   )
 }
 
 const styles = StyleSheet.create({
   card: {
     backgroundColor: color.surface,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: color.border,
-    padding: space.md,
+    borderRadius: radius.lg,
+    padding: space.lg,
   },
   pressed: { backgroundColor: color.surfaceRaised },
+  row: {
+    minHeight: ROW_HEIGHT,
+    paddingVertical: space.md,
+    borderBottomWidth: 1,
+    borderBottomColor: color.border,
+  },
+  rowPressed: { backgroundColor: color.surface },
 })
