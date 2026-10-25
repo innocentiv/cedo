@@ -1,4 +1,4 @@
-import { eq, inArray } from 'drizzle-orm'
+import { asc, desc, eq, inArray } from 'drizzle-orm'
 import { type Exercise, type Media, videoEmbedUrl, videoThumbnailUrl } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupBy } from '../../lib/keyset.ts'
@@ -92,7 +92,13 @@ export async function hydrate(
   const ids = listed.map((l) => l.row.id)
 
   const muscles = visibleExerciseMuscles(caller)
-  const muscleRows = await db.select().from(muscles).where(inArray(muscles.exerciseId, ids))
+  // In one order every read agrees on — most loaded first — not whichever the planner returns: two
+  // reads of one exercise, or of an exercise and its copy, compared unequal by chance.
+  const muscleRows = await db
+    .select()
+    .from(muscles)
+    .where(inArray(muscles.exerciseId, ids))
+    .orderBy(desc(muscles.loadPct), asc(muscles.muscleSlug))
 
   const attached = visibleExerciseMedia(caller)
   const mediaRows = await db
