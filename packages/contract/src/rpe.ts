@@ -31,10 +31,15 @@ export const reserveOf = (rpe: number): number => RPE_MAX - rpe
 /** The RPE of a set that left `reserve` reps in the tank. */
 export const rpeOf = (reserve: number): number => RPE_MAX - reserve
 
-/** What a person is asked to choose from: none to five reps left, in halves — the whole scale. */
+/**
+ * What a person is asked to choose from: none to five reps left, whole. The scale keeps its halves
+ * for what an AI or a coach writes, but asked of an athlete between sets, eleven choices across two
+ * lines was a second guess at a guess: whole reps fit one row under the thumb (#24 review). A half
+ * written elsewhere still reads back as itself (`formatReserve`).
+ */
 export const RESERVE_CHOICES: readonly number[] = Array.from(
-  { length: (RPE_MAX - RPE_MIN) / RPE_STEP + 1 },
-  (_, i) => i * RPE_STEP,
+  { length: RPE_MAX - RPE_MIN + 1 },
+  (_, i) => i,
 )
 
 /**

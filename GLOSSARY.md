@@ -126,7 +126,8 @@ and each point below it leaves one more.
 _Avoid_: intensity, difficulty, exertion
 
 **Reps in reserve**:
-How many more reps a set could have had — how RPE is asked of a person: none to five, in halves.
+How many more reps a set could have had — how RPE is asked of a person: none to five, whole. A half
+written by a coach or an AI is still a reserve, and reads as one.
 _Avoid_: reps left in the tank, RIR (in what a person reads)
 
 **Working sets per muscle**:

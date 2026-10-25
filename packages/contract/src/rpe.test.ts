@@ -32,9 +32,9 @@ describe('reps in reserve', () => {
     expect(rpeOf(0.5)).toBe(9.5)
   })
 
-  /** What a person is asked: none to five reps left, in halves — every RPE on the scale, once. */
-  test('are offered from none to five, in halves, each a valid RPE', () => {
-    expect(RESERVE_CHOICES).toEqual([0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5])
+  /** What a person is asked: none to five reps left, whole — one row under the thumb. */
+  test('are offered from none to five, whole, each a valid RPE', () => {
+    expect(RESERVE_CHOICES).toEqual([0, 1, 2, 3, 4, 5])
     for (const reserve of RESERVE_CHOICES) expect(Rpe.safeParse(rpeOf(reserve)).success).toBe(true)
   })
 
