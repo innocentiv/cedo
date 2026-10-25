@@ -234,8 +234,8 @@ progress.
 _Avoid_: workout (that is what a session follows), training
 
 **Personal best**:
-A working set better than every earlier working set of its exercise: for a weight lift, by
-estimated max; for a bodyweight movement, by reps, or by weight added once any is; for a hold, by
+A working set better than every earlier working set of its exercise, of which there was at least
+one: for a weight lift, by the estimated max of what was lifted; for a bodyweight movement, by reps, or by weight added once any is; for a hold, by
 time held; for distance over time, by distance, then by pace over the same distance.
 _Avoid_: PR, record
 

@@ -2,14 +2,17 @@ import { describe, expect, test } from 'bun:test'
 import {
   DIMENSION_FIELDS,
   type Dimension,
+  asksReserve,
   assistable,
   assistance,
   fieldFor,
   fieldsOf,
+  stepped,
   weightAllowed,
 } from './dimension.ts'
 import { TRACKING_MODES, type TrackingMode } from './exercise.ts'
 import { COUNT } from './typing.ts'
+import { lbToG } from './units.ts'
 
 const { weight, reps, duration, distance } = DIMENSION_FIELDS
 
@@ -261,5 +264,29 @@ describe('which fields, in which order', () => {
       'targetDurationS',
       'targetDistanceMm',
     ])
+  })
+})
+
+/** The workout screen's controls (#24): where reserve is asked, and what − / + move by. */
+describe('reserve, and stepping a value', () => {
+  test('reserve is asked only of a set counted in reps', () => {
+    expect(asksReserve('weight_reps')).toBe(true)
+    expect(asksReserve('bodyweight_reps')).toBe(true)
+    expect(asksReserve('duration')).toBe(false)
+    expect(asksReserve('distance_duration')).toBe(false)
+  })
+
+  test('a step is the smallest plate pair, a rep, five seconds, a hundred metres', () => {
+    expect(stepped(100_000, 1, 'weight', 'weight_reps', 'kg')).toBe(102_500)
+    expect(stepped(null, 1, 'reps', 'weight_reps', 'kg')).toBe(1)
+    expect(stepped(60, -1, 'duration', 'duration', 'kg')).toBe(55)
+    expect(stepped(5_000_000, 1, 'distance', 'distance_duration', 'kg')).toBe(5_100_000)
+    expect(stepped(0, 1, 'weight', 'weight_reps', 'lb')).toBe(lbToG(5))
+  })
+
+  test('never below zero — except a bodyweight movement’s weight, into assistance', () => {
+    expect(stepped(1000, -1, 'weight', 'weight_reps', 'kg')).toBe(0)
+    expect(stepped(0, -1, 'reps', 'weight_reps', 'kg')).toBe(0)
+    expect(stepped(0, -1, 'weight', 'bodyweight_reps', 'kg')).toBe(-2500)
   })
 })

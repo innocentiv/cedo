@@ -1,9 +1,9 @@
-import { DIMENSION_FIELDS, tracks } from './dimension.ts'
+import { DIMENSION_FIELDS, WEIGHT_STEP_G, tracks } from './dimension.ts'
 import { type Effort, formatEffort } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
 import { NO_PROGRESSION, type Progression } from './progression.ts'
 import { DEFAULT_REST_S } from './rest.ts'
-import { type WeightUnit, lbToG } from './units.ts'
+import type { WeightUnit } from './units.ts'
 import {
   MAX_DAYS_PER_PLAN,
   MAX_ENTRIES_PER_DAY,
@@ -40,7 +40,7 @@ const split = (entry: WorkoutEntryInput) => ({
  * on each kind of bar. 2.5 kg shown to someone who reads pounds was "+5.51 lb", and after 135 lb
  * the next target read 140.51.
  */
-export const DEFAULT_INCREMENT_G: Readonly<Record<WeightUnit, number>> = { kg: 2500, lb: lbToG(5) }
+export const DEFAULT_INCREMENT_G: Readonly<Record<WeightUnit, number>> = WEIGHT_STEP_G
 
 /** The time a new duration rule adds. */
 export const DEFAULT_INCREMENT_S = 15

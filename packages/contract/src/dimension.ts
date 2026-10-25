@@ -147,3 +147,40 @@ export const fieldFor = (dimension: Dimension, unit: WeightUnit): DimensionField
  */
 export const fieldsOf = (tracking: TrackingMode): readonly DimensionField[] =>
   DIMENSIONS_BY_TRACKING[tracking].map((dimension) => DIMENSION_FIELDS[dimension])
+
+/**
+ * Reps in reserve — how many more reps were left — means something only of a set counted in reps:
+ * a hold, or a distance over a time, has none to leave (#24). The logger asks it only of these.
+ */
+export const asksReserve = (tracking: TrackingMode): boolean => tracks(tracking, 'reps')
+
+/**
+ * The weight one step adds, in the person's unit: 2.5 kg, or 5 lb — the smallest pair of plates on
+ * each kind of bar. Where a new progression rule starts, and what the logger's − / + move by.
+ */
+export const WEIGHT_STEP_G: Readonly<Record<WeightUnit, number>> = { kg: 2500, lb: lbToG(5) }
+
+/** One step of each other dimension: a rep, five seconds, a hundred metres. */
+const STEP: Readonly<Record<Exclude<Dimension, 'weight'>, number>> = {
+  reps: 1,
+  duration: 5,
+  distance: mToMm(100),
+}
+
+export const stepOf = (dimension: Dimension, unit: WeightUnit): number =>
+  dimension === 'weight' ? WEIGHT_STEP_G[unit] : STEP[dimension]
+
+/**
+ * A value moved one step up (`1`) or down (`-1`) — never below zero, except a bodyweight
+ * movement's weight, which goes on down into assistance. An empty field steps from zero.
+ */
+export function stepped(
+  value: number | null,
+  by: 1 | -1,
+  dimension: Dimension,
+  tracking: TrackingMode,
+  unit: WeightUnit,
+): number {
+  const next = (value ?? 0) + by * stepOf(dimension, unit)
+  return assistable(dimension, tracking) ? next : Math.max(0, next)
+}
