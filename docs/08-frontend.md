@@ -100,7 +100,7 @@ Two constraints found by building it:
 | `ConfirmButton` | every action that cannot be taken back — delete, revoke, remove, leave — and every transfer to another group, which others feel at once. Asked twice, in the app's own UI, never a browser dialog; a refusal shows beside it. Removing a set from a session in progress is not one: it is logged again in a tap |
 | `PinButton` | pinning what you can see, for its list's "Pinned" filter |
 | `ProgressTrend` | an exercise's progress: a bar per session from the contract's `trendOf` — the estimated max of a weight lift, the top set otherwise — and the server's stall as a badge |
-| `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput` |
+| `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput`. `Input`'s `look` sets a name edited where it reads — a workout's title, a day's heading — with no box |
 | `Card`, `ListRow` | the one row shape every list uses |
 | `Chips` | one choice from a short flat set — list scopes, tracking mode, progression kind |
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |
@@ -115,7 +115,8 @@ Two constraints found by building it:
 | `useLayout()`, `TABLET_MIN_WIDTH` | the only layout branch: `'phone' | 'tablet'`, and where it switches |
 
 Composites are here rather than in a screen, because each is used from more than one place or
-would otherwise be copied: `MusclePicker`, `EntryEditor`, `UnavailableEntry`, `DayEditor`, and the
+would otherwise be copied: `MusclePicker`, `EntryEditor` (one plan entry's fields, opened from its
+line in a workout's outline, #26), and the
 workout's (#24) — `FocusLogger` (the exercise in focus: its `SetMarks`, the next set's `Stepper`s,
 one Log button), `LastSet` (the set just logged: a best, its reserve, Undo), `RestBand`, `UpNext`
 and `AddRow`,
@@ -125,7 +126,8 @@ summing to 100, which inputs a tracking mode implies, what a progression rule co
 is next, where the focus goes, whose rest runs, what a set is called) all live in `@cedo/contract`:
 `session-flow.ts` and `set-marks.ts` for the workout. An unavailable exercise has no mode, so no
 inputs: the workout shows what it prescribed and that nothing more can be logged against it, and
-the day editor gives it an `UnavailableEntry` — what it prescribes, and Remove.
+a workout's outline gives it a line that says so — what it prescribes, and the bin, which is the
+only way the plan saves again.
 
 Smaller parts serve those composites and no screen, so they are not in the list above:
 `ReserveChips` — RPE asked as reps in reserve, holding an RPE while the contract converts
@@ -271,6 +273,27 @@ The workout's page is its outline: days, and each entry one line — "Barbell Ba
 the outline on a wide screen. Each change is saved as it is made, and there is no edit mode: see
 `docs/adr/0022-plans-edited-in-place.md`. Days and entries reorder, entries move between days, and a
 workout is renamed and its notes edited where they are shown.
+
+As built (#26):
+
+- **The head** — back, the name set as the title it is and edited there, the notes under it, each
+  kept as its field is left; then one line on the plan: Saved, Saving…, or Not saved and why.
+- **The outline** — each day its name (edited where it reads), Start, ↑ and the bin; each entry one
+  line, `5 sets · 5 × 100 kg · Linear, +2.5 kg`, a superset's letter before its name; Add exercise
+  at the foot of a day, Add day at the foot of the plan. An unavailable exercise's line says so,
+  with the bin.
+- **An entry's settings** — its fields (`EntryEditor`), then where it is in the plan: chips to move
+  it to another day, ↑ ↓ within its day, the bin. In a sheet on a phone; on a desktop, a panel
+  beside the outline (`Columns`), which waits with a line until an entry is chosen.
+- **Saving** is `src/lib/plan-sync.ts`, unit-tested: a change is sent at once if the schema
+  accepts the plan, one save at a time — a change made meanwhile goes when the last answer comes,
+  as the plan then stands — each with the version it was made from. The ids the server gives what
+  is new are learned from its answer by position and carried by key, so the next save keeps them.
+  A refusal puts the plan back as last saved and says why; a 409 reads the plan again and says it
+  changed elsewhere. A plan read meanwhile is taken only when it is newer and nothing is unsaved.
+- What is done to the workout whole — pin, its group, delete — sits under the outline; a reader
+  sees the same outline with nothing to tap but Start, and Copy into my group under it.
+- `/workouts/:id/edit` redirects to the workout's page, for old links.
 
 ### Finding exercises
 
