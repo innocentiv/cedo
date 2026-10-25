@@ -12,6 +12,12 @@ import { Id, NonEmptyString, Timestamp } from './primitives.ts'
 
 export const MEDIA_KINDS = ['image', 'video_link'] as const
 export const MediaKind = z.enum(MEDIA_KINDS)
+
+/** What a kind of media is called where a person reads it — never its stored name (#26). */
+export const MEDIA_KIND_LABELS: Readonly<Record<(typeof MEDIA_KINDS)[number], string>> = {
+  image: 'Image',
+  video_link: 'Video',
+}
 export type MediaKind = z.output<typeof MediaKind>
 
 export const VIDEO_PROVIDERS = ['youtube', 'vimeo', 'url'] as const

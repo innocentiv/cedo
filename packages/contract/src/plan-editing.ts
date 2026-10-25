@@ -154,11 +154,11 @@ const UNPRESCRIBED: WorkoutSetInput = {
  * least one working set, as the schema requires; warm-ups may be none. New sets copy the
  * prescription.
  */
-export function resizeSets(
-  entry: WorkoutEntryInput,
+export function resizeSets<E extends WorkoutEntryInput>(
+  entry: E,
   band: SetKind,
   count: number | null,
-): WorkoutEntryInput {
+): E {
   const { warmup: warmups, working } = split(entry)
   const least = band === 'warmup' ? 0 : 1
   const room = MAX_SETS_PER_ENTRY - (band === 'warmup' ? working.length : warmups.length)
@@ -170,7 +170,7 @@ export function resizeSets(
 }
 
 /** One prescription per entry: working sets never diverge. Warm-ups keep their own targets. */
-export const prescribe = (entry: WorkoutEntryInput, patch: Prescription): WorkoutEntryInput => ({
+export const prescribe = <E extends WorkoutEntryInput>(entry: E, patch: Prescription): E => ({
   ...entry,
   sets: entry.sets.map((s) => (s.isWarmup ? s : { ...s, ...patch })),
 })
