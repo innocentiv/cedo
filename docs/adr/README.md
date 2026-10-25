@@ -20,6 +20,7 @@ that says so and links back.
 | [0019](0019-visible-relations.md) | Visibility is a relation modules join; children carry their owner | Accepted |
 | [0020](0020-rpe-is-numeric.md) | RPE is stored as `numeric(3,1)`, not as an integer | Accepted |
 | [0021](0021-coaching-through-groups.md) | Coaching through groups: editors read the training members share | Accepted |
+| [0022](0022-plans-edited-in-place.md) | A workout's plan is edited in place, saved as each change is made | Accepted |
 
 The numbering has gaps: decisions that were planned an ADR (such as 0005, the three-container
 deployment shape) are recorded in the relevant doc instead — `docs/01-architecture.md` for that

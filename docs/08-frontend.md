@@ -183,6 +183,84 @@ and a bare `90` is still 90 seconds. The field regroups its digits as they grow 
 and shows them as typed until it is left, so `190` reads "1:90" while focused and "2:30" after. A
 duration READS as the same clock everywhere (`formatDuration`), so what you read is what you type.
 
+## The athlete-first redesign (#23)
+
+Decided in October 2026 from `docs/ux/2026-10-ui-review.md`, and built in slices, each its own
+issue under #23. What each screen IS, so a slice builds toward one picture.
+
+### The workout screen
+
+**One thing at a time.** The current exercise fills the screen: a mark per set — warm-up, done,
+next, to do — the next set's numbers large, with − / + steppers whose steps are the contract's
+(2.5 kg or 5 lb, one rep, five seconds, a hundred metres) and a tap on a number to type it, and
+one Log button under the thumb. "Up next" is the rest of the day, an entry to a line, a superset
+drawn as one item; tapping one makes it current, and tapping a logged set re-opens it.
+
+- **Logging moves the focus** to the entry's next set, then to the next entry in day order with
+  sets left. Entries of a superset alternate, and rest starts after the pair.
+- **Rest starts on its own** when a set is logged: a countdown band with +30 s and Skip, the next set
+  still under it; at zero the band changes colour and sounds once if the app is open. No background
+  notification — an installed web app cannot send one reliably on an iPhone.
+- **Reserve is asked after**, as one optional row on the set just logged, and only for an exercise
+  measured in reps. Which those are is the contract's, not the screen's.
+- **"+ set"** logs one beyond the prescription; **Add exercise** logs one with no entry, as a swap
+  when a machine is taken — today's ad-hoc logging, which leaves the entry's progression alone.
+- **ⓘ** opens how to do it — cue, instructions, muscles, the video — without leaving the session.
+- **A session in progress takes over the app**: its own header (the day, the time since it started,
+  a menu) in place of the tab bar; minimised, a bar on every screen returns to it. Notes and Finish
+  are in the menu, Finish asked twice; once every prescribed set is logged, Finish takes the Log
+  button's place, and finishing shows the session's summary. A personal best is marked on the set as
+  it is logged.
+- **A session without a plan** opens on the picker; each exercise added becomes the focus.
+- **Logging without a signal is unchanged** (below): the same queue, the same marks on a set waiting.
+
+### Today
+
+What to do next: the **next day** of the **current workout** (`GLOSSARY.md`) and Start, one tap. A
+session in progress is the whole first screen. History is grouped by week, each session its
+duration, sets and personal bests; tapping one opens its summary, its sets by exercise, and its
+notes, which stay editable. The screen reads `GET /today` — the session in progress, the current
+workout and its next day, the week — rather than joining reads to decide them.
+
+### Editing a workout
+
+The workout's page is its outline: days, and each entry one line — "Barbell Back Squat · 5 × 5 ·
+100 kg · +2.5 kg a session". Tapping a line opens the entry's settings in a sheet, or a panel beside
+the outline on a wide screen. Each change is saved as it is made, and there is no edit mode: see
+`docs/adr/0022-plans-edited-in-place.md`. Days and entries reorder, entries move between days, and a
+workout is renamed and its notes edited where they are shown.
+
+### Finding exercises
+
+Search, and a muscle filter grouped by region; each row its main muscles, and the video's thumbnail
+when there is one. The picker leads with what you have logged lately, marks what the day already
+has, and adds several at once. A new exercise starts from its muscles, their loads an even split
+that totals 100, to adjust.
+
+### Progress, and the tabs
+
+**Today · Workouts · Exercises · Progress · Settings.** Progress is the training review — sessions a
+week and the streak, days skipped, work per muscle against the period before, and what has stalled,
+is falling or is drifting — the same read the AI gets, over HTTP.
+
+### Desktop
+
+Two panes where reading side by side helps: a workout's outline beside the entry being edited, the
+exercise list beside the exercise, Today's next session and week beside the history. The session is
+one column on any width — it is done on a phone. The sidebar carries the product's name and the
+account.
+
+### The look
+
+The gym's own vernacular, the colour code of calibrated plates — red, blue, yellow, green, white —
+used **only for state, and one meaning each everywhere**: the next set, rest, a personal best, a
+warm-up. Everything else is chalk on a charcoal ground. Weight and reps are set large in Barlow
+Condensed with tabular figures, everything else in Barlow — bundled with the app, so a self-hosted
+instance asks nothing of a third party and the installed app works offline. Fewer boxes: hierarchy
+from type and space, a card only around something acted on as one. Where a set is logged, nothing
+is smaller than 56px. Dark only, still. Every value is in `src/ui/tokens.ts`; the primitives are the
+only thing that reads them.
+
 ## The API client
 
 A hand-written typed `fetch` client, not Eden Treaty. See `docs/adr/0015-no-eden-treaty.md`.

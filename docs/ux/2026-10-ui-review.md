@@ -1,5 +1,12 @@
 # UI review — October 2026
 
+> **Decided, 2026-10-25.** Every question below was settled in a design session and recorded where
+> decisions live: `docs/08-frontend.md`, "The athlete-first redesign (#23)"; ADR-0022 for editing a
+> workout in place; `GLOSSARY.md` for *Current workout*, *Next day* and *Personal best*. The answers
+> were the proposals here, with three additions — a personal best marked as it is logged, days
+> reordered in the outline as entries are, and each plate colour one meaning on every screen. What
+> follows is the evidence and the reasoning, kept as history.
+
 A walk through every screen of the app as an athlete meets it, against what the API can already do,
 to settle what the redesign (#23 and after) should be. It records **findings**, and a **proposal**
 to be decided on; the decisions themselves go into `GLOSSARY.md`, `docs/08-frontend.md` and ADRs as
