@@ -6,6 +6,7 @@ import {
   adHocSetsOf,
   focusOf,
   nextSet,
+  restOf,
   restingAfter,
   sessionSummary,
   setsOf,
@@ -267,6 +268,7 @@ describe('an entry at a glance', () => {
       ['3', 'todo'],
     ])
     expect(progressOf(sets)).toBe('1 of 3')
+    expect(progressOf(sets, false)).toBe('1 done')
   })
 })
 
@@ -292,5 +294,38 @@ describe('what a logged set is called', () => {
       'set 1',
       'set 2',
     ])
+  })
+})
+
+describe('the rest running', () => {
+  const withRest = (e: FlowEntry, restSeconds: number | null) => ({ ...e, restSeconds })
+  const day = {
+    entries: [
+      withRest(entry('squat', 0, { warmups: 1, working: 2 }), 180),
+      withRest(entry('pull', 1, { working: 2 }, 'A'), 60),
+      withRest(entry('raise', 2, { working: 2 }, 'A'), 60),
+    ],
+  }
+
+  test("the entry's rest, from its working set logged last; none after a warm-up", () => {
+    const warm = log('squat', true)
+    expect(restOf(day, [warm])).toBeNull()
+    const squat = log('squat')
+    expect(restOf(day, [warm, squat])).toEqual({ since: squat.loggedAt, seconds: 180 })
+  })
+
+  test('none within a superset round; after it, the last entry’s', () => {
+    const before = [log('squat'), log('squat')]
+    const pull = log('pull')
+    expect(restOf(day, [...before, pull])).toBeNull()
+    const raise = log('raise')
+    expect(restOf(day, [...before, pull, raise])).toEqual({ since: raise.loggedAt, seconds: 60 })
+  })
+
+  test('two minutes after a set with no plan entry — a session without a plan, or a swap', () => {
+    const squat = log('squat')
+    const swap = log(null)
+    expect(restOf(day, [squat, swap])).toEqual({ since: swap.loggedAt, seconds: 120 })
+    expect(restOf(null, [swap])).toEqual({ since: swap.loggedAt, seconds: 120 })
   })
 })

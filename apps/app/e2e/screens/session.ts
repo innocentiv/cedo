@@ -164,21 +164,38 @@ export const session = (page: Page) => {
     entry: (index: number) => logger(page, `log-entry-${index}`, `up-next-${index}`),
     adhoc: (exerciseId: string) => logger(page, `adhoc-${exerciseId}`, `adhoc-row-${exerciseId}`),
 
-    /** Starts a session without a plan, from Today. */
+    /**
+     * Starts a session without a plan, from Today. It opens on the picker — there is nothing else
+     * to do on it yet (#24) — which `addExercise` uses.
+     */
     startAdhoc: async (): Promise<void> => {
       await page.goto('/today')
       await page.waitFor('start-adhoc')
       await page.click('[data-testid="start-adhoc"]')
-      await page.waitFor('session-adhoc')
+      await page.waitFor('exercise-picker')
     },
-    /** Picks an exercise into a session without a plan; returns its id once its logger shows. */
+    /**
+     * Picks an exercise into the session — the whole day of one without a plan, or a swap in one
+     * that has; returns its id once its logger shows, in focus.
+     */
     addExercise: async (search: string): Promise<string> => {
-      await page.click('[data-testid="adhoc-add-exercise"]')
+      if (!(await page.shown('exercise-picker'))) {
+        const add = (await page.shown('adhoc-add-exercise'))
+          ? 'adhoc-add-exercise'
+          : 'session-add-exercise'
+        await page.click(`[data-testid="${add}"]`)
+      }
       const exerciseId = await picker(page).pick(search)
       await page.waitFor(`adhoc-${exerciseId}`)
       return exerciseId
     },
 
+    /** "+ set" on the set just logged: one more beyond its entry's prescription (#24). */
+    another: async (): Promise<void> => {
+      await page.click('[data-testid="last-set-another"]')
+    },
+    /** Whether the screen says every set of the day is logged, offering Finish in Log's place. */
+    dayDone: async (): Promise<boolean> => await page.shown('day-done'),
     /** Back to the session left open, from anywhere else: the bar that follows it (#24). */
     returnTo: async (): Promise<void> => {
       await page.click('[data-testid="session-return"]')
@@ -187,6 +204,15 @@ export const session = (page: Page) => {
     /** Navigates to the session by its URL — a reload, a shared link, coming back to the tab. */
     reopen: async (): Promise<void> => {
       await page.goto(String(await page.evaluate('location.pathname')))
+      // A session with nothing in it and no plan opens on the picker (#24).
+      await page.until(
+        async () => (await page.shown('session-screen')) || (await page.shown('exercise-picker')),
+        (open) => open,
+      )
+    },
+    /** Puts away the picker a session without a plan opened on, for the session itself. */
+    skipPicking: async (): Promise<void> => {
+      await page.click('[data-testid="picker-cancel"]')
       await shown()
     },
     text: async (): Promise<string> => (await page.text('session-screen')) ?? '',

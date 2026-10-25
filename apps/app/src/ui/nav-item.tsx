@@ -41,7 +41,7 @@ export function NavItem({
     >
       <Text
         variant="label"
-        tone={isFocused ? 'accent' : 'muted'}
+        tone={isFocused ? 'default' : 'muted'}
         align={horizontal ? 'center' : 'left'}
       >
         {label}

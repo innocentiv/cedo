@@ -37,3 +37,23 @@ export function restLeft(
   const left = Math.ceil(entry.restSeconds - (now - latest) / 1000)
   return Math.min(entry.restSeconds, Math.max(0, left))
 }
+
+/** A rest that is running: when the set it follows was logged, and how long it is. */
+export interface Rest {
+  readonly since: string
+  readonly seconds: number
+}
+
+/** What "+30 s" adds to a rest. */
+export const REST_EXTENSION_S = 30
+
+/**
+ * Seconds of `rest` still to go, extended `extensions` times by `REST_EXTENSION_S` — in whole
+ * seconds rounding up, never below zero, and never more than the rest itself: a server clock ahead
+ * of the device would otherwise date the set in the future (see `restLeft`).
+ */
+export function restRemaining(rest: Rest, extensions: number, now: number): number {
+  const seconds = rest.seconds + extensions * REST_EXTENSION_S
+  const left = Math.ceil(seconds - (now - Date.parse(rest.since)) / 1000)
+  return Math.min(seconds, Math.max(0, left))
+}

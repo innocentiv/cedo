@@ -101,6 +101,12 @@ describe('the exercises a session without a plan is working through', () => {
     expect(exercisesInSession([log(bench.id, bench)], [bench, squat])).toEqual([bench, squat])
   })
 
+  test('a set logged against a plan entry is the entry’s, not something added (#24)', () => {
+    expect(
+      exercisesInSession([{ ...log(bench.id, bench), entryId: crypto.randomUUID() }], []),
+    ).toEqual([])
+  })
+
   test('an exercise the caller can no longer see gets no logger', () => {
     expect(exercisesInSession([log(bench.id, null)], [])).toEqual([])
   })

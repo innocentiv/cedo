@@ -33,22 +33,24 @@ export const color = {
   textMuted: '#a9a49b',
   textFaint: '#77736c',
 
-  /** Yellow — act now: the next set, the primary action, what needs attention. */
+  /**
+   * Yellow — act now: the next set, the action to take, the session waiting for you. Never a
+   * selection, never a decoration: what is chosen is chalk.
+   */
   accent: plate.yellow,
   /** What is written on yellow: the floor's colour, for contrast in a dim room. */
   accentText: '#1b1c1e',
-  warning: plate.yellow,
 
   /** Blue — rest. */
   rest: plate.blue,
 
-  /** Green — a personal best, and a thing done right. */
-  success: plate.green,
+  /** Green — a personal best, and nothing else. */
+  best: plate.green,
 
   /** White — a warm-up: the lightest plate, a set that is ramp, not work. */
   warmup: plate.white,
 
-  /** Red — an error, or a change that cannot be taken back. */
+  /** Red — careful: something went wrong, or a change cannot be taken back. */
   danger: plate.red,
 } as const
 
@@ -56,6 +58,9 @@ export const color = {
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const
 
 export const radius = { sm: 6, md: 10, lg: 16, pill: 999 } as const
+
+/** Lines: a hairline divides, a bold one marks — the next set, a set re-opened, a superset. */
+export const stroke = { hairline: 1, bold: 2 } as const
 
 /**
  * Two widths of one family. Barlow Condensed is the stamped numeral of a plate and a gym clock —
@@ -98,6 +103,9 @@ export const CONTROL_HEIGHT = 48
 
 /** A row of a list: a thumb's height, and room for a name over a line of detail. */
 export const ROW_HEIGHT = 56
+
+/** One set's mark on the workout; a warm-up's is a step smaller. */
+export const MARK_SIZE = 40
 
 /** Where a set is logged — the step buttons, Log — nothing is smaller: a thumb, between sets. */
 export const LOG_CONTROL_HEIGHT = 56

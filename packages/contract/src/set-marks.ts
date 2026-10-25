@@ -1,3 +1,5 @@
+import { asksReserve } from './dimension.ts'
+import type { TrackingMode } from './exercise.ts'
 import { type SeriesMember, sameSeries } from './log.ts'
 import { type FlowLog, type SessionSet, nextSet } from './session-flow.ts'
 
@@ -68,12 +70,38 @@ export function markedSets<L extends FlowLog>(
   }))
 }
 
-/** How far along an entry is: working sets logged, of those prescribed — "2 of 3". */
-export function progressOf(sets: readonly SessionSet<FlowLog>[]): string {
+/**
+ * How far along an entry is: working sets logged, of those prescribed — "2 of 3"; without a plan,
+ * nothing was prescribed — "2 done".
+ */
+export function progressOf(sets: readonly SessionSet<FlowLog>[], prescribed = true): string {
   const working = sets.filter((s) => !s.isWarmup)
   const done = working.filter((s) => s.log !== null).length
+  if (!prescribed) return `${done} done`
   const of = working.filter((s) => !s.extra).length
   return `${done} of ${of}`
+}
+
+/** Whether a logged set is asked its reserve: a working set, of an exercise counted in reps. */
+export const asksReserveOf = (
+  set: { readonly isWarmup: boolean },
+  tracking: TrackingMode,
+): boolean => !set.isWarmup && asksReserve(tracking)
+
+/**
+ * A day's entries in the runs they are done in: each alone, or the entries of a superset together —
+ * consecutive entries sharing a letter, as a plan orders them.
+ */
+export function bySuperset<T extends { readonly superset: string | null }>(
+  items: readonly T[],
+): T[][] {
+  const runs: T[][] = []
+  for (const item of items) {
+    const last = runs.at(-1)
+    if (item.superset !== null && last?.[0]?.superset === item.superset) last.push(item)
+    else runs.push([item])
+  }
+  return runs
 }
 
 /**

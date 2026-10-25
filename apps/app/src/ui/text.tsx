@@ -6,8 +6,7 @@ export type Tone =
   | 'muted'
   | 'faint'
   | 'danger'
-  | 'warning'
-  | 'success'
+  | 'best'
   | 'accent'
   | 'rest'
   | 'warmup'
@@ -19,8 +18,7 @@ const TONE: Record<Tone, string> = {
   muted: color.textMuted,
   faint: color.textFaint,
   danger: color.danger,
-  warning: color.warning,
-  success: color.success,
+  best: color.best,
   accent: color.accent,
   rest: color.rest,
   warmup: color.warmup,

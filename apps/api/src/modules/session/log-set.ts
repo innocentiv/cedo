@@ -53,17 +53,17 @@ export async function logSet(
   return replayed
 }
 
-/**
- * The set a key stored, as reading the session shows it now — names and entries as visible. A key
- * names ONE request: a repeat is answered with what the first stored, its body not compared.
- */
-/** A set as a read of its session shows it. */
+/** A set as a read of its session shows it — names, entries and personal bests as visible. */
 async function storedById(caller: Caller, sessionId: string, id: string): Promise<SetLog> {
   const stored = (await read(own(caller), sessionId)).logs.find((log) => log.id === id)
   if (stored === undefined) throw new Error('A stored set is not in its session')
   return stored
 }
 
+/**
+ * The set a key stored, as reading the session shows it now — names and entries as visible. A key
+ * names ONE request: a repeat is answered with what the first stored, its body not compared.
+ */
 async function storedByKey(
   caller: Caller,
   sessionId: string,

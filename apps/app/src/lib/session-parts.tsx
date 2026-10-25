@@ -49,7 +49,7 @@ export function UnsentSets({
     <Card testID="session-unsent">
       <Stack gap="xs">
         {heldUp ? (
-          <Text variant="label" tone="warning">
+          <Text variant="label" tone="accent">
             {`Keep cedo open — ${count} will be sent when the signal is back.`}
           </Text>
         ) : null}

@@ -1,4 +1,4 @@
-import { restingAfter } from '@cedo/contract'
+import { type Exercise, restOf } from '@cedo/contract'
 import { RestBand, Spinner, Text } from '../ui/index.ts'
 import { LoggedSets, PlanUnavailable, UnsentSets } from './session-parts.tsx'
 import { AdHocDay } from './workout-adhoc.tsx'
@@ -10,6 +10,9 @@ import { FinishedSummary } from './workout-summary.tsx'
 export function WorkoutBody({ w }: { readonly w: Workout }): React.JSX.Element | null {
   const { session, day } = w
   if (session.data === undefined) return null
+  const showHowTo = (exercise: Exercise, cue: string | null) => {
+    w.setHowTo({ exercise, cue })
+  }
   return (
     <>
       {w.error === null ? null : (
@@ -20,44 +23,38 @@ export function WorkoutBody({ w }: { readonly w: Workout }): React.JSX.Element |
       {w.plan?.reachable === false && !w.ended ? <PlanUnavailable /> : null}
       {w.ended ? (
         <FinishedSummary session={session.data} />
-      ) : day === undefined ? (
+      ) : (
+        <RestBand rest={restOf(day ?? null, w.sets.all)} testID="rest-band" />
+      )}
+      {w.ended ? null : day === undefined ? (
         <AdHocDay
           exercises={w.adHocExercises}
-          serverLogs={w.serverLogs}
-          logs={w.logs}
-          waiting={w.waiting}
-          record={w.record}
-          onUndo={w.undo}
-          onAdd={() => {
-            w.setPicking(true)
+          full={w.picked}
+          sets={w.sets}
+          added={w.added}
+          onAdd={w.startPicking}
+          onHowTo={(exercise) => {
+            showHowTo(exercise, null)
           }}
         />
       ) : w.targets.data === undefined ? (
         <Spinner testID="session-targets-loading" />
       ) : (
-        <>
-          <RestBand logs={w.logs} entry={restingAfter(day, w.logs)} testID="rest-band" />
-          <PlannedDay
-            day={day}
-            targets={w.targets.data}
-            serverLogs={w.serverLogs}
-            logs={w.logs}
-            waiting={w.waiting}
-            record={w.record}
-            onUndo={w.undo}
-            onHowTo={(exercise) => {
-              w.setHowTo({
-                exercise,
-                cue: day.entries.find((e) => e.exerciseId === exercise.id)?.cue ?? null,
-              })
-            }}
-            onFinish={w.finish}
-            finishing={w.busy}
-          />
-        </>
+        <PlannedDay
+          day={day}
+          targets={w.targets.data}
+          sets={w.sets}
+          extras={w.adHocExercises}
+          full={w.picked}
+          added={w.added}
+          onAdd={w.startPicking}
+          onHowTo={showHowTo}
+          onFinish={w.finish}
+          finishing={w.busy}
+        />
       )}
       <UnsentSets sessionId={w.id} day={day} adHoc={w.adHocExercises} />
-      <LoggedSets logs={w.serverLogs} editable={!w.ended} onRemove={w.undo} />
+      <LoggedSets logs={w.sets.server} editable={!w.ended} onRemove={w.undo} />
     </>
   )
 }

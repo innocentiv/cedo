@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { type FlowLog, formatDuration, restLeft } from '@cedo/contract'
+import { REST_EXTENSION_S, type Rest, formatDuration, restRemaining } from '@cedo/contract'
 import { chime } from '../lib/chime.ts'
+import { useUntilNextSet } from '../lib/until-next-set.ts'
 import { useNow } from '../lib/use-now.ts'
 import { Button } from './button.tsx'
 import { Stack } from './stack.tsx'
@@ -9,46 +10,38 @@ import { Text } from './text.tsx'
 import { color, radius, space } from './tokens.ts'
 
 /**
- * The rest after a set, across the top of the workout (#24): blue while it runs — the rest plate's
- * colour — with +30 s and Skip; yellow once it is over, the next set's colour, with one tone if the
- * app is open. It stays until the next set is logged or it is skipped. How long is left is the
- * contract's `restLeft`, counted from when the server logged the set — a reload counts the same.
+ * The rest after a set, across the top of the workout (#24): blue while it runs — the rest plate —
+ * with +30 s and Skip; yellow once it is over, the next set's colour, with one tone when it is seen
+ * to run out — never on opening a screen whose rest is already over. It stays until the next set is
+ * logged or it is skipped. Which rest runs, and how much is left, are the contract's (`restOf`,
+ * `restRemaining`); this counts the +30 s taps and the clock.
  */
 export function RestBand({
-  logs,
-  entry,
+  rest,
   testID,
 }: {
-  readonly logs: readonly FlowLog[]
-  /** The entry whose rest runs — `restingAfter` — or null when none does. */
-  readonly entry: { readonly id: string; readonly restSeconds: number | null } | null
+  readonly rest: Rest | null
   readonly testID: string
 }): React.JSX.Element | null {
-  // Both belong to the set logged last: logging the next starts a new rest, with nothing added.
-  const latest = logs.at(-1)?.id ?? null
-  const [added, setAdded] = useState({ for: latest, seconds: 0 })
-  const [skipped, setSkipped] = useState<string | null>(null)
-  const extra = added.for === latest ? added.seconds : 0
-  const rest = entry === null || entry.restSeconds === null ? null : entry.restSeconds + extra
+  const since = rest?.since ?? null
+  const [extended, extend] = useUntilNextSet<number>(since)
+  const [skipped, skip] = useUntilNextSet<true>(since)
+  const extensions = extended ?? 0
 
   const [ticking, setTicking] = useState(true)
   const now = useNow(ticking)
-  const left =
-    entry === null || rest === null ? null : restLeft(logs, { ...entry, restSeconds: rest }, now)
+  const left = rest === null ? null : restRemaining(rest, extensions, now)
   const running = left !== null && left > 0
   if (running !== ticking) setTicking(running)
 
-  // One tone as it reaches zero, for the set it was counting after — never again on a re-render.
-  const [chimed, setChimed] = useState<string | null>(null)
-  const over = left === 0 && skipped !== latest
+  // The tone is for a rest seen running and then over: opened over, it is silent.
+  const wasRunning = useRef(false)
   useEffect(() => {
-    if (over && chimed !== latest) {
-      setChimed(latest)
-      chime()
-    }
-  }, [over, chimed, latest])
+    if (wasRunning.current && !running && skipped === null) chime()
+    wasRunning.current = running
+  }, [running, skipped])
 
-  if (left === null || skipped === latest) return null
+  if (left === null || skipped !== null) return null
   return (
     <View style={[styles.band, running ? styles.resting : styles.ready]} testID={testID}>
       <Stack direction="row" align="center" gap="md">
@@ -62,10 +55,10 @@ export function RestBand({
         </Stack>
         {running ? (
           <Button
-            title="+30 s"
+            title={`+${REST_EXTENSION_S} s`}
             variant="secondary"
             onPress={() => {
-              setAdded({ for: latest, seconds: extra + 30 })
+              extend(extensions + 1)
             }}
             testID={`${testID}-more`}
           />
@@ -74,7 +67,7 @@ export function RestBand({
           title={running ? 'Skip' : 'Dismiss'}
           variant="secondary"
           onPress={() => {
-            setSkipped(latest)
+            skip(true)
           }}
           testID={`${testID}-skip`}
         />

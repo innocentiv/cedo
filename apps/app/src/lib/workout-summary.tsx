@@ -38,7 +38,7 @@ export function FinishedSummary({
         </Stack>
         {summary.personalBests.length === 0 ? null : (
           <Stack gap="xs" testID="session-finished-bests">
-            <Text variant="label" tone="success">
+            <Text variant="label" tone="best">
               {summary.personalBests.length === 1
                 ? 'A personal best'
                 : `${summary.personalBests.length} personal bests`}

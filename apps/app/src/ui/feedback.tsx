@@ -7,7 +7,7 @@ import { Button } from './button.tsx'
 export function Spinner({ testID }: { readonly testID?: string | undefined }): React.JSX.Element {
   return (
     <View testID={testID} style={styles.centre}>
-      <ActivityIndicator color={color.accent} />
+      <ActivityIndicator color={color.textMuted} />
     </View>
   )
 }

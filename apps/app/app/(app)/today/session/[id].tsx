@@ -27,15 +27,8 @@ export default function LiveSession(): React.JSX.Element {
     )
   }
   if (session.isPending) return <Spinner testID="session-loading" />
-  if (w.picking) {
-    return (
-      <ExercisePicker
-        onCancel={() => {
-          w.setPicking(false)
-        }}
-        onPick={w.pick}
-      />
-    )
+  if (w.picking || w.opensOnPicker) {
+    return <ExercisePicker onCancel={w.cancelPicking} onPick={w.pick} />
   }
 
   return (

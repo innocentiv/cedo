@@ -1,6 +1,7 @@
 import type { Effort } from '@cedo/contract'
 import { newIdempotencyKey } from '../api/retry.ts'
 import { useAmendLog, useLogSet } from '../api/session-queries.ts'
+import { primeChime } from './chime.ts'
 import { useSubmit } from './use-submit.ts'
 
 /**
@@ -26,6 +27,8 @@ export function useRecordSet(sessionId: string) {
       readonly effort: Effort
       readonly isWarmup: boolean
     }): void => {
+      // The tap that logs a set starts the sound its rest will end with: iOS asks for a tap.
+      primeChime()
       // Its key is made here, once: however many times it is sent, it is this one set (#9).
       const key = newIdempotencyKey()
       void submit(async () => {

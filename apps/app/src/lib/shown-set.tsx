@@ -1,73 +1,52 @@
-import { useState } from 'react'
-import {
-  type LoggedExercise,
-  type SetLog,
-  asksReserve,
-  formatEffort,
-  loggedLabel,
-} from '@cedo/contract'
+import { type LoggedExercise, asksReserveOf, formatEffort, loggedLabel } from '@cedo/contract'
 import type { PendingLog } from '../api/pending.ts'
 import { LastSet } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
-import type { useRecordSet } from './record-set.ts'
+import type { WorkoutSets } from './workout-state.ts'
 import { useWeightUnit } from './weight-unit.ts'
 
-/**
- * Which logged set the workout shows above the focus (#24): the one just logged, unless a mark was
- * tapped to re-open another — which holds until the next set is logged, as every choice on the
- * screen does. The key is `<entry>:<set>`, as the marks name a set.
- */
-export function useShown(latest: string | null): {
-  readonly key: string | null
-  readonly select: (key: string) => void
-} {
-  const [chosen, setChosen] = useState<{ readonly key: string; readonly at: string | null }>()
-  return {
-    key: chosen?.at === latest ? chosen.key : null,
-    select: (key) => {
-      setChosen({ key, at: latest })
-    },
-  }
+/** A set re-opened from its mark: of a plan entry, or of an exercise logged with none. */
+export interface Reopened {
+  readonly entryId: string | null
+  readonly exerciseId: string
+  /** The set's key among its entry's — or exercise's — sets (`SessionSet.key`). */
+  readonly key: string
 }
 
 /**
- * One logged set: what it was, whether it was a personal best, its reserve — asked here, after the
- * set, and only of a set the server has and that is counted in reps — and Undo. A set still
- * waiting for a signal has nothing to change on it yet.
+ * One logged set above the focus (#24) — the one just logged, or one re-opened from its mark: what
+ * it was, whether it was a personal best, its reserve — asked here, after the set, of a working set
+ * the server has and that is counted in reps (`asksReserveOf`) — Undo, and "+ set" once its entry
+ * has all it asked for. A set still waiting for a signal has nothing to change on it yet.
  */
 export function ShownSet({
   log,
   exercise,
-  serverLogs,
-  waiting,
-  record,
-  onUndo,
+  sets,
+  onAnother,
 }: {
   readonly log: PendingLog | null
   readonly exercise: LoggedExercise | null
-  readonly serverLogs: readonly SetLog[]
-  readonly waiting: ReadonlySet<string>
-  readonly record: ReturnType<typeof useRecordSet>
-  readonly onUndo: (logId: string) => void
+  readonly sets: WorkoutSets
+  readonly onAnother?: (() => void) | undefined
 }): React.JSX.Element | null {
   const unit = useWeightUnit()
   if (log === null) return null
-  const stored = serverLogs.find((l) => l.id === log.id)
+  const stored = sets.server.find((l) => l.id === log.id)
   const tracking = exercise?.tracking ?? null
-  const which = stored === undefined ? 'set' : loggedLabel(stored, serverLogs)
   return (
     <LastSet
-      title={`${exerciseName(exercise)} · ${which}`}
+      title={`${exerciseName(exercise)} · ${stored === undefined ? 'set' : loggedLabel(stored, sets.server)}`}
       effort={formatEffort(log, tracking, unit)}
       best={stored?.personalBest === true}
-      waiting={waiting.has(log.id)}
+      waiting={sets.waiting.has(log.id)}
       reserve={
-        stored === undefined || log.isWarmup || tracking === null || !asksReserve(tracking)
+        stored === undefined || tracking === null || !asksReserveOf(stored, tracking)
           ? null
           : {
               rpe: stored.rpe,
               onChange: (rpe) => {
-                record.reserve(stored.id, rpe)
+                sets.record.reserve(stored.id, rpe)
               },
             }
       }
@@ -75,9 +54,10 @@ export function ShownSet({
         stored === undefined
           ? null
           : () => {
-              onUndo(stored.id)
+              sets.undo(stored.id)
             }
       }
+      onAnother={onAnother}
       testID="last-set"
     />
   )

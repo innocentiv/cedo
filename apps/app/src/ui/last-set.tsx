@@ -17,6 +17,7 @@ export function LastSet({
   waiting,
   reserve,
   onUndo,
+  onAnother,
   testID,
 }: {
   readonly title: string
@@ -28,6 +29,8 @@ export function LastSet({
     readonly onChange: (rpe: number | null) => void
   } | null
   readonly onUndo: (() => void) | null
+  /** "+ set": another beyond the prescription, once the set's entry has all it asked for. */
+  readonly onAnother?: (() => void) | undefined
   readonly testID: string
 }): React.JSX.Element {
   return (
@@ -42,17 +45,25 @@ export function LastSet({
               {effort}
             </Text>
           </Stack>
+          {onAnother === undefined ? null : (
+            <Button
+              title="+ set"
+              variant="secondary"
+              onPress={onAnother}
+              testID={`${testID}-another`}
+            />
+          )}
           {onUndo === null ? null : (
             <Button title="Undo" variant="ghost" onPress={onUndo} testID={`${testID}-undo`} />
           )}
         </Stack>
         {best ? (
-          <Text variant="label" tone="success" testID={`${testID}-best`}>
+          <Text variant="label" tone="best" testID={`${testID}-best`}>
             Personal best
           </Text>
         ) : null}
         {waiting ? (
-          <Text variant="caption" tone="warning" testID={`${testID}-waiting`}>
+          <Text variant="caption" tone="muted" testID={`${testID}-waiting`}>
             Waiting for a signal — kept, and sent when it is back.
           </Text>
         ) : null}

@@ -71,7 +71,8 @@ export function exercisesInSession(
 ): SessionExercise[] {
   const byId = new Map<string, SessionExercise>()
   for (const log of logs) {
-    if (log.exercise !== null && !byId.has(log.exerciseId)) {
+    // A set logged against a plan entry belongs to that entry, not to what was added (#24).
+    if (log.entryId === null && log.exercise !== null && !byId.has(log.exerciseId)) {
       byId.set(log.exerciseId, { id: log.exerciseId, ...log.exercise })
     }
   }

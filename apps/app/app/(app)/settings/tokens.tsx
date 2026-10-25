@@ -23,9 +23,7 @@ function Secret({ token }: { readonly token: string }): React.JSX.Element {
   return (
     <Card testID="token-secret">
       <Stack gap="xs">
-        <Text variant="label" tone="success">
-          Copy this now — it is never shown again.
-        </Text>
+        <Text variant="label">Copy this now — it is never shown again.</Text>
         <Text variant="mono" selectable>
           {token}
         </Text>

@@ -1,5 +1,6 @@
 import type { SetLog } from './log.ts'
-import type { SetTarget } from './progression.ts'
+import { NO_TARGET, type SetTarget } from './progression.ts'
+import { DEFAULT_REST_S, type Rest } from './rest.ts'
 import type { WorkoutSet } from './workout.ts'
 
 /**
@@ -218,12 +219,36 @@ export function adHocSetsOf<L extends FlowLog & { readonly exerciseId: string }>
     {
       key: `s${done.length}`,
       isWarmup: false,
-      target:
-        last === undefined
-          ? { reps: null, weightG: null, rpe: null, durationS: null, distanceMm: null }
-          : effortOf(last),
+      target: last === undefined ? NO_TARGET : effortOf(last),
       log: null,
       extra: false,
     },
   ]
+}
+
+/**
+ * The rest running after the working set logged last, as a `Rest` — or null when none runs: before
+ * a working set, after a warm-up, within a superset round (`restingAfter`), or with no rest
+ * prescribed. A set logged with no plan entry — a session without a plan, or a swap in one — rests
+ * the default two minutes, there being no entry to say otherwise.
+ */
+export function restOf(
+  day: {
+    readonly entries: readonly (FlowEntry & { readonly restSeconds: number | null })[]
+  } | null,
+  logs: readonly FlowLog[],
+): Rest | null {
+  const latest = logs.reduce<FlowLog | null>(
+    (last, l) => (last === null || l.loggedAt >= last.loggedAt ? l : last),
+    null,
+  )
+  if (latest === null || latest.isWarmup) return null
+  if (latest.entryId === null) return { since: latest.loggedAt, seconds: DEFAULT_REST_S }
+  if (day === null) return null
+  const entry = restingAfter(day, logs)
+  if (entry === null || entry.restSeconds === null || entry.restSeconds === 0) return null
+  const since = logs
+    .filter((l) => l.entryId === entry.id && !l.isWarmup)
+    .reduce((at, l) => (l.loggedAt > at ? l.loggedAt : at), '')
+  return since === '' ? null : { since, seconds: entry.restSeconds }
 }

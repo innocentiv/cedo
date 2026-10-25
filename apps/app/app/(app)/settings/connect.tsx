@@ -67,7 +67,7 @@ export default function ConnectAi(): React.JSX.Element {
           testID="connect-create-token"
         />
       ) : (
-        <Text variant="label" tone="success" testID="connect-token-created">
+        <Text variant="label" testID="connect-token-created">
           Token created and filled in below. Copy it now — it is never shown again.
         </Text>
       )}

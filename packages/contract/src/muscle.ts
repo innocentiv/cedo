@@ -73,3 +73,14 @@ export const Muscle = z.object({
   sortIndex: z.int(),
 })
 export type Muscle = z.output<typeof Muscle>
+
+/** An exercise's muscles as read: most worked first, each by its name. */
+export const musclesByLoad = (
+  muscles: readonly { readonly muscle: string; readonly loadPct: number }[],
+): { readonly name: string; readonly loadPct: number }[] =>
+  muscles
+    .toSorted((a, b) => b.loadPct - a.loadPct)
+    .map((m) => ({
+      name: MUSCLES.find((x) => x.slug === m.muscle)?.name ?? m.muscle,
+      loadPct: m.loadPct,
+    }))

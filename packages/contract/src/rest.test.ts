@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { DEFAULT_REST_S, restLeft } from './rest.ts'
+import { DEFAULT_REST_S, restLeft, restRemaining } from './rest.ts'
 
 /** What the logger counts down after a working set: the entry's rest, from when it was logged. */
 describe('rest left', () => {
@@ -56,5 +56,21 @@ describe('rest left', () => {
     expect(restLeft([], { id: 'e', restSeconds: 120 }, at('2026-10-21T10:00:00Z'))).toBeNull()
     const logs = [log('2026-10-21T10:00:00Z')]
     expect(restLeft(logs, { id: 'e', restSeconds: null }, at('2026-10-21T10:00:10Z'))).toBeNull()
+  })
+})
+
+describe('a rest running, extended', () => {
+  const rest = { since: '2026-10-25T18:00:00Z', seconds: 90 }
+  const at = (s: number) => Date.parse('2026-10-25T18:00:00Z') + s * 1000
+
+  test('counts down from when the set was logged, and +30 s adds thirty each time', () => {
+    expect(restRemaining(rest, 0, at(30))).toBe(60)
+    expect(restRemaining(rest, 1, at(30))).toBe(90)
+    expect(restRemaining(rest, 2, at(100))).toBe(50)
+  })
+
+  test('never below zero, nor more than the rest against a server clock ahead', () => {
+    expect(restRemaining(rest, 0, at(500))).toBe(0)
+    expect(restRemaining(rest, 0, at(-20))).toBe(90)
   })
 })

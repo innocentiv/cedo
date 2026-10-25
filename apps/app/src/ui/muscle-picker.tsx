@@ -38,7 +38,7 @@ export function MusclePicker({ value, onChange }: MusclePickerProps): React.JSX.
 
   return (
     <Stack gap="sm" testID="muscle-picker">
-      <Text variant="caption" tone={total === 100 ? 'success' : 'muted'} testID="muscle-total">
+      <Text variant="caption" tone={total === 100 ? 'default' : 'muted'} testID="muscle-total">
         {`Load total ${total}% of 100%`}
       </Text>
 
@@ -91,7 +91,7 @@ function MuscleOptions({
           }}
           style={[styles.chip, chosen.has(muscle.slug) ? styles.selected : null]}
         >
-          <Text variant="caption" tone={chosen.has(muscle.slug) ? 'accent' : 'muted'}>
+          <Text variant="caption" tone={chosen.has(muscle.slug) ? 'default' : 'muted'}>
             {muscle.name}
           </Text>
         </Pressable>
@@ -110,5 +110,5 @@ const styles = StyleSheet.create({
     borderColor: color.border,
     backgroundColor: color.surface,
   },
-  selected: { borderColor: color.accent, backgroundColor: color.surfaceRaised },
+  selected: { borderColor: color.text, backgroundColor: color.surfaceRaised },
 })

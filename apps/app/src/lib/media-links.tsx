@@ -76,7 +76,7 @@ export function MediaLinks({ value, onChange }: MediaLinksProps): React.JSX.Elem
 
       <FormError message={error} testID="media-error" />
       {unrecognised ? (
-        <Text variant="caption" tone="warning">
+        <Text variant="caption" tone="muted">
           Not a link this recognises. It will be stored as a plain URL.
         </Text>
       ) : null}

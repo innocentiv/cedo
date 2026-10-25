@@ -41,7 +41,7 @@ export function Chips<T extends string>({
           }}
           style={[styles.chip, option.value === value ? styles.selected : null]}
         >
-          <Text variant="caption" tone={option.value === value ? 'accent' : 'muted'}>
+          <Text variant="caption" tone={option.value === value ? 'default' : 'muted'}>
             {option.label}
           </Text>
         </Pressable>
@@ -60,5 +60,5 @@ const styles = StyleSheet.create({
     borderColor: color.border,
     backgroundColor: color.surface,
   },
-  selected: { borderColor: color.accent, backgroundColor: color.surfaceRaised },
+  selected: { borderColor: color.text, backgroundColor: color.surfaceRaised },
 })

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { type Exercise, MUSCLES } from '@cedo/contract'
+import { type Exercise, musclesByLoad } from '@cedo/contract'
 import { apiUrl } from '../api/http.ts'
 import {
   Button,
@@ -13,8 +13,6 @@ import {
   Text,
   Thumbnail,
 } from '../ui/index.ts'
-
-const muscleName = (slug: string): string => MUSCLES.find((m) => m.slug === slug)?.name ?? slug
 
 /**
  * How to do an exercise, mid-set, without leaving the session (#24): its cue for this entry, what
@@ -47,9 +45,8 @@ export function HowTo({
         </Stack>
       )}
       <Text variant="caption" tone="muted" testID="how-to-muscles">
-        {(exercise?.muscles ?? [])
-          .toSorted((a, b) => b.loadPct - a.loadPct)
-          .map((m) => `${muscleName(m.muscle)} ${m.loadPct}%`)
+        {musclesByLoad(exercise?.muscles ?? [])
+          .map((m) => `${m.name} ${m.loadPct}%`)
           .join(', ')}
       </Text>
       {video === undefined ? null : (

@@ -1,7 +1,8 @@
 import { Pressable, StyleSheet, View } from 'react-native'
+import { bySuperset } from '@cedo/contract'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
-import { ROW_HEIGHT, color, radius, space } from './tokens.ts'
+import { ROW_HEIGHT, color, radius, space, stroke } from './tokens.ts'
 
 export interface UpNextItem {
   readonly id: string
@@ -23,24 +24,22 @@ export function UpNext({
   items,
   current,
   onChoose,
+  title = 'The day',
   testID,
 }: {
   readonly items: readonly UpNextItem[]
   readonly current: string | null
   readonly onChoose: (id: string) => void
+  /** What the list is: "The day", or the exercises added to it. */
+  readonly title?: string | undefined
   readonly testID: string
 }): React.JSX.Element | null {
   if (items.length === 0) return null
-  const groups = items.reduce<UpNextItem[][]>((all, item) => {
-    const last = all.at(-1)
-    if (item.superset !== null && last?.[0]?.superset === item.superset) last.push(item)
-    else all.push([item])
-    return all
-  }, [])
+  const groups = bySuperset(items)
   return (
     <Stack gap="sm" testID={testID}>
       <Text variant="label" tone="muted">
-        The day
+        {title}
       </Text>
       {groups.map((group) => (
         <View
@@ -99,7 +98,7 @@ const styles = StyleSheet.create({
   current: { backgroundColor: color.surface },
   pressed: { backgroundColor: color.surfaceRaised },
   superset: {
-    borderLeftWidth: 2,
+    borderLeftWidth: stroke.bold,
     borderLeftColor: color.border,
     paddingLeft: space.sm,
     gap: space.xs,

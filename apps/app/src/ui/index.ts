@@ -35,11 +35,13 @@ export {
   CONTENT_MAX_WIDTH,
   CONTROL_HEIGHT,
   LOG_CONTROL_HEIGHT,
+  MARK_SIZE,
   ROW_HEIGHT,
   TABLET_MIN_WIDTH,
   color,
   radius,
   space,
+  stroke,
   type,
 } from './tokens.ts'
 export { type Layout, useLayout } from './use-layout.ts'

@@ -82,6 +82,15 @@ export const SetTarget = z.object({
 })
 export type SetTarget = z.output<typeof SetTarget>
 
+/** A set asked for nothing in particular: a first set of an exercise with no plan, no history. */
+export const NO_TARGET: SetTarget = {
+  reps: null,
+  weightG: null,
+  rpe: null,
+  durationS: null,
+  distanceMm: null,
+}
+
 /**
  * What `nextTarget` proposes for one workout entry, alongside what it proposes to change from.
  * Returned by `GET /workouts/:id/progression` and by the `workout_progression` MCP tool — the AI's

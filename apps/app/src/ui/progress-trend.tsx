@@ -43,7 +43,7 @@ export function ProgressTrend({
             </Text>
           </Stack>
           {stalled === null ? null : (
-            <Text variant="caption" tone="warning" testID={`${testID}-stalled`}>
+            <Text variant="caption" testID={`${testID}-stalled`}>
               {`Stalled · ${formatStall(stalled, tracking, unit)}`}
             </Text>
           )}
@@ -103,5 +103,5 @@ const styles = StyleSheet.create({
     gap: space.xs,
     height: BAR_HEIGHT,
   },
-  bar: { flex: 1, backgroundColor: color.accent, borderRadius: radius.sm, maxWidth: 28 },
+  bar: { flex: 1, backgroundColor: color.textMuted, borderRadius: radius.sm, maxWidth: 28 },
 })

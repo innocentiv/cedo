@@ -1,12 +1,14 @@
 import { Pressable, StyleSheet, View } from 'react-native'
-import type { MarkedSet } from '@cedo/contract'
-import { color, radius, space } from './tokens.ts'
+import type { MarkedSet, SetMark } from '@cedo/contract'
+import { MARK_SIZE, color, radius, space, stroke } from './tokens.ts'
 import { Text } from './text.tsx'
 
 /**
- * An entry's sets at a glance, in order: warm-ups smaller and in chalk outline, the next ringed in
- * yellow, a done set filled, a personal best filled green, one waiting for a signal dashed. A done
- * set is a button — tapping it re-opens it, to undo it or say its reserve.
+ * An entry's sets at a glance, in order (#24). The colours are the plates', one meaning each: the
+ * next ringed yellow — act now; a personal best green; a warm-up white, a step smaller. A working set
+ * done is grey; one waiting for a signal, dashed. A done set is a button — tapping it re-opens it,
+ * to undo it or say its reserve — and the set re-opened is ringed in chalk, never yellow, so it is
+ * not taken for the next.
  */
 export function SetMarks({
   sets,
@@ -23,6 +25,7 @@ export function SetMarks({
     <View style={styles.row} testID={testID}>
       {sets.map((set) => {
         const logged = set.mark === 'done' || set.mark === 'best' || set.mark === 'waiting'
+        const look = set.isWarmup && set.mark === 'done' ? 'warmupDone' : set.mark
         return (
           <Pressable
             key={set.key}
@@ -37,11 +40,11 @@ export function SetMarks({
             style={[
               styles.mark,
               set.isWarmup ? styles.warmup : null,
-              MARK[set.mark],
+              LOOK[look],
               selected === set.key ? styles.selected : null,
             ]}
           >
-            <Text variant="caption" tone={TONE[set.mark]}>
+            <Text variant="caption" tone={TONE[look]}>
               {set.label}
             </Text>
           </Pressable>
@@ -51,34 +54,36 @@ export function SetMarks({
   )
 }
 
-const TONE = {
+type Look = SetMark | 'warmupDone'
+
+const TONE: Readonly<Record<Look, 'faint' | 'accent' | 'default' | 'onAccent' | 'muted'>> = {
   todo: 'faint',
   next: 'accent',
-  done: 'onAccent',
+  done: 'default',
+  warmupDone: 'onAccent',
   best: 'onAccent',
   waiting: 'muted',
-} as const
+}
 
-const SIZE = 40
-
-const MARK = StyleSheet.create({
+const LOOK = StyleSheet.create({
   todo: { borderColor: color.border },
-  next: { borderColor: color.accent, borderWidth: 2 },
-  done: { borderColor: color.text, backgroundColor: color.text },
-  best: { borderColor: color.success, backgroundColor: color.success },
+  next: { borderColor: color.accent, borderWidth: stroke.bold },
+  done: { borderColor: color.surfaceRaised, backgroundColor: color.surfaceRaised },
+  warmupDone: { borderColor: color.warmup, backgroundColor: color.warmup },
+  best: { borderColor: color.best, backgroundColor: color.best },
   waiting: { borderColor: color.textMuted, borderStyle: 'dashed' },
 })
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm },
   mark: {
-    width: SIZE,
-    height: SIZE,
+    width: MARK_SIZE,
+    height: MARK_SIZE,
     borderRadius: radius.pill,
-    borderWidth: 1,
+    borderWidth: stroke.hairline,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  warmup: { width: SIZE - space.sm, height: SIZE - space.sm, alignSelf: 'center' },
-  selected: { borderColor: color.accent, borderWidth: 2 },
+  warmup: { width: MARK_SIZE - space.sm, height: MARK_SIZE - space.sm, alignSelf: 'center' },
+  selected: { borderColor: color.text, borderWidth: stroke.bold },
 })

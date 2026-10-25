@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import { MUSCLES, formatEffort } from '@cedo/contract'
+import { formatEffort, musclesByLoad } from '@cedo/contract'
 import type { Exercise, ExerciseHistory, TrackingMode } from '@cedo/contract'
 import { useWeightUnit } from '../../../../src/lib/weight-unit.ts'
 import {
@@ -29,8 +29,6 @@ import { DuplicateIntoMyGroup } from '../../../../src/lib/duplicate-into-my-grou
 import { GroupPlacement } from '../../../../src/lib/group-placement.tsx'
 import { useGoBack } from '../../../../src/lib/use-go-back.ts'
 import { useSubmit } from '../../../../src/lib/use-submit.ts'
-
-const muscleName = (slug: string): string => MUSCLES.find((m) => m.slug === slug)?.name ?? slug
 
 /**
  * The last few sessions for this exercise. Rendered through `Loaded` so a failed history request
@@ -179,8 +177,8 @@ function About({ exercise }: { readonly exercise: Exercise }): React.JSX.Element
           <Text variant="label" tone="muted">
             Muscles
           </Text>
-          {exercise.muscles.map((m) => (
-            <Text key={m.muscle}>{`${muscleName(m.muscle)} · ${m.loadPct}%`}</Text>
+          {musclesByLoad(exercise.muscles).map((m) => (
+            <Text key={m.name}>{`${m.name} · ${m.loadPct}%`}</Text>
           ))}
         </Stack>
       </Card>

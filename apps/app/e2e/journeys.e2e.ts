@@ -892,6 +892,8 @@ test(
       // on a finished session.
       await app.session.startAdhoc()
       await app.session.reopen()
+      // Nothing in it yet, it opens on the picker; put away, the session is there to finish.
+      await app.session.skipPicking()
       await app.session.finish()
 
       await app.nav.onToday()
@@ -1475,6 +1477,49 @@ test(
       // The plan is as its author wrote it: progression carries it, it does not rewrite it.
       const written = (await mine.workouts.get(plan.id)).days[0]?.entries[0]?.sets
       expect(written?.map((s) => s.target.weightG)).toEqual([60_000, 60_000, 60_000])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * The workout's own moves (#24): once an entry has all it asked, the day says so and offers Finish
+ * — and the set just logged offers one more; a swap mid-plan takes the focus, logged with no entry,
+ * and rests the default two minutes, there being no entry to say otherwise.
+ */
+test(
+  'a done entry takes one more set, and a swap mid-plan takes the focus and rests two minutes',
+  async () => {
+    await withApp('another-and-swap', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('swap'))
+      await app.planEditor.create()
+      await app.planEditor.saveAndStart()
+
+      const bench = app.session.entry(0)
+      await bench.fill('weight', '60')
+      for (let i = 0; i < 3; i += 1) await bench.log()
+      expect(await app.session.dayDone()).toBe(true)
+      await app.session.another()
+      await bench.log()
+      expect(await bench.done()).toBe('4 done')
+
+      const pushUp = await app.session.addExercise('Push-Up')
+      const swap = app.session.adhoc(pushUp)
+      await swap.fill('reps', '12')
+      await swap.log()
+      expect(await swap.done()).toBe('1 done')
+      expect(await swap.rest()).toMatch(/^Rest (2:00|1:5\d)$/u)
+
+      const mine = await page.client()
+      const logs = (await mine.sessions.get(await app.session.id())).logs
+      expect(logs.map((l) => [l.entryId === null, l.reps])).toEqual([
+        [false, 8],
+        [false, 8],
+        [false, 8],
+        [false, 8],
+        [true, 12],
+      ])
     })
   },
   E2E_TIMEOUT_MS,
