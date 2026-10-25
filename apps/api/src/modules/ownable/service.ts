@@ -1,4 +1,15 @@
-import { type SQL, type Subquery, and, asc, eq, gt, ilike, isNotNull, or } from 'drizzle-orm'
+import {
+  type SQL,
+  type Subquery,
+  and,
+  asc,
+  eq,
+  gt,
+  ilike,
+  inArray,
+  isNotNull,
+  or,
+} from 'drizzle-orm'
 import { type AnyPgColumn, type SelectedFieldsFlat, alias } from 'drizzle-orm/pg-core'
 import type { OwnableQuery } from '@cedo/contract'
 import { db } from '../../db/client.ts'
@@ -174,6 +185,25 @@ async function getOne<TFields extends SelectedFieldsFlat, TQuery extends Ownable
   return { row: found.row, isFavourite: found.favourite !== null }
 }
 
+/**
+ * Several, by id, in the order asked (#27): those the caller can see, the rest left out — not a 404,
+ * since a list of ids read elsewhere may name some they have lost since.
+ */
+async function getMany<TFields extends SelectedFieldsFlat, TQuery extends OwnableQuery>(
+  kind: OwnableKind<TFields, TQuery>,
+  caller: Caller,
+  ids: readonly string[],
+) {
+  if (ids.length === 0) return []
+  const { relation, rows } = withFavourite(kind, caller)
+  const found = await rows.where(inArray(relation.id, [...ids]))
+  const byId = new Map(found.map((r) => [r.keyId, r]))
+  return ids.flatMap((id) => {
+    const r = byId.get(id)
+    return r === undefined ? [] : [{ row: r.row, isFavourite: r.favourite !== null }]
+  })
+}
+
 /** Visibility, not editability — you may pin anything you can see. */
 async function markFavourite<TFields extends SelectedFieldsFlat, TQuery extends OwnableQuery>(
   kind: OwnableKind<TFields, TQuery>,
@@ -198,6 +228,7 @@ export function ownableLifecycle<TFields extends SelectedFieldsFlat, TQuery exte
   return {
     list: async (caller: Caller, query: TQuery) => await listPage(kind, caller, query),
     get: async (caller: Caller, id: string) => await getOne(kind, caller, id),
+    getMany: async (caller: Caller, ids: readonly string[]) => await getMany(kind, caller, ids),
     setFavourite: async (caller: Caller, id: string, favourite: boolean) => {
       await markFavourite(kind, caller, id, favourite)
     },

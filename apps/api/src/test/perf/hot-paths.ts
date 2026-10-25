@@ -223,6 +223,18 @@ export const HOT_PATHS: readonly HotPath[] = [
     },
   },
   {
+    name: 'GET /exercises/recent',
+    why: "What the picker leads with (#27): one grouped read of the person's own sets, however long their history, then the exercises it names — never one read per exercise or per session.",
+    dimension: 'sessions the person has finished (5 vs 200)',
+    // The ids by latest log; those of them visible; their muscles; their media.
+    maxQueries: 4,
+    budgetMs: 80,
+    noSeqScan: ['workout_sessions', 'set_logs', 'exercises'],
+    indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
+    run: async (fixtures, size) =>
+      await exerciseService.recent(pick(fixtures, size).caller, { limit: 8 }),
+  },
+  {
     name: 'GET /today',
     why: "The first screen (#25): the session in progress, the next day of the current workout and its exercises, and this week — a fixed number of reads however long the history, the next day's plan or the week.",
     dimension: 'sessions the person has finished (5 vs 200)',

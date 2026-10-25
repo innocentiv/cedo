@@ -11,6 +11,17 @@ export const MuscleLoad = z.object({
 })
 export type MuscleLoad = z.output<typeof MuscleLoad>
 
+/**
+ * Muscles chosen for a new exercise, their loads split evenly to total 100 (#27) — the first ones
+ * taking the remainder, a point each: three muscles are 34, 33 and 33. A start to adjust from, so the
+ * form is valid the moment a muscle is chosen.
+ */
+export function evenLoads(muscles: readonly MuscleSlug[]): MuscleLoad[] {
+  const share = Math.floor(100 / Math.max(muscles.length, 1))
+  const left = 100 - share * muscles.length
+  return muscles.map((muscle, i) => ({ muscle, loadPct: share + (i < left ? 1 : 0) }))
+}
+
 const MUSCLE_LOAD_TOTAL = 100
 
 /**
@@ -148,6 +159,15 @@ export const ExerciseQuery = withGroupRule(
   OwnableQueryFields.extend({ muscle: MuscleSlug.optional() }),
 )
 export type ExerciseQuery = z.output<typeof ExerciseQuery>
+
+/**
+ * `GET /exercises/recent` (#27): the exercises the caller logged most lately, latest first — those
+ * they can still see — for the picker to lead with. A handful, not a page.
+ */
+export const RecentExercisesQuery = z.strictObject({
+  limit: z.coerce.number().int().min(1).max(20).default(8),
+})
+export type RecentExercisesQuery = z.output<typeof RecentExercisesQuery>
 
 /** Moving a resource between groups, and copying one so it can be edited independently. */
 export const TransferInput = z.strictObject({ toGroupId: Id })

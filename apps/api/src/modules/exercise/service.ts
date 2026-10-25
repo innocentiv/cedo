@@ -5,12 +5,14 @@ import {
   type ExerciseQuery,
   type ExerciseUpdate,
   type Page,
+  type RecentExercisesQuery,
   exerciseInputFrom,
 } from '@cedo/contract'
 import { assertEditorOf } from '../../db/ownable.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { requireCurator } from '../review/curation.ts'
+import { recentlyLogged } from '../session/recent.ts'
 import { exerciseLifecycle } from './lifecycle.ts'
 import { hydrate } from './mapper.ts'
 import { insertExercise, updateExercise } from './write.ts'
@@ -30,6 +32,19 @@ export async function get(caller: Caller, id: string): Promise<Exercise> {
   const [hydrated] = await hydrate(caller, [await exerciseLifecycle.get(caller, id)])
   if (hydrated === undefined) throw notFound('exercise')
   return hydrated
+}
+
+/**
+ * What the picker leads with (#27): the exercises the caller logged most lately, latest first — of
+ * those they can still see. Asked for twice as many as wanted, so a few lost since do not leave the
+ * list short.
+ */
+export async function recent(caller: Caller, query: RecentExercisesQuery): Promise<Exercise[]> {
+  const seen = await exerciseLifecycle.getMany(
+    caller,
+    await recentlyLogged(caller, query.limit * 2),
+  )
+  return await hydrate(caller, seen.slice(0, query.limit))
 }
 
 /**

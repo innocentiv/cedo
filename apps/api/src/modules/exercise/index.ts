@@ -7,6 +7,7 @@ import {
   ExerciseQuery,
   ExerciseUpdate,
   Id,
+  RecentExercisesQuery,
   TransferInput,
   page,
 } from '@cedo/contract'
@@ -29,6 +30,14 @@ export const exerciseRoutes = new Elysia({ prefix: '/exercises', tags: ['exercis
     detail: {
       summary: "Create an exercise in the caller's personal group, or the shared library",
       description: '`shared: true` puts it in the shared cedo library, which curators alone may.',
+    },
+  })
+  .get('/recent', ({ caller, query }) => ExerciseService.recent(caller, query), {
+    query: RecentExercisesQuery,
+    response: z.array(Exercise),
+    detail: {
+      summary:
+        'The exercises the caller logged most lately, latest first — those they can still see',
     },
   })
   .get('/:id', ({ caller, params: { id } }) => ExerciseService.get(caller, id), {

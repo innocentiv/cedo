@@ -257,6 +257,11 @@ const ROUTES: Record<string, Case> = {
         http('/exercises?muscle=quadriceps'),
       ]),
   },
+  'GET /exercises/recent': {
+    // She logged Bob's exercise: it leads her picker while she can see it, and only then.
+    named: true,
+    read: async () => await http('/exercises/recent'),
+  },
   'GET /exercises/:id': {
     named: true,
     read: async (w) => await http(`/exercises/${w.bobsExerciseId}`),
