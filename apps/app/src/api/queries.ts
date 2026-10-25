@@ -1,6 +1,7 @@
 import {
   type UseMutationResult,
   type UseQueryResult,
+  useInfiniteQuery,
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
@@ -103,6 +104,20 @@ export function useSessions(
   return useQuery({
     queryKey: keys.sessionList(query),
     queryFn: async () => await api.sessions.list(query),
+  })
+}
+
+/**
+ * Finished sessions, newest first, a page at a time (#25): the next page asked for only when the
+ * athlete asks for older ones. One cache entry for all its pages, refreshed with the history it is.
+ */
+export function useHistory() {
+  return useInfiniteQuery({
+    queryKey: keys.sessionList({ inProgress: false, pages: true }),
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
+      await api.sessions.list({ inProgress: false, limit: 20, cursor: pageParam }),
+    initialPageParam: undefined,
+    getNextPageParam: (last: Page<WorkoutSessionSummary>) => last.nextCursor ?? undefined,
   })
 }
 

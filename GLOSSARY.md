@@ -248,7 +248,7 @@ _Avoid_: active plan, selected workout
 
 **Next day**:
 The day of the current workout that comes after the one trained last, in the plan's order, back to
-the first after the last.
+the first after the last. A day removed from the plan since it was trained is passed over.
 _Avoid_: today's workout, scheduled day
 
 **Set log**:

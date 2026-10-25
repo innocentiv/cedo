@@ -191,7 +191,7 @@ export const HOT_PATHS: readonly HotPath[] = [
   },
   {
     name: 'GET /sessions?inProgress=true',
-    why: "Today's first question: is a session in progress? One, found by the index that keeps it one — not by scanning a person's history for it.",
+    why: "Today's first question: is a session in progress? One, found by the index that keeps it one — not by scanning a person's history for it — then read as a history row is, its personal bests with it (#25).",
     dimension: 'sessions the person has finished (5 vs 200)',
     maxQueries: 5,
     budgetMs: 60,
@@ -226,12 +226,14 @@ export const HOT_PATHS: readonly HotPath[] = [
     name: 'GET /today',
     why: "The first screen (#25): the session in progress, the next day of the current workout and its exercises, and this week — a fixed number of reads however long the history, the next day's plan or the week.",
     dimension: 'sessions the person has finished (5 vs 200)',
-    // The session in progress as history reads it (five); the current workout, its days, the next
-    // day's exercises (three); the week (one).
-    maxQueries: 9,
+    // The session in progress as history reads it (five); the current workout, its days, the day
+    // trained last that is still in it, the next day's exercises (four); the week (one).
+    maxQueries: 10,
     budgetMs: 80,
     noSeqScan: ['workout_sessions', 'set_logs', 'workout_days', 'workout_entries', 'exercises'],
-    indexes: ['workout_sessions_user_time_idx'],
+    // No `ordered`: the session in progress is found by its own index, at most one row, and that
+    // row "sorted" — as on `GET /sessions?inProgress=true`, which is why that path has none either.
+    indexes: ['workout_sessions_user_time_idx', 'workout_sessions_in_progress_idx'],
     run: async (fixtures, size) =>
       await today(pick(fixtures, size).caller, {
         weekStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),

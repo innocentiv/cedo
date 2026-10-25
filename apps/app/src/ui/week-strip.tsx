@@ -1,16 +1,8 @@
 import { StyleSheet, View } from 'react-native'
+import type { WeekDay } from '@cedo/contract'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 import { MARK_SIZE, color, radius, stroke } from './tokens.ts'
-
-export interface WeekDay {
-  /** Monday 0 to Sunday 6. */
-  readonly index: number
-  /** `M`, `T`… */
-  readonly initial: string
-  readonly trained: boolean
-  readonly today: boolean
-}
 
 /**
  * The week at a glance (#25): a mark per day, Monday first — filled where a session was trained,

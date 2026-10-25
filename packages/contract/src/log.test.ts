@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   byExercise,
+  notesToKeep,
   type SeriesMember,
   type SetLog,
   exercisesInSession,
@@ -121,5 +122,14 @@ describe('a session read back by exercise (#25)', () => {
       ['1', '3'],
       ['2', '4'],
     ])
+  })
+})
+
+describe("a session's notes, as typed (#25)", () => {
+  test('are kept trimmed, nothing but space as none, and not sent again unchanged', () => {
+    expect(notesToKeep('  Felt strong ', null)).toBe('Felt strong')
+    expect(notesToKeep('   ', 'Old')).toBeNull()
+    expect(notesToKeep('Same', 'Same')).toBeUndefined()
+    expect(notesToKeep('', null)).toBeUndefined()
   })
 })

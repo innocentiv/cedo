@@ -158,6 +158,15 @@ export const SessionUpdate = z.strictObject({
 export type SessionUpdate = z.output<typeof SessionUpdate>
 
 /**
+ * The notes to keep from what was typed (#24, #25): trimmed, and none for nothing but space — or
+ * `undefined`, when that is what is already kept and there is nothing to send.
+ */
+export function notesToKeep(typed: string, kept: string | null): string | null | undefined {
+  const said = typed.trim() === '' ? null : typed.trim()
+  return said === kept ? undefined : said
+}
+
+/**
  * `PATCH /sessions/:id/logs/:logId` — how hard a set was, said once it is done (#24): the workout
  * screen asks reserve after a set, not before. Only of a session in progress; what was lifted is
  * never changed — a mistake is undone and logged again.

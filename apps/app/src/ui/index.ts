@@ -32,7 +32,7 @@ export { Stepper } from './stepper.tsx'
 export { Thumbnail } from './thumbnail.tsx'
 export { AddRow, UpNext, type UpNextItem } from './up-next.tsx'
 export { Stack } from './stack.tsx'
-export { type WeekDay, WeekStrip } from './week-strip.tsx'
+export { WeekStrip } from './week-strip.tsx'
 export { Text, type Tone } from './text.tsx'
 export {
   CONTENT_MAX_WIDTH,

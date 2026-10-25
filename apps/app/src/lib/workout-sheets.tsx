@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { type Exercise, musclesByLoad } from '@cedo/contract'
+import { type Exercise, musclesByLoad, notesToKeep } from '@cedo/contract'
 import { apiUrl } from '../api/http.ts'
 import {
   ConfirmButton,
@@ -87,9 +87,9 @@ export function WorkoutMenu({
 }): React.JSX.Element {
   const [draft, setDraft] = useState(notes ?? '')
   const close = () => {
-    const said = draft.trim() === '' ? null : draft.trim()
+    const kept = notesToKeep(draft, notes)
     // A refusal is said on the workout, where the athlete is once this closes (`session-error`).
-    if (said !== notes) void onSaveNotes(said)
+    if (kept !== undefined) void onSaveNotes(kept)
     onClose()
   }
   return (

@@ -29,7 +29,7 @@ export async function bestsPerSession(
   const oldest = new Date(Math.min(...times))
   const newest = new Date(Math.max(...times) + 1)
 
-  const logs = await walked(training, oldest, newest)
+  const logs = await setsInOrder(training, oldest, newest)
   const tracking = await trackingOf(training, logs)
   const bests = personalBestsIn(
     logs,
@@ -49,7 +49,7 @@ export async function bestsPerSession(
  * read every row of the range before the first came back, where the walk down the sessions' index
  * hands them over as it goes.
  */
-async function walked(training: Training, oldest: Date, newest: Date) {
+async function setsInOrder(training: Training, oldest: Date, newest: Date) {
   const logs = await db
     .select({
       id: setLogs.id,

@@ -16,7 +16,7 @@ export function WorkoutBody({ w }: { readonly w: Workout }): React.JSX.Element |
   const record = (
     <>
       <UnsentSets sessionId={w.id} day={day} adHoc={w.adHocExercises} />
-      <LoggedSets logs={w.sets.server} editable={!w.ended} onRemove={w.undo} />
+      <LoggedSets logs={w.sets.server} onRemove={w.undo} />
     </>
   )
   const rest = restOf(day ?? null, w.sets.all)

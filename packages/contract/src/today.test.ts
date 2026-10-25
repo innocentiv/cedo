@@ -13,7 +13,7 @@ describe('the next day (GLOSSARY.md)', () => {
     expect(nextDayOf(days, 'c')?.id).toBe('a')
   })
 
-  test('starts the plan again when the day trained last is gone from it, or there was none', () => {
+  test('starts at the first day when none of its days was trained yet', () => {
     expect(nextDayOf(days, 'removed')?.id).toBe('a')
     expect(nextDayOf(days, null)?.id).toBe('a')
   })

@@ -69,10 +69,12 @@ export function UnsentSets({
   )
 }
 
-/** What has actually been done this session, and the only way to take a mistake back. */
+/**
+ * What has actually been done this session in progress, and the only way to take a mistake back.
+ * Once finished, its sets read back by exercise instead (`SetsByExercise`).
+ */
 export function LoggedSets({
   logs,
-  editable,
   onRemove,
 }: {
   /**
@@ -81,7 +83,6 @@ export function LoggedSets({
    * out of reach, where the screen used to fall back to a 20 kg lift.
    */
   readonly logs: readonly SetLog[]
-  readonly editable: boolean
   readonly onRemove: (logId: string) => void
 }): React.JSX.Element | null {
   const unit = useWeightUnit()
@@ -97,17 +98,15 @@ export function LoggedSets({
           title={`${exerciseName(log.exercise)} · ${loggedLabel(log, logs)}`}
           subtitle={formatWithReserve(log, log.exercise?.tracking ?? null, unit)}
           accessory={
-            editable ? (
-              <IconButton
-                name="undo"
-                label="Undo this set"
-                edge="end"
-                onPress={() => {
-                  onRemove(log.id)
-                }}
-                testID={`undo-set-${log.id}`}
-              />
-            ) : undefined
+            <IconButton
+              name="undo"
+              label="Undo this set"
+              edge="end"
+              onPress={() => {
+                onRemove(log.id)
+              }}
+              testID={`undo-set-${log.id}`}
+            />
           }
           testID={`logged-set-${log.id}`}
         />

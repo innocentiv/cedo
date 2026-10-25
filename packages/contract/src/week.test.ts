@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import {
   byWeek,
+  counted,
   formatDay,
   formatMinutes,
   personalBestsLabel,
@@ -24,9 +25,26 @@ describe('a week (#25)', () => {
   })
 
   test('marks the days trained on, Monday first, and nothing outside it', () => {
-    expect(
-      weekStrip(at(19, 0), [iso(18), iso(19, 7), iso(21), iso(21, 19), iso(25, 22), iso(26)]),
-    ).toEqual([true, false, true, false, false, false, true])
+    const strip = weekStrip(
+      at(19, 0),
+      [iso(18), iso(19, 7), iso(21), iso(21, 19), iso(25, 22), iso(26)],
+      at(23),
+    )
+    expect(strip.map((d) => d.trained)).toEqual([true, false, true, false, false, false, true])
+    expect(strip.map((d) => d.initial).join('')).toBe('MTWTFSS')
+  })
+
+  test('rings today — and no day of a week that is not this one', () => {
+    expect(weekStrip(at(19, 0), [], at(23)).findIndex((d) => d.today)).toBe(4)
+    expect(weekStrip(at(12, 0), [], at(23)).some((d) => d.today)).toBe(false)
+  })
+
+  test('counts a thing as said aloud', () => {
+    expect([counted(1, 'set'), counted(3, 'set'), counted(0, 'session')]).toEqual([
+      '1 set',
+      '3 sets',
+      '0 sessions',
+    ])
   })
 })
 

@@ -1,8 +1,7 @@
-import { useState } from 'react'
 import { useRouter } from 'expo-router'
 import { type SessionStart, startOfWeek } from '@cedo/contract'
 import { Columns, FormError, Loaded, Screen } from '../../../src/ui/index.ts'
-import { useSessions, useStartSession, useToday } from '../../../src/api/queries.ts'
+import { useHistory, useStartSession, useToday } from '../../../src/api/queries.ts'
 import { History, Now } from '../../../src/lib/today-parts.tsx'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 
@@ -13,10 +12,11 @@ import { useSubmit } from '../../../src/lib/use-submit.ts'
  */
 export default function Today(): React.JSX.Element {
   const router = useRouter()
-  // The reader's own week: the server cannot know where it starts.
-  const [weekStart] = useState(() => startOfWeek(new Date()).toISOString())
+  // The reader's own week — the server cannot know where it starts — asked each render, so an app
+  // left open past Sunday midnight moves on to the new one.
+  const weekStart = startOfWeek(new Date()).toISOString()
   const today = useToday(weekStart)
-  const sessions = useSessions({ inProgress: false, limit: 20 })
+  const history = useHistory()
   const start = useStartSession()
   const { submit, busy, error } = useSubmit()
 
@@ -37,8 +37,22 @@ export default function Today(): React.JSX.Element {
           </Loaded>
         }
         side={
-          <Loaded query={sessions} testID="today">
-            {(data) => <History sessions={data.items} />}
+          <Loaded query={history} testID="today">
+            {(data) => (
+              <History
+                sessions={data.pages.flatMap((page) => page.items)}
+                older={
+                  history.hasNextPage
+                    ? {
+                        load: () => {
+                          void history.fetchNextPage()
+                        },
+                        busy: history.isFetchingNextPage,
+                      }
+                    : null
+                }
+              />
+            )}
           </Loaded>
         }
       />

@@ -77,9 +77,10 @@ const trainDay = async (user: TestUser, workout: Workout, dayIndex: number): Pro
   await finish(user, session.id)
 }
 
-const weekStart = (offsetMs = -60 * 60 * 1000) => new Date(Date.now() + offsetMs).toISOString()
+/** A start of week `offsetMs` from now: an hour ago, by default — this session is inside it. */
+const weekFrom = (offsetMs = -60 * 60 * 1000) => new Date(Date.now() + offsetMs).toISOString()
 
-const today = async (user: TestUser, from = weekStart()): Promise<Today> =>
+const today = async (user: TestUser, from = weekFrom()): Promise<Today> =>
   expectContract(Today, (await user.wire(`/today?weekStart=${encodeURIComponent(from)}`)).body)
 
 describe('what to do next', () => {
@@ -109,6 +110,30 @@ describe('what to do next', () => {
     expect(now.next?.dayName).toBe('C')
   })
 
+  /**
+   * A day removed from the plan is passed over, as if it had not been trained: its sessions have
+   * no day left to count from, and starting the plan again at its first day lost the place.
+   */
+  test('goes on from the day before one removed since it was trained', async () => {
+    const plan = await aThreeDayWorkout(alice)
+    await trainDay(alice, plan, 0)
+    await trainDay(alice, plan, 1)
+    const kept = [plan.days[0], plan.days[2]].map((day) => ({
+      id: day?.id,
+      name: day?.name,
+      entries: (day?.entries ?? []).map((entry) => ({
+        exerciseId: entry.exerciseId,
+        sets: [{ targetReps: 5, targetWeightG: kgToG(60) }],
+      })),
+    }))
+    const saved = await alice.wire(`/workouts/${plan.id}/plan`, {
+      method: 'PUT',
+      body: JSON.stringify({ days: kept }),
+    })
+    expect(saved.status).toBe(200)
+    expect((await today(alice)).next?.dayName).toBe('C')
+  })
+
   /** Logging without a plan is not following another one: the current workout stays. */
   test('is unmoved by a session without a plan', async () => {
     const plan = await aThreeDayWorkout(alice)
@@ -133,7 +158,7 @@ describe('the week', () => {
     await finish(alice, first.id)
     await finish(alice, (await start(alice)).id)
     expect((await today(alice)).week).toHaveLength(2)
-    expect((await today(alice, weekStart(60 * 60 * 1000))).week).toEqual([])
+    expect((await today(alice, weekFrom(60 * 60 * 1000))).week).toEqual([])
     expect((await today(alice)).week[0]).toBe(first.startedAt)
   })
 

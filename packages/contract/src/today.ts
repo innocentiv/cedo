@@ -34,8 +34,8 @@ export type Today = z.output<typeof Today>
 
 /**
  * The next day (GLOSSARY.md): the one after the day trained last, in plan order, back to the first
- * after the last. A day trained last that is gone from the plan has no place to count from: the
- * plan starts again at its first day.
+ * after the last. `lastDayId` is the latest day trained that is still in the plan — a day removed
+ * since is skipped, as if it had not been trained. None trained yet: the first.
  */
 export function nextDayOf<D extends { readonly id: string }>(
   days: readonly D[],

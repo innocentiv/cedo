@@ -119,7 +119,8 @@ would otherwise be copied: `MusclePicker`, `EntryEditor`, `UnavailableEntry`, `D
 workout's (#24) — `FocusLogger` (the exercise in focus: its `SetMarks`, the next set's `Stepper`s,
 one Log button), `LastSet` (the set just logged: a best, its reserve, Undo), `RestBand`, `UpNext`
 and `AddRow`,
-`SessionHeader` and `ReturnBar`. They are still presentational — the rules they render (loads
+`SessionHeader` and `ReturnBar`; and Today's (#25) — `WeekStrip`, a week's days as the contract's
+`weekStrip` gives them. They are still presentational — the rules they render (loads
 summing to 100, which inputs a tracking mode implies, what a progression rule contains, which set
 is next, where the focus goes, whose rest runs, what a set is called) all live in `@cedo/contract`:
 `session-flow.ts` and `set-marks.ts` for the workout. An unavailable exercise has no mode, so no
@@ -254,7 +255,8 @@ As built (#25), on a phone top to bottom, on a desktop in two `Columns`:
   a day trained filled, today ringed in chalk. No plate colour: a day trained is a fact, not a
   state to act on.
 - **History** — by week ("This week", "Last week", "Week of 6 Oct"), each row its day, `Thu 23 Oct ·
-  52 min · 18 sets`, and its personal bests in green as the gym says them, `PB` or `3 PBs`.
+  52 min · 18 sets`, and its personal bests in green as the gym says them, `PB` or `3 PBs`. Twenty
+  at a time; Show older sessions asks for the next page.
 - **A finished session** — its date, time, working sets and bests; its notes written in place, kept
   as the field is left; its sets by exercise, a best marked `PB`. The menu is gone once finished:
   what it held is on the page, or done.

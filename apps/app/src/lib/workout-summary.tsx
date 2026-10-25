@@ -3,6 +3,7 @@ import {
   formatDay,
   formatDuration,
   formatEffort,
+  notesToKeep,
   personalBestsLabel,
   sessionSummary,
 } from '@cedo/contract'
@@ -85,8 +86,8 @@ export function SessionNotes({
         placeholder="How it went, what to change"
         multiline
         onBlur={() => {
-          const said = draft.trim() === '' ? null : draft.trim()
-          if (said !== notes) void onSave(said)
+          const kept = notesToKeep(draft, notes)
+          if (kept !== undefined) void onSave(kept)
         }}
         testID="session-notes"
       />

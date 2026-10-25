@@ -24,15 +24,38 @@ export function startOfWeek(at: Date): Date {
 const weeksLater = (weekStart: Date, weeks: number): Date =>
   new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + 7 * weeks)
 
-/** Which days of the week starting `weekStart` someone trained on: seven, Monday first. */
-export function weekStrip(weekStart: Date, startedAt: readonly string[]): boolean[] {
+/** `1 set`, `3 sets`: a count and what it counts, as said aloud. */
+export const counted = (count: number, one: string, many = `${one}s`): string =>
+  `${String(count)} ${count === 1 ? one : many}`
+
+/** A day of a week's strip, Monday 0 to Sunday 6. */
+export interface WeekDay {
+  readonly index: number
+  /** `M`, `T`… */
+  readonly initial: string
+  readonly trained: boolean
+  readonly today: boolean
+}
+
+/**
+ * The week starting `weekStart` as its strip shows it: each day, whether someone trained on it, and
+ * which is `now`'s.
+ */
+export function weekStrip(weekStart: Date, startedAt: readonly string[], now: Date): WeekDay[] {
   const end = weeksLater(weekStart, 1)
-  const trained = WEEKDAY_INITIALS.map(() => false)
-  for (const started of startedAt) {
-    const at = new Date(started)
-    if (at >= weekStart && at < end) trained[dayOfWeek(at)] = true
-  }
-  return trained
+  const trained = new Set(
+    startedAt
+      .map((started) => new Date(started))
+      .filter((at) => at >= weekStart && at < end)
+      .map((at) => dayOfWeek(at)),
+  )
+  const today = now >= weekStart && now < end ? dayOfWeek(now) : null
+  return WEEKDAY_INITIALS.map((initial, index) => ({
+    index,
+    initial,
+    trained: trained.has(index),
+    today: index === today,
+  }))
 }
 
 /** `Thu 23 Oct`: a day as a history row says it. */
@@ -92,7 +115,7 @@ export function sessionLine(session: {
   if (session.endedAt !== null) {
     parts.push(formatMinutes(elapsedS(session.startedAt, Date.parse(session.endedAt))))
   }
-  parts.push(`${String(session.setCount)} ${session.setCount === 1 ? 'set' : 'sets'}`)
+  parts.push(counted(session.setCount, 'set'))
   return parts.join(' · ')
 }
 
@@ -102,4 +125,4 @@ export const personalBestsShort = (count: number): string | null =>
 
 /** `A personal best`, `3 personal bests` — and nothing, for none. */
 export const personalBestsLabel = (count: number): string | null =>
-  count === 0 ? null : count === 1 ? 'A personal best' : `${String(count)} personal bests`
+  count === 0 ? null : count === 1 ? 'A personal best' : counted(count, 'personal best')

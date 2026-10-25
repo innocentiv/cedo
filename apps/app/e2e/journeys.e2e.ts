@@ -6,6 +6,7 @@ import {
   McpClientConfig,
   type TrackingMode,
   WorkoutPlanInput,
+  kgToG,
 } from '@cedo/contract'
 import {
   E2E_STARTUP_TIMEOUT_MS,
@@ -935,7 +936,7 @@ test(
         await mine.sessions.logSet(session.id, {
           exerciseId: squat.id,
           entryId: null,
-          weightG: kg * 1000,
+          weightG: kgToG(kg),
           reps: 5,
           rpe: null,
           durationS: null,

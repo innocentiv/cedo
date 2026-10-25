@@ -4,9 +4,8 @@ import {
   type SessionStart,
   type Today,
   type WorkoutSessionSummary,
-  WEEKDAY_INITIALS,
   byWeek,
-  dayOfWeek,
+  counted,
   personalBestsShort,
   sessionLine,
   weekStrip,
@@ -156,22 +155,12 @@ function ThisWeek({
   readonly week: readonly string[]
   readonly weekStart: string
 }): React.JSX.Element {
-  const trained = weekStrip(new Date(weekStart), week)
-  const today = dayOfWeek(new Date())
   return (
     <Stack gap="sm">
       <Text variant="label" tone="muted" testID="today-week-count">
-        {`${week.length === 1 ? '1 session' : `${String(week.length)} sessions`} this week`}
+        {`${counted(week.length, 'session')} this week`}
       </Text>
-      <WeekStrip
-        days={WEEKDAY_INITIALS.map((initial, index) => ({
-          index,
-          initial,
-          trained: trained[index] === true,
-          today: index === today,
-        }))}
-        testID="today-week"
-      />
+      <WeekStrip days={weekStrip(new Date(weekStart), week, new Date())} testID="today-week" />
     </Stack>
   )
 }
@@ -179,8 +168,11 @@ function ThisWeek({
 /** Finished sessions, newest first, by week: each its day, how long, its sets, and its bests. */
 export function History({
   sessions,
+  older,
 }: {
   readonly sessions: readonly WorkoutSessionSummary[]
+  /** The next page of older sessions, while there is one. */
+  readonly older: { readonly load: () => void; readonly busy: boolean } | null
 }): React.JSX.Element {
   const router = useRouter()
   if (sessions.length === 0) {
@@ -219,6 +211,15 @@ export function History({
           })}
         </Stack>
       ))}
+      {older === null ? null : (
+        <Button
+          title="Show older sessions"
+          variant="ghost"
+          busy={older.busy}
+          onPress={older.load}
+          testID="today-older"
+        />
+      )}
     </Stack>
   )
 }
