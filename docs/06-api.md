@@ -181,6 +181,12 @@ relations its logs are numbered by. Writes still answer the plain `WorkoutSessio
 cache entry is invalidated after them, not overwritten. The day costs a fixed seven queries
 whatever the plan's size (`n1.test.ts`, and the perf hot path).
 
+`GET /today` (#25) answers the first screen the same way: the session in progress, the next day of
+the current workout with its exercises' names, and when each session of the week started. The app
+says where its week starts (`weekStart`, in the reader's own time); the server cannot know. History
+rows (`GET /sessions`) count the personal bests each session set, judged as the session's own read
+judges them — walked over the page in a fixed number of reads, whatever its size (`page-bests.ts`).
+
 ## The route list lives in the spec, not here
 
 `/openapi` is generated from the same Zod schemas the routes validate with, so it cannot drift.

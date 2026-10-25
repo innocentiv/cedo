@@ -35,7 +35,7 @@ export function registerCoachingTools(server: McpServer, caller: Caller): void {
       title: 'List sessions',
       description:
         'Sessions newest first, one line each: date, plan and day, working sets, weight lifted, ' +
-        'whether it is in progress, and the notes. Yours, or an athlete’s with `athlete`. For ' +
+        'the personal bests it set, whether it is in progress, and the notes. Yours, or an athlete’s with `athlete`. For ' +
         'the sets of one exercise use exercise_history.',
       inputSchema: SessionQuery.pick({ limit: true, cursor: true, since: true }).safeExtend(
         OfAthlete.shape,

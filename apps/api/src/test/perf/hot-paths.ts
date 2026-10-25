@@ -8,6 +8,7 @@ import * as sessionService from '../../modules/session/service.ts'
 import { get as getSession } from '../../modules/session/plan.ts'
 import { list as listSessions } from '../../modules/session/list.ts'
 import { history } from '../../modules/session/history.ts'
+import { today } from '../../modules/session/today.ts'
 import { suggestForWorkout, targetsForSession } from '../../modules/progression/service.ts'
 import { trainingReview } from '../../modules/review/service.ts'
 import { libraryAudit } from '../../modules/review/curation.ts'
@@ -178,11 +179,11 @@ export const HOT_PATHS: readonly HotPath[] = [
   },
   {
     name: 'GET /sessions (list)',
-    why: 'The landing screen. Set counts and weight lifted must be one grouped query for the page.',
+    why: 'History. Set counts and weight lifted must be one grouped query for the page, and its personal bests three more — the sets from its oldest session to its newest, their exercises, and what came before them — never one per session (#25).',
     dimension: 'page size (5 vs 50)',
-    maxQueries: 2,
+    maxQueries: 5,
     budgetMs: 60,
-    noSeqScan: ['workout_sessions', 'set_logs'],
+    noSeqScan: ['workout_sessions', 'set_logs', 'exercises'],
     indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
     ordered: ['workout_sessions'],
     run: async (fixtures, size) =>
@@ -192,7 +193,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     name: 'GET /sessions?inProgress=true',
     why: "Today's first question: is a session in progress? One, found by the index that keeps it one — not by scanning a person's history for it.",
     dimension: 'sessions the person has finished (5 vs 200)',
-    maxQueries: 2,
+    maxQueries: 5,
     budgetMs: 60,
     noSeqScan: ['workout_sessions', 'set_logs'],
     indexes: ['workout_sessions_in_progress_idx'],
@@ -206,8 +207,8 @@ export const HOT_PATHS: readonly HotPath[] = [
     name: 'GET /sessions (next page)',
     why: 'Scrolling history. The cursor must seek into the index, not re-sort everything before it.',
     dimension: 'page size (5 vs 50)',
-    // Page one to obtain a real cursor, then the page under test: two queries each.
-    maxQueries: 4,
+    // Page one to obtain a real cursor, then the page under test: five queries each.
+    maxQueries: 10,
     budgetMs: 60,
     noSeqScan: ['workout_sessions', 'set_logs'],
     indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
@@ -220,6 +221,21 @@ export const HOT_PATHS: readonly HotPath[] = [
         cursor: first.nextCursor ?? undefined,
       })
     },
+  },
+  {
+    name: 'GET /today',
+    why: "The first screen (#25): the session in progress, the next day of the current workout and its exercises, and this week — a fixed number of reads however long the history, the next day's plan or the week.",
+    dimension: 'sessions the person has finished (5 vs 200)',
+    // The session in progress as history reads it (five); the current workout, its days, the next
+    // day's exercises (three); the week (one).
+    maxQueries: 9,
+    budgetMs: 80,
+    noSeqScan: ['workout_sessions', 'set_logs', 'workout_days', 'workout_entries', 'exercises'],
+    indexes: ['workout_sessions_user_time_idx'],
+    run: async (fixtures, size) =>
+      await today(pick(fixtures, size).caller, {
+        weekStart: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+      }),
   },
   {
     name: 'GET /sessions/:id',

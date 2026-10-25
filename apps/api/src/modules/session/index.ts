@@ -14,6 +14,8 @@ import {
   SetLog,
   SetLogUpdate,
   SessionDetail,
+  Today,
+  TodayQuery,
   WorkoutSession,
   WorkoutSessionSummary,
   page,
@@ -23,6 +25,7 @@ import * as CoachingService from '../coaching/service.ts'
 import { targetsForSession } from '../progression/service.ts'
 import { start as startSession } from './start.ts'
 import { logSet } from './log-set.ts'
+import { today } from './today.ts'
 import * as SessionService from './service.ts'
 
 const params = z.object({ id: Id })
@@ -94,6 +97,19 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
     },
     { params: z.object({ id: Id, logId: Id }) },
   )
+
+/** What to do next (#25): the first screen's one read. */
+export const todayRoutes = new Elysia({ prefix: '/today', tags: ['sessions'] })
+  .use(authPlugin)
+  .guard({ auth: true })
+  .get('/', ({ caller, query }) => today(caller, query), {
+    query: TodayQuery,
+    response: Today,
+    detail: {
+      summary:
+        'The session in progress, the next day of the current workout, and when each session of this week started',
+    },
+  })
 
 /**
  * Mounted under /exercises rather than /sessions because it answers a question about an exercise.

@@ -179,6 +179,9 @@ export function expectNoSeqScan(plan: QueryPlan, table: string): void {
  * (which means NULLS FIRST), it never served the order it was added for.
  */
 export function expectNoSortOver(plan: QueryPlan, table: string): void {
+  // Only an ORDER BY is the index's to serve. A statement without one sorts only to group — a
+  // personal-best read's maxima per rep count (#25) — which says nothing about the order walked.
+  if (!/\border by\b/iu.test(plan.sql)) return
   const scansTable = (node: PlanNode) => walk(node).some((n) => n.relation === table)
   const offending = walk(plan.root).filter(
     (n) => (n.nodeType === 'Sort' || n.nodeType === 'Incremental Sort') && scansTable(n),

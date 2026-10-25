@@ -4,6 +4,7 @@ import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
 import { afterCursor, cursorMicros, decodeCursor, encodeCursor } from './cursor.ts'
+import { bestsPerSession } from './page-bests.ts'
 import { type SessionRow, type Training, sessionsOf } from './service.ts'
 
 /**
@@ -75,9 +76,15 @@ export async function list(
   const last = items.at(-1)
 
   const totalBySession = await totalsFor(items.map((r) => r.session.id))
+  const bests = await bestsPerSession(
+    training,
+    items.map((r) => r.session),
+  )
 
   return {
-    items: items.map((r) => toSummary(r, totalBySession.get(r.session.id))),
+    items: items.map((r) =>
+      toSummary(r, totalBySession.get(r.session.id), bests.get(r.session.id)),
+    ),
     nextCursor:
       hasMore && last !== undefined
         ? encodeCursor({ micros: last.micros, id: last.session.id })
@@ -94,6 +101,7 @@ interface SummaryRow {
 function toSummary(
   r: SummaryRow,
   total: { sets: number; lifted: number } | undefined,
+  personalBests = 0,
 ): WorkoutSessionSummary {
   return {
     id: r.session.id,
@@ -106,6 +114,7 @@ function toSummary(
     dayName: r.dayName,
     setCount: total?.sets ?? 0,
     liftedG: total?.lifted ?? 0,
+    personalBests,
   }
 }
 

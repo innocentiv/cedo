@@ -38,6 +38,9 @@ export function sessionLine(session: WorkoutSessionSummary, unit: WeightUnit): s
     plan,
     `${session.setCount} sets`,
     formatWeight(session.liftedG, unit),
+    session.personalBests === 0
+      ? null
+      : `${session.personalBests} personal best${session.personalBests === 1 ? '' : 's'}`,
     session.endedAt === null ? 'in progress' : null,
     session.notes === null || session.notes === '' ? null : JSON.stringify(session.notes),
     session.id,

@@ -294,6 +294,13 @@ const ROUTES: Record<string, Case> = {
     allowed: async (w) => await httpAllowed(`/workouts/${w.bobsWorkoutId}/progression`),
   },
   'GET /sessions/': { named: true, read: async () => await http('/sessions') },
+  'GET /today/': {
+    // Her own plan is current — her session in progress follows it — and its next day is the one
+    // around Bob's exercise, named while she can still see it.
+    named: true,
+    read: async () =>
+      await http(`/today?weekStart=${encodeURIComponent(new Date(0).toISOString())}`),
+  },
   'GET /sessions/:id': {
     // Her own session stays hers, and each log names its exercise — while she can still see it. So
     // does the day it follows: Bob's plan out of reach after, her own plan's entry unavailable.

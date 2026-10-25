@@ -13,7 +13,7 @@ import { coachingRoutes } from './modules/coaching/index.ts'
 import { exerciseRoutes } from './modules/exercise/index.ts'
 import { groupRoutes } from './modules/group/index.ts'
 import { mediaBlobRoutes, mediaRoutes } from './modules/media/index.ts'
-import { exerciseHistoryRoutes, sessionRoutes } from './modules/session/index.ts'
+import { exerciseHistoryRoutes, sessionRoutes, todayRoutes } from './modules/session/index.ts'
 import { workoutRoutes } from './modules/workout/index.ts'
 import { tokenRoutes } from './modules/token/index.ts'
 
@@ -54,6 +54,7 @@ export function createApp() {
     .use(mediaBlobRoutes)
     .use(mediaRoutes)
     .use(sessionRoutes)
+    .use(todayRoutes)
     .use(workoutRoutes)
     .use(tokenRoutes)
     .mount(MCP_PATH, serveMcp)
