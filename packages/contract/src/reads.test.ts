@@ -12,7 +12,12 @@ describe('what a write makes stale', () => {
   /** The bug this table exists for: the plan kept the old name until the cache expired. */
   test('renaming an exercise refreshes the plan, its progression and a live session', () => {
     const { awaited, background } = affectedBy('exercise')
-    expect(sorted(awaited)).toEqual(['exercise', 'exerciseHistory', 'exerciseList'])
+    expect(sorted(awaited)).toEqual([
+      'exercise',
+      'exerciseHistory',
+      'exerciseList',
+      'recentExercises',
+    ])
     expect(sorted(background)).toEqual([
       'progression',
       'session',
@@ -31,7 +36,7 @@ describe('what a write makes stale', () => {
   test('logging a set awaits the session, and refreshes history and progression behind it', () => {
     const { awaited, background } = affectedBy('session')
     expect(sorted(awaited)).toEqual(['session', 'sessionList', 'today'])
-    expect(sorted(background)).toEqual(['exerciseHistory', 'progression'])
+    expect(sorted(background)).toEqual(['exerciseHistory', 'progression', 'recentExercises'])
   })
 
   /**
@@ -67,6 +72,7 @@ describe('what a write makes stale', () => {
       'exerciseHistory',
       'exerciseList',
       'progression',
+      'recentExercises',
       'session',
       'sessionList',
       'sessionTargets',

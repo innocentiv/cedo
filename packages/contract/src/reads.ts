@@ -32,6 +32,8 @@ export const READS = {
   exercise: { of: 'exercise', embeds: ['group'] },
   /** Logged sets, by session. */
   exerciseHistory: { of: 'exercise', embeds: ['session', 'group'] },
+  /** The exercises logged most lately (#27): a set logged moves one to the top. */
+  recentExercises: { of: 'exercise', embeds: ['session', 'group'] },
   workoutList: { of: 'workout', embeds: ['group'] },
   /** Every entry carries its whole exercise. */
   workout: { of: 'workout', embeds: ['exercise', 'group'] },

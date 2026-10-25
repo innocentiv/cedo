@@ -12,6 +12,13 @@ import { z } from 'zod'
  */
 export const MUSCLE_REGIONS = ['upper', 'core', 'lower'] as const
 export const MuscleRegion = z.enum(MUSCLE_REGIONS)
+
+/** A region as a person reads it: where the muscle filter groups its choices (#27). */
+export const MUSCLE_REGION_LABELS: Readonly<Record<(typeof MUSCLE_REGIONS)[number], string>> = {
+  upper: 'Upper body',
+  core: 'Core',
+  lower: 'Lower body',
+}
 export type MuscleRegion = z.output<typeof MuscleRegion>
 
 export const MUSCLES = [
@@ -84,3 +91,16 @@ export const musclesByLoad = (
       name: MUSCLES.find((x) => x.slug === m.muscle)?.name ?? m.muscle,
       loadPct: m.loadPct,
     }))
+
+/**
+ * `Quads, Glute max, Adductors`: what an exercise mostly works, in one line, most loaded first — an
+ * exercise's row in a list says it (#27).
+ */
+export const mainMuscles = (
+  muscles: readonly { readonly muscle: string; readonly loadPct: number }[],
+  count = 3,
+): string =>
+  musclesByLoad(muscles)
+    .slice(0, count)
+    .map((m) => m.name)
+    .join(', ')
