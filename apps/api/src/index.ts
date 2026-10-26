@@ -52,7 +52,7 @@ const stopRestAlerts = startRestAlerts()
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
     void (async () => {
-      stopRestAlerts()
+      await stopRestAlerts()
       await app.stop()
       await closeDatabase()
       process.exit(0)

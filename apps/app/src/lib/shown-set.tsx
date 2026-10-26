@@ -7,7 +7,7 @@ import {
 } from '@cedo/contract'
 import type { PendingLog } from '../api/pending.ts'
 import { useChangeRest } from '../api/session-queries.ts'
-import { Button, LastSet, RestBand, Stack } from '../ui/index.ts'
+import { Button, FormError, LastSet, RestBand, Stack } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
 import { useRestAlerts } from './rest-alerts.ts'
 import { useSubmit } from './use-submit.ts'
@@ -22,6 +22,8 @@ export interface RestShown {
   readonly rest: Rest | null
   readonly kept: SessionRest | null
   readonly sessionId: string
+  /** How many sets the session has — waiting for a signal too: what a tap names (#38). */
+  readonly sets: number
 }
 
 /** A set re-opened from its mark: of a plan entry, or of an exercise logged with none. */
@@ -46,32 +48,38 @@ export function JustDone({
 }): React.JSX.Element | null {
   const tell = useChangeRest(rest.sessionId)
   const alerts = useRestAlerts()
-  const { submit } = useSubmit()
+  const { submit, error } = useSubmit()
   if (rest.rest === null && children === null) return null
   return (
     <Stack gap="sm">
       <RestBand
         rest={rest.rest}
         kept={rest.kept}
+        sets={rest.sets}
         onChange={(change) => {
-          // In the session's queue; refused, the rest the server keeps stays as it was.
-          tell.mutate(change)
+          // In the session's queue, behind the sets: offline, it is sent after them.
+          void submit(async () => {
+            await tell.mutateAsync(change)
+          })
         }}
+        whileRunning={
+          // Offered while a rest runs, until answered: iOS asks only from a tap (#38).
+          alerts.state === 'ask' ? (
+            <Button
+              title="Tell me when rest is over"
+              variant="secondary"
+              size="small"
+              busy={alerts.busy}
+              onPress={() => {
+                void submit(alerts.turnOn)
+              }}
+              testID="rest-alerts-offer"
+            />
+          ) : null
+        }
         testID="rest-band"
       />
-      {/* Offered while a rest runs, until answered: iOS asks only from a tap (#38). */}
-      {rest.rest !== null && alerts.state === 'ask' ? (
-        <Button
-          title="Tell me when rest is over"
-          variant="secondary"
-          size="small"
-          busy={alerts.busy}
-          onPress={() => {
-            void submit(alerts.turnOn)
-          }}
-          testID="rest-alerts-offer"
-        />
-      ) : null}
+      <FormError message={error} testID="rest-error" />
       {children}
     </Stack>
   )

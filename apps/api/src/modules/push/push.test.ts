@@ -23,7 +23,7 @@ const send = async (user: TestUser, path: string, body: unknown, method = 'POST'
 }
 
 const device = (name: string) => ({
-  endpoint: `https://push.example.com/${name}`,
+  endpoint: `https://web.push.apple.com/${name}`,
   keys: { p256dh: `key-${name}`, auth: `auth-${name}` },
 })
 
@@ -108,6 +108,28 @@ describe('a device told when a rest is over', () => {
     expect(rows.map((r) => r.userId)).toEqual([bob.userId])
   })
 
+  test('is only ever a push service — never an address the server would post to on anyone’s say', async () => {
+    for (const endpoint of [
+      'https://push.example.com/x',
+      'https://10.0.0.1/x',
+      'http://web.push.apple.com/x',
+    ]) {
+      const refused = await alice.wire('/push/subscriptions', {
+        method: 'POST',
+        body: JSON.stringify({ ...device('x'), endpoint }),
+      })
+      expect(refused.status).toBe(422)
+    }
+  })
+
+  test('is one of a few a person has: past the cap, the oldest go', async () => {
+    for (const name of ['a', 'b', 'c', 'd', 'e', 'f', 'g']) {
+      await send(alice, '/push/subscriptions', device(name))
+    }
+    const kept = (await db.select().from(pushSubscriptions)).map((r) => r.endpoint).toSorted()
+    expect(kept).toEqual(['c', 'd', 'e', 'f', 'g'].map((n) => device(n).endpoint))
+  })
+
   test('is told no more — but only by its own account', async () => {
     await send(alice, '/push/subscriptions', device('phone'))
     const bob = await h.as('bob')
@@ -146,7 +168,7 @@ describe('the alert', () => {
     await send(alice, '/push/subscriptions', device('phone'))
     const rest = await resting()
     const service = pushService()
-    await send(alice, `/sessions/${rest.id}/rest`, { since: rest.since, change: 'extend' })
+    await send(alice, `/sessions/${rest.id}/rest`, { sets: 1, change: 'extend' })
     expect(await sendDueAlerts(rest.at(1), service.deliver)).toBe(0)
     expect(await sendDueAlerts(rest.at(31), service.deliver)).toBe(1)
   })
@@ -155,7 +177,7 @@ describe('the alert', () => {
     await send(alice, '/push/subscriptions', device('phone'))
     const service = pushService()
     const skipped = await resting()
-    await send(alice, `/sessions/${skipped.id}/rest`, { since: skipped.since, change: 'skip' })
+    await send(alice, `/sessions/${skipped.id}/rest`, { sets: 1, change: 'skip' })
     expect(await sendDueAlerts(skipped.at(1), service.deliver)).toBe(0)
     await send(alice, `/sessions/${skipped.id}`, { endedAt: new Date().toISOString() }, 'PATCH')
 

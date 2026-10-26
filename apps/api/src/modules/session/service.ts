@@ -269,9 +269,6 @@ export async function removeLog(caller: Caller, sessionId: string, logId: string
       .where(and(eq(setLogs.id, logId), eq(setLogs.sessionId, sessionId)))
       .returning({ id: setLogs.id })
     if (deleted.length === 0) throw notFound('log')
-    // Undone, the rest it started goes with it, and its alert (#38). A set fixed in a finished
-    // session had none running.
-    await tx.update(workoutSessions).set(NO_REST).where(eq(workoutSessions.id, sessionId))
   })
 }
 

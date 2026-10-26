@@ -23,6 +23,17 @@ export interface Caller extends AccessContext {
   readonly personalGroupId: string
 }
 
+/** What a caller is read from: who they are, and a row per group they belong to. */
+const CALLER_ROW = {
+  userId: users.id,
+  username: users.username,
+  displayName: users.displayName,
+  weightUnit: users.weightUnit,
+  personalGroupId: users.personalGroupId,
+  groupId: groupMembers.groupId,
+  role: groupMembers.role,
+} as const
+
 export async function resolveCaller(
   authorization: string | undefined | null,
 ): Promise<Caller | null> {
@@ -30,15 +41,7 @@ export async function resolveCaller(
   if (token === null) return null
 
   const rows = await db
-    .select({
-      userId: users.id,
-      username: users.username,
-      displayName: users.displayName,
-      weightUnit: users.weightUnit,
-      personalGroupId: users.personalGroupId,
-      groupId: groupMembers.groupId,
-      role: groupMembers.role,
-    })
+    .select(CALLER_ROW)
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
     .leftJoin(groupMembers, eq(groupMembers.userId, users.id))
@@ -56,15 +59,7 @@ export async function resolveCaller(
  */
 export async function callerOfUser(userId: string): Promise<Caller | null> {
   const rows = await db
-    .select({
-      userId: users.id,
-      username: users.username,
-      displayName: users.displayName,
-      weightUnit: users.weightUnit,
-      personalGroupId: users.personalGroupId,
-      groupId: groupMembers.groupId,
-      role: groupMembers.role,
-    })
+    .select(CALLER_ROW)
     .from(users)
     .leftJoin(groupMembers, eq(groupMembers.userId, users.id))
     .where(eq(users.id, userId))

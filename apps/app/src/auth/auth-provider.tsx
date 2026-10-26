@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useSyncExternalStore } f
 import { useQueryClient } from '@tanstack/react-query'
 import type { LoginInput, Me, RegisterInput, WeightUnit } from '@cedo/contract'
 import { api, session } from '../api/http.ts'
+import { forgetThisDevice, useThisDeviceKept } from '../lib/rest-alerts.ts'
 import { WeightUnitProvider } from '../lib/weight-unit.ts'
 import type { AuthStatus } from './session.ts'
 
@@ -31,6 +32,16 @@ export function useAuth(): AuthValue {
   return value
 }
 
+/**
+ * Signed out — its rest alerts first, while the token still works, so the next person on this
+ * device is not told this one's rests (#38). Best effort, as signing out is: it must never trap
+ * someone signed in.
+ */
+async function signOut(): Promise<void> {
+  await forgetThisDevice().catch(() => null)
+  await session.signOut()
+}
+
 export function AuthProvider({
   children,
 }: {
@@ -42,6 +53,7 @@ export function AuthProvider({
   useEffect(() => {
     void session.restore()
   }, [])
+  useThisDeviceKept(status === 'signed-in')
   // Signed out — by choice or because the server stopped honouring the token: nothing cached for
   // the last person may be shown to the next.
   useEffect(
@@ -62,7 +74,7 @@ export function AuthProvider({
       register: async (input) => {
         await session.adopt((await api.auth.register(input)).token)
       },
-      signOut: session.signOut,
+      signOut,
       setWeightUnit: session.setWeightUnit,
       retry: session.restore,
     }),

@@ -100,17 +100,6 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
       },
     },
   )
-  .delete(
-    '/:id/logs/:logId',
-    async ({ caller, params: { id, logId } }) => {
-      await SessionService.removeLog(caller, id, logId)
-      return { ok: true }
-    },
-    {
-      params: z.object({ id: Id, logId: Id }),
-      detail: { summary: 'Remove a set: an undo, or a past mistake fixed' },
-    },
-  )
 
 /** What to do next (#25): the first screen's one read. */
 export const todayRoutes = new Elysia({ prefix: '/today', tags: ['sessions'] })

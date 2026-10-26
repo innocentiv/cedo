@@ -47,12 +47,11 @@ export async function logSet(
       .catch(rethrowMissingEntry)
     return row ?? null
   })
-  if (created !== null) {
-    // The rest it starts, kept so its end can be told with the app closed (#38).
-    await startRest(caller, sessionId)
-    // Answered as read, so it says what a read says of it — whether it was a personal best.
-    return await storedById(caller, sessionId, created.id)
-  }
+  // The rest it starts, kept so its end can be told with the app closed (#38) — on a set sent again
+  // too: had working it out failed the first time, the retry is what keeps it.
+  await startRest(caller, sessionId)
+  // Answered as read, so it says what a read says of it — whether it was a personal best.
+  if (created !== null) return await storedById(caller, sessionId, created.id)
   const replayed = await storedByKey(caller, sessionId, idempotencyKey)
   if (replayed === undefined) throw new Error('A stored key has no set')
   return replayed

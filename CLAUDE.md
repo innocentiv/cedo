@@ -32,10 +32,11 @@ is designed to prevent.
 7. **All behaviour is tested on the backend.** UI code stays trivially thin and holds no domain
    logic. The one exception is state only the app owns — who is signed in on this device, and the
    app shell it keeps for opening offline, and when a set logged without a signal is sent again,
-   and how such a set counts on the workout, and when a plan edited in place is saved — which
-   lives in plain modules (`apps/app/src/auth/session.ts`, `apps/app/src/pwa/shell-cache.ts`,
-   `apps/app/src/api/retry.ts`, `apps/app/src/api/pending.ts`, `apps/app/src/lib/plan-sync.ts`;
-   no React, no React Native) and is unit-tested beside them.
+   and how such a set counts on the workout, and when a plan edited in place is saved, and whether
+   this device is told when a rest is over — which lives in plain modules
+   (`apps/app/src/auth/session.ts`, `apps/app/src/pwa/shell-cache.ts`, `apps/app/src/api/retry.ts`,
+   `apps/app/src/api/pending.ts`, `apps/app/src/lib/plan-sync.ts`,
+   `apps/app/src/pwa/rest-alert.ts`; no React, no React Native) and is unit-tested beside them.
    Components are never unit-tested; lint refuses it. See `docs/10-testing.md` and the amendment
    to `docs/adr/0017-webview-for-ui-verification.md`.
 

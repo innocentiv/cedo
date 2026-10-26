@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
 import { NO_TARGET, type Rest, restOf } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
@@ -17,7 +17,8 @@ export async function restNow(caller: Caller, sessionId: string): Promise<Rest |
   const [session] = await db
     .select({ workoutId: workoutSessions.workoutId, dayId: workoutSessions.dayId })
     .from(workoutSessions)
-    .where(and(ownedBy(caller), eq(workoutSessions.id, sessionId)))
+    // In progress only: a finished session rests no more.
+    .where(and(ownedBy(caller), eq(workoutSessions.id, sessionId), isNull(workoutSessions.endedAt)))
     .limit(1)
   if (session === undefined) return null
   const logs = await db

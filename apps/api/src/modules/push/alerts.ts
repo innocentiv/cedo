@@ -1,5 +1,6 @@
 import { and, eq, isNull, lte } from 'drizzle-orm'
 import webpush from 'web-push'
+import type { PushSubscriptionInput } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { pushSubscriptions, workoutSessions } from '../../db/schema.ts'
 import { env } from '../../env.ts'
@@ -16,10 +17,7 @@ import { restAlertFor } from './message.ts'
  */
 
 /** A device as a push is sealed for it. */
-export interface Device {
-  readonly endpoint: string
-  readonly keys: { readonly p256dh: string; readonly auth: string }
-}
+export type Device = PushSubscriptionInput
 
 /** Whether a device took the push, or its push service says it is gone for good. */
 export type Delivered = 'sent' | 'gone' | 'failed'
@@ -47,8 +45,14 @@ export async function sendDueAlerts(now: Date, deliver: Deliver = webPush): Prom
   const fresh = due.filter(
     (d) => d.endsAt !== null && now.getTime() - d.endsAt.getTime() < STALE_MS,
   )
-  const told = await Promise.all(fresh.map(async (d) => await tell(d.userId, d.id, deliver)))
-  return told.reduce((sum, n) => sum + n, 0)
+  // Each rest on its own: one that cannot be told — its athlete gone, its session unreadable — must
+  // not lose the others already claimed with it.
+  const told = await Promise.allSettled(fresh.map(async (d) => await tell(d.userId, d.id, deliver)))
+  return told.reduce((sum, t) => {
+    if (t.status === 'fulfilled') return sum + t.value
+    console.error('A rest alert could not be told:', t.reason)
+    return sum
+  }, 0)
 }
 
 /** One rest's alert, to every device of its athlete's. How many took it. */
@@ -75,8 +79,8 @@ async function tell(userId: string, sessionId: string, deliver: Deliver): Promis
 
 /** Through the device's push service, sealed with this instance's key pair. */
 async function webPush(device: Device, payload: string): Promise<Delivered> {
-  const { publicKey, privateKey } = await pushKeys()
   try {
+    const { publicKey, privateKey } = await pushKeys()
     await webpush.sendNotification(device, payload, {
       vapidDetails: { subject: env.VAPID_SUBJECT, publicKey, privateKey },
       // Worth nothing a minute late, and wanted now.
@@ -89,26 +93,29 @@ async function webPush(device: Device, payload: string): Promise<Delivered> {
     const status: unknown =
       typeof error === 'object' && error !== null ? Reflect.get(error, 'statusCode') : undefined
     if (status === 404 || status === 410) return 'gone'
-    console.warn('A rest alert was not taken by its push service:', status)
+    console.warn('A rest alert was not taken by its push service:', status ?? error)
     return 'failed'
   }
 }
 
-/** The sender, once a second, for the life of the process; each round waits for the last. */
-export function startRestAlerts(): () => void {
-  let busy = false
+/**
+ * The sender, once a second, for the life of the process; each round waits for the last. Stopped,
+ * it lets a round already running finish — the database is closed after it, not under it.
+ */
+export function startRestAlerts(): () => Promise<void> {
+  let round: Promise<unknown> | null = null
   const timer = setInterval(() => {
-    if (busy) return
-    busy = true
-    sendDueAlerts(new Date())
+    if (round !== null) return
+    round = sendDueAlerts(new Date())
       .catch((error: unknown) => {
         console.error('Rest alerts failed this round:', error)
       })
       .finally(() => {
-        busy = false
+        round = null
       })
   }, 1000)
-  return () => {
+  return async () => {
     clearInterval(timer)
+    await round
   }
 }

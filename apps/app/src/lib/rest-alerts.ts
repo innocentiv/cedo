@@ -2,18 +2,14 @@ import { useCallback, useEffect, useState } from 'react'
 import { Platform } from 'react-native'
 import { PushSubscriptionInput } from '@cedo/contract'
 import { api } from '../api/http.ts'
-import { keyBytes } from '../pwa/rest-alert.ts'
+import { type AlertsState, alertsStateOf, keyBytes } from '../pwa/rest-alert.ts'
 
 /**
- * Being told when a rest is over with the app closed (#38): this device's answer, and turning it on
- * or off. Only a browser that can take a push — on an iPhone, cedo added to the home screen.
- *
- * - `unsupported`: this browser cannot be told.
- * - `ask`: not answered yet — the rest band offers it.
- * - `on`, `off`: answered, and this device is, or is not, told.
- * - `blocked`: refused in the browser's settings, which only those can undo.
+ * Being told when a rest is over with the app closed (#38): this device's answer, turning it on or
+ * off, and keeping it the signed-in person's — re-subscribed on every open, and forgotten at sign
+ * out, so the next person on the device is not told the last one's rests. What it says is
+ * `alertsStateOf`'s, plain and tested.
  */
-export type AlertsState = 'unsupported' | 'ask' | 'on' | 'off' | 'blocked'
 
 const supported = (): boolean =>
   Platform.OS === 'web' &&
@@ -23,16 +19,41 @@ const supported = (): boolean =>
   'PushManager' in window &&
   'Notification' in window
 
-async function current(): Promise<PushSubscription | null> {
+async function subscription(): Promise<PushSubscription | null> {
+  if (!supported()) return null
   const registration = await navigator.serviceWorker.ready
   return await registration.pushManager.getSubscription()
 }
 
 async function stateNow(): Promise<AlertsState> {
-  if (!supported()) return 'unsupported'
-  if (Notification.permission === 'denied') return 'blocked'
-  if (Notification.permission === 'default') return 'ask'
-  return (await current()) === null ? 'off' : 'on'
+  const can = supported()
+  return alertsStateOf({
+    supported: can,
+    permission: can ? Notification.permission : 'default',
+    subscribed: can && (await subscription()) !== null,
+  })
+}
+
+/** On every open, signed in: this device told again, as the person signed in on it now. */
+export async function keepThisDevice(): Promise<void> {
+  const subscribed = await subscription()
+  if (subscribed === null) return
+  await api.push.subscribe(PushSubscriptionInput.parse(subscribed.toJSON()))
+}
+
+/** At sign out: this device told no more — the account's alerts are not the next person's. */
+export async function forgetThisDevice(): Promise<void> {
+  const subscribed = await subscription()
+  if (subscribed === null) return
+  await api.push.unsubscribe({ endpoint: subscribed.endpoint })
+  await subscribed.unsubscribe()
+}
+
+/** Signed in, on every open: this device's rest alerts, if it has them, are this person's. */
+export function useThisDeviceKept(signedIn: boolean): void {
+  useEffect(() => {
+    if (signedIn) void keepThisDevice().catch(() => null)
+  }, [signedIn])
 }
 
 export function useRestAlerts(): {
@@ -48,35 +69,31 @@ export function useRestAlerts(): {
     void stateNow().then(setState)
   }, [])
 
-  const turnOn = useCallback(async () => {
+  const settle = async (work: () => Promise<void>): Promise<void> => {
     setBusy(true)
     try {
-      if ((await Notification.requestPermission()) !== 'granted') return
-      const registration = await navigator.serviceWorker.ready
-      const { publicKey } = await api.push.key()
-      const subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: keyBytes(publicKey),
-      })
-      await api.push.subscribe(PushSubscriptionInput.parse(subscription.toJSON()))
+      await work()
     } finally {
       setState(await stateNow())
       setBusy(false)
     }
-  }, [])
+  }
 
-  const turnOff = useCallback(async () => {
-    setBusy(true)
-    try {
-      const subscription = await current()
-      if (subscription === null) return
-      await api.push.unsubscribe({ endpoint: subscription.endpoint })
-      await subscription.unsubscribe()
-    } finally {
-      setState(await stateNow())
-      setBusy(false)
-    }
-  }, [])
+  const turnOn = useCallback(
+    async () =>
+      await settle(async () => {
+        if ((await Notification.requestPermission()) !== 'granted') return
+        const registration = await navigator.serviceWorker.ready
+        const { publicKey } = await api.push.key()
+        await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: keyBytes(publicKey),
+        })
+        await keepThisDevice()
+      }),
+    [],
+  )
+  const turnOff = useCallback(async () => await settle(forgetThisDevice), [])
 
   return { state, busy, turnOn, turnOff }
 }

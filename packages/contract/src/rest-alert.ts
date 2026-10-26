@@ -1,4 +1,5 @@
 import { formatEffort } from './effort.ts'
+import type { RestAlert } from './push.ts'
 import type { TrackingMode } from './exercise.ts'
 import type { SetTarget } from './progression.ts'
 import { type FlowEntry, type FlowLog, focusOf, nextSet, setsOf } from './session-flow.ts'
@@ -20,7 +21,7 @@ export function restAlertOf(
   logs: readonly FlowLog[],
   targets: readonly { readonly entryId: string; readonly target: SetTarget }[],
   unit: WeightUnit,
-): { readonly title: string; readonly body: string } {
+): Omit<RestAlert, 'url'> {
   const title = 'Rest over'
   const entry = day === null ? null : focusOf(day, logs)
   if (entry === null || entry.exercise === null) return { title, body: 'Time for the next set.' }

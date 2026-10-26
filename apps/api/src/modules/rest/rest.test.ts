@@ -139,20 +139,37 @@ describe('the rest a session has running', () => {
 
   test('+30 s moves its end; a change meant for an earlier rest changes nothing', async () => {
     const s = await following()
-    const first = await s.log()
-    await post(`/sessions/${s.id}/rest`, { since: first.loggedAt, change: 'extend' })
+    await s.log()
+    // Named by how many sets there were when tapped — never by a time, which a set sent without a
+    // signal has from the phone, then from the server.
+    await post(`/sessions/${s.id}/rest`, { sets: 1, change: 'extend' })
     expect(seconds(await restOf(s.id))).toBe(120)
-    const second = await s.log()
+    await s.log()
     // Sent late, after the next set began a rest of its own.
-    await post(`/sessions/${s.id}/rest`, { since: first.loggedAt, change: 'extend' })
+    await post(`/sessions/${s.id}/rest`, { sets: 1, change: 'extend' })
     expect(seconds(await restOf(s.id))).toBe(90)
-    await post(`/sessions/${s.id}/rest`, { since: second.loggedAt, change: 'skip' })
-    expect(await restOf(s.id)).toBeNull()
+  })
+
+  test('skipped, it is kept as ended when it began — so a reload, or another device, reads it so', async () => {
+    const s = await following()
+    const first = await s.log()
+    await post(`/sessions/${s.id}/rest`, { sets: 1, change: 'skip' })
+    expect(await restOf(s.id)).toEqual({ since: first.loggedAt, endsAt: first.loggedAt })
+  })
+
+  test('undoing an older set keeps the rest running, and its +30 s', async () => {
+    const s = await following()
+    const first = await s.log()
+    await s.log()
+    await post(`/sessions/${s.id}/rest`, { sets: 2, change: 'extend' })
+    await post(`/sessions/${s.id}/logs/${first.id}`, {}, 'DELETE')
+    expect(seconds(await restOf(s.id))).toBe(120)
   })
 
   test('undoing its set, or finishing the session, ends it', async () => {
     const s = await following()
     const first = await s.log()
+    // Undone, the set's rest goes with it: there is no working set before it.
     await post(`/sessions/${s.id}/logs/${first.id}`, {}, 'DELETE')
     expect(await restOf(s.id)).toBeNull()
     await s.log()
@@ -163,12 +180,13 @@ describe('the rest a session has running', () => {
 
   test("is one's own: another's session cannot be changed", async () => {
     const s = await following()
-    const first = await s.log()
+    await s.log()
     const bob = await h.as('bob')
     await bob.wire(`/sessions/${s.id}/rest`, {
       method: 'POST',
-      body: JSON.stringify({ since: first.loggedAt, change: 'skip' }),
+      body: JSON.stringify({ sets: 1, change: 'skip' }),
     })
-    expect(await restOf(s.id)).not.toBeNull()
+    // Still its 90 s — skipped, it would have ended when it began.
+    expect(seconds(await restOf(s.id))).toBe(90)
   })
 })

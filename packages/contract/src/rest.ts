@@ -63,17 +63,19 @@ export function restRemaining(rest: Rest, extensions: number, now: number): numb
 
 /**
  * The rest a session has running, as the server keeps it (#38): from the set it follows, to when it
- * ends — +30 s and skipping included. What the alert is sent at, and what the countdown counts to.
+ * ends — +30 s included. Skipped, it ends when it began. What the alert is sent at, and what the
+ * countdown counts to.
  */
 export const SessionRest = z.object({ since: Timestamp, endsAt: Timestamp })
 export type SessionRest = z.output<typeof SessionRest>
 
 /**
- * `POST /sessions/:id/rest`: +30 s, or skip — of the rest that started `since`. A change sent late,
- * after the next set began another rest, names the one it meant, and changes nothing.
+ * `POST /sessions/:id/rest`: +30 s, or skip — of the rest running after the session's `sets`th set.
+ * Named by how many sets there were when it was tapped, never by a time: a set waiting for a signal
+ * is dated by the phone, then by the server. A change after the next set changes nothing.
  */
 export const RestChange = z.strictObject({
-  since: Timestamp,
+  sets: z.int().nonnegative(),
   change: z.enum(['extend', 'skip']),
 })
 export type RestChange = z.output<typeof RestChange>
@@ -84,9 +86,15 @@ export type RestChange = z.output<typeof RestChange>
  * on another device, or one made before a reload, is the server's to know. Never the two added: a
  * tap here is sent there too.
  */
-export function restCounted(counted: Rest, extensions: number, kept: SessionRest | null): Rest {
+export function restCounted(
+  counted: Rest,
+  extensions: number,
+  kept: SessionRest | null,
+): Rest | null {
   const here = counted.seconds + extensions * REST_EXTENSION_S
   const same = kept !== null && Date.parse(kept.since) === Date.parse(counted.since)
-  const there = same ? Math.round((Date.parse(kept.endsAt) - Date.parse(kept.since)) / 1000) : 0
-  return { since: counted.since, seconds: Math.max(here, there) }
+  const there = same ? Math.round((Date.parse(kept.endsAt) - Date.parse(kept.since)) / 1000) : null
+  // Ending when it began, it was skipped — here before a reload, or on another device.
+  if (there === 0) return null
+  return { since: counted.since, seconds: Math.max(here, there ?? 0) }
 }
