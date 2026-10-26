@@ -10,6 +10,7 @@ import {
   useReadAthleteAgain,
 } from '../api/athlete-queries.ts'
 import { athleteSession } from './addresses.ts'
+import { AthleteEquipmentCard } from './athlete-equipment.tsx'
 import { FIRST_PERIOD, Period, Review } from './progress-parts.tsx'
 import { PagedHistory } from './today-parts.tsx'
 
@@ -44,6 +45,7 @@ export function AthleteView({
         <Period weeks={weeks} onChange={setWeeks} />
         <Review query={review} testID="athlete-progress" />
       </Stack>
+      <AthleteEquipmentCard id={id} />
       <PagedHistory history={history} sessionHref={athleteSession(id)} testID="athlete-history" />
     </Stack>
   ) : athletes.data === undefined ? (

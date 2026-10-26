@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import {
   Athlete,
+  AthleteEquipment,
+  type AthleteEquipmentInput,
   AuthResult,
   type DuplicateInput,
   EntryTarget,
@@ -197,6 +199,13 @@ const athletes = ({ GET }: Verbs) => ({
     await GET(`/athletes/${id}/exercises/${exerciseId}/history`, ExerciseHistory, asQuery(query)),
   review: async (id: string, query: ReviewQuery) =>
     await GET(`/athletes/${id}/review`, TrainingReview, asQuery(query)),
+  equipment: async (id: string) => await GET(`/athletes/${id}/equipment`, AthleteEquipment),
+})
+
+/** What you have to train with (#34), replaced whole. */
+const equipment = ({ GET, PUT }: Verbs) => ({
+  get: async () => await GET('/equipment', AthleteEquipment),
+  save: async (body: AthleteEquipmentInput) => await PUT('/equipment', AthleteEquipment, body),
 })
 
 const groups = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
@@ -235,6 +244,7 @@ export function createApi(request: SendRequest) {
     today: today(v),
     review: review(v),
     athletes: athletes(v),
+    equipment: equipment(v),
     groups: groups(v),
     media: media(v),
     tokens: tokens(v),

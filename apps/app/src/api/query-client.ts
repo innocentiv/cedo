@@ -72,4 +72,6 @@ export const keys = {
   athleteSession: (id: string, sessionId: string) => ['athleteSession', id, sessionId] as const,
   athleteHistory: (id: string, exerciseId: string) => ['athleteHistory', id, exerciseId] as const,
   athleteReview: (id: string, weeks: number) => ['athleteReview', id, weeks] as const,
+  athleteEquipment: (id: string) => ['athleteEquipment', id] as const,
+  equipment: ['equipment'] as const,
 } as const satisfies { readonly [R in Read]: KeyOf<R> | ((...args: never[]) => KeyOf<R>) }

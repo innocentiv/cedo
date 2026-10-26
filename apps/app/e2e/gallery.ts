@@ -288,6 +288,17 @@ async function seed(): Promise<World> {
   await coach.api.workouts.transfer(coachPlan.id, { toGroupId: club.id })
   await api.groups.setSharing(club.id, { sharesTraining: true })
   await api.tokens.create({ name: 'Claude', expiresInDays: null })
+  // A gym of their own (#34): dumbbells that go 2 kg at a time, a rack, a bar, a cable column.
+  await api.equipment.save({
+    items: [
+      { slug: 'dumbbells', weights: { stepG: 2000, minG: 2000, maxG: 30_000 } },
+      { slug: 'barbell', weights: { stepG: 2500, minG: 20_000, maxG: null } },
+      { slug: 'rack', weights: null },
+      { slug: 'flat_bench', weights: null },
+      { slug: 'high_pulley', weights: { stepG: 5000, minG: 5000, maxG: 90_000 } },
+      { slug: 'low_pulley', weights: { stepG: 5000, minG: 5000, maxG: 90_000 } },
+    ],
+  })
 
   return {
     username,
@@ -451,6 +462,8 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await snap('12b-progress')
   await show(page, '/settings', 'settings-screen')
   await snap('13-settings')
+  await show(page, '/settings/equipment', 'equipment-save')
+  await snap('13b-settings-equipment')
   await show(page, '/settings/groups', 'groups-screen')
   await snap('14-groups')
   await show(page, `/settings/groups/${world.clubId}`, 'group-detail-screen')

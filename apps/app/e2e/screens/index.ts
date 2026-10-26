@@ -2,6 +2,7 @@ import type { Page } from '../harness.ts'
 import { athletes } from './athletes.ts'
 import { auth } from './auth.ts'
 import { desk } from './desk.ts'
+import { equipment } from './equipment.ts'
 import { fix } from './fix.ts'
 import { groups } from './groups.ts'
 import { install } from './install.ts'
@@ -31,6 +32,7 @@ export const screens = (page: Page) => ({
   session: session(page),
   fix: fix(page),
   settings: settings(page),
+  equipment: equipment(page),
   groups: groups(page),
   today: today(page),
   picker: picker(page),

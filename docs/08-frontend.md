@@ -393,6 +393,16 @@ As built (#29): the exercise chosen from the library opens in a pane beside the 
 its head), the list kept; the sidebar names the product at its head, and at its foot who is signed
 in — a tap to Settings — above the band of a session left open.
 
+### Your equipment
+
+**Settings → Equipment** (#34, `EquipmentForm`): what you have to train with, a checklist by group,
+with shortcuts that tick several at once (a cable column, an adjustable bench, a full gym). An item
+that holds the load, ticked, opens its weights — from, step, to, in your unit — starting where the
+contract says (`defaultWeights`: a bar from the bar), and a second pulley from the first's. The
+checklist edits a draft whose weights may be half-typed; `equipmentInputFrom` saves what is not
+known as unknown, and the whole list is replaced on Save. The Settings row says whether it is
+described yet — until it is, nothing is filtered (#35).
+
 ### The coach's view
 
 A coach is an editor of a group an athlete shares their training with (ADR-0021), and reads it —
@@ -403,8 +413,8 @@ never writes it. As built (#30):
   know a route only by its trigger. Reached by its address with nobody sharing, it says so.
 - **An athlete's page** (`AthleteView`): the session they are in now, if they are — a row that opens
   its sets so far — then their Progress, the same `Review` and periods as your own tab
-  (`GET /athletes/:id/review`), then their history by week (`PagedHistory`, as Today's). Nothing on
-  it changes their training.
+  (`GET /athletes/:id/review`), then what they have to train with (#34, `AthleteEquipmentCard`),
+  then their history by week (`PagedHistory`, as Today's). Nothing on it changes their training.
 - **Read again on coming back, never polled.** They train on their own device, so nothing the coach
   does marks it stale: on regaining focus the page asks who shares again, and only then — while
   they still do — their reads (`useReadAthleteAgain`). A share ended is learnt first, so their reads

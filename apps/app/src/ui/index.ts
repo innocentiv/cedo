@@ -5,7 +5,7 @@
 export { Button, type ButtonVariant } from './button.tsx'
 export { Card, ListRow } from './card.tsx'
 export { Columns } from './columns.tsx'
-export { type ChipOption, Chips } from './chips.tsx'
+export { Chip, type ChipOption, Chips } from './chips.tsx'
 export { ConfirmButton } from './confirm-button.tsx'
 export { EntryEditor } from './entry-editor.tsx'
 export { Icon, IconButton, type IconName } from './icon.tsx'

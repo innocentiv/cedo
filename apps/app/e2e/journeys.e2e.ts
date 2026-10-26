@@ -189,6 +189,53 @@ async function coachingSetUp(page: Page, coachName: string) {
 }
 
 /**
+ * What you have to train with (#34): undescribed until said; ticked by group, a weighted item's
+ * weights from where they usually start, a second pulley from the first's, a shortcut ticking
+ * several — and read back as saved.
+ */
+test(
+  'you say what you train with, and how your dumbbells go',
+  async () => {
+    await withApp('equipment', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('kit'))
+      expect(await app.equipment.said()).toEqual(['Not described yet: every exercise is offered'])
+
+      await app.equipment.open()
+      await app.equipment.have('dumbbells')
+      expect(await app.equipment.weights('dumbbells')).toEqual(['2.5', '2.5', ''])
+      await app.equipment.type('dumbbells', 'minG', '2')
+      await app.equipment.type('dumbbells', 'stepG', '2')
+      await app.equipment.type('dumbbells', 'maxG', '30')
+
+      await app.equipment.have('high_pulley')
+      await app.equipment.type('high_pulley', 'stepG', '5')
+      await app.equipment.have('low_pulley')
+      expect(await app.equipment.weights('low_pulley')).toEqual(['2.5', '5', ''])
+      await app.equipment.shortcut(1)
+      await app.equipment.save()
+
+      expect(await app.equipment.said()).toEqual(['5 items to train with'])
+      await app.equipment.open()
+      expect(await app.equipment.ticked()).toEqual([
+        'dumbbells',
+        'flat_bench',
+        'incline_bench',
+        'high_pulley',
+        'low_pulley',
+      ])
+      expect(await app.equipment.weights('dumbbells')).toEqual(['2', '2', '30'])
+      const mine = await page.client()
+      expect((await mine.equipment.get()).items[0]).toEqual({
+        slug: 'dumbbells',
+        weights: { stepG: 2000, minG: 2000, maxG: 30_000 },
+      })
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * A coach reads an athlete's training (#30): the tab offered only while someone shares with them,
  * the session they are in, their Progress, their history — and from a session, an exercise's. Read
  * again on coming back, never polled: a session finished meanwhile is no longer "Training now".
@@ -204,11 +251,17 @@ test(
       expect(await app.nav.offered('athletes')).toBe(false)
       const { athlete, squadId, rowId, nowId } = await coachingSetUp(page, coachName)
 
+      await athlete.api.equipment.save({
+        items: [{ slug: 'dumbbells', weights: { stepG: 2000, minG: 2000, maxG: 30_000 } }],
+      })
+
       await page.goto('/today')
       await app.nav.onToday()
       expect(await app.nav.offered('athletes')).toBe(true)
       await app.nav.tab('athletes')
       await app.athletes.open(athlete.user.id)
+      // What they train with, to plan for their gym (#34) — read, never changed here.
+      expect(await app.athletes.equipment()).toEqual(['Dumbbells: from 2 kg to 30 kg, by 2 kg'])
       expect(await app.athletes.trainingNow()).toContain('Without a plan')
       // The review counts the session they are in, as their own Progress does.
       expect(await app.progress.attention()).toContain('4 sessions at 5 × 80 kg')

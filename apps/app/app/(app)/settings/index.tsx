@@ -1,4 +1,4 @@
-import type { WeightUnit } from '@cedo/contract'
+import type { AthleteEquipment, WeightUnit } from '@cedo/contract'
 import {
   Button,
   type ChipOption,
@@ -11,6 +11,7 @@ import {
   Text,
 } from '../../../src/ui/index.ts'
 import { useGroups } from '../../../src/api/queries.ts'
+import { useEquipment } from '../../../src/api/equipment-queries.ts'
 import { useAuth } from '../../../src/auth/auth-provider.tsx'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 import { useWeightUnit } from '../../../src/lib/weight-unit.ts'
@@ -20,9 +21,18 @@ const UNIT_OPTIONS: readonly ChipOption<WeightUnit>[] = [
   { value: 'lb', label: 'Pounds' },
 ]
 
+/** What the Equipment row says of what was said (#34): nothing yet, or how much. */
+const equipmentSaid = (equipment: AthleteEquipment | undefined): string | undefined =>
+  equipment === undefined
+    ? undefined
+    : equipment.described
+      ? `${String(equipment.items.length)} ${equipment.items.length === 1 ? 'item' : 'items'} to train with`
+      : 'Not described yet: every exercise is offered'
+
 export default function Settings(): React.JSX.Element {
   const { me, signOut, setWeightUnit } = useAuth()
   const groups = useGroups()
+  const equipment = useEquipment()
   const { submit, error } = useSubmit()
   const unit = useWeightUnit()
 
@@ -48,6 +58,20 @@ export default function Settings(): React.JSX.Element {
             testID="weight-unit"
           />
           <FormError message={error} testID="weight-unit-error" />
+        </Stack>
+
+        <Stack gap="sm">
+          <ListRow
+            title="Equipment"
+            subtitle={equipmentSaid(equipment.data)}
+            testID="settings-equipment"
+          />
+          <NavButton
+            title="Your equipment"
+            href="/settings/equipment"
+            variant="secondary"
+            testID="manage-equipment"
+          />
         </Stack>
 
         <Stack gap="sm">

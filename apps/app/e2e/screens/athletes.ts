@@ -18,6 +18,17 @@ export const athletes = (page: Page) => ({
   /** Whether the athlete's row in the list is on screen — beside them, on a desktop. */
   listed: async (athleteId: string): Promise<boolean> =>
     await page.shown(`athlete-row-${athleteId}`),
+  /** What they have to train with, as their Equipment card reads it under its label (#34). */
+  equipment: async (): Promise<string[]> => {
+    await page.waitFor('athlete-equipment')
+    return String(
+      await page.evaluate(`document.querySelector('[data-testid="athlete-equipment"]').innerText`),
+    )
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '')
+      .slice(1)
+  },
   /** The session they are in now, as its row reads. */
   trainingNow: async (): Promise<string> => {
     await page.waitFor('athlete-training-now')
