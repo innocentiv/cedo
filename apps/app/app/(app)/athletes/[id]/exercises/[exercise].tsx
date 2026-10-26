@@ -2,7 +2,9 @@ import { useLocalSearchParams } from 'expo-router'
 import { Loaded, Screen } from '../../../../../src/ui/index.ts'
 import { useExercise } from '../../../../../src/api/queries.ts'
 import { useAthleteExerciseHistory } from '../../../../../src/api/athlete-queries.ts'
+import { athleteSession } from '../../../../../src/lib/addresses.ts'
 import { RecentHistory } from '../../../../../src/lib/exercise-about.tsx'
+import { useGoBack } from '../../../../../src/lib/use-go-back.ts'
 
 /**
  * An athlete's history of one exercise, read by their coach (#30): its trend and their sessions of
@@ -10,17 +12,20 @@ import { RecentHistory } from '../../../../../src/lib/exercise-about.tsx'
  * Edit or Duplicate: this is the athlete's, read.
  */
 export default function AthleteExercise(): React.JSX.Element {
-  const { id, exercise: exerciseId } = useLocalSearchParams<{ id: string; exercise: string }>()
-  const exercise = useExercise(exerciseId ?? '')
-  const history = useAthleteExerciseHistory(id ?? '', exerciseId ?? '')
+  const { id = '', exercise: exerciseId = '' } = useLocalSearchParams<{
+    id: string
+    exercise: string
+  }>()
+  const goBack = useGoBack(`/athletes/${id}`)
+  const history = useAthleteExerciseHistory(id, exerciseId)
   return (
-    <Loaded query={exercise} testID="athlete-exercise">
+    <Loaded query={useExercise(exerciseId)} testID="athlete-exercise">
       {(data) => (
-        <Screen title={data.name} testID="athlete-exercise-screen">
+        <Screen title={data.name} onBack={goBack} testID="athlete-exercise-screen">
           <RecentHistory
             query={history}
             tracking={data.tracking}
-            sessionHref={(sessionId) => `/athletes/${id ?? ''}/sessions/${sessionId}`}
+            sessionHref={athleteSession(id)}
           />
         </Screen>
       )}

@@ -18,6 +18,7 @@ import {
 } from '../ui/index.ts'
 import { DuplicateIntoMyGroup } from './duplicate-into-my-group.tsx'
 import { About, RecentHistory } from './exercise-about.tsx'
+import { ownSession } from './addresses.ts'
 import { GroupPlacement } from './group-placement.tsx'
 import { useSubmit } from './use-submit.ts'
 
@@ -97,11 +98,7 @@ export function ExerciseDetailView({
 
       <About exercise={data} />
 
-      <RecentHistory
-        query={history}
-        tracking={data.tracking}
-        sessionHref={(sessionId) => `/today/session/${sessionId}`}
-      />
+      <RecentHistory query={history} tracking={data.tracking} sessionHref={ownSession} />
 
       {data.canEdit ? (
         // Refused while a plan or a logged set still uses it, and says so beside the button.

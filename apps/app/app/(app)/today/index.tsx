@@ -2,7 +2,8 @@ import { useRouter } from 'expo-router'
 import { type SessionStart, startOfWeek } from '@cedo/contract'
 import { Columns, FormError, Loaded, Screen } from '../../../src/ui/index.ts'
 import { useHistory, useStartSession, useToday } from '../../../src/api/queries.ts'
-import { History, Now } from '../../../src/lib/today-parts.tsx'
+import { Now, PagedHistory } from '../../../src/lib/today-parts.tsx'
+import { ownSession } from '../../../src/lib/addresses.ts'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 
 /**
@@ -36,26 +37,7 @@ export default function Today(): React.JSX.Element {
             {(now) => <Now today={now} weekStart={weekStart} onStart={begin} busy={busy} />}
           </Loaded>
         }
-        side={
-          <Loaded query={history} testID="today">
-            {(data) => (
-              <History
-                sessions={data.pages.flatMap((page) => page.items)}
-                sessionHref={(id) => `/today/session/${id}`}
-                older={
-                  history.hasNextPage
-                    ? {
-                        load: () => {
-                          void history.fetchNextPage()
-                        },
-                        busy: history.isFetchingNextPage,
-                      }
-                    : null
-                }
-              />
-            )}
-          </Loaded>
-        }
+        side={<PagedHistory history={history} sessionHref={ownSession} testID="today" />}
       />
     </Screen>
   )

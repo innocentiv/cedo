@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router'
 import {
   type NextDay,
+  type Page,
   type SessionStart,
   type Today,
   type WorkoutSessionSummary,
@@ -11,7 +12,18 @@ import {
   sessionName,
   weekStrip,
 } from '@cedo/contract'
-import { Button, Card, Empty, ListRow, NavButton, Stack, Text, WeekStrip } from '../ui/index.ts'
+import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
+import {
+  Button,
+  Card,
+  Empty,
+  ListRow,
+  Loaded,
+  NavButton,
+  Stack,
+  Text,
+  WeekStrip,
+} from '../ui/index.ts'
 
 /**
  * Today's parts (#25): what to do now — the session in progress, else the next day of the current
@@ -222,5 +234,40 @@ export function History({
         />
       )}
     </Stack>
+  )
+}
+
+/**
+ * History as read, a page at a time — your own (#25), or an athlete's read by their coach (#30):
+ * older sessions asked for only when shown more.
+ */
+export function PagedHistory({
+  history,
+  sessionHref,
+  testID,
+}: {
+  readonly history: UseInfiniteQueryResult<InfiniteData<Page<WorkoutSessionSummary>>>
+  readonly sessionHref: (sessionId: string) => string
+  readonly testID: string
+}): React.JSX.Element {
+  return (
+    <Loaded query={history} testID={testID}>
+      {(data) => (
+        <History
+          sessions={data.pages.flatMap((page) => page.items)}
+          sessionHref={sessionHref}
+          older={
+            history.hasNextPage
+              ? {
+                  load: () => {
+                    void history.fetchNextPage()
+                  },
+                  busy: history.isFetchingNextPage,
+                }
+              : null
+          }
+        />
+      )}
+    </Loaded>
   )
 }

@@ -147,26 +147,36 @@ async function coachingSetUp(page: Page, coachName: string) {
   await athlete.api.groups.setSharing(squad.id, { sharesTraining: true })
   const [row] = (await athlete.api.exercises.list({ q: 'Barbell Row', limit: 1 })).items
   if (row === undefined) throw new Error('The library has no row')
-  const logRow = async (sessionId: string) =>
+  const log = async (sessionId: string, exerciseId: string) =>
     await athlete.api.sessions.logSet(
       sessionId,
-      LogSetInput.parse({ exerciseId: row.id, weightG: kgToG(80), reps: 5 }),
+      LogSetInput.parse({ exerciseId, weightG: kgToG(80), reps: 5 }),
     )
   for (let i = 0; i < 3; i += 1) {
     // oxlint-disable-next-line no-await-in-loop -- one session at a time.
     const session = await athlete.api.sessions.start({ workoutId: null, dayId: null })
     // oxlint-disable-next-line no-await-in-loop -- in order.
-    await logRow(session.id)
+    await log(session.id, row.id)
     // oxlint-disable-next-line no-await-in-loop -- finished before the next can start.
     await athlete.api.sessions.update(session.id, { endedAt: new Date().toISOString() })
   }
-  await logRow((await athlete.api.sessions.start({ workoutId: null, dayId: null })).id)
-  return { athlete, squadId: squad.id, rowId: row.id }
+  // In progress: a row, and a lift of their own the coach cannot see.
+  const now = await athlete.api.sessions.start({ workoutId: null, dayId: null })
+  await log(now.id, row.id)
+  const own = await athlete.api.exercises.create(
+    ExerciseCreate.parse({
+      name: 'Robin Own Lift',
+      muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+    }),
+  )
+  await log(now.id, own.id)
+  return { athlete, squadId: squad.id, rowId: row.id, nowId: now.id }
 }
 
 /**
  * A coach reads an athlete's training (#30): the tab offered only while someone shares with them,
- * the session they are in, their Progress, their history — and from a session, an exercise's.
+ * the session they are in, their Progress, their history — and from a session, an exercise's. Read
+ * again on coming back, never polled: a session finished meanwhile is no longer "Training now".
  */
 test(
   "a coach reads an athlete's training, offered only while they share it",
@@ -176,31 +186,48 @@ test(
       const coachName = unique('coach')
       await app.auth.register(coachName)
       await app.nav.onToday()
-      expect(await app.athletes.offered()).toBe(false)
-      const { athlete, squadId, rowId } = await coachingSetUp(page, coachName)
+      expect(await app.nav.offered('athletes')).toBe(false)
+      const { athlete, squadId, rowId, nowId } = await coachingSetUp(page, coachName)
 
       await page.goto('/today')
       await app.nav.onToday()
-      expect(await app.athletes.offered()).toBe(true)
+      expect(await app.nav.offered('athletes')).toBe(true)
+      await app.nav.tab('athletes')
       await app.athletes.open(athlete.user.id)
-      expect(await app.athletes.trainingNow()).toContain('1 set')
+      expect(await app.athletes.trainingNow()).toContain('Without a plan')
       // The review counts the session they are in, as their own Progress does.
       expect(await app.progress.attention()).toContain('4 sessions at 5 × 80 kg')
       expect(await page.until(app.today.rows, (rows) => rows.length === 3)).toHaveLength(3)
 
-      // Their session in progress: the sets so far, read-only.
+      // Their session in progress: the sets so far, read-only — their own lift unnamed, unlinked.
       await app.athletes.openTrainingNow()
-      expect(await app.athletes.sets()).toContain('5 × 80 kg')
+      await app.session.logsShown()
+      expect(await app.session.logsText()).toContain('Unavailable exercise')
+      expect(await app.athletes.historyLinks()).toEqual([rowId])
+
+      // They finish it while it is open: coming back reads them again.
+      await athlete.api.sessions.update(nowId, {
+        endedAt: new Date().toISOString(),
+        notes: 'Felt heavy',
+      })
       await app.athletes.back()
+      await page.until(app.athletes.inTraining, (training) => !training)
+      await page.until(app.today.rows, (rows) => rows.length === 4)
+
       await app.today.open(0)
+      expect(await app.athletes.notes()).toBe('Felt heavy')
       await app.athletes.historyOf(rowId)
       expect(await app.exercise.historyText()).toContain('5 × 80 kg')
 
-      // Taken back: the tab is offered no more.
+      // Taken back while the coach reads: back on their page, it is theirs no more, nor the tab.
       await athlete.api.groups.setSharing(squadId, { sharesTraining: false })
-      await page.goto('/today')
-      await app.nav.onToday()
-      expect(await app.athletes.offered()).toBe(false)
+      await app.athletes.backFromExercise()
+      await app.athletes.back()
+      await app.athletes.gone()
+      await page.until(
+        async () => await app.nav.offered('athletes'),
+        (offered) => !offered,
+      )
     })
   },
   E2E_TIMEOUT_MS,
@@ -218,9 +245,11 @@ test(
         await app.auth.register(coachName)
         const { athlete } = await coachingSetUp(page, coachName)
         await page.goto('/today')
+        await app.nav.onToday()
+        await app.nav.tab('athletes')
         await app.athletes.open(athlete.user.id)
-        expect(await app.athletes.trainingNow()).toContain('1 set')
-        expect(await app.athletes.listShown()).toBe(true)
+        expect(await app.athletes.trainingNow()).toContain('Without a plan')
+        expect(await app.athletes.listed(athlete.user.id)).toBe(true)
       },
       { layout: 'desktop' },
     )

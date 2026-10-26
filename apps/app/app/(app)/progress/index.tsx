@@ -1,14 +1,7 @@
 import { useState } from 'react'
-import { Columns, Loaded, Screen, Stack } from '../../../src/ui/index.ts'
+import { Screen } from '../../../src/ui/index.ts'
 import { useReview } from '../../../src/api/queries.ts'
-import {
-  Attention,
-  Consistency,
-  Days,
-  FIRST_PERIOD,
-  Muscles,
-  Period,
-} from '../../../src/lib/progress-parts.tsx'
+import { FIRST_PERIOD, Period, Review } from '../../../src/lib/progress-parts.tsx'
 
 /**
  * Progress (#28): your training reviewed — how consistently, what needs attention, which days, and
@@ -17,28 +10,10 @@ import {
  */
 export default function Progress(): React.JSX.Element {
   const [weeks, setWeeks] = useState(FIRST_PERIOD)
-  const review = useReview(Number(weeks))
   return (
     <Screen title="Progress" wide testID="progress-screen">
-      <Period value={weeks} onChange={setWeeks} />
-      <Loaded query={review} testID="progress">
-        {(data) => (
-          <Columns
-            main={
-              <>
-                <Consistency review={data} />
-                <Attention review={data} />
-              </>
-            }
-            side={
-              <Stack gap="xxl">
-                <Days review={data} />
-                <Muscles review={data} />
-              </Stack>
-            }
-          />
-        )}
-      </Loaded>
+      <Period weeks={weeks} onChange={setWeeks} />
+      <Review query={useReview(weeks)} testID="progress" />
     </Screen>
   )
 }

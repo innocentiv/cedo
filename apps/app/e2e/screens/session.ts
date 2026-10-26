@@ -258,6 +258,8 @@ export const session = (page: Page) => {
       await page.waitFor('session-logs')
     },
     loggedIds: async (): Promise<string[]> => await loggedIds(page),
+    /** The sets so far by exercise, each exercise's name above its sets, as the list reads. */
+    logsText: async (): Promise<string> => (await page.text('session-logs')) ?? '',
     /**
      * The rendered lines of every logged set, newest last. `innerText`, not `textContent`: the
      * latter runs "Set 1" into "8 × 60 kg" as "Set 18 × 60 kg", and a `toContain('8 × 60 kg')`

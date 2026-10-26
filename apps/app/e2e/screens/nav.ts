@@ -1,6 +1,6 @@
 import type { Page } from '../harness.ts'
 
-type Tab = 'today' | 'workouts' | 'exercises' | 'progress' | 'settings'
+type Tab = 'today' | 'workouts' | 'exercises' | 'progress' | 'athletes' | 'settings'
 
 /**
  * The tab bar, and the screen each tab opens on. A tab keeps its stack, so switching returns to the
@@ -22,6 +22,8 @@ export const nav = (page: Page) => ({
     }
     await page.click(`[data-testid="nav-${tab}"]`)
   },
+  /** Whether a tab is offered — Athletes is, only to a coach (#30). */
+  offered: async (tab: Tab): Promise<boolean> => await page.shown(`nav-${tab}`),
   onToday: async (): Promise<void> => {
     await page.waitFor('today-screen')
   },

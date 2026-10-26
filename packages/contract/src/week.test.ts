@@ -7,6 +7,7 @@ import {
   personalBestsLabel,
   personalBestsShort,
   sessionLine,
+  openedSessionName,
   sessionName,
   startOfWeek,
   weekStrip,
@@ -82,6 +83,16 @@ describe('a session by name', () => {
   /** Read by a coach (#30), the athlete's own plan is out of sight — but it was followed. */
   test('a plan out of the reader’s sight is unavailable, never none', () => {
     expect(named('w', null, null)).toBe('Plan unavailable')
+  })
+
+  /** Opened, it says the name its row did: by the day its plan reaches, else as the row would. */
+  test('opened, by the day its plan reaches — unavailable, or none, as in its row', () => {
+    const day = { reachable: true as const, day: { name: 'Lower A' } }
+    expect(openedSessionName({ workoutId: 'w', plan: day })).toBe('Lower A')
+    expect(openedSessionName({ workoutId: 'w', plan: { reachable: false } })).toBe(
+      'Plan unavailable',
+    )
+    expect(openedSessionName({ workoutId: null, plan: null })).toBe('Without a plan')
   })
 })
 

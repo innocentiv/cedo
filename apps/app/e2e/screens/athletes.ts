@@ -2,14 +2,12 @@ import type { Page } from '../harness.ts'
 
 /**
  * The coach's view (#30): the athletes who share their training, and each one's — read-only. Their
- * Progress is the Progress tab's parts, and their history Today's rows: those drivers read them.
+ * Progress is the Progress tab's parts, their history Today's rows, and a session's sets the
+ * session's list: those drivers read them.
  */
 export const athletes = (page: Page) => ({
-  /** Whether the Athletes tab is offered — only to someone with an athlete sharing with them. */
-  offered: async (): Promise<boolean> => await page.shown('nav-athletes'),
-  /** Opens the tab and the athlete in it: their screen on a phone, the pane on a desktop. */
+  /** From the Athletes tab, opens one: their screen on a phone, the pane on a desktop. */
   open: async (athleteId: string): Promise<void> => {
-    await page.click('[data-testid="nav-athletes"]')
     await page.waitFor(`athlete-row-${athleteId}`)
     await page.click(`[data-testid="athlete-row-${athleteId}"]`)
     await page.until(
@@ -17,27 +15,45 @@ export const athletes = (page: Page) => ({
       (open) => open,
     )
   },
-  /** Whether the list of athletes is on screen — beside the one open, on a desktop. */
-  listShown: async (): Promise<boolean> => await page.shown('athlete-pane-card'),
+  /** Whether the athlete's row in the list is on screen — beside them, on a desktop. */
+  listed: async (athleteId: string): Promise<boolean> =>
+    await page.shown(`athlete-row-${athleteId}`),
   /** The session they are in now, as its row reads. */
   trainingNow: async (): Promise<string> => {
     await page.waitFor('athlete-training-now')
     return (await page.text('athlete-training-now')) ?? ''
   },
+  /** Whether a session of theirs is in progress, as the page last read it. */
+  inTraining: async (): Promise<boolean> => await page.shown('athlete-training-now'),
   /** Opens the session they are in now: its sets so far. */
   openTrainingNow: async (): Promise<void> => {
     await page.click('[data-testid="athlete-training-now"]')
     await page.waitFor('athlete-session-screen')
   },
-  /** The session's sets by exercise, as they read. */
-  sets: async (): Promise<string> => {
-    await page.waitFor('session-logs')
-    return (await page.text('session-logs')) ?? ''
+  /** Their notes on the session open, as written. */
+  notes: async (): Promise<string | null> => {
+    await page.waitFor('session-notes-read')
+    return await page.text('session-notes-read')
+  },
+  /** Which exercises of the session open their history: those the coach can see, by id. */
+  historyLinks: async (): Promise<string[]> => {
+    const ids = await page.evaluate(
+      `[...document.querySelectorAll('[data-testid^="exercise-history-of-"]')].map((e) => e.dataset.testid.slice('exercise-history-of-'.length))`,
+    )
+    return Array.isArray(ids) ? ids.map(String) : []
   },
   /** From a session, their history of one exercise: its trend and sessions. */
   historyOf: async (exerciseId: string): Promise<void> => {
     await page.click(`[data-testid="exercise-history-of-${exerciseId}"]`)
     await page.waitFor('athlete-exercise-screen')
+  },
+  /** Waits until their page says it is theirs no more. */
+  gone: async (): Promise<void> => {
+    await page.waitFor('athlete-gone')
+  },
+  /** Back from their history of an exercise to the session it was opened from. */
+  backFromExercise: async (): Promise<void> => {
+    await page.click('[data-testid="athlete-exercise-screen-back"]')
   },
   /** Back from a session of theirs to where it was opened. */
   back: async (): Promise<void> => {

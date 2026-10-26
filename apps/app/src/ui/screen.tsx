@@ -1,6 +1,7 @@
 import { ScrollView, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { CONTENT_MAX_WIDTH, WIDE_CONTENT_MAX_WIDTH, color, space } from './tokens.ts'
+import { IconButton } from './icon.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
@@ -11,6 +12,11 @@ export interface ScreenProps {
   readonly footer?: React.ReactNode | undefined
   /** Pinned to the top, outside the scroll area, in place of the title — a session's own header. */
   readonly header?: React.ReactNode | undefined
+  /**
+   * A way back beside the title, for a screen reached from another with no other way out — an
+   * installed app on a desktop has no browser Back.
+   */
+  readonly onBack?: (() => void) | undefined
   readonly scroll?: boolean
   /** Room for two `Columns` side by side on a desktop; one column on a phone either way. */
   readonly wide?: boolean
@@ -26,6 +32,7 @@ export function Screen({
   children,
   footer,
   header,
+  onBack,
   scroll = true,
   wide = false,
   testID,
@@ -33,7 +40,26 @@ export function Screen({
   const insets = useSafeAreaInsets()
   const body = (
     <Stack gap="lg" grow>
-      {title === undefined ? null : <Text variant="title">{title}</Text>}
+      {onBack === undefined ? (
+        title === undefined ? null : (
+          <Text variant="title">{title}</Text>
+        )
+      ) : (
+        <Stack direction="row" align="center" gap="sm">
+          <IconButton
+            name="back"
+            label="Back"
+            edge="start"
+            tone="default"
+            onPress={onBack}
+            // The screen's own: a stack keeps the screens behind mounted, each with its Back.
+            testID={`${testID ?? 'screen'}-back`}
+          />
+          <Stack grow>
+            <Text variant="title">{title ?? ''}</Text>
+          </Stack>
+        </Stack>
+      )}
       {children}
     </Stack>
   )

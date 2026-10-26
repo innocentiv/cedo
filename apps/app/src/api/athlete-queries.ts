@@ -1,4 +1,5 @@
-import { type UseQueryResult, useInfiniteQuery, useQuery } from '@tanstack/react-query'
+import { useCallback } from 'react'
+import { type UseQueryResult, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   Athlete,
   ExerciseHistory,
@@ -8,6 +9,7 @@ import type {
   WorkoutSessionSummary,
 } from '@cedo/contract'
 import { api } from './http.ts'
+import { useFinishedSessions } from './queries.ts'
 import { keys } from './query-client.ts'
 
 /**
@@ -25,12 +27,19 @@ export function useAthletes(enabled = true): UseQueryResult<Athlete[]> {
   })
 }
 
-/** The athlete's training over the last `weeks`, reviewed as their own Progress reviews it. */
-export function useAthleteReview(id: string, weeks: number): UseQueryResult<TrainingReview> {
+/**
+ * The athlete's training over the last `weeks`, reviewed as their own Progress reviews it. Asked
+ * only while they share it (`shared`): once they stop, every read of theirs is a 404.
+ */
+export function useAthleteReview(
+  id: string,
+  weeks: number,
+  shared: boolean,
+): UseQueryResult<TrainingReview> {
   return useQuery({
     queryKey: keys.athleteReview(id, weeks),
     queryFn: async () => await api.athletes.review(id, { weeks }),
-    enabled: id !== '',
+    enabled: shared,
   })
 }
 
@@ -45,22 +54,23 @@ export function useAthleteTrainingNow(id: string): UseQueryResult<Page<WorkoutSe
 }
 
 /** Their finished sessions, newest first, a page at a time — as `useHistory` reads your own. */
-export function useAthleteHistory(id: string) {
-  return useInfiniteQuery({
-    queryKey: keys.athleteSessions(id, { inProgress: false, pages: true }),
-    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
-      await api.athletes.sessions(id, { inProgress: false, limit: 20, cursor: pageParam }),
-    initialPageParam: undefined,
-    getNextPageParam: (last: Page<WorkoutSessionSummary>) => last.nextCursor ?? undefined,
-    enabled: id !== '',
-  })
-}
+export const useAthleteHistory = (id: string, shared: boolean) =>
+  useFinishedSessions(
+    (query) => keys.athleteSessions(id, query),
+    async (query) => await api.athletes.sessions(id, query),
+    shared,
+  )
 
+/**
+ * Read again each time it is opened: they may be logging in it as the coach reads, and nothing the
+ * coach does marks it stale. Never polled.
+ */
 export function useAthleteSession(id: string, sessionId: string): UseQueryResult<SessionDetail> {
   return useQuery({
     queryKey: keys.athleteSession(id, sessionId),
     queryFn: async () => await api.athletes.session(id, sessionId),
     enabled: id !== '' && sessionId !== '',
+    staleTime: 0,
   })
 }
 
@@ -73,4 +83,26 @@ export function useAthleteExerciseHistory(
     queryFn: async () => await api.athletes.history(id, exerciseId, { limit: 10 }),
     enabled: id !== '' && exerciseId !== '',
   })
+}
+
+/**
+ * Who shares with the reader, read again — then, while this athlete still does, everything read of
+ * them — on coming back to their page (#30). They train on their own device, so no write here marks
+ * it stale: a session finished while its sets were open was otherwise still "Training now" for the
+ * cache's window, and a share switched off still listed. In that order, so a share ended is learnt
+ * before their reads are asked again, and refused. Only what is shown refetches.
+ */
+export function useReadAthleteAgain(id: string): () => Promise<void> {
+  const queryClient = useQueryClient()
+  // The same function each render: the page reads again when it regains focus, not when it renders.
+  return useCallback(async () => {
+    await queryClient.invalidateQueries({ queryKey: keys.athletes })
+    const athletes = queryClient.getQueryData<Athlete[]>(keys.athletes) ?? []
+    if (!athletes.some((athlete) => athlete.user.id === id)) return
+    await Promise.all(
+      [keys.athleteSessions(id, {}), keys.athleteReview(id, 0)].map(
+        async (key) => await queryClient.invalidateQueries({ queryKey: key.slice(0, 2) }),
+      ),
+    )
+  }, [queryClient, id])
 }

@@ -119,17 +119,26 @@ export function useSessions(
 
 /**
  * Finished sessions, newest first, a page at a time (#25): the next page asked for only when the
- * athlete asks for older ones. One cache entry for all its pages, refreshed with the history it is.
+ * reader asks for older ones. One cache entry for all its pages, refreshed with the history it is.
+ * Whose: `key` and `list` say — your own, or an athlete's read by their coach (#30).
  */
-export function useHistory() {
+export function useFinishedSessions(
+  key: (query: Record<string, unknown>) => readonly unknown[],
+  list: (query: Partial<SessionQuery>) => Promise<Page<WorkoutSessionSummary>>,
+  enabled = true,
+) {
   return useInfiniteQuery({
-    queryKey: keys.sessionList({ inProgress: false, pages: true }),
+    queryKey: key({ inProgress: false, pages: true }),
     queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
-      await api.sessions.list({ inProgress: false, limit: 20, cursor: pageParam }),
+      await list({ inProgress: false, limit: 20, cursor: pageParam }),
     initialPageParam: undefined,
     getNextPageParam: (last: Page<WorkoutSessionSummary>) => last.nextCursor ?? undefined,
+    enabled,
   })
 }
+
+export const useHistory = () =>
+  useFinishedSessions(keys.sessionList, async (query) => await api.sessions.list(query))
 
 /** Your training over the last `weeks`, reviewed (#28): the Progress tab's one read. */
 export function useReview(weeks: number): UseQueryResult<TrainingReview> {

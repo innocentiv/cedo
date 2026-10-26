@@ -27,19 +27,20 @@ export function Columns({
   const desk = useLayout() === 'tablet'
   return (
     <Stack direction={desk ? 'row' : 'column'} align="stretch" gap="xxl" testID={testID}>
-      <Stack gap="xxl" style={desk ? (narrow === 'main' ? styles.lead : styles.main) : null}>
+      <Stack gap="xxl" style={desk ? WIDTHS[narrow].main : null}>
         {main}
       </Stack>
-      <Stack gap="xxl" style={desk ? (narrow === 'main' ? styles.wide : styles.side) : null}>
+      <Stack gap="xxl" style={desk ? WIDTHS[narrow].side : null}>
         {side}
       </Stack>
     </Stack>
   )
 }
 
-const styles = StyleSheet.create({
-  main: { flex: 3 },
-  side: { flex: 2 },
-  lead: { flex: 1 },
-  wide: { flex: 3 },
-})
+const styles = StyleSheet.create({ wider: { flex: 3 }, narrower: { flex: 2 }, list: { flex: 1 } })
+
+/** Each column's share of the width, by which is the narrow one. */
+const WIDTHS = {
+  side: { main: styles.wider, side: styles.narrower },
+  main: { main: styles.list, side: styles.wider },
+} as const

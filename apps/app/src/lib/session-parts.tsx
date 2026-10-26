@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router'
 import type { LoggedExercise, SessionDay, SessionExercise, SetLog } from '@cedo/contract'
 import { byExercise, formatWithReserve, loggedLabel, loggedTitle } from '@cedo/contract'
 import { useUnsentSets } from '../api/session-queries.ts'
@@ -122,21 +123,22 @@ export function LoggedSets({
  */
 export function SetsByExercise({
   logs,
-  historyOf,
+  historyHref,
 }: {
   readonly logs: readonly SetLog[]
   /**
-   * Opens an exercise's history, from its name — read by a coach (#30), whose session page is the
-   * way into an athlete's history. Never for an exercise the reader cannot see: it has no name.
+   * Where an exercise's history is, opened from its name — read by a coach (#30), whose session page
+   * is the way into an athlete's history. Never for an exercise the reader cannot see: no name.
    */
-  readonly historyOf?: (exerciseId: string) => void
+  readonly historyHref?: (exerciseId: string) => string
 }): React.JSX.Element {
   const unit = useWeightUnit()
+  const router = useRouter()
   return (
     <Stack gap="xl" testID="session-logs">
       {byExercise(logs).map((sets) => (
         <Stack key={sets[0]?.exerciseId} gap="xs">
-          {historyOf === undefined || sets[0]?.exercise == null ? (
+          {historyHref === undefined || sets[0]?.exercise == null ? (
             <Text variant="label" tone="muted">
               {exerciseName(sets[0]?.exercise ?? null)}
             </Text>
@@ -145,7 +147,7 @@ export function SetsByExercise({
               title={exerciseName(sets[0].exercise)}
               trailing="History"
               onPress={() => {
-                historyOf(sets[0]?.exerciseId ?? '')
+                router.push(historyHref(sets[0]?.exerciseId ?? ''))
               }}
               testID={`exercise-history-of-${sets[0].exerciseId}`}
             />

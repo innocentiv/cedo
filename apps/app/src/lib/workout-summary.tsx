@@ -66,6 +66,19 @@ export function FinishedSummary({
   )
 }
 
+/** A session's notes, read — by their coach (#30), who writes none of them. Nothing, for none. */
+export function ReadNotes({ notes }: { readonly notes: string | null }): React.JSX.Element | null {
+  if (notes === null) return null
+  return (
+    <Stack gap="xs">
+      <Text variant="label" tone="muted">
+        Notes
+      </Text>
+      <Text testID="session-notes-read">{notes}</Text>
+    </Stack>
+  )
+}
+
 /**
  * A finished session's notes, written where they are read (#25): a journal of how it went, kept as
  * the field is left — no Save, as in the session's menu while it runs.

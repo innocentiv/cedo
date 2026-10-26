@@ -118,6 +118,26 @@ export function sessionName(session: {
 }
 
 /**
+ * The same session, opened (#30): named by the day its plan reaches, so its page and its row in the
+ * history say one name. A day out of the reader's reach is unavailable, as in the row.
+ */
+export function openedSessionName(session: {
+  readonly workoutId: string | null
+  readonly plan:
+    | { readonly reachable: true; readonly day: { readonly name: string } }
+    | {
+        readonly reachable: false
+      }
+    | null
+}): string {
+  return sessionName({
+    workoutId: session.workoutId,
+    workoutName: null,
+    dayName: session.plan?.reachable === true ? session.plan.day.name : null,
+  })
+}
+
+/**
  * `Thu 23 Oct · 52 min · 18 sets`: a session in history, in one line. No duration while it is in
  * progress: it has not taken any time yet that is its own to say.
  */

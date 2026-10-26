@@ -121,6 +121,7 @@ Two constraints found by building it:
 | `RemoveButton` | removing a day or an entry from a plan edited in place: the bin, asked twice |
 | `Sheet` | something looked at without leaving where you are — a session's menu, how to do an exercise. From the bottom on a phone, in the middle on a desktop |
 | `Icon`, `IconButton` | a secondary action as a glyph alone — back, menu, close, undo, how to — named aloud by its label |
+| `Screen` `onBack` | a way back beside the title, on a screen reached from another with no other way out |
 | `Columns` | a screen's main part and what it sits within: one column on a phone, side by side on a desktop — the side the narrow one, or the main when it is a list leading to the side |
 | `Thumbnail` | a picture of a movement: a video's thumbnail, an uploaded image |
 | `color`, `space`, `radius`, `type`, `font`, `CONTENT_MAX_WIDTH`, `WIDE_CONTENT_MAX_WIDTH`, `CONTROL_HEIGHT`, `LOG_CONTROL_HEIGHT`, `ROW_HEIGHT`, `ICON_SIZE` | the only source of visual values |
@@ -393,12 +394,21 @@ never writes it. As built (#30):
   them (`GET /athletes`). Its trigger stays in the navigator unshown otherwise: the headless tabs
   know a route only by its trigger. Reached by its address with nobody sharing, it says so.
 - **An athlete's page** (`AthleteView`): the session they are in now, if they are — a row that opens
-  its sets so far, read when opened, never polled — then their Progress, the same parts and periods
-  as your own tab (`GET /athletes/:id/review`), then their history by week. Nothing on it changes
-  their training.
-- **A session of theirs** opens read-only: what it came to, their notes, the sets by exercise. An
-  exercise opens their history of it — trend and sessions — and only one the coach can see: one they
-  cannot has no name, and no way in.
+  its sets so far — then their Progress, the same `Review` and periods as your own tab
+  (`GET /athletes/:id/review`), then their history by week (`PagedHistory`, as Today's). Nothing on
+  it changes their training.
+- **Read again on coming back, never polled.** They train on their own device, so nothing the coach
+  does marks it stale: on regaining focus the page asks who shares again, and only then — while
+  they still do — their reads (`useReadAthleteAgain`). A share ended is learnt first, so their reads
+  are never asked again only to be refused; every read of theirs is asked only while they share, and
+  the page says "Not shared with you" instead. A session of theirs is read each time it opens.
+- **A session of theirs** opens read-only, under the name its row gave it (`openedSessionName`):
+  what it came to and their notes, beside the sets by exercise. An exercise opens their history of
+  it — trend and sessions — and only one the coach can see: one they cannot has no name, and no
+  way in. Each screen past the list has a way back (`Screen` `onBack`): an installed app has no
+  browser Back.
+- **A plan out of the reader's sight is "Plan unavailable"**, never "Without a plan" (`sessionName`):
+  the athlete's own plan, read by their coach; a group's, after leaving it.
 - **On a desktop**, the athletes beside the one open, in the address (`/athletes?open=<id>`), as an
   exercise in the library — the list the narrow column here (`Columns` `narrow="main"`), since each
   row opens a whole training beside it.

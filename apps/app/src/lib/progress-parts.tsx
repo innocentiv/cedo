@@ -9,7 +9,18 @@ import {
   muscleRows,
   stallLine,
 } from '@cedo/contract'
-import { Card, Chips, ListRow, Meter, Stack, Text } from '../ui/index.ts'
+import {
+  Card,
+  type ChipOption,
+  Chips,
+  Columns,
+  ListRow,
+  Loaded,
+  Meter,
+  type QueryLike,
+  Stack,
+  Text,
+} from '../ui/index.ts'
 import { useWeightUnit } from './weight-unit.ts'
 
 /**
@@ -18,24 +29,65 @@ import { useWeightUnit } from './weight-unit.ts'
  * contract's (`review.ts`); these only place them. See docs/08-frontend.md, "Progress".
  */
 
-const PERIODS = [
-  { value: '4', label: '4 weeks' },
-  { value: '8', label: '8 weeks' },
-  { value: '12', label: '12 weeks' },
-] as const
+const PERIODS: readonly ChipOption<string>[] = [4, 8, 12].map((weeks) => ({
+  value: String(weeks),
+  label: `${String(weeks)} weeks`,
+}))
 
-/** The period a review starts on: the review's own default, as the contract says it. */
-export const FIRST_PERIOD = String(ReviewQuery.parse({}).weeks)
+/** The period a review starts on, in weeks: the review's own default, as the contract says it. */
+export const FIRST_PERIOD = ReviewQuery.parse({}).weeks
 
-/** How far back the review looks. */
+/** How far back the review looks, in weeks. */
 export function Period({
-  value,
+  weeks,
   onChange,
 }: {
-  readonly value: string
-  readonly onChange: (weeks: string) => void
+  readonly weeks: number
+  readonly onChange: (weeks: number) => void
 }): React.JSX.Element {
-  return <Chips options={PERIODS} value={value} onChange={onChange} testID="progress-weeks" />
+  return (
+    <Chips
+      options={PERIODS}
+      value={String(weeks)}
+      onChange={(chosen) => {
+        onChange(Number(chosen))
+      }}
+      testID="progress-weeks"
+    />
+  )
+}
+
+/**
+ * A review laid out — your own (#28), or an athlete's read by their coach (#30): how consistently
+ * and what needs attention, beside which days and the work per muscle.
+ */
+export function Review({
+  query,
+  testID,
+}: {
+  readonly query: QueryLike<TrainingReview>
+  readonly testID: string
+}): React.JSX.Element {
+  return (
+    <Loaded query={query} testID={testID}>
+      {(review) => (
+        <Columns
+          main={
+            <>
+              <Consistency review={review} />
+              <Attention review={review} />
+            </>
+          }
+          side={
+            <Stack gap="xxl">
+              <Days review={review} />
+              <Muscles review={review} />
+            </Stack>
+          }
+        />
+      )}
+    </Loaded>
+  )
 }
 
 /** One number of the period, and what it counts. */
@@ -51,7 +103,7 @@ const stat = (label: string, value: string, testID: string) => (
 )
 
 /** Sessions a week, the streak, the longest gap, and when last. */
-export function Consistency({ review }: { readonly review: TrainingReview }): React.JSX.Element {
+function Consistency({ review }: { readonly review: TrainingReview }): React.JSX.Element {
   const a = review.adherence
   return (
     <Card testID="progress-consistency">
@@ -72,7 +124,7 @@ export function Consistency({ review }: { readonly review: TrainingReview }): Re
 }
 
 /** What has stalled, is falling, or is getting harder — or that nothing is. */
-export function Attention({ review }: { readonly review: TrainingReview }): React.JSX.Element {
+function Attention({ review }: { readonly review: TrainingReview }): React.JSX.Element {
   const unit = useWeightUnit()
   // With nothing logged, nothing is judged: "nothing has stalled" would be an all-clear for nothing.
   if (review.adherence.sessions === 0) {
@@ -124,7 +176,7 @@ export function Attention({ review }: { readonly review: TrainingReview }): Reac
 }
 
 /** Each planned day of the workouts trained, and how often — a day never trained said so. */
-export function Days({ review }: { readonly review: TrainingReview }): React.JSX.Element | null {
+function Days({ review }: { readonly review: TrainingReview }): React.JSX.Element | null {
   if (review.dayBalance.length === 0) return null
   return (
     <Stack gap="xs" testID="progress-days">
@@ -148,7 +200,7 @@ export function Days({ review }: { readonly review: TrainingReview }): React.JSX
 }
 
 /** The work each muscle got, against the period before; the ones that fell away apart. */
-export function Muscles({ review }: { readonly review: TrainingReview }): React.JSX.Element {
+function Muscles({ review }: { readonly review: TrainingReview }): React.JSX.Element {
   const { top, declined } = muscleRows(review.muscleWork)
   const omitted = review.muscleWork.omitted
   if (top.length === 0) {
