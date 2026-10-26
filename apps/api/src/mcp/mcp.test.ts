@@ -975,8 +975,8 @@ describe('equipment', () => {
     expect(doable).toContain('Home Goblet Squat')
     expect(doable).not.toContain('Gym Back Squat')
     const all = textOf((await callTool(pat, 'exercise_search', { q: 'Squat', showAll: true })).body)
-    expect(all).toMatch(/Gym Back Squat \| barbell \+ rack \|.*not doable with your equipment/u)
-    expect(all).not.toMatch(/Home Goblet Squat.*not doable/u)
+    expect(all).toMatch(/Gym Back Squat \| barbell \+ rack \|.*Missing equipment/u)
+    expect(all).not.toMatch(/Home Goblet Squat.*Missing equipment/u)
   })
 
   test('workout_get keeps a planned exercise you cannot do, and says so', async () => {
@@ -1005,9 +1005,9 @@ describe('equipment', () => {
     })
     const outline = async () =>
       textOf((await callTool(pat, 'workout_get', { workoutId: workout.id })).body)
-    expect(await outline()).not.toContain('not doable')
+    expect(await outline()).not.toContain('Missing equipment')
     await callTool(pat, 'equipment_set', { items: [{ slug: 'dumbbells', weights: null }] })
-    expect(await outline()).toContain('- Gym Back Squat [not doable with your equipment]')
+    expect(await outline()).toContain('- Gym Back Squat [Missing equipment]')
   })
 
   test('refuses what the contract refuses, and keeps what was said', async () => {
@@ -1077,6 +1077,51 @@ describe('coaching', () => {
     // Saying yours never says theirs.
     await callTool(pat, 'equipment_set', { items: [] })
     expect(await read()).toContain('dumbbells')
+  })
+
+  test("planning for an athlete, search and the plan judge by the athlete's gym", async () => {
+    await callTool(await mintPat(athlete), 'equipment_set', {
+      items: [{ slug: 'dumbbells', weights: null }],
+    })
+    const pat = await mintPat(alice)
+    await callTool(pat, 'equipment_set', {
+      items: [
+        { slug: 'barbell', weights: null },
+        { slug: 'rack', weights: null },
+      ],
+    })
+    await share(true)
+    const squats = async (args: Record<string, unknown>) =>
+      textOf((await callTool(pat, 'exercise_search', { q: 'Squat', showAll: true, ...args })).body)
+    // The seeded library: the back squat needs a barbell and a rack, the goblet squat dumbbells.
+    await seedLibrary(h.groupId, h.systemUserId)
+    expect(await squats({})).toMatch(/Goblet Squat.*Missing equipment/u)
+    expect(await squats({ athlete: athlete.userId })).toMatch(
+      /Barbell Back Squat.*Missing equipment/u,
+    )
+    expect(await squats({ athlete: athlete.userId })).not.toMatch(/Goblet Squat.*Missing/u)
+
+    const [back] = expectContract(
+      page(Exercise),
+      (await alice.wire('/exercises?q=Barbell%20Back%20Squat&limit=1')).body,
+    ).items
+    if (back === undefined) throw new Error('no back squat in the library')
+    const plan = expectContract(Workout, await post(alice, '/workouts', { name: 'For them' }))
+    await callTool(pat, 'workout_save_plan', {
+      workoutId: plan.id,
+      days: [{ name: 'A', entries: [{ exerciseId: back.id, sets: [{ targetReps: 5 }] }] }],
+    })
+    const outline = async (args: Record<string, unknown>) =>
+      textOf((await callTool(pat, 'workout_get', { workoutId: plan.id, ...args })).body)
+    expect(await outline({})).not.toContain('Missing equipment')
+    expect(await outline({ athlete: athlete.userId })).toContain(
+      '- Barbell Back Squat [Missing equipment]',
+    )
+    // Not yours to plan for once they stop sharing: refused, not judged by your gym instead.
+    await share(false)
+    const refused = await callTool(pat, 'exercise_search', { athlete: athlete.userId })
+    expect(refused.body.result?.isError).toBe(true)
+    expect(textOf(refused.body)).toContain('athlete')
   })
 
   test('athlete_list names who shares with you, and their id', async () => {

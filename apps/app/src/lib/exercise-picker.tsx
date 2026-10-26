@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Exercise, MuscleSlug } from '@cedo/contract'
 import { useExercises, useRecentExercises } from '../api/queries.ts'
 import { ExerciseListRow } from './exercise-media.tsx'
-import { useDoableFilter } from './doable-filter.tsx'
+import { DoableChips, useDoableFilter } from './doable-filter.tsx'
 import { Button, Empty, Input, Loaded, MuscleFilter, Screen, Stack, Text } from '../ui/index.ts'
 
 export interface ExercisePickerProps {
@@ -32,11 +32,11 @@ export function ExercisePicker({
   const [chosen, setChosen] = useState<readonly Exercise[]>([])
   const trimmed = search.trim()
   const narrowed = trimmed !== '' || muscle !== null
-  const doable = useDoableFilter('picker-kit')
+  const doable = useDoableFilter()
   const exercises = useExercises({
     scope: 'all',
     limit: 50,
-    ...(doable.showAll ? { showAll: true } : {}),
+    ...doable.query,
     ...(trimmed === '' ? {} : { q: trimmed }),
     ...(muscle === null ? {} : { muscle }),
   })
@@ -100,7 +100,7 @@ export function ExercisePicker({
         </Stack>
         <MuscleFilter value={muscle} onChange={setMuscle} testID="picker-muscle" />
       </Stack>
-      {doable.control}
+      <DoableChips filter={doable} testID="picker-showing" />
       {narrowed || recent.data === undefined || recent.data.length === 0 ? null : (
         <Stack gap="xs" testID="picker-recent">
           <Text variant="label" tone="muted">

@@ -1,38 +1,21 @@
-import { type AnyColumn, type SQL, eq, isNotNull, sql } from 'drizzle-orm'
-import type { Kit } from '@cedo/contract'
+import { type AnyColumn, type SQL, and, eq, exists, isNotNull, not, or, sql } from 'drizzle-orm'
 import { db } from '../../db/client.ts'
 import { athleteEquipment, users } from '../../db/schema.ts'
 
 /**
- * Doable (#35), as the server decides it: what a reader has, read once a request, and the same
- * rule as a list's condition. The rule itself is the contract's (`isDoable`); the condition below
- * says it in SQL, and `doable.test.ts` holds the two to one answer.
+ * Doable (#35) as a list's condition: the contract's `isDoable` said in SQL, for the athlete whose
+ * equipment judges it — the reader, or the athlete a coach plans for. `doable.test.ts` asks both on
+ * one set of exercises, so they cannot disagree.
  */
-
-/** What a reader has, in one query: whether they said, and the items. */
-export async function kitOf(userId: string): Promise<Kit> {
-  const rows = await db
-    .select({ describedAt: users.equipmentDescribedAt, item: athleteEquipment.item })
-    .from(users)
-    .leftJoin(athleteEquipment, eq(athleteEquipment.userId, users.id))
-    .where(eq(users.id, userId))
-  return {
-    described: (rows[0]?.describedAt ?? null) !== null,
-    items: rows.flatMap((r) => (r.item === null ? [] : [{ slug: r.item }])),
-  }
-}
-
-/**
- * Only what `userId` can do, for a list's WHERE: needs undescribed, a reader who has not said, or
- * every item needed among theirs.
- */
-export const doableFor = (userId: string, needs: AnyColumn): SQL =>
-  sql`(${needs} is null or not exists (${db
+export function doableFor(athleteId: string, needs: AnyColumn): SQL {
+  const described = db
     .select({ one: sql`1` })
     .from(users)
-    .where(
-      sql`${eq(users.id, userId)} and ${isNotNull(users.equipmentDescribedAt)}`,
-    )}) or ${needs} <@ coalesce((${db
+    .where(and(eq(users.id, athleteId), isNotNull(users.equipmentDescribedAt)))
+  const theirs = db
     .select({ items: sql`array_agg(${athleteEquipment.item})` })
     .from(athleteEquipment)
-    .where(eq(athleteEquipment.userId, userId))}), '{}'::equipment_item[]))`
+    .where(eq(athleteEquipment.userId, athleteId))
+  const allHad = sql`${needs} <@ coalesce((${theirs}), '{}'::equipment_item[])`
+  return or(sql`${needs} is null`, not(exists(described)), allHad) ?? sql`true`
+}

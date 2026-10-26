@@ -13,11 +13,17 @@ import { ownableLifecycle, relationOf } from '../ownable/service.ts'
  * which holds the raw tables itself (`ownable/write.ts`), so nothing here can read around a
  * relation. See docs/adr/0019-visible-relations.md.
  */
+/**
+ * The list query as the service asks it: whose equipment says what is doable rides along — never
+ * from a request, which cannot carry it: the contract's query has no such field.
+ */
+export type ExerciseListQuery = ExerciseQuery & { readonly judgedFor: string }
+
 export const exerciseLifecycle = ownableLifecycle({
   noun: 'exercise',
   relation: (caller) => relationOf(visibleExercises(caller)),
-  listConditions: (caller, query: ExerciseQuery, relation) => [
-    query.showAll === true ? undefined : doableFor(caller.userId, relation.row.equipment),
+  listConditions: (caller, query: ExerciseListQuery, relation) => [
+    query.showAll === true ? undefined : doableFor(query.judgedFor, relation.row.equipment),
     byMuscle(caller, query, relation.id),
   ],
   inUse:

@@ -4,7 +4,6 @@ import {
   type WorkoutSession,
   workingSetsDone,
 } from '@cedo/contract'
-import type { Caller } from '../../plugins/auth.ts'
 import { hydrateDay } from '../workout/plan.ts'
 import { type Training, read } from './service.ts'
 
@@ -16,7 +15,7 @@ import { type Training, read } from './service.ts'
 /** A session with the plan it follows. */
 export async function get(training: Training, id: string): Promise<SessionDetail> {
   const session = await read(training, id)
-  return { ...session, plan: await planOf(training.reader, session) }
+  return { ...session, plan: await planOf(training, session) }
 }
 
 /**
@@ -28,9 +27,15 @@ export async function get(training: Training, id: string): Promise<SessionDetail
  * of its own, and took a plan it failed to FETCH for one out of reach — logging the next set into
  * the wrong series.
  */
-async function planOf(caller: Caller, session: WorkoutSession): Promise<SessionPlan> {
+async function planOf(training: Training, session: WorkoutSession): Promise<SessionPlan> {
   if (session.workoutId === null || session.dayId === null) return null
-  const day = await hydrateDay(caller, session.workoutId, session.dayId)
+  // Named as the reader can see it; doable for the athlete who trains it (#35).
+  const day = await hydrateDay(
+    training.reader,
+    session.workoutId,
+    session.dayId,
+    training.athleteId,
+  )
   if (day === null) return { reachable: false }
   // Rows hydrated for this read alone: annotated in place, not copied.
   const entries = day.entries.map((entry) =>

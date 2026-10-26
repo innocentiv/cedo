@@ -82,12 +82,14 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       description:
         'The full plan as an outline: days, entries, supersets, prescribed sets and progression ' +
         'rules. Read this before changing a plan. Use `workout_get_editable` if you intend to ' +
-        'rewrite it.',
-      inputSchema: z.object({ workoutId: z.uuid() }),
+        'rewrite it. An exercise your equipment — or, with `athlete`, theirs — lacks is marked.',
+      inputSchema: z.object({ workoutId: z.uuid() }).safeExtend(OfAthlete.shape),
       annotations: READ,
     },
-    async ({ workoutId }) =>
-      text(workoutDetail(await WorkoutService.get(caller, workoutId), caller.weightUnit)),
+    async ({ workoutId, athlete }) =>
+      text(
+        workoutDetail(await CoachingService.workout(caller, athlete, workoutId), caller.weightUnit),
+      ),
   )
 
   server.registerTool(

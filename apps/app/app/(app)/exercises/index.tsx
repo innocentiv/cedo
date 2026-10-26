@@ -18,7 +18,7 @@ import {
 import { useExercises } from '../../../src/api/queries.ts'
 import { ExerciseDetailView } from '../../../src/lib/exercise-detail.tsx'
 import { ExerciseListRow } from '../../../src/lib/exercise-media.tsx'
-import { EquipmentPrompt, useDoableFilter } from '../../../src/lib/doable-filter.tsx'
+import { DoableChips, EquipmentPrompt, useDoableFilter } from '../../../src/lib/doable-filter.tsx'
 
 const SCOPES: readonly { value: OwnableScope; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -44,11 +44,11 @@ export default function ExerciseList(): React.JSX.Element {
     router.setParams({ open: id ?? undefined })
   }
 
-  const doable = useDoableFilter('exercise-kit')
+  const doable = useDoableFilter()
   const query = {
     scope,
     limit: 50,
-    ...(doable.showAll ? { showAll: true } : {}),
+    ...doable.query,
     ...(search.trim() === '' ? {} : { q: search.trim() }),
     ...(muscle === null ? {} : { muscle }),
   }
@@ -67,7 +67,7 @@ export default function ExerciseList(): React.JSX.Element {
           <Chips options={SCOPES} value={scope} onChange={setScope} testID="exercise-scope" />
           <MuscleFilter value={muscle} onChange={setMuscle} testID="exercise-muscle" />
         </Stack>
-        {doable.control}
+        <DoableChips filter={doable} testID="exercise-showing" />
       </Stack>
       {doable.described === false ? <EquipmentPrompt /> : null}
 

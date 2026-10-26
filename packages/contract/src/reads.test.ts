@@ -94,6 +94,19 @@ describe('what a write makes stale', () => {
    * plans, its exercises and the names in your history with it. Left cached, a plan from a group
    * just left stayed listed — and opening it said it does not exist.
    */
+  /** Saying what you train with (#35): every exercise you read says again whether you can do it. */
+  test('saying what you train with refreshes it, and every read that says what is doable', () => {
+    const { awaited, background } = affectedBy('equipment')
+    expect(sorted(awaited)).toEqual(['equipment'])
+    expect(sorted(background)).toEqual([
+      'exercise',
+      'exerciseList',
+      'recentExercises',
+      'session',
+      'workout',
+    ])
+  })
+
   test('joining or leaving a group refreshes everything membership can show or hide', () => {
     const { awaited, background } = affectedBy('group')
     expect(sorted(awaited)).toEqual(['athletes', 'groupMembers', 'groups'])

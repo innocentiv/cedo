@@ -1,4 +1,10 @@
-import { type Exercise, type Media, mainMuscles, videoThumbnailOf } from '@cedo/contract'
+import {
+  type Exercise,
+  MISSING_EQUIPMENT,
+  type Media,
+  mainMuscles,
+  videoThumbnailOf,
+} from '@cedo/contract'
 import { apiUrl } from '../api/http.ts'
 import { ExerciseRow, VideoPlayer } from '../ui/index.ts'
 
@@ -25,9 +31,7 @@ export function ExerciseListRow({
   readonly testID: string
 }): React.JSX.Element {
   // Said when the list holds everything, and in a plan, where it is never hidden (#35).
-  const tags = [exercise.doable ? undefined : 'Missing equipment', tag].filter(
-    (t) => t !== undefined,
-  )
+  const tags = [exercise.doable ? undefined : MISSING_EQUIPMENT, tag].filter((t) => t !== undefined)
   return (
     <ExerciseRow
       name={exercise.name}

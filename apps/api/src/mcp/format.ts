@@ -10,6 +10,7 @@ import type {
 } from '@cedo/contract'
 import {
   AT_LEAST_SESSIONS,
+  MISSING_EQUIPMENT,
   estimatedMax,
   formatDuration,
   formatEffort,
@@ -67,7 +68,7 @@ export function workoutDetail(workout: Workout, unit: WeightUnit): string {
       // Null when the caller cannot see the exercise — see the note on WorkoutEntry.exercise.
       const name = entry.exercise?.name ?? '[unavailable exercise]'
       // Kept in the plan, still loggable — but the AI is told before it plans around it (#35).
-      const kit = entry.exercise?.doable === false ? ' [not doable with your equipment]' : ''
+      const kit = entry.exercise?.doable === false ? ` [${MISSING_EQUIPMENT}]` : ''
       return [
         `  - ${name}${kit}${superset}${rest}${rule}   [entry ${entry.id}]`,
         ...(entry.cue === null ? [] : [`      cue: ${entry.cue}`]),

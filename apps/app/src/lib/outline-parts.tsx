@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  MISSING_EQUIPMENT,
   type Exercise,
   describeProgression,
   formatPrescription,
@@ -149,7 +150,7 @@ export function EntryLine({
   return (
     <ListRow
       title={`${entry.supersetGroup === null ? '' : `${entry.supersetGroup} · `}${exercise.name}`}
-      subtitle={[exercise.doable ? null : 'Missing equipment', prescription, rule]
+      subtitle={[exercise.doable ? null : MISSING_EQUIPMENT, prescription, rule]
         .filter((part) => part !== null)
         .join(' · ')}
       onPress={onPress}

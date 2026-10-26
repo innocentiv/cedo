@@ -407,7 +407,7 @@ replaces the whole list. The Settings row says whether it is described yet (`equ
 
 **Doable** (#35): until you have said what you have, the library and the picker offer everything
 and the library asks you to say (`EquipmentPrompt`); after, they offer what you can do, with a
-switch to everything (`useDoableFilter`) — the filter is the server's. An exercise you cannot do
+switch to everything (`useDoableFilter`, `DoableChips`) — the filter is the server's. An exercise you cannot do
 says "Missing equipment" on its row, in a plan's outline, and on its page; a plan keeps it.
 
 ### The coach's view

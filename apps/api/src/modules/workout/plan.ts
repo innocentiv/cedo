@@ -65,16 +65,22 @@ type PlanEntryRow = Awaited<ReturnType<typeof readEntries>>[number]
  *   1. days for the workout
  *   2. its entries — `planEntries`
  *   3. sets for all those entries, in one `inArray`
- *   4-7. the exercises: their rows, the caller's favourites among them, their muscles, their media
+ *   4-8. the exercises: their rows, the caller's favourites among them, their muscles, their media,
+ *        and what the athlete judged for has to train with — whether each is doable (#35)
  *
- * Seven queries for a workout with one day or with fourteen. `n1.test.ts` asserts exactly that.
+ * Eight queries for a workout with one day or with fourteen. `n1.test.ts` asserts exactly that.
  * See docs/adr/0018-n1-detection.md.
  *
  * Every level reads through its visible relation, so this needs no prior check on the workout to be
  * safe: a plan the caller cannot read has no days to return.
  */
-export async function hydratePlan(caller: Caller, workoutId: string): Promise<WorkoutDay[]> {
-  return await hydrate(caller, workoutId, null)
+export async function hydratePlan(
+  caller: Caller,
+  workoutId: string,
+  /** Whose equipment says what is doable: the caller's, or an athlete's they plan for (#35). */
+  judgedFor: string = caller.userId,
+): Promise<WorkoutDay[]> {
+  return await hydrate(caller, workoutId, null, judgedFor)
 }
 
 /**
@@ -86,8 +92,9 @@ export async function hydrateDay(
   caller: Caller,
   workoutId: string,
   dayId: string,
+  judgedFor: string = caller.userId,
 ): Promise<WorkoutDay | null> {
-  const [day] = await hydrate(caller, workoutId, dayId)
+  const [day] = await hydrate(caller, workoutId, dayId, judgedFor)
   return day ?? null
 }
 
@@ -95,8 +102,9 @@ async function hydrate(
   caller: Caller,
   workoutId: string,
   dayId: string | null,
+  judgedFor: string,
 ): Promise<WorkoutDay[]> {
-  const loaded = await loadPlan(caller, workoutId, dayId)
+  const loaded = await loadPlan(caller, workoutId, dayId, judgedFor)
   if (loaded === null) return []
   const { days, entries, sets, exerciseById } = loaded
 
@@ -114,7 +122,12 @@ async function hydrate(
 }
 
 /** The four reads. Separated so the assembly above stays readable. */
-async function loadPlan(caller: Caller, workoutId: string, dayId: string | null) {
+async function loadPlan(
+  caller: Caller,
+  workoutId: string,
+  dayId: string | null,
+  judgedFor: string,
+) {
   const visibleDays = visibleWorkoutDays(caller)
   const days = await db
     .select()
@@ -150,7 +163,7 @@ async function loadPlan(caller: Caller, workoutId: string, dayId: string | null)
    * exercise on day 1 and day 3 is one row read, not two.
    */
   const exerciseIds = [...new Set(entries.map((e) => e.exerciseId))]
-  const exerciseById = await hydrateExerciseRows(exerciseIds, caller)
+  const exerciseById = await hydrateExerciseRows(exerciseIds, caller, judgedFor)
 
   return { days, entries, sets, exerciseById }
 }
@@ -187,7 +200,11 @@ function toEntry(
   }
 }
 
-async function hydrateExerciseRows(ids: string[], caller: Caller): Promise<ExerciseById> {
+async function hydrateExerciseRows(
+  ids: string[],
+  caller: Caller,
+  judgedFor: string,
+): Promise<ExerciseById> {
   if (ids.length === 0) return new Map()
 
   /**
@@ -211,6 +228,7 @@ async function hydrateExerciseRows(ids: string[], caller: Caller): Promise<Exerc
   const hydrated = await hydrateExercises(
     caller,
     rows.map((row) => ({ row, isFavourite: pinnedIds.has(row.id) })),
+    judgedFor,
   )
   return new Map(hydrated.map((e) => [e.id, e]))
 }

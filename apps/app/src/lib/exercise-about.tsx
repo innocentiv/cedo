@@ -4,6 +4,7 @@ import {
   type ExerciseHistory,
   MEDIA_KIND_LABELS,
   type TrackingMode,
+  MISSING_EQUIPMENT,
   equipmentLine,
   formatEffort,
   musclesByLoad,
@@ -92,7 +93,7 @@ export function About({ exercise }: { readonly exercise: Exercise }): React.JSX.
           <Text>{equipmentLine(exercise.equipment)}</Text>
           {exercise.doable ? null : (
             <Text variant="caption" tone="muted" testID="exercise-missing-equipment">
-              More than your equipment has.
+              {MISSING_EQUIPMENT}
             </Text>
           )}
         </Stack>

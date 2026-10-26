@@ -54,7 +54,7 @@ test('how weights go, read in the person’s unit', () => {
 })
 
 test('doable: every item needed is had — and nothing hides before either side has said', () => {
-  const home = { described: true, items: [{ slug: 'dumbbells' as const }] }
+  const home = { described: true, items: [{ slug: 'dumbbells' as const, weights: null }] }
   expect(isDoable(['dumbbells'], home)).toBe(true)
   expect(isDoable(['dumbbells', 'flat_bench'], home)).toBe(false)
   expect(isDoable([], home)).toBe(true)

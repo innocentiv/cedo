@@ -2,33 +2,50 @@ import { useState } from 'react'
 import { Card, type ChipOption, Chips, NavButton, Stack, Text } from '../ui/index.ts'
 import { useEquipment } from '../api/equipment-queries.ts'
 
-type Showing = 'doable' | 'all'
+export type Showing = 'doable' | 'all'
 
 const SHOWING: readonly ChipOption<Showing>[] = [
   { value: 'doable', label: 'What I can do' },
   { value: 'all', label: 'Everything' },
 ]
 
-/**
- * Doable (#35): a list of exercises offers what the caller's equipment lets them do, and a switch to
- * everything — once they have said what they have. Until then nothing is filtered, and there is no
- * switch: `described` false is where the screen asks them to say. The rule is the server's.
- */
-export function useDoableFilter(testID: string): {
-  readonly showAll: boolean
+export interface DoableFilter {
+  /** What the list query adds: everything, or nothing — the server keeps to what is doable. */
+  readonly query: { readonly showAll?: true }
+  /** Undefined while it is asked; false until the caller says what they train with. */
   readonly described: boolean | undefined
-  readonly control: React.JSX.Element | null
-} {
+  readonly showing: Showing
+  readonly setShowing: (showing: Showing) => void
+}
+
+/**
+ * Doable (#35): a list of exercises offers what the caller's equipment lets them do, and everything
+ * on asking — once they have said what they have. Until then nothing is filtered. The rule is the
+ * server's; this holds which of the two the list asks for.
+ */
+export function useDoableFilter(): DoableFilter {
   const described = useEquipment().data?.described
   const [showing, setShowing] = useState<Showing>('doable')
   return {
-    showAll: showing === 'all',
+    query: showing === 'all' ? { showAll: true } : {},
     described,
-    control:
-      described === true ? (
-        <Chips options={SHOWING} value={showing} onChange={setShowing} testID={testID} />
-      ) : null,
+    showing,
+    setShowing,
   }
+}
+
+/** The switch between the two, shown once there is something to switch: a described setup. */
+export function DoableChips({
+  filter,
+  testID,
+}: {
+  readonly filter: DoableFilter
+  readonly testID: string
+}): React.JSX.Element | null {
+  if (filter.described !== true) return null
+  return (
+    <Chips options={SHOWING} value={filter.showing} onChange={filter.setShowing} testID={testID} />
+  )
 }
 
 /** Until someone says what they train with: what saying it would do, and where. */

@@ -1,7 +1,7 @@
 import { asc, desc, eq, inArray } from 'drizzle-orm'
 import {
   type Exercise,
-  type Kit,
+  type AthleteEquipment,
   type Media,
   isDoable,
   videoEmbedUrl,
@@ -12,7 +12,7 @@ import { groupBy } from '../../lib/keyset.ts'
 import { media } from '../../db/schema.ts'
 import { type ExerciseRow, visibleExerciseMedia, visibleExerciseMuscles } from '../../db/visible.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { kitOf } from '../equipment/doable.ts'
+import { heldBy } from '../equipment/held.ts'
 import { ownableFieldsOf } from '../ownable/service.ts'
 
 export type { ExerciseRow }
@@ -64,12 +64,12 @@ interface Attachments {
   readonly media: AttachedMedia[]
   readonly isFavourite: boolean
   readonly caller: Caller
-  /** What the caller has: whether each exercise is doable for them (#35). */
-  readonly kit: Kit
+  /** What the athlete judged for has: whether each exercise is doable for them (#35). */
+  readonly equipment: AthleteEquipment
 }
 
 function toExercise(row: ExerciseRow, attachments: Attachments): Exercise {
-  const { muscles, media: attached, isFavourite, caller, kit } = attachments
+  const { muscles, media: attached, isFavourite, caller, equipment } = attachments
   return {
     id: row.id,
     name: row.name,
@@ -81,7 +81,7 @@ function toExercise(row: ExerciseRow, attachments: Attachments): Exercise {
     muscles,
     mediaIds: attached.map((m) => m.row.id),
     media: attached.map((m) => toMedia(m.row)),
-    doable: isDoable(row.equipment, kit),
+    doable: isDoable(row.equipment, equipment),
     ...ownableFieldsOf(row, isFavourite, caller),
   }
 }
@@ -89,8 +89,8 @@ function toExercise(row: ExerciseRow, attachments: Attachments): Exercise {
 /**
  * Loading exercises means loading their muscles and media too. Doing that per row is the textbook
  * N+1, so this issues exactly THREE queries regardless of how many rows it is given — one `inArray`
- * for muscles, one for media, and what the caller has to train with (#35). Together with the
- * caller's own query that is four per read, at any page size.
+ * for muscles, one for media, and what the athlete judged for has to train with (#35). Together
+ * with the caller's own query that is four per read, at any page size.
  *
  * `bun run perf` asserts that count is identical whether the page holds 5 rows or 50.
  * See docs/adr/0018-n1-detection.md.
@@ -98,6 +98,8 @@ function toExercise(row: ExerciseRow, attachments: Attachments): Exercise {
 export async function hydrate(
   caller: Caller,
   listed: readonly { readonly row: ExerciseRow; readonly isFavourite: boolean }[],
+  /** Whose equipment says what is doable (#35): the caller's, or an athlete's, checked theirs. */
+  judgedFor: string = caller.userId,
 ): Promise<Exercise[]> {
   if (listed.length === 0) return []
   const ids = listed.map((l) => l.row.id)
@@ -118,7 +120,7 @@ export async function hydrate(
     .innerJoin(media, eq(media.id, attached.mediaId))
     .where(inArray(attached.exerciseId, ids))
 
-  const kit = await kitOf(caller.userId)
+  const equipment = await heldBy(judgedFor)
 
   const musclesByExercise = groupBy(
     muscleRows,
@@ -137,7 +139,7 @@ export async function hydrate(
       media: (mediaByExercise.get(row.id) ?? []).toSorted((a, b) => a.sortIndex - b.sortIndex),
       isFavourite,
       caller,
-      kit,
+      equipment,
     }),
   )
 }

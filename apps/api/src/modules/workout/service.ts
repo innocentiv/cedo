@@ -50,9 +50,14 @@ async function summaryOf(caller: Caller, id: string): Promise<WorkoutSummary> {
   return toSummary(row, days.get(id) ?? 0, isFavourite, caller)
 }
 
-export async function get(caller: Caller, id: string): Promise<Workout> {
+/** A workout whole — its exercises doable for the caller, or for an athlete they plan for (#35). */
+export async function get(
+  caller: Caller,
+  id: string,
+  judgedFor: string = caller.userId,
+): Promise<Workout> {
   const summary = await summaryOf(caller, id)
-  return { ...summary, days: await hydratePlan(caller, id) }
+  return { ...summary, days: await hydratePlan(caller, id, judgedFor) }
 }
 
 // ---------------------------------------------------------------------------------------------

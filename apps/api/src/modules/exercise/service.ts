@@ -24,9 +24,17 @@ import { insertExercise, updateExercise } from './write.ts'
  * — and its create and update, in `write.ts`.
  */
 
-export async function list(caller: Caller, query: ExerciseQuery): Promise<Page<Exercise>> {
-  const page = await exerciseLifecycle.list(caller, query)
-  return { items: await hydrate(caller, page.items), nextCursor: page.nextCursor }
+/**
+ * The library as the caller can see it — only what is doable unless `showAll` (#35), judged by the
+ * caller's equipment, or by an athlete's they plan for (checked by the caller of this).
+ */
+export async function list(
+  caller: Caller,
+  query: ExerciseQuery,
+  judgedFor: string = caller.userId,
+): Promise<Page<Exercise>> {
+  const page = await exerciseLifecycle.list(caller, { ...query, judgedFor })
+  return { items: await hydrate(caller, page.items, judgedFor), nextCursor: page.nextCursor }
 }
 
 export async function get(caller: Caller, id: string): Promise<Exercise> {

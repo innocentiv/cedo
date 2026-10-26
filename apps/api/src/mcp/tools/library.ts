@@ -6,8 +6,10 @@ import {
   ExerciseUpdate,
   MUSCLES,
   MuscleSlug,
+  OfAthlete,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
+import * as CoachingService from '../../modules/coaching/service.ts'
 import * as ExerciseService from '../../modules/exercise/service.ts'
 import * as MediaService from '../../modules/media/service.ts'
 import { libraryAudit, sharedGroupId } from '../../modules/review/curation.ts'
@@ -52,25 +54,28 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
       description:
         'Find exercises visible to you. ALWAYS run this before creating one — a near-duplicate ' +
         'is the most common way a library degrades. One line per exercise, ending with its id. ' +
-        'Only what your equipment lets you do (equipment_get), unless `showAll`: search with it ' +
-        'before creating, so an exercise you cannot do is not made again.',
-      inputSchema: z.object({
-        q: z.string().max(100).optional().describe('Substring of the name'),
-        muscle: MuscleSlug.optional().describe('Only exercises loading this muscle'),
-        scope: z
-          .enum(['all', 'mine', 'favourites'])
-          .default('all')
-          .describe("'mine' is your personal group only"),
-        limit: z.int().min(1).max(100).default(30),
-        showAll: z
-          .boolean()
-          .optional()
-          .describe('Every exercise, also those needing equipment you do not have'),
-      }),
+        'Only what your equipment lets you do (equipment_get) — or, with `athlete`, what theirs ' +
+        'does, to plan for their gym — unless `showAll`: search with it before creating, so an ' +
+        'exercise you cannot do is not made again.',
+      inputSchema: z
+        .object({
+          q: z.string().max(100).optional().describe('Substring of the name'),
+          muscle: MuscleSlug.optional().describe('Only exercises loading this muscle'),
+          scope: z
+            .enum(['all', 'mine', 'favourites'])
+            .default('all')
+            .describe("'mine' is your personal group only"),
+          limit: z.int().min(1).max(100).default(30),
+          showAll: z
+            .boolean()
+            .optional()
+            .describe('Every exercise, also those needing equipment you do not have'),
+        })
+        .safeExtend(OfAthlete.shape),
       annotations: READ,
     },
-    async ({ q, muscle, scope, limit, showAll }) => {
-      const page = await ExerciseService.list(caller, { q, muscle, scope, limit, showAll })
+    async ({ athlete, ...query }) => {
+      const page = await CoachingService.exercises(caller, athlete, query)
       if (page.items.length === 0) return text('No exercises matched.')
       return text(
         page.items.map((e) => exerciseLine(e)).join('\n') +

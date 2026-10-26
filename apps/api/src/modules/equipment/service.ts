@@ -1,50 +1,18 @@
-import { asc, eq, sql } from 'drizzle-orm'
-import type {
-  AthleteEquipment,
-  AthleteEquipmentInput,
-  ItemWeights,
-  OwnedItem,
-} from '@cedo/contract'
+import { eq, sql } from 'drizzle-orm'
+import type { AthleteEquipment, AthleteEquipmentInput } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { athleteEquipment, users } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { type Training, own } from '../session/service.ts'
+import { columnsOf, heldBy } from './held.ts'
 
 /**
  * What an athlete has to train with (#34): their own, read or replaced whole, and an athlete's read
  * by the coach they share their training with — through `Training`, as their sessions are.
  */
 
-type Row = typeof athleteEquipment.$inferSelect
-
-/** A row's weights: all three columns or none, as its CHECK holds them — none is not known. */
-const weightsOf = (r: Row): ItemWeights | null =>
-  r.stepG === null || r.minG === null ? null : { stepG: r.stepG, minG: r.minG, maxG: r.maxG }
-
-const columnsOf = (weights: ItemWeights | null) => ({
-  stepG: weights?.stepG ?? null,
-  minG: weights?.minG ?? null,
-  maxG: weights?.maxG ?? null,
-})
-
-export async function read(training: Training): Promise<AthleteEquipment> {
-  const [[person], rows] = await Promise.all([
-    db
-      .select({ describedAt: users.equipmentDescribedAt })
-      .from(users)
-      .where(eq(users.id, training.athleteId)),
-    db
-      .select()
-      .from(athleteEquipment)
-      .where(eq(athleteEquipment.userId, training.athleteId))
-      // The enum's own order, which is the list's: the checklist's order.
-      .orderBy(asc(athleteEquipment.item)),
-  ])
-  return {
-    described: (person?.describedAt ?? null) !== null,
-    items: rows.map((r): OwnedItem => ({ slug: r.item, weights: weightsOf(r) })),
-  }
-}
+export const read = async (training: Training): Promise<AthleteEquipment> =>
+  await heldBy(training.athleteId)
 
 /**
  * Replaced whole, and said from now on. The person's row is locked first, so two saves at once

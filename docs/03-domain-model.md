@@ -191,11 +191,12 @@ description stands.
 A weight is logged as the equipment reads: a barbell's total, bar included; one dumbbell or
 kettlebell; the number on a stack.
 
-**Doable** (#35) is decided per reader, on read: `Exercise.doable` is `isDoable` in the contract,
-against what the reader has (`kitOf`, one query per hydration, at any page size), and the library's
-list carries the same rule as SQL (`doableFor`) unless asked to `showAll`. `doable.test.ts` asks
-both on one set of exercises, so they cannot disagree. Undescribed on either side is doable; a plan
-is never filtered, only marked.
+**Doable** (#35) is decided per athlete, on read — the reader, or the athlete a coach reads or
+plans for (`judgedFor`, checked by `ownOrCoached`): `Exercise.doable` is `isDoable` in the
+contract, against what they have (`heldBy`, one query per hydration, at any page size), and the
+library's list carries the same rule as SQL (`doableFor`) unless asked to `showAll`.
+`doable.test.ts` asks both on one set of exercises, so they cannot disagree. Undescribed on either
+side is doable; a plan is never filtered, only marked.
 
 ### Workouts — three levels, supersets as a tag
 

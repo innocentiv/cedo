@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { Exercise, Workout, page } from '@cedo/contract'
+import {
+  Exercise,
+  GroupMembership,
+  SessionDetail,
+  Workout,
+  WorkoutSession,
+  page,
+} from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
@@ -107,5 +114,50 @@ describe('doable', () => {
     const entry = read.days[0]?.entries[0]
     expect(entry?.exercise?.name).toBe('Back Squat Gym')
     expect(entry?.exercise?.doable).toBe(false)
+  })
+
+  /** A coach reads an athlete's session: what is doable is the athlete's to say, not the coach's. */
+  test("an athlete's session, read by their coach, is judged by the athlete's equipment", async () => {
+    const coach = await h.as('coach')
+    const post = async (user: TestUser, path: string, body: unknown, method = 'POST') =>
+      (await user.wire(path, { method, body: JSON.stringify(body) })).body
+    const squad = expectContract(GroupMembership, await post(coach, '/groups', { name: 'Squad' }))
+    await post(coach, `/groups/${squad.id}/members`, { username: alice.username, role: 'reader' })
+    await post(alice, `/groups/${squad.id}/membership`, { sharesTraining: true }, 'PATCH')
+    const lift = expectContract(
+      Exercise,
+      await post(coach, '/exercises', {
+        name: 'Squad Dumbbell Press',
+        equipment: ['dumbbells'],
+        muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+      }),
+    )
+    await post(coach, `/exercises/${lift.id}/transfer`, { toGroupId: squad.id })
+    // The squad's plan, which both can read: the coach writes it, the athlete trains from it.
+    const workout = expectContract(Workout, await post(coach, '/workouts', { name: 'Press' }))
+    const planned = expectContract(
+      Workout,
+      await post(
+        coach,
+        `/workouts/${workout.id}/plan`,
+        { days: [{ name: 'A', entries: [{ exerciseId: lift.id, sets: [{ targetReps: 5 }] }] }] },
+        'PUT',
+      ),
+    )
+    const dayId = planned.days[0]?.id
+    await post(coach, `/workouts/${workout.id}/transfer`, { toGroupId: squad.id })
+    const session = expectContract(
+      WorkoutSession,
+      await post(alice, '/sessions', { workoutId: workout.id, dayId }),
+    )
+    await have(['dumbbells'])
+    await post(coach, '/equipment', { items: [{ slug: 'rack', weights: null }] }, 'PUT')
+
+    const read = expectContract(
+      SessionDetail,
+      (await coach.wire(`/athletes/${alice.userId}/sessions/${session.id}`)).body,
+    )
+    if (read.plan === null || !read.plan.reachable) throw new Error('no plan read')
+    expect(read.plan.day.entries[0]?.exercise?.doable).toBe(true)
   })
 })

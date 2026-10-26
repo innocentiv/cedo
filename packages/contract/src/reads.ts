@@ -79,9 +79,10 @@ export const READS = {
   review: { of: 'session', embeds: ['exercise', 'workout', 'group'], lagging: true },
   /**
    * Each logged set names its exercise and how it is measured. And the session points into its
-   * plan — a workout, a day, an entry per set — which a plan save or delete can set to null.
+   * plan — a workout, a day, an entry per set — which a plan save or delete can set to null. Its
+   * day's exercises say whether each is doable (#35), by what the athlete has.
    */
-  session: { of: 'session', embeds: ['exercise', 'workout', 'group'] },
+  session: { of: 'session', embeds: ['exercise', 'workout', 'group', 'equipment'] },
   /** Who shares their training with a group the caller edits: membership, and its switch. */
   athletes: { of: 'group', embeds: [] },
   /** An athlete's sessions, named as their coach can see what they followed and logged (#30). */
