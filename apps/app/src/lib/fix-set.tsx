@@ -102,7 +102,8 @@ function FixSetForm({
               testID={`fix-set-${field.dimension}`}
             />
           ))}
-      {tracking === null || !asksReserve(tracking) ? null : (
+      {/* Out of reach, there is no saying it has no reps: how hard is offered, as it was logged. */}
+      {tracking !== null && !asksReserve(tracking) ? null : (
         <ReserveChips label="In reserve" rpe={rpe} onChange={setRpe} testID="fix-set-reserve" />
       )}
       <Chips

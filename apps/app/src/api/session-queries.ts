@@ -77,18 +77,20 @@ export const useAmendLog = (sessionId: string) =>
  * sessions the next one's targets are carried over. Never queued: a fix is made with a signal, at
  * leisure, and said at once when refused.
  */
-const FIX = ['session', 'pastSession'] as const
+const PAST_FIXED = ['session', 'pastSession'] as const
 
 export const useCorrectSet = (sessionId: string) =>
   useWriteTo(
-    FIX,
+    PAST_FIXED,
     async ({ logId, patch }: { logId: string; patch: SetLogUpdate }) =>
       await api.sessions.amendLog(sessionId, logId, patch),
   )
 
 export const useRemoveSet = (sessionId: string) =>
-  useWriteTo(FIX, async (logId: string) => await api.sessions.removeLog(sessionId, logId))
+  useWriteTo(PAST_FIXED, async (logId: string) => await api.sessions.removeLog(sessionId, logId))
 
 /** The whole session: its own reads are not asked again, being gone (`deletes`). */
 export const useDeleteSession = (sessionId: string) =>
-  useWriteTo(FIX, async () => await api.sessions.remove(sessionId), { deletes: () => sessionId })
+  useWriteTo(PAST_FIXED, async () => await api.sessions.remove(sessionId), {
+    deletes: () => sessionId,
+  })

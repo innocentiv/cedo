@@ -8,6 +8,8 @@ import { text } from '../format.ts'
 import { setLine } from '../format-coaching.ts'
 
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const
+/** It replaces what was logged, so a client that asks before a destructive write asks here. */
+const CORRECTION = { ...WRITE, destructiveHint: true, idempotentHint: true } as const
 
 /**
  * OBJECTIVE 2, as it was done — training an AI is told about: a whole session logged, and a set
@@ -45,10 +47,11 @@ export function registerSessionTools(server: McpServer, caller: Caller): void {
         'Fix a mistake in one of your sets already logged — "I did 80, not 100, on Monday" — in a ' +
         'session in progress or finished. Name it by the [id] session_get shows. Only the fields ' +
         'you send change: weight in GRAMS, reps, time, distance, RPE, or whether it was a warm-up. ' +
-        'Personal bests and progression follow. It cannot move a set to another exercise, add a ' +
-        'set to a finished session, or remove one: removing stays in the app.',
+        'Personal bests and progression follow. A set of an exercise you can no longer see takes ' +
+        'no new weight. It cannot move a set to another exercise, add a set to a finished ' +
+        'session, or remove one: removing stays in the app.',
       inputSchema: SetLogUpdate.safeExtend({ sessionId: z.uuid(), setId: z.uuid() }),
-      annotations: WRITE,
+      annotations: CORRECTION,
     },
     async ({ sessionId, setId, ...patch }) =>
       text(

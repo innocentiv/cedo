@@ -689,6 +689,13 @@ describe('a past set corrected', () => {
     expect(history).not.toContain('100 kg')
   })
 
+  /** It replaces what was logged: a client that asks before a destructive write asks here. */
+  test('is announced as destructive', async () => {
+    const { body } = await rpc(await mintPat(alice), 'tools/list')
+    const tool = (body.result?.tools ?? []).find((t) => t.name === 'session_fix_set')
+    expect(tool?.annotations?.['destructiveHint']).toBe(true)
+  })
+
   test("never someone else's: a set of theirs is not found", async () => {
     const bob = await h.as('bob')
     const exercise = expectContract(

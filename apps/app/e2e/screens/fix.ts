@@ -27,9 +27,6 @@ export const fix = (page: Page) => {
     fill: async (dimension: 'weight' | 'reps' | 'duration' | 'distance', text: string) => {
       await page.fill(`fix-set-${dimension}`, text)
     },
-    warmup: async (): Promise<void> => {
-      await page.click('[data-testid="fix-set-kind-warmup"]')
-    },
     save: async (): Promise<void> => {
       await page.click('[data-testid="fix-set-save"]')
       await closed()
