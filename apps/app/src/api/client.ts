@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import {
+  Athlete,
   AuthResult,
   type DuplicateInput,
   EntryTarget,
@@ -183,6 +184,19 @@ const review = ({ GET }: Verbs) => ({
   get: async (query: ReviewQuery) => await GET('/review', TrainingReview, asQuery(query)),
 })
 
+/** An athlete's training, read by their coach (#30): GET only — a coach changes none of it. */
+const athletes = ({ GET }: Verbs) => ({
+  list: async () => await GET('/athletes', z.array(Athlete)),
+  sessions: async (id: string, query: Partial<SessionQuery> = {}) =>
+    await GET(`/athletes/${id}/sessions`, page(WorkoutSessionSummary), asQuery(query)),
+  session: async (id: string, sessionId: string) =>
+    await GET(`/athletes/${id}/sessions/${sessionId}`, SessionDetail),
+  history: async (id: string, exerciseId: string, query: Partial<ExerciseHistoryQuery> = {}) =>
+    await GET(`/athletes/${id}/exercises/${exerciseId}/history`, ExerciseHistory, asQuery(query)),
+  review: async (id: string, query: ReviewQuery) =>
+    await GET(`/athletes/${id}/review`, TrainingReview, asQuery(query)),
+})
+
 const groups = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
   list: async () => await GET('/groups', z.array(GroupMembership)),
   create: async (body: GroupCreate) => await POST('/groups', GroupMembership, body),
@@ -218,6 +232,7 @@ export function createApi(request: SendRequest) {
     sessions: sessions(v),
     today: today(v),
     review: review(v),
+    athletes: athletes(v),
     groups: groups(v),
     media: media(v),
     tokens: tokens(v),

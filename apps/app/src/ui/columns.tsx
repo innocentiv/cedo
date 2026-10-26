@@ -11,23 +11,35 @@ import { useLayout } from './use-layout.ts'
 export function Columns({
   main,
   side,
+  narrow = 'side',
   testID,
 }: {
   readonly main: React.ReactNode
   readonly side: React.ReactNode
+  /**
+   * The column that only leads to the other: by default the side. A list whose every row opens
+   * something wider beside it — the athletes, each with their whole training (#30) — is the main
+   * column, and the narrow one.
+   */
+  readonly narrow?: 'main' | 'side'
   readonly testID?: string | undefined
 }): React.JSX.Element {
   const desk = useLayout() === 'tablet'
   return (
     <Stack direction={desk ? 'row' : 'column'} align="stretch" gap="xxl" testID={testID}>
-      <Stack gap="xxl" style={desk ? styles.main : null}>
+      <Stack gap="xxl" style={desk ? (narrow === 'main' ? styles.lead : styles.main) : null}>
         {main}
       </Stack>
-      <Stack gap="xxl" style={desk ? styles.side : null}>
+      <Stack gap="xxl" style={desk ? (narrow === 'main' ? styles.wide : styles.side) : null}>
         {side}
       </Stack>
     </Stack>
   )
 }
 
-const styles = StyleSheet.create({ main: { flex: 3 }, side: { flex: 2 } })
+const styles = StyleSheet.create({
+  main: { flex: 3 },
+  side: { flex: 2 },
+  lead: { flex: 1 },
+  wide: { flex: 3 },
+})

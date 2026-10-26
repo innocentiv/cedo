@@ -16,6 +16,7 @@ import { useAuth } from '../../src/auth/auth-provider.tsx'
 import { useSubmit } from '../../src/lib/use-submit.ts'
 import { SessionReturn, onWorkout } from '../../src/lib/session-return.tsx'
 import { SidebarFoot, SidebarHead } from '../../src/lib/sidebar.tsx'
+import { useAthletes } from '../../src/api/athlete-queries.ts'
 
 /**
  * Signed in, but the server could not be asked who by: no signal, or the server down. The session
@@ -59,7 +60,7 @@ function Unreachable({
  * The signed-in shell.
  *
  * ONE navigator for both form factors. The headless `Tabs` from `expo-router/ui` lets the chrome be
- * anything, so the same five triggers render as a bottom bar on a phone and a left sidebar on a
+ * anything, so the same triggers render as a bottom bar on a phone and a left sidebar on a
  * tablet. Swapping navigators on a width change would remount every screen and throw away scroll
  * position and half-typed input mid-resize. See docs/08-frontend.md.
  */
@@ -68,6 +69,7 @@ const TABS = [
   { name: 'workouts', href: '/workouts', label: 'Workouts' },
   { name: 'exercises', href: '/exercises', label: 'Exercises' },
   { name: 'progress', href: '/progress', label: 'Progress' },
+  { name: 'athletes', href: '/athletes', label: 'Athletes', coaching: true },
   { name: 'settings', href: '/settings', label: 'Settings' },
 ] as const
 
@@ -77,6 +79,8 @@ export default function AppLayout(): React.JSX.Element {
   const insets = useSafeAreaInsets()
   const pathname = usePathname()
   const tablet = layout === 'tablet'
+  // Athletes is offered only to a coach (#30): someone with an athlete sharing training with them.
+  const coaching = (useAthletes(status === 'signed-in').data?.length ?? 0) > 0
 
   if (status === 'loading') return <Spinner testID="boot-spinner" />
   if (status === 'signed-out') return <Redirect href="/login" />
@@ -102,11 +106,16 @@ export default function AppLayout(): React.JSX.Element {
         ]}
       >
         {tablet ? <SidebarHead /> : null}
-        {TABS.map((tab) => (
-          <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
-            <NavItem label={tab.label} horizontal={!tablet} />
-          </TabTrigger>
-        ))}
+        {TABS.map((tab) =>
+          // Still a trigger, unshown: the navigator knows its routes only by their triggers.
+          'coaching' in tab && !coaching ? (
+            <TabTrigger key={tab.name} name={tab.name} href={tab.href} style={styles.hidden} />
+          ) : (
+            <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
+              <NavItem label={tab.label} horizontal={!tablet} />
+            </TabTrigger>
+          ),
+        )}
         {/* The navigator reads only the triggers in here; anything else is just drawn. */}
         {tablet ? <SidebarFoot /> : null}
       </TabList>

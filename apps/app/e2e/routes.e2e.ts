@@ -27,6 +27,8 @@ const ROUTES: readonly (readonly [string, string])[] = [
   ['/exercises', 'exercises-screen'],
   ['/exercises/new', 'exercise-new-screen'],
   ['/progress', 'progress-screen'],
+  // Reachable by its address even with nobody sharing: it says so.
+  ['/athletes', 'athletes-screen'],
   ['/settings', 'settings-screen'],
   ['/settings/groups', 'groups-screen'],
   ['/settings/tokens', 'tokens-screen'],

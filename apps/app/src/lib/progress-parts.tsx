@@ -1,5 +1,6 @@
 import {
   type MuscleRow,
+  ReviewQuery,
   type TrainingReview,
   counted,
   driftLine,
@@ -8,7 +9,7 @@ import {
   muscleRows,
   stallLine,
 } from '@cedo/contract'
-import { Card, ListRow, Meter, Stack, Text } from '../ui/index.ts'
+import { Card, Chips, ListRow, Meter, Stack, Text } from '../ui/index.ts'
 import { useWeightUnit } from './weight-unit.ts'
 
 /**
@@ -16,6 +17,26 @@ import { useWeightUnit } from './weight-unit.ts'
  * each muscle got — the review `GET /review` answers, laid out. Every number and word is the
  * contract's (`review.ts`); these only place them. See docs/08-frontend.md, "Progress".
  */
+
+const PERIODS = [
+  { value: '4', label: '4 weeks' },
+  { value: '8', label: '8 weeks' },
+  { value: '12', label: '12 weeks' },
+] as const
+
+/** The period a review starts on: the review's own default, as the contract says it. */
+export const FIRST_PERIOD = String(ReviewQuery.parse({}).weeks)
+
+/** How far back the review looks. */
+export function Period({
+  value,
+  onChange,
+}: {
+  readonly value: string
+  readonly onChange: (weeks: string) => void
+}): React.JSX.Element {
+  return <Chips options={PERIODS} value={value} onChange={onChange} testID="progress-weeks" />
+}
 
 /** One number of the period, and what it counts. */
 const stat = (label: string, value: string, testID: string) => (

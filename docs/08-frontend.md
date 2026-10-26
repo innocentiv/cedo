@@ -8,7 +8,8 @@ two-pane layout. It depends on **`@cedo/contract` and nothing else** from this r
 This is the rule the whole frontend is organised around, and the reason the test suite can be as
 small as it is.
 
-> A screen **may**: call the hooks in `src/api/queries.ts` and `src/api/session-queries.ts` (never
+> A screen **may**: call the hooks in `src/api/queries.ts`, `src/api/session-queries.ts` and
+> `src/api/athlete-queries.ts` (never
 > `api.*` or `fetch` directly),
 > render UI primitives, hold form state, and call pure helpers from `@cedo/contract`
 > (`formatEffort`, `formatWeight`, `formatPrescription`, `workingSetsDone`, `planInputFrom`).
@@ -51,11 +52,13 @@ app/(app)/_layout.tsx        the signed-in shell: bottom bar on phone, sidebar o
 app/(app)/today/            index · session/[id]        the live logging screen
 app/(app)/workouts/         index · [id]/index · [id]/edit
 app/(app)/exercises/        index · new · [id]/index · [id]/edit
+app/(app)/athletes/         index · [id]/index · [id]/sessions/[session] · [id]/exercises/[exercise]
 app/(app)/settings/         index · groups/index · groups/[id]/index · tokens · connect
 
 src/ui/                      the entire visual vocabulary
 src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts,
                              session-queries.ts (a session's writes and its offline queue),
+                             athlete-queries.ts (a coach's reads of an athlete's training),
                              retry.ts and pending.ts (+ their unit tests)
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
@@ -63,7 +66,8 @@ src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ it
                              pickers, group-placement.tsx, duplicate-into-my-group.tsx, and each
                              screen's parts: the workout's, Today's, Progress's, a workout's
                              outline, an exercise's (exercise-detail.tsx, exercise-about.tsx,
-                             exercise-media.tsx), the desktop sidebar's (sidebar.tsx)
+                             exercise-media.tsx), the desktop sidebar's (sidebar.tsx), an
+                             athlete's, read by their coach (athlete.tsx)
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts,
                              harness.e2e.ts (the harness's own tests), journeys.test.ts (the rules
                              journeys obey), screens/ (one driver per screen; test ids live here)
@@ -117,7 +121,7 @@ Two constraints found by building it:
 | `RemoveButton` | removing a day or an entry from a plan edited in place: the bin, asked twice |
 | `Sheet` | something looked at without leaving where you are — a session's menu, how to do an exercise. From the bottom on a phone, in the middle on a desktop |
 | `Icon`, `IconButton` | a secondary action as a glyph alone — back, menu, close, undo, how to — named aloud by its label |
-| `Columns` | a screen's main part and what it sits within: one column on a phone, side by side on a desktop |
+| `Columns` | a screen's main part and what it sits within: one column on a phone, side by side on a desktop — the side the narrow one, or the main when it is a list leading to the side |
 | `Thumbnail` | a picture of a movement: a video's thumbnail, an uploaded image |
 | `color`, `space`, `radius`, `type`, `font`, `CONTENT_MAX_WIDTH`, `WIDE_CONTENT_MAX_WIDTH`, `CONTROL_HEIGHT`, `LOG_CONTROL_HEIGHT`, `ROW_HEIGHT`, `ICON_SIZE` | the only source of visual values |
 | `useAppFonts()` | the bundled faces `font` names, loaded beside the app at its root — never waited for |
@@ -342,7 +346,8 @@ As built (#27):
 
 ### Progress, and the tabs
 
-**Today · Workouts · Exercises · Progress · Settings.** Progress is the training review — sessions a
+**Today · Workouts · Exercises · Progress · Settings** — and Athletes before Settings, for a coach
+(below). Progress is the training review — sessions a
 week and the streak, days skipped, work per muscle against the period before, and what has stalled,
 is falling or is drifting — the same read the AI gets, over HTTP.
 
@@ -378,6 +383,28 @@ As built (#29): the exercise chosen from the library opens in a pane beside the 
 (`ExerciseDetailView`, a screen of its own on a phone, a pane on a desktop — its title and Edit at
 its head), the list kept; the sidebar names the product at its head, and at its foot who is signed
 in — a tap to Settings — above the band of a session left open.
+
+### The coach's view
+
+A coach is an editor of a group an athlete shares their training with (ADR-0021), and reads it —
+never writes it. As built (#30):
+
+- **An Athletes tab, offered only to a coach** — someone with at least one athlete sharing with
+  them (`GET /athletes`). Its trigger stays in the navigator unshown otherwise: the headless tabs
+  know a route only by its trigger. Reached by its address with nobody sharing, it says so.
+- **An athlete's page** (`AthleteView`): the session they are in now, if they are — a row that opens
+  its sets so far, read when opened, never polled — then their Progress, the same parts and periods
+  as your own tab (`GET /athletes/:id/review`), then their history by week. Nothing on it changes
+  their training.
+- **A session of theirs** opens read-only: what it came to, their notes, the sets by exercise. An
+  exercise opens their history of it — trend and sessions — and only one the coach can see: one they
+  cannot has no name, and no way in.
+- **On a desktop**, the athletes beside the one open, in the address (`/athletes?open=<id>`), as an
+  exercise in the library — the list the narrow column here (`Columns` `narrow="main"`), since each
+  row opens a whole training beside it.
+- **Their reads are of `athlete` in `READS`**: they write it, on their own device, so nothing the
+  coach does awaits it — their own sets least of all. Renaming an exercise, or a group change,
+  still refreshes it behind.
 
 ### The look
 

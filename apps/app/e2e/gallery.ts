@@ -52,6 +52,14 @@ interface World {
   readonly squatId: string
   readonly customId: string
   readonly clubId: string
+  /** Sam, as their coach reads them (#30). */
+  readonly athleteId: string
+  readonly coach: Credentials
+}
+
+interface Credentials {
+  readonly username: string
+  readonly password: string
 }
 
 const findExercise = async (api: ApiClient, name: string): Promise<string> => {
@@ -93,7 +101,7 @@ const lift = (
 
 async function seed(): Promise<World> {
   const username = unique('sam')
-  const { api } = await signUp(username, 'Sam Rivera')
+  const { api, user: sam } = await signUp(username, 'Sam Rivera')
 
   const ex = Object.fromEntries(
     await Promise.all(
@@ -264,7 +272,8 @@ async function seed(): Promise<World> {
   await db.close()
 
   // A coach's club Sam belongs to and shares training with, with a plan of the coach's in it.
-  const coach = await signUp(unique('dana'))
+  const coachName = unique('dana')
+  const coach = await signUp(coachName, 'Dana Okafor')
   const club = await coach.api.groups.create({ name: 'Northside Barbell Club' })
   await coach.api.groups.addMember(club.id, { username, role: 'reader' })
   const coachPlan = await coach.api.workouts.create({ name: 'Squat Cycle — Peaking', notes: null })
@@ -287,6 +296,8 @@ async function seed(): Promise<World> {
     squatId: at('Barbell Back Squat'),
     customId: custom.id,
     clubId: club.id,
+    athleteId: sam.id,
+    coach: { username: coachName, password: `${coachName}-password` },
   }
 }
 
@@ -372,7 +383,7 @@ async function show(page: Page, path: string, screen: string): Promise<void> {
   await page.waitFor(screen, 15_000)
 }
 
-async function signIn(page: Page, world: World): Promise<void> {
+async function signIn(page: Page, world: Credentials): Promise<void> {
   await page.goto('/login')
   await page.waitFor('login-username')
   await page.fill('login-username', world.username)
@@ -456,6 +467,27 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await page.click('[data-testid="finish-session-confirm"]')
   await page.waitFor('session-finished')
   await snap('18-session-finished')
+
+  // Sam back at it, and their coach reading along (#30).
+  await startToday(page, world)
+  await (await page.client()).auth.logout()
+  await signIn(page, world.coach)
+  await show(page, '/athletes', 'athletes-screen')
+  await snap('19-athletes')
+  // Its own address opens a screen on a phone, and the pane beside the athletes on a desktop.
+  const athlete = (await page.shown('shell-tablet')) ? 'athlete-pane' : 'athlete-screen'
+  await show(page, `/athletes/${world.athleteId}`, athlete)
+  await page.waitFor('athlete-training-now', 15_000)
+  await snap('20-athlete')
+  await show(page, `/athletes/${world.athleteId}/sessions/${sessionId}`, 'athlete-session-screen')
+  await snap('21-athlete-session')
+  await show(
+    page,
+    `/athletes/${world.athleteId}/exercises/${world.squatId}`,
+    'athlete-exercise-screen',
+  )
+  await page.waitFor('exercise-trend', 15_000)
+  await snap('22-athlete-exercise')
 }
 
 function index(): string {

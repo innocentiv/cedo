@@ -66,9 +66,9 @@ role already means "runs this group".
   person at all.
 - Every `/athletes` route is a GET in `test/membership-lost.test.ts`: each way of losing access ends
   in a 404.
-- The training review has no HTTP route, not even for one's own training: it is a read model the
-  MCP tool formats, typed inside the API. A coach reads it over MCP, with `athlete`, as the athlete
-  does without; `GET /athletes/:id/review` comes with the screen that needs it — authored in the
-  contract then, for both — in #23.
-- In the app, only the athlete's side exists at first — the switch on a group, and who reads your
-  training. The coach's screens are #23.
+- The training review is one read, said by the contract (`TrainingReview`): `GET /review` for your
+  own (#28), `GET /athletes/:id/review` for an athlete's (#30), and `training_review` over MCP, with
+  or without `athlete`.
+- In the app, the athlete's side came first — the switch on a group, and who reads your training.
+  The coach's side is the Athletes tab (#30), shown only to someone with an athlete to read: each
+  athlete's Progress and history, read-only, with nothing on it to press that would change them.

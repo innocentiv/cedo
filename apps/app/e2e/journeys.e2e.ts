@@ -12,6 +12,7 @@ import {
 import {
   E2E_STARTUP_TIMEOUT_MS,
   E2E_TIMEOUT_MS,
+  type Page,
   sharedApi,
   signUp,
   stopSharedApi,
@@ -130,6 +131,99 @@ test(
         (said) => said === '0.8',
       )
     })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * The coach's view (#30), set up over HTTP: the page's user coaches an athlete who shares their
+ * training with the squad — three finished sessions of rows at 80 kg, and one in progress.
+ */
+async function coachingSetUp(page: Page, coachName: string) {
+  const athlete = await signUp(`${coachName}a`, 'Robin Vale')
+  const mine = await page.client()
+  const squad = await mine.groups.create({ name: 'Squad' })
+  await mine.groups.addMember(squad.id, { username: athlete.user.username, role: 'reader' })
+  await athlete.api.groups.setSharing(squad.id, { sharesTraining: true })
+  const [row] = (await athlete.api.exercises.list({ q: 'Barbell Row', limit: 1 })).items
+  if (row === undefined) throw new Error('The library has no row')
+  const logRow = async (sessionId: string) =>
+    await athlete.api.sessions.logSet(
+      sessionId,
+      LogSetInput.parse({ exerciseId: row.id, weightG: kgToG(80), reps: 5 }),
+    )
+  for (let i = 0; i < 3; i += 1) {
+    // oxlint-disable-next-line no-await-in-loop -- one session at a time.
+    const session = await athlete.api.sessions.start({ workoutId: null, dayId: null })
+    // oxlint-disable-next-line no-await-in-loop -- in order.
+    await logRow(session.id)
+    // oxlint-disable-next-line no-await-in-loop -- finished before the next can start.
+    await athlete.api.sessions.update(session.id, { endedAt: new Date().toISOString() })
+  }
+  await logRow((await athlete.api.sessions.start({ workoutId: null, dayId: null })).id)
+  return { athlete, squadId: squad.id, rowId: row.id }
+}
+
+/**
+ * A coach reads an athlete's training (#30): the tab offered only while someone shares with them,
+ * the session they are in, their Progress, their history — and from a session, an exercise's.
+ */
+test(
+  "a coach reads an athlete's training, offered only while they share it",
+  async () => {
+    await withApp('coach-reads', async (page) => {
+      const app = screens(page)
+      const coachName = unique('coach')
+      await app.auth.register(coachName)
+      await app.nav.onToday()
+      expect(await app.athletes.offered()).toBe(false)
+      const { athlete, squadId, rowId } = await coachingSetUp(page, coachName)
+
+      await page.goto('/today')
+      await app.nav.onToday()
+      expect(await app.athletes.offered()).toBe(true)
+      await app.athletes.open(athlete.user.id)
+      expect(await app.athletes.trainingNow()).toContain('1 set')
+      // The review counts the session they are in, as their own Progress does.
+      expect(await app.progress.attention()).toContain('4 sessions at 5 × 80 kg')
+      expect(await page.until(app.today.rows, (rows) => rows.length === 3)).toHaveLength(3)
+
+      // Their session in progress: the sets so far, read-only.
+      await app.athletes.openTrainingNow()
+      expect(await app.athletes.sets()).toContain('5 × 80 kg')
+      await app.athletes.back()
+      await app.today.open(0)
+      await app.athletes.historyOf(rowId)
+      expect(await app.exercise.historyText()).toContain('5 × 80 kg')
+
+      // Taken back: the tab is offered no more.
+      await athlete.api.groups.setSharing(squadId, { sharesTraining: false })
+      await page.goto('/today')
+      await app.nav.onToday()
+      expect(await app.athletes.offered()).toBe(false)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/** On a desktop the athlete opens beside the list, as an exercise does in the library (#29). */
+test(
+  'on a desktop an athlete opens beside the athletes',
+  async () => {
+    await withApp(
+      'coach-desk',
+      async (page) => {
+        const app = screens(page)
+        const coachName = unique('desk')
+        await app.auth.register(coachName)
+        const { athlete } = await coachingSetUp(page, coachName)
+        await page.goto('/today')
+        await app.athletes.open(athlete.user.id)
+        expect(await app.athletes.trainingNow()).toContain('1 set')
+        expect(await app.athletes.listShown()).toBe(true)
+      },
+      { layout: 'desktop' },
+    )
   },
   E2E_TIMEOUT_MS,
 )

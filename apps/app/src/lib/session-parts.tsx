@@ -120,15 +120,36 @@ export function LoggedSets({
  * is read back. Its personal bests marked green, as they were when logged. Nothing to undo: finishing
  * is final.
  */
-export function SetsByExercise({ logs }: { readonly logs: readonly SetLog[] }): React.JSX.Element {
+export function SetsByExercise({
+  logs,
+  historyOf,
+}: {
+  readonly logs: readonly SetLog[]
+  /**
+   * Opens an exercise's history, from its name — read by a coach (#30), whose session page is the
+   * way into an athlete's history. Never for an exercise the reader cannot see: it has no name.
+   */
+  readonly historyOf?: (exerciseId: string) => void
+}): React.JSX.Element {
   const unit = useWeightUnit()
   return (
     <Stack gap="xl" testID="session-logs">
       {byExercise(logs).map((sets) => (
         <Stack key={sets[0]?.exerciseId} gap="xs">
-          <Text variant="label" tone="muted">
-            {exerciseName(sets[0]?.exercise ?? null)}
-          </Text>
+          {historyOf === undefined || sets[0]?.exercise == null ? (
+            <Text variant="label" tone="muted">
+              {exerciseName(sets[0]?.exercise ?? null)}
+            </Text>
+          ) : (
+            <ListRow
+              title={exerciseName(sets[0].exercise)}
+              trailing="History"
+              onPress={() => {
+                historyOf(sets[0]?.exerciseId ?? '')
+              }}
+              testID={`exercise-history-of-${sets[0].exerciseId}`}
+            />
+          )}
           {sets.map((log) => (
             <ListRow
               key={log.id}

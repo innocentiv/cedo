@@ -7,6 +7,7 @@ import {
   personalBestsLabel,
   personalBestsShort,
   sessionLine,
+  sessionName,
   startOfWeek,
   weekStrip,
 } from './week.ts'
@@ -65,6 +66,22 @@ describe('history by week (#25)', () => {
       ['Last week', 1],
       ['Week of 5 Oct', 1],
     ])
+  })
+})
+
+describe('a session by name', () => {
+  const named = (workoutId: string | null, workoutName: string | null, dayName: string | null) =>
+    sessionName({ workoutId, workoutName, dayName })
+
+  test('by its day, else its workout, else as logged without a plan', () => {
+    expect(named('w', 'Upper Lower', 'Lower A')).toBe('Lower A')
+    expect(named('w', 'Upper Lower', null)).toBe('Upper Lower')
+    expect(named(null, null, null)).toBe('Without a plan')
+  })
+
+  /** Read by a coach (#30), the athlete's own plan is out of sight — but it was followed. */
+  test('a plan out of the reader’s sight is unavailable, never none', () => {
+    expect(named('w', null, null)).toBe('Plan unavailable')
   })
 })
 

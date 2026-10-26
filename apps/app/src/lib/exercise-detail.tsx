@@ -97,7 +97,11 @@ export function ExerciseDetailView({
 
       <About exercise={data} />
 
-      <RecentHistory query={history} tracking={data.tracking} />
+      <RecentHistory
+        query={history}
+        tracking={data.tracking}
+        sessionHref={(sessionId) => `/today/session/${sessionId}`}
+      />
 
       {data.canEdit ? (
         // Refused while a plan or a logged set still uses it, and says so beside the button.

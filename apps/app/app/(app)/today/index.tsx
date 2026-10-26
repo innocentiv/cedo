@@ -41,6 +41,7 @@ export default function Today(): React.JSX.Element {
             {(data) => (
               <History
                 sessions={data.pages.flatMap((page) => page.items)}
+                sessionHref={(id) => `/today/session/${id}`}
                 older={
                   history.hasNextPage
                     ? {

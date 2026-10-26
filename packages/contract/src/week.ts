@@ -103,6 +103,21 @@ export function formatMinutes(seconds: number): string {
 }
 
 /**
+ * A session by the day it followed, else its workout. A plan it follows that the reader cannot see
+ * — the athlete's own, read by their coach (#30); a group's, after leaving it — is unavailable, as
+ * an exercise out of reach is: never "without a plan", which would say it followed none.
+ */
+export function sessionName(session: {
+  readonly workoutId: string | null
+  readonly workoutName: string | null
+  readonly dayName: string | null
+}): string {
+  if (session.dayName !== null) return session.dayName
+  if (session.workoutName !== null) return session.workoutName
+  return session.workoutId === null ? 'Without a plan' : 'Plan unavailable'
+}
+
+/**
  * `Thu 23 Oct · 52 min · 18 sets`: a session in history, in one line. No duration while it is in
  * progress: it has not taken any time yet that is its own to say.
  */

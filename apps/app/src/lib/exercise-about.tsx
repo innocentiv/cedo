@@ -27,9 +27,12 @@ import { useWeightUnit } from './weight-unit.ts'
 export function RecentHistory({
   query,
   tracking,
+  sessionHref,
 }: {
   readonly query: QueryLike<ExerciseHistory>
   readonly tracking: TrackingMode
+  /** Where one of its sessions opens: your own, or — read by their coach — an athlete's (#30). */
+  readonly sessionHref: (sessionId: string) => string
 }): React.JSX.Element {
   const router = useRouter()
   const unit = useWeightUnit()
@@ -53,7 +56,7 @@ export function RecentHistory({
                   title={new Date(entry.performedAt).toLocaleDateString()}
                   subtitle={entry.sets.map((set) => formatEffort(set, tracking, unit)).join(', ')}
                   onPress={() => {
-                    router.push(`/today/session/${entry.sessionId}`)
+                    router.push(sessionHref(entry.sessionId))
                   }}
                 />
               ))}

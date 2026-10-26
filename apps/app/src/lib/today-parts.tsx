@@ -8,6 +8,7 @@ import {
   counted,
   personalBestsShort,
   sessionLine,
+  sessionName,
   weekStrip,
 } from '@cedo/contract'
 import { Button, Card, Empty, ListRow, NavButton, Stack, Text, WeekStrip } from '../ui/index.ts'
@@ -18,9 +19,6 @@ import { Button, Card, Empty, ListRow, NavButton, Stack, Text, WeekStrip } from 
  * (`GET /today`) and the contract's (`week.ts`); these only lay them out. See docs/08-frontend.md,
  * "Today".
  */
-
-const nameOf = (session: WorkoutSessionSummary): string =>
-  session.dayName ?? session.workoutName ?? 'Without a plan'
 
 /** What to do now, then the week: the first thing the screen says. */
 export function Now({
@@ -71,7 +69,7 @@ function InProgress({ session }: { readonly session: WorkoutSessionSummary }): R
           <Text variant="label" tone="accent">
             In progress
           </Text>
-          <Text variant="title">{nameOf(session)}</Text>
+          <Text variant="title">{sessionName(session)}</Text>
           <Text tone="muted">{sessionLine(session)}</Text>
         </Stack>
         <Button
@@ -169,8 +167,11 @@ function ThisWeek({
 export function History({
   sessions,
   older,
+  sessionHref,
 }: {
   readonly sessions: readonly WorkoutSessionSummary[]
+  /** Where one opens: your own, or — read by their coach — an athlete's (#30). */
+  readonly sessionHref: (sessionId: string) => string
   /** The next page of older sessions, while there is one. */
   readonly older: { readonly load: () => void; readonly busy: boolean } | null
 }): React.JSX.Element {
@@ -193,7 +194,7 @@ export function History({
             return (
               <ListRow
                 key={session.id}
-                title={nameOf(session)}
+                title={sessionName(session)}
                 subtitle={sessionLine(session)}
                 accessory={
                   bests === null ? undefined : (
@@ -203,7 +204,7 @@ export function History({
                   )
                 }
                 onPress={() => {
-                  router.push(`/today/session/${session.id}`)
+                  router.push(sessionHref(session.id))
                 }}
                 testID={`session-row-${session.id}`}
               />

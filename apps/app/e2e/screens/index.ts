@@ -1,4 +1,5 @@
 import type { Page } from '../harness.ts'
+import { athletes } from './athletes.ts'
 import { auth } from './auth.ts'
 import { desk } from './desk.ts'
 import { groups } from './groups.ts'
@@ -32,6 +33,7 @@ export const screens = (page: Page) => ({
   today: today(page),
   picker: picker(page),
   progress: progress(page),
+  athletes: athletes(page),
   desk: desk(page),
   install: install(page),
 })

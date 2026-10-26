@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { ReviewQuery } from '@cedo/contract'
-import { Chips, Columns, Loaded, Screen, Stack } from '../../../src/ui/index.ts'
+import { Columns, Loaded, Screen, Stack } from '../../../src/ui/index.ts'
 import { useReview } from '../../../src/api/queries.ts'
-import { Attention, Consistency, Days, Muscles } from '../../../src/lib/progress-parts.tsx'
-
-const PERIODS = [
-  { value: '4', label: '4 weeks' },
-  { value: '8', label: '8 weeks' },
-  { value: '12', label: '12 weeks' },
-] as const
+import {
+  Attention,
+  Consistency,
+  Days,
+  FIRST_PERIOD,
+  Muscles,
+  Period,
+} from '../../../src/lib/progress-parts.tsx'
 
 /**
  * Progress (#28): your training reviewed — how consistently, what needs attention, which days, and
@@ -16,12 +16,11 @@ const PERIODS = [
  * `training_review`, over HTTP. See docs/08-frontend.md, "Progress, and the tabs".
  */
 export default function Progress(): React.JSX.Element {
-  // The review's own default period, as the contract says it.
-  const [weeks, setWeeks] = useState(String(ReviewQuery.parse({}).weeks))
+  const [weeks, setWeeks] = useState(FIRST_PERIOD)
   const review = useReview(Number(weeks))
   return (
     <Screen title="Progress" wide testID="progress-screen">
-      <Chips options={PERIODS} value={weeks} onChange={setWeeks} testID="progress-weeks" />
+      <Period value={weeks} onChange={setWeeks} />
       <Loaded query={review} testID="progress">
         {(data) => (
           <Columns
