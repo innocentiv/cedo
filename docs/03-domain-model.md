@@ -273,6 +273,21 @@ increase under one step still moves. The grid is counted in the unit the athlete
 grams are not whole pounds. `EntryTarget.limit` says where it stopped. See
 [adr/0024](adr/0024-targets-follow-the-athletes-equipment.md).
 
+### A rest, and its alert
+
+```
+workout_sessions.rest_since?, rest_ends_at?, rest_alerted_at?
+push_subscriptions(id, user_id, endpoint unique, p256dh, auth, created_at)
+instance_secrets(name, value)
+```
+
+The rest after a set is kept by the server (#38): `rest_since` and `rest_ends_at` are worked out as
+each set is logged by the contract's `restOf`, moved by +30 s and cleared by skip (`POST
+/sessions/:id/rest`, naming its rest by `since`), Undo or finishing. A sender claims ended rests
+once a second — `rest_alerted_at` set in the claim, so each is told once — and pushes the next set,
+as `restAlertOf` says it, to every subscribed device. `instance_secrets` keeps the push key pair the
+server made for itself. See [adr/0025](adr/0025-rest-kept-by-the-server.md).
+
 ### Logs
 
 ```

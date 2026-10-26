@@ -111,9 +111,10 @@ describe('a device told when a rest is over', () => {
   test('is told no more — but only by its own account', async () => {
     await send(alice, '/push/subscriptions', device('phone'))
     const bob = await h.as('bob')
-    await send(bob, '/push/subscriptions', { endpoint: device('phone').endpoint }, 'DELETE')
+    const gone = `/push/subscriptions?endpoint=${encodeURIComponent(device('phone').endpoint)}`
+    await bob.wire(gone, { method: 'DELETE' })
     expect(await db.select().from(pushSubscriptions)).toHaveLength(1)
-    await send(alice, '/push/subscriptions', { endpoint: device('phone').endpoint }, 'DELETE')
+    expect((await alice.wire(gone, { method: 'DELETE' })).status).toBe(200)
     expect(await db.select().from(pushSubscriptions)).toHaveLength(0)
   })
 })

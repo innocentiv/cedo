@@ -86,6 +86,47 @@ describe('the rest a session has running', () => {
     expect(seconds(rest)).toBe(90)
   })
 
+  test('within a superset round none runs; after the round, its last exercise’s', async () => {
+    const lift = async (name: string) =>
+      expectContract(
+        Exercise,
+        await post('/exercises', { name, muscles: [{ muscle: 'quadriceps', loadPct: 100 }] }),
+      )
+    const [press, row] = [await lift('Press'), await lift('Row')]
+    const workout = expectContract(Workout, await post('/workouts', { name: 'Pair' }))
+    const set = { targetReps: 8, targetWeightG: 40_000 }
+    const plan = expectContract(
+      Workout,
+      await post(
+        `/workouts/${workout.id}/plan`,
+        {
+          days: [
+            {
+              name: 'A',
+              entries: [
+                { exerciseId: press.id, supersetGroup: 'A', restSeconds: 0, sets: [set, set] },
+                { exerciseId: row.id, supersetGroup: 'A', restSeconds: 75, sets: [set, set] },
+              ],
+            },
+          ],
+        },
+        'PUT',
+      ),
+    )
+    const [first, second] = plan.days[0]?.entries ?? []
+    if (first === undefined || second === undefined) throw new Error('no plan')
+    const session = expectContract(
+      WorkoutSession,
+      await post('/sessions', { workoutId: workout.id, dayId: plan.days[0]?.id }),
+    )
+    const log = async (exerciseId: string, entryId: string) =>
+      await post(`/sessions/${session.id}/logs`, { exerciseId, entryId, weightG: 40_000, reps: 8 })
+    await log(press.id, first.id)
+    expect(await restOf(session.id)).toBeNull()
+    await log(row.id, second.id)
+    expect(seconds(await restOf(session.id))).toBe(75)
+  })
+
   test('a set logged with no plan rests the default two minutes', async () => {
     const squat = expectContract(
       Exercise,

@@ -21,9 +21,9 @@ export const pushRoutes = new Elysia({ prefix: '/push', tags: ['push'] })
   )
   .delete(
     '/subscriptions',
-    async ({ caller, body }) => {
-      await PushService.unsubscribe(caller, body)
+    async ({ caller, query }) => {
+      await PushService.unsubscribe(caller, query)
       return { ok: true }
     },
-    { body: PushUnsubscribe, detail: { summary: 'Tell this device no more' } },
+    { query: PushUnsubscribe, detail: { summary: 'Tell this device no more' } },
   )

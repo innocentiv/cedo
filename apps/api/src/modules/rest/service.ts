@@ -1,10 +1,10 @@
 import { and, eq, sql } from 'drizzle-orm'
-import { REST_EXTENSION_S, type RestChange, restOf } from '@cedo/contract'
+import { REST_EXTENSION_S, type RestChange } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { workoutSessions } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { get as getSession } from '../session/plan.ts'
-import { NO_REST, own, ownedBy } from '../session/service.ts'
+import { NO_REST, ownedBy } from '../session/service.ts'
+import { restNow } from './day.ts'
 
 /**
  * The rest a session has running, as the server keeps it (#38): worked out as each set is logged by
@@ -15,9 +15,7 @@ import { NO_REST, own, ownedBy } from '../session/service.ts'
 
 /** After a set is logged: the rest it starts, or none — a warm-up, mid-superset, none prescribed. */
 export async function startRest(caller: Caller, sessionId: string): Promise<void> {
-  const session = await getSession(own(caller), sessionId)
-  const day = session.plan !== null && session.plan.reachable ? session.plan.day : null
-  const rest = restOf(day, session.logs)
+  const rest = await restNow(caller, sessionId)
   await db
     .update(workoutSessions)
     .set(
