@@ -135,7 +135,8 @@ would otherwise be copied: `MusclePicker`, `EquipmentPicker` (what an exercise n
 or nothing — none chosen is undescribed, #33), `EntryEditor` (one plan entry's fields, opened from its
 line in a workout's outline, #26), and the
 workout's (#24) — `FocusLogger` (the exercise in focus: its `SetMarks`, the next set's `Stepper`s,
-one Log button), `LastSet` (the set just logged: a best, its reserve, Undo), `RestBand`, `UpNext`
+one Log button, and the reserve asked before it), `LastSet` (the set just logged: a best, its
+reserve as said, Undo), `RestBand`, `UpNext`
 and `AddRow`,
 `SessionHeader` and `ReturnBar`; and Today's (#25) — `WeekStrip`, a week's days as the contract's
 `weekStrip` gives them. They are still presentational — the rules they render (loads
@@ -153,7 +154,8 @@ its targets, reserve, rest and cue. The rest band's clock is `useRestClock`
 (`src/lib/rest-clock.ts`); it and the session's clock read `useNow`
 (`src/lib/use-now.ts`), a clock of its own that ticks once a second only while it must — so the
 band re-renders, not the day. The tone at the end of a rest is `src/lib/chime.ts`, made by the
-browser, nothing bundled.
+browser, nothing bundled — three beeps, played through iOS's silent switch where Safari lets a page
+say it plays media (`navigator.audioSession`), and a buzz where `navigator.vibrate` exists.
 
 Sets logged without a signal (#9) count as done on the workout — the next set comes up, rest
 starts — through `withPending` (`src/api/pending.ts`): app-owned state with no React in it, so
@@ -244,11 +246,14 @@ drawn as one item; tapping one makes it current, and tapping a logged set re-ope
 - **Logging moves the focus** to the entry's next set, then to the next entry in day order with
   sets left. Entries of a superset alternate, and rest starts after the pair.
 - **Rest starts on its own** when a set is logged: a countdown band with +30 s and × to skip it,
-  above the set it follows; at zero the band changes colour and sounds once if the app is open. No background
-  notification — an installed web app cannot send one reliably on an iPhone.
-- **Reserve is asked after**, as one optional row on the set just logged, and only for an exercise
-  measured in reps. Which those are is the contract's, not the screen's. Whole reps, none to five,
-  one row of segments; tapping the chosen one again takes it back.
+  above the set it follows; at zero the band changes colour, beeps three times and buzzes where the
+  device can, if the app is open. In the background, a push from the server is #38.
+- **Reserve is asked before Log** (#37), as one optional row in the logger, under the numbers, and
+  only for a working set of an exercise measured in reps — which those are is the contract's, not
+  the screen's. Whole reps, none to five, one row of segments; tapping the chosen one again takes it
+  back. Never pre-filled, not even from the plan's RPE, and empty for each set. Once logged, the set
+  says its reserve and asks nothing more: Undo, or correcting it from the summary (#31), is how a
+  mistake is fixed.
 - **"+ set"** logs one beyond the prescription; **Add exercise** logs one with no entry, as a swap
   when a machine is taken — today's ad-hoc logging, which leaves the entry's progression alone.
 - **ⓘ** opens how to do it — cue, instructions, muscles, the video — without leaving the session.

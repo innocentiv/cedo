@@ -1,17 +1,16 @@
 import type { Effort } from '@cedo/contract'
 import { newIdempotencyKey } from '../api/retry.ts'
-import { useAmendLog, useLogSet } from '../api/session-queries.ts'
+import { useLogSet } from '../api/session-queries.ts'
 import { primeChime } from './chime.ts'
 import { useSubmit } from './use-submit.ts'
 
 /**
  * The workout screen's writes to its sets: logging one — a warm-up or a working set, against a plan
- * entry or none — and saying its reserve after (#24). The set's number is the server's to give, in
- * its series, the same way for this screen and an AI.
+ * entry or none — with its reserve, said before it is logged (#37). The set's number is the
+ * server's to give, in its series, the same way for this screen and an AI.
  */
 export function useRecordSet(sessionId: string) {
   const logSet = useLogSet(sessionId)
-  const amend = useAmendLog(sessionId)
   // Its own submission, so a set waiting for a signal never holds Finish, nor clears its refusal.
   const { submit, error } = useSubmit()
   // Held only while a set's first send is on its way. Once one waits — for a signal, or behind
@@ -26,6 +25,7 @@ export function useRecordSet(sessionId: string) {
       readonly entryId: string | null
       readonly effort: Effort
       readonly isWarmup: boolean
+      readonly rpe: number | null
     }): void => {
       // The tap that logs a set starts the sound its rest will end with: iOS asks for a tap.
       primeChime()
@@ -38,18 +38,13 @@ export function useRecordSet(sessionId: string) {
             entryId: set.entryId,
             weightG: set.effort.weightG,
             reps: set.effort.reps,
-            rpe: null,
+            rpe: set.rpe,
             durationS: set.effort.durationS,
             distanceMm: set.effort.distanceMm,
             isWarmup: set.isWarmup,
           },
           key,
         })
-      })
-    },
-    reserve: (logId: string, rpe: number | null): void => {
-      void submit(async () => {
-        await amend.mutateAsync({ logId, rpe })
       })
     },
   }

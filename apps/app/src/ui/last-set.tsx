@@ -1,22 +1,19 @@
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
 import { IconButton } from './icon.tsx'
-import { ReserveChips } from './reserve-chips.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
 /**
- * The set just logged — or one re-opened from its mark (#24): what it was, whether it was a
- * personal best, how hard it was, and Undo. Reserve is asked here, after the set, and only of a set
- * counted in reps (`asksReserve`); a set still waiting for a signal is said so, with nothing to
- * change on it until the server has it.
+ * The set just logged — or one re-opened from its mark (#24): what it was — its reserve with it, said
+ * before it was logged (#37) — whether it was a personal best, and Undo. A set still waiting for a
+ * signal is said so, with nothing to change on it until the server has it.
  */
 export function LastSet({
   title,
   effort,
   best,
   waiting,
-  reserve,
   onUndo,
   onAnother,
   testID,
@@ -25,10 +22,6 @@ export function LastSet({
   readonly effort: string
   readonly best: boolean
   readonly waiting: boolean
-  readonly reserve: {
-    readonly rpe: number | null
-    readonly onChange: (rpe: number | null) => void
-  } | null
   readonly onUndo: (() => void) | null
   /** "+ set": another beyond the prescription, once the set's entry has all it asked for. */
   readonly onAnother?: (() => void) | undefined
@@ -77,14 +70,6 @@ export function LastSet({
             Waiting for a signal — kept, and sent when it is back.
           </Text>
         ) : null}
-        {reserve === null ? null : (
-          <ReserveChips
-            label="Reps in reserve"
-            rpe={reserve.rpe}
-            onChange={reserve.onChange}
-            testID={`${testID}-reserve`}
-          />
-        )}
       </Stack>
     </Card>
   )

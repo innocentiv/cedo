@@ -1,10 +1,4 @@
-import {
-  type LoggedExercise,
-  type Rest,
-  asksReserveOf,
-  formatEffort,
-  loggedLabel,
-} from '@cedo/contract'
+import { type LoggedExercise, type Rest, formatWithReserve, loggedLabel } from '@cedo/contract'
 import type { PendingLog } from '../api/pending.ts'
 import { LastSet, RestBand, Stack } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
@@ -42,9 +36,9 @@ export function JustDone({
 
 /**
  * One logged set above the focus (#24) — the one just logged, or one re-opened from its mark: what
- * it was, whether it was a personal best, its reserve — asked here, after the set, of a working set
- * the server has and that is counted in reps (`asksReserveOf`) — Undo, and "+ set" once its entry
- * has all it asked for. A set still waiting for a signal has nothing to change on it yet.
+ * it was, with its reserve, said before logging it (#37) — whether it was a personal best, Undo, and
+ * "+ set" once its entry has all it asked for. A set still waiting for a signal has nothing to
+ * change on it yet.
  */
 export function ShownSet({
   log,
@@ -64,19 +58,9 @@ export function ShownSet({
   return (
     <LastSet
       title={`${exerciseName(exercise)} · ${stored === undefined ? 'set' : loggedLabel(stored, sets.server)}`}
-      effort={formatEffort(log, tracking, unit)}
+      effort={formatWithReserve(log, tracking, unit)}
       best={stored?.personalBest === true}
       waiting={sets.waiting.has(log.id)}
-      reserve={
-        stored === undefined || tracking === null || !asksReserveOf(stored, tracking)
-          ? null
-          : {
-              rpe: stored.rpe,
-              onChange: (rpe) => {
-                sets.record.reserve(stored.id, rpe)
-              },
-            }
-      }
       onUndo={
         stored === undefined
           ? null

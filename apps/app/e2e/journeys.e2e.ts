@@ -2200,8 +2200,9 @@ test(
 )
 
 /**
- * RPE, asked as reps in reserve: a target set in the editor, said of a set once it is done (#24) —
- * and never carried to the next set, which would be an answer the athlete did not give.
+ * RPE, asked as reps in reserve: a target set in the editor, said of a set before it is logged
+ * (#37) — never pre-filled from the plan's, never carried to the next set, which would be answers
+ * the athlete did not give, and not asked again once the set is logged.
  */
 test(
   'a set logged with one rep left reads back as RPE 9, and the next is asked afresh',
@@ -2215,21 +2216,20 @@ test(
 
       const bench = app.session.entry(0)
       expect(await bench.target()).toContain('· 2 in reserve')
-      // Nothing is asked before a set: there is no set yet to say it of.
-      expect(await bench.reserveChosen()).toBeNull()
-      // Refused — no bar holds 9999 kg — nothing logged, nothing to rate.
+      // Asked before the set, and not filled in from the plan's 2: the answer is the athlete's.
+      expect(await bench.reserveChosen()).toBe('none')
+      await bench.reserve('1')
+      // Refused — no bar holds 9999 kg — nothing logged, and the set is asked again whole.
       await bench.fill('weight', '9999')
       await bench.attemptLog()
       expect(await app.session.error()).not.toBeNull()
-      expect(await bench.reserveChosen()).toBeNull()
+      await bench.reserve('1')
       await bench.fill('weight', '60')
       await bench.log()
-      // Asked of the set just logged, and said once the server has it.
+      // The next set is asked afresh: its answer is its own. The one logged says its own.
       expect(await bench.reserveChosen()).toBe('none')
-      await bench.reserve('1')
-      // The next set is asked afresh: its answer is its own.
+      expect(await app.session.lastSetText()).toBe('8 × 60 kg · 1 in reserve')
       await bench.log()
-      expect(await bench.reserveChosen()).toBe('none')
       expect(await app.session.loggedLines()).toContain('8 × 60 kg · 1 in reserve')
 
       const mine = await page.client()

@@ -56,7 +56,8 @@ export function RestBand({
 }
 
 const styles = StyleSheet.create({
-  band: { borderRadius: radius.lg, paddingHorizontal: space.lg, paddingVertical: space.xs },
+  // Room round the +30 s and × it holds: at xs, the button sat on the band's edges (#37).
+  band: { borderRadius: radius.lg, paddingHorizontal: space.lg, paddingVertical: space.md },
   resting: { backgroundColor: color.rest },
   ready: { backgroundColor: color.accent },
 })

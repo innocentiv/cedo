@@ -5,11 +5,13 @@ import {
   type MarkedSet,
   type SetTarget,
   type TrackingMode,
+  asksReserve,
   fieldsOf,
 } from '@cedo/contract'
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
 import { IconButton } from './icon.tsx'
+import { ReserveChips } from './reserve-chips.tsx'
 import { SetMarks } from './set-marks.tsx'
 import { Stack } from './stack.tsx'
 import { Stepper } from './stepper.tsx'
@@ -39,7 +41,8 @@ export interface FocusLoggerProps {
   readonly busy: boolean
   /** The weights the athlete can load on it, when known: − / + move between them (#36). */
   readonly load: Load | null
-  readonly onLog: (effort: Effort, isWarmup: boolean) => void
+  /** The set's numbers, whether a warm-up, and how hard it was — reserve, said before (#37). */
+  readonly onLog: (effort: Effort, isWarmup: boolean, rpe: number | null) => void
   /** How to do it — absent where there is nothing more to show than its name. */
   readonly onHowTo?: (() => void) | undefined
   readonly testID: string
@@ -74,6 +77,10 @@ export function FocusLogger({
     durationS: next.target.durationS,
     distanceMm: next.target.distanceMm,
   })
+  // Asked before the set is logged, of a working set counted in reps, and never pre-filled — not
+  // even from a plan's RPE: the answer is the athlete's (#37). Empty when the next set comes.
+  const [rpe, setRpe] = useState<number | null>(null)
+  const asked = asksReserve(tracking) && !next.isWarmup
   return (
     <Stack gap="lg" testID={testID}>
       <Stack gap="sm">
@@ -133,13 +140,21 @@ export function FocusLogger({
               </Stack>
             ))}
           </Stack>
+          {asked ? (
+            <ReserveChips
+              label="Reps in reserve"
+              rpe={rpe}
+              onChange={setRpe}
+              testID={`${testID}-reserve`}
+            />
+          ) : null}
           <Stack gap="sm">
             <Button
               title={next.action}
               size="large"
               busy={busy}
               onPress={() => {
-                onLog(effort, next.isWarmup)
+                onLog(effort, next.isWarmup, asked ? rpe : null)
               }}
               testID={`${testID}-log`}
             />

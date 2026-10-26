@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { type FlowLog, type LogSetInput, focusOf } from '@cedo/contract'
-import { withPending } from './pending.ts'
+import { type LogSetInput, focusOf } from '@cedo/contract'
+import { type PendingLog, withPending } from './pending.ts'
 
 const input = (entryId: string, isWarmup = false): LogSetInput => ({
   exerciseId: crypto.randomUUID(),
@@ -13,7 +13,7 @@ const input = (entryId: string, isWarmup = false): LogSetInput => ({
   isWarmup,
 })
 
-const stored = (entryId: string, loggedAt: string): FlowLog & { exerciseId: string } => ({
+const stored = (entryId: string, loggedAt: string): PendingLog => ({
   id: crypto.randomUUID(),
   exerciseId: crypto.randomUUID(),
   entryId,
@@ -23,6 +23,7 @@ const stored = (entryId: string, loggedAt: string): FlowLog & { exerciseId: stri
   weightG: 100_000,
   durationS: null,
   distanceMm: null,
+  rpe: null,
 })
 
 describe('sets logged without a signal (#9), on the workout screen (#24)', () => {
@@ -33,7 +34,7 @@ describe('sets logged without a signal (#9), on the workout screen (#24)', () =>
       [first],
       [
         { input: input('squat'), key: 'a' },
-        { input: input('rdl'), key: 'b' },
+        { input: { ...input('rdl'), rpe: 8 }, key: 'b' },
       ],
       now,
     )
@@ -42,6 +43,8 @@ describe('sets logged without a signal (#9), on the workout screen (#24)', () =>
       ['a', 'squat'],
       ['b', 'rdl'],
     ])
+    // How hard each was, said before it was logged (#37), shown while it waits too.
+    expect(logs.map((l) => l.rpe)).toEqual([null, null, 8])
     expect(logs.map((l) => l.loggedAt).toSorted()).toEqual(logs.map((l) => l.loggedAt))
   })
 

@@ -35,15 +35,16 @@ const logger = (page: Page, id: string, choose: string) => {
     await page.waitFor(id)
   }
   /**
-   * The reserve offered on the set just logged, as chosen — `1`, or `none` when nothing is said yet;
-   * null when none is asked.
+   * The reserve offered for the next set, before it is logged (#37), as chosen — `1`, or `none`
+   * when nothing is said yet; null when none is asked.
    */
   const reserveChosen = async (): Promise<string | null> => {
-    if (!(await page.shown('last-set-reserve'))) return null
+    await current()
+    if (!(await page.shown(`${id}-reserve`))) return null
     const chosen = await page.evaluate(
-      `document.querySelector('[data-testid^="last-set-reserve-"][aria-selected="true"]')?.dataset.testid ?? null`,
+      `document.querySelector('[data-testid^="${id}-reserve-"][aria-selected="true"]')?.dataset.testid ?? null`,
     )
-    return typeof chosen === 'string' ? chosen.slice('last-set-reserve-'.length) : 'none'
+    return typeof chosen === 'string' ? chosen.slice(`${id}-reserve-`.length) : 'none'
   }
   return {
     /** On a bodyweight movement: whether the weight is added load or assistance (#19). */
@@ -96,12 +97,10 @@ const logger = (page: Page, id: string, choose: string) => {
       await current()
       return await page.text(`${id}-last`)
     },
-    /**
-     * Says how many reps were left in the set just logged, as offered — `0` to `5` — and waits until
-     * the server has it: asked after a set, not before (#24).
-     */
+    /** Says how many reps the next set will leave, as offered — `0` to `5` — before Log (#37). */
     reserve: async (reps: string): Promise<void> => {
-      await page.click(`[data-testid="last-set-reserve-${reps}"]`)
+      await current()
+      await page.click(`[data-testid="${id}-reserve-${reps}"]`)
       await page.until(reserveChosen, (chosen) => chosen === reps)
     },
     reserveChosen,
@@ -273,6 +272,11 @@ export const session = (page: Page) => {
     loggedLines: async (): Promise<string[]> => {
       const text = await page.evaluate(`${VISIBLE_ROWS}.map((e) => e.innerText).join('\\n')`)
       return typeof text === 'string' ? text.split('\n').map((line) => line.trim()) : []
+    },
+    /** The set just logged, as its card says it: "8 × 60 kg · 1 in reserve". */
+    lastSetText: async (): Promise<string> => {
+      await page.waitFor('last-set-effort')
+      return (await page.text('last-set-effort')) ?? ''
     },
     /** The open session's id, from the address it is shown at. */
     id: async (): Promise<string> => {

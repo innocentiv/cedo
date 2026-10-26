@@ -4,7 +4,8 @@ import type { FlowLog, LogSetInput } from '@cedo/contract'
  * A set as the workout's flow reads it, with the exercise it is of: a set of a session without a
  * plan has no entry to say it.
  */
-export type PendingLog = FlowLog & { readonly exerciseId: string }
+/** A set as the screen shows it: its reserve too, said before it was logged (#37). */
+export type PendingLog = FlowLog & { readonly exerciseId: string; readonly rpe: number | null }
 
 /**
  * Sets logged but not yet sent (#9), as the workout screen's flow reads them (#24): done. Logged
@@ -34,6 +35,7 @@ export function withPending(
       weightG: input.weightG,
       durationS: input.durationS,
       distanceMm: input.distanceMm,
+      rpe: input.rpe,
     })),
   ]
 }

@@ -200,8 +200,8 @@ export function AdHocFocus({
       last={null}
       busy={sets.record.busy}
       load={load}
-      onLog={(effort, isWarmup) => {
-        sets.record.log({ exerciseId: exercise.id, entryId: null, effort, isWarmup })
+      onLog={(effort, isWarmup, rpe) => {
+        sets.record.log({ exerciseId: exercise.id, entryId: null, effort, isWarmup, rpe })
       }}
       onHowTo={
         whole === undefined

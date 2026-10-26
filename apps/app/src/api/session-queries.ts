@@ -64,14 +64,6 @@ export function useUnsentSets(sessionId: string): {
 export const useRemoveLog = (sessionId: string) =>
   useWriteTo('session', async (logId: string) => await api.sessions.removeLog(sessionId, logId))
 
-/** How hard a set was, said after it (#24): only of a set the server has. */
-export const useAmendLog = (sessionId: string) =>
-  useWriteTo(
-    'session',
-    async (input: { logId: string; rpe: number | null }) =>
-      await api.sessions.amendLog(sessionId, input.logId, { rpe: input.rpe }),
-  )
-
 /**
  * A finished session's past mistakes fixed (#31): to the session, and to `pastSession` — the
  * sessions the next one's targets are carried over. Never queued: a fix is made with a signal, at

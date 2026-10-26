@@ -106,8 +106,8 @@ function Focus({
       last={asked?.last == null ? null : `Last time ${formatSets(asked.last, tracking, unit)}`}
       busy={sets.record.busy}
       load={load}
-      onLog={(effort, isWarmup) => {
-        sets.record.log({ exerciseId: entry.exerciseId, entryId: entry.id, effort, isWarmup })
+      onLog={(effort, isWarmup, rpe) => {
+        sets.record.log({ exerciseId: entry.exerciseId, entryId: entry.id, effort, isWarmup, rpe })
       }}
       onHowTo={() => {
         onHowTo(exercise, entry.cue)
