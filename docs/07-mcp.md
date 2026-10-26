@@ -93,7 +93,12 @@ without them: a copy in a group they edit, as `workout_duplicate` is for a share
 
 `training_review` · `workout_list` · `workout_get` · `workout_get_editable` · `workout_create` ·
 `workout_save_plan` · `workout_duplicate` · `workout_progression` · `exercise_history` ·
-`session_log`
+`session_log` · `session_fix_set`
+
+`session_log` and `session_fix_set` record training as it was done (`mcp/tools/session.ts`): a
+whole session the AI is told about, and a set already logged corrected (#31) — "80, not 100, on
+Monday" — named by the `[id]` `session_get` prints beside each of your own sets. Removing a set
+or a session is not among them: see "Nothing can be deleted".
 
 `training_review` is the entry point, and it is a **read model, not new domain rules** — pure
 aggregation over data the API already exposes. It exists because the alternative is the model paging
@@ -248,13 +253,18 @@ There is no `*_delete` tool, and a test asserts none appears. Deletion is rare, 
 confused model destroying training history on a self-hosted box with no backup is a far worse
 outcome than it failing to tidy up. Tidying stays a human action in the UI.
 
+So `session_fix_set` (#31) corrects a set and never removes one: the app removes a set, or deletes
+a session, behind a person's tap. A correction is still a write that replaces what was logged, so
+it takes only your own sets, each by the id `session_get` shows beside it.
+
 Every tool carries `readOnlyHint` so a client can gate writes.
 
 ## Adding a tool
 
 1. If it needs data the API cannot already produce, add a **service** function first — never put the
    logic in the tool.
-2. Register it in `mcp/tools/library.ts`, `training.ts` or `diagnostics.ts` with a contract schema,
+2. Register it in `mcp/tools/library.ts`, `training.ts`, `session.ts`, `coaching.ts` or
+   `diagnostics.ts` with a contract schema,
    an annotation, and a description written for a model: say when to use it, and what NOT to do. A
    new file must also be wired into `mcp/index.ts`, or its tools never load.
 3. Format the output for reading (`mcp/format.ts`), not for machines.

@@ -4,6 +4,7 @@ import {
   notesToKeep,
   type SeriesMember,
   type SetLog,
+  SetLogUpdate,
   exercisesInSession,
   nextSetIndex,
   workingSetsDone,
@@ -131,5 +132,20 @@ describe("a session's notes, as typed (#25)", () => {
     expect(notesToKeep('   ', 'Old')).toBeNull()
     expect(notesToKeep('Same', 'Same')).toBeUndefined()
     expect(notesToKeep('', null)).toBeUndefined()
+  })
+})
+
+describe('a set corrected (#31)', () => {
+  test('replaces only what it names: a field left out is not reset to its default', () => {
+    expect(SetLogUpdate.parse({ reps: 6 })).toEqual({ reps: 6 })
+    expect(SetLogUpdate.parse({ weightG: null, isWarmup: true })).toEqual({
+      weightG: null,
+      isWarmup: true,
+    })
+  })
+
+  test('never moves a set to another exercise, or another series', () => {
+    expect(SetLogUpdate.safeParse({ exerciseId: crypto.randomUUID() }).success).toBe(false)
+    expect(SetLogUpdate.safeParse({ entryId: null }).success).toBe(false)
   })
 })

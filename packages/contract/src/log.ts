@@ -2,7 +2,7 @@ import { z } from 'zod'
 import { LoggedDistanceMm, LoggedDurationS, LoggedReps, LoggedWeightG } from './measurement.ts'
 import { Rpe } from './rpe.ts'
 import { Exercise } from './exercise.ts'
-import { Id, PaginationQuery, Timestamp } from './primitives.ts'
+import { Id, PaginationQuery, Timestamp, patchOf } from './primitives.ts'
 import { WorkoutDay, WorkoutEntry } from './workout.ts'
 
 /**
@@ -148,8 +148,9 @@ export type SessionStart = z.output<typeof SessionStart>
 
 /**
  * Finishing is final: `endedAt` is set once, on a session in progress, and never cleared — there is
- * no reopening a session. Notes stay editable: a note on a past session is a journal, not a change to
- * what was logged. See GLOSSARY.md, "Session".
+ * no reopening a session, and it takes no more sets. What it holds can still be fixed: a set
+ * corrected or removed (`SetLogUpdate`), or the whole session deleted (#31). Notes stay editable: a
+ * journal, not a change to what was logged. See GLOSSARY.md, "Session".
  */
 export const SessionUpdate = z.strictObject({
   endedAt: Timestamp.optional(),
@@ -166,13 +167,15 @@ export function notesToKeep(typed: string, kept: string | null): string | null |
   return said === kept ? undefined : said
 }
 
-/**
- * `PATCH /sessions/:id/logs/:logId` — how hard a set was, said once it is done (#24): the workout
- * screen asks reserve after a set, not before. Only of a session in progress; what was lifted is
- * never changed — a mistake is undone and logged again.
- */
-export const SetLogUpdate = z.strictObject({ rpe: Rpe.nullable() })
-export type SetLogUpdate = z.output<typeof SetLogUpdate>
+/** What was done in a set: its measures, how hard it was, and whether it was a warm-up. */
+const SetDone = {
+  weightG: LoggedWeightG.nullable().default(null),
+  reps: LoggedReps.nullable().default(null),
+  rpe: Rpe.nullable().default(null),
+  durationS: LoggedDurationS.nullable().default(null),
+  distanceMm: LoggedDistanceMm.nullable().default(null),
+  isWarmup: z.boolean().default(false),
+}
 
 /**
  * One set as done. No `setIndex`: the server numbers every set within its series (`nextSetIndex`),
@@ -182,14 +185,18 @@ export type SetLogUpdate = z.output<typeof SetLogUpdate>
 export const LogSetInput = z.strictObject({
   exerciseId: Id,
   entryId: Id.nullable().default(null),
-  weightG: LoggedWeightG.nullable().default(null),
-  reps: LoggedReps.nullable().default(null),
-  rpe: Rpe.nullable().default(null),
-  durationS: LoggedDurationS.nullable().default(null),
-  distanceMm: LoggedDistanceMm.nullable().default(null),
-  isWarmup: z.boolean().default(false),
+  ...SetDone,
 })
 export type LogSetInput = z.output<typeof LogSetInput>
+
+/**
+ * `PATCH /sessions/:id/logs/:logId` — a set corrected (#31): how hard it was, said once it is done
+ * (#24), or a past mistake fixed, of a session in progress or finished. Only what was done — never
+ * its exercise or its place in a series: a set of another exercise is another set, removed and
+ * logged again. Every field it names is replaced; one it leaves out is kept.
+ */
+export const SetLogUpdate = z.strictObject(patchOf(SetDone))
+export type SetLogUpdate = z.output<typeof SetLogUpdate>
 
 /**
  * A set sent on a weak signal may reach the server and lose its answer, and the phone cannot tell

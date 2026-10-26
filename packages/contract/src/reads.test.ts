@@ -59,6 +59,18 @@ describe('what a write makes stale', () => {
   })
 
   /**
+   * A finished session can still be fixed (#31) — a set corrected or removed, or the session
+   * deleted — and what the next session asks is carried over it. The fix refreshes all a write to
+   * the session does, and the targets behind it.
+   */
+  test('fixing a finished session refreshes what logging does, and the targets', () => {
+    const logging = affectedBy('session')
+    const { awaited, background } = affectedBy('session', 'pastSession')
+    expect(sorted(awaited)).toEqual(sorted(logging.awaited))
+    expect(sorted(background)).toEqual(sorted([...logging.background, 'sessionTargets']))
+  })
+
+  /**
    * A live session points into its plan, and a save that removes an entry — or a delete — sets
    * those pointers to null. Left cached, the session kept a deleted plan's id and showed the plan
    * as unavailable rather than falling back to logging without one.

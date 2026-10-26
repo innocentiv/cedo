@@ -271,9 +271,13 @@ number is never rewritten to make room, so either can leave two "set 1"s in that
 of the exercise, and nothing new is ever numbered into one.
 
 **A session is in progress until it is finished, and finishing is final.** `ended_at` is set once,
-on a session in progress, and never cleared; logging a set, undoing one and finishing all take the
-session's row lock and refuse a finished session, so none can interleave with a finish. Notes stay
-editable — a journal, not a change to what was logged. And **one session is in progress per
+on a session in progress, and never cleared; logging a set and finishing take the session's row
+lock and refuse a finished session, so neither can interleave with a finish. **A past mistake can
+be fixed** (#31): correcting a set (`PATCH …/logs/:logId`, its measures, RPE and warm-up — never its
+exercise or series) and removing one take the same lock but not the refusal, and `DELETE
+/sessions/:id` deletes a session and its sets. Nothing derived from a set is stored — personal
+bests, progression, targets and the review are computed on read — so each follows a fix with no
+migration. Notes stay editable — a journal, not a change to what was logged. And **one session is in progress per
 person**: `start` refuses a second, and a partial unique index on `user_id where ended_at is null`
 holds it for starts that race, which a check alone does not. `session_log` writes a whole session
 already finished, so it is never in progress at all. The session in progress is found by that index

@@ -13,6 +13,7 @@ import { visibleExercises } from '../../db/visible.ts'
 import { conflict, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { earlierBests } from './bests.ts'
+import { assertWeightFor } from './loggable.ts'
 import { planEntries } from '../workout/plan.ts'
 
 /**
@@ -127,19 +128,32 @@ export async function update(
 }
 
 /**
- * Locks the caller's session for a write only a session in progress takes — a set, an undo, its
- * finish — and refuses one already finished. Locked, then checked: read without the lock, a finish
- * landing between the check and the write let a set into a session that was already over, or out
- * of one. See GLOSSARY.md, "Session".
+ * Locks the caller's session for a write to its sets, and says whether it is finished. Every write
+ * to its sets takes this lock, so they are taken in turn: the next set's number is read from the
+ * sets as they stand.
  */
-export async function lockInProgress(tx: Transaction, caller: Caller, id: string): Promise<void> {
+async function lockOwn(
+  tx: Transaction,
+  caller: Caller,
+  id: string,
+): Promise<{ finished: boolean }> {
   const [locked] = await tx
     .select({ endedAt: workoutSessions.endedAt })
     .from(workoutSessions)
     .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
     .for('update')
   if (locked === undefined) throw notFound('session')
-  if (locked.endedAt !== null) throw conflict(FINISHED)
+  return { finished: locked.endedAt !== null }
+}
+
+/**
+ * Locks the caller's session for a write only a session in progress takes — a set, its finish —
+ * and refuses one already finished. Locked, then checked: read without the lock, a finish landing
+ * between the check and the write let a set into a session that was already over. See GLOSSARY.md,
+ * "Session".
+ */
+export async function lockInProgress(tx: Transaction, caller: Caller, id: string): Promise<void> {
+  if ((await lockOwn(tx, caller, id)).finished) throw conflict(FINISHED)
 }
 
 /** A session and its logs, as the caller sees them. Read on its own, it is `plan.ts`'s `get`. */
@@ -204,7 +218,12 @@ export function rethrowMissingEntry(error: unknown): never {
   throw error
 }
 
-/** How hard a set was, said after it — only while its session is in progress (#24). */
+/**
+ * A set corrected (#31): how hard it was, said after it (#24), or a past mistake fixed — in a
+ * session in progress or finished, with no time limit: it is the caller's own record. Personal
+ * bests, progression and the review are computed on read, so they follow it. A weight is judged as
+ * a logged one is (`assertWeightFor`), and the correction is rolled back with it.
+ */
 export async function amendLog(
   caller: Caller,
   sessionId: string,
@@ -212,27 +231,47 @@ export async function amendLog(
   patch: SetLogUpdate,
 ): Promise<SetLog> {
   await db.transaction(async (tx) => {
-    await lockInProgress(tx, caller, sessionId)
-    const amended = await tx
+    await lockOwn(tx, caller, sessionId)
+    // Drizzle throws on `.set({})`; an empty correction changes nothing, and answers the set.
+    if (Object.keys(patch).length === 0) return
+    const [amended] = await tx
       .update(setLogs)
-      .set({ rpe: patch.rpe })
+      .set(patch)
       .where(and(eq(setLogs.id, logId), eq(setLogs.sessionId, sessionId)))
-      .returning({ id: setLogs.id })
-    if (amended.length === 0) throw notFound('log')
+      .returning({ exerciseId: setLogs.exerciseId })
+    if (amended === undefined) throw notFound('log')
+    if (patch.weightG !== undefined)
+      await assertWeightFor(tx, caller, amended.exerciseId, patch.weightG)
   })
   const amended = (await read(own(caller), sessionId)).logs.find((log) => log.id === logId)
   if (amended === undefined) throw notFound('log')
   return amended
 }
 
-/** An undo: only of a session in progress — finishing is final, and nothing is undone after it. */
+/**
+ * A set removed: an undo while the session is in progress, or a past mistake fixed once it is
+ * finished (#31). Under the session's lock, so undoing the last set frees its number for the next.
+ */
 export async function removeLog(caller: Caller, sessionId: string, logId: string): Promise<void> {
   await db.transaction(async (tx) => {
-    await lockInProgress(tx, caller, sessionId)
+    await lockOwn(tx, caller, sessionId)
     const deleted = await tx
       .delete(setLogs)
       .where(and(eq(setLogs.id, logId), eq(setLogs.sessionId, sessionId)))
       .returning({ id: setLogs.id })
     if (deleted.length === 0) throw notFound('log')
   })
+}
+
+/**
+ * A whole session deleted (#31) — one started by mistake, or logged twice — and its sets with it,
+ * in progress or finished. Its row lock is the one every write to its sets takes, so a set being
+ * logged lands before it, and goes with it, or finds no session.
+ */
+export async function remove(caller: Caller, id: string): Promise<void> {
+  const deleted = await db
+    .delete(workoutSessions)
+    .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
+    .returning({ id: workoutSessions.id })
+  if (deleted.length === 0) throw notFound('session')
 }

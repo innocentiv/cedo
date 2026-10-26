@@ -16,9 +16,9 @@ import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 import { start as startSession } from './start.ts'
 
 /**
- * A session is in progress until it is finished, and finishing is final: no more sets, none undone,
- * no reopening — and one in progress at a time. The screens promised all of it; the API kept only
- * the first. See GLOSSARY.md, "Session".
+ * A session is in progress until it is finished, and finishing is final: no more sets, no
+ * reopening — and one in progress at a time. The screens promised all of it; the API kept only the
+ * first. What it holds can still be fixed (#31): `fix.test.ts`. See GLOSSARY.md, "Session".
  */
 
 let h: TestApi
@@ -76,12 +76,13 @@ describe('finishing is final', () => {
     expect((await read(id)).endedAt).toBe(ended)
   })
 
-  test('and none of its sets is undone', async () => {
+  test('and takes no more sets', async () => {
     const { id } = await started()
     const logId = await aLoggedSet(id)
     await finish(id)
-    const undone = await send(`/sessions/${id}/logs/${logId}`, 'DELETE')
-    expect(undone.status).toBe(409)
+    const exerciseId = (await read(id)).logs[0]?.exerciseId
+    const more = await send(`/sessions/${id}/logs`, 'POST', { exerciseId, reps: 8 })
+    expect(more.status).toBe(409)
     expect((await read(id)).logs.map((l) => l.id)).toEqual([logId])
   })
 

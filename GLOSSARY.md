@@ -230,8 +230,9 @@ _Avoid_: ramp set, prep set
 **Session**:
 One visit to the gym: when it started and ended, and the sets logged in it. It may follow a day
 of a plan, or no plan at all. A session is in progress until it is finished, and finishing is final:
-a finished session takes no more sets, and none are undone. A person has at most one session in
-progress.
+a finished session takes no more sets. What it holds is still its lifter's to fix, with no time
+limit: a set corrected or removed, or the whole session deleted. A person has at most one session
+in progress.
 _Avoid_: workout (that is what a session follows), training
 
 **Personal best**:

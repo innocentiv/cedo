@@ -62,6 +62,14 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
     response: WorkoutSession,
     detail: { summary: 'Finish a session or amend its notes' },
   })
+  .delete(
+    '/:id',
+    async ({ caller, params: { id } }) => {
+      await SessionService.remove(caller, id)
+      return { ok: true }
+    },
+    { params, detail: { summary: 'Delete a session and its sets, in progress or finished' } },
+  )
   .post(
     '/:id/logs',
     ({ caller, params: { id }, body, headers }) =>
@@ -86,7 +94,10 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
       params: z.object({ id: Id, logId: Id }),
       body: SetLogUpdate,
       response: SetLog,
-      detail: { summary: 'How hard a set was, said after it — while the session is in progress' },
+      detail: {
+        summary:
+          'Correct a set — what it measured, how hard it was, whether a warm-up — in progress or finished',
+      },
     },
   )
   .delete(
@@ -95,7 +106,10 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
       await SessionService.removeLog(caller, id, logId)
       return { ok: true }
     },
-    { params: z.object({ id: Id, logId: Id }) },
+    {
+      params: z.object({ id: Id, logId: Id }),
+      detail: { summary: 'Remove a set: an undo, or a past mistake fixed' },
+    },
   )
 
 /** What to do next (#25): the first screen's one read. */

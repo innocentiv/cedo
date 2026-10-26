@@ -219,7 +219,7 @@ often it reproduces and loop enough rounds that a false pass is unlikely.
 ## 7. The MCP tool
 
 Add it to the existing tool file whose task it serves — `apps/api/src/mcp/tools/library.ts`,
-`training.ts` or `diagnostics.ts` — wrapping the same service function, ≤5 lines. A genuinely new
+`training.ts`, `session.ts`, `coaching.ts` or `diagnostics.ts` — wrapping the same service function, ≤5 lines. A genuinely new
 area gets a new file, and its `register…Tools(server, caller)` must be called from
 `apps/api/src/mcp/index.ts`, or the tools never load. See `docs/playbooks/add-mcp-tool.md`.
 

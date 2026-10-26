@@ -55,7 +55,8 @@ export function registerCoachingTools(server: McpServer, caller: Caller): void {
       description:
         'Every set of one session from session_list, in the order done, grouped by exercise — ' +
         'w marks a warm-up — with the notes. Yours, or an athlete’s with `athlete`. An exercise ' +
-        'you cannot see reads "unavailable exercise", its sets still shown.',
+        'you cannot see reads "unavailable exercise", its sets still shown. Your own sets carry ' +
+        'their [id], which session_fix_set takes.',
       inputSchema: z.object({ sessionId: z.uuid() }).safeExtend(OfAthlete.shape),
       annotations: READ,
     },
@@ -64,6 +65,7 @@ export function registerCoachingTools(server: McpServer, caller: Caller): void {
         sessionDetail(
           await CoachingService.session(caller, athleteId, sessionId),
           caller.weightUnit,
+          athleteId === undefined,
         ),
       ),
   )

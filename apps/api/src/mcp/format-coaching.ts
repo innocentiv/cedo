@@ -56,12 +56,21 @@ export function sessionLines(sessions: Page<WorkoutSessionSummary>, unit: Weight
     : `${lines.join('\n')}\nMore: pass cursor ${sessions.nextCursor}`
 }
 
+/** `w5 × 40 kg @ RPE 8`, `w` for a warm-up — and ` [<id>]` when it is the reader's to fix (#31). */
+const setText = (log: SetLog, unit: WeightUnit, withId: boolean): string =>
+  `${log.isWarmup ? 'w' : ''}${formatEffort(log, log.exercise?.tracking ?? null, unit)}${atRpe(log.rpe)}${withId ? ` [${log.id}]` : ''}`
+
+/** One set, by its exercise: `Bench Press: 5 × 80 kg [<id>]` — how a corrected set is answered. */
+export const setLine = (log: SetLog, unit: WeightUnit): string =>
+  `${log.exercise?.name ?? 'unavailable exercise'}: ${setText(log, unit, true)}`
+
 /**
  * One session, set by set: a line per run of one exercise, in the order done — `Squad Sled Push: 5 ×
  * 80 kg, w5 × 40 kg @ RPE 8`, `w` for a warm-up. An exercise the reader cannot see is "unavailable
  * exercise", its efforts still said (ADR-0019): the sets are the athlete's, the name is not theirs.
+ * Each set's id `withIds` — the reader's own, which `session_fix_set` takes (#31).
  */
-export function sessionDetail(session: SessionDetail, unit: WeightUnit): string {
+export function sessionDetail(session: SessionDetail, unit: WeightUnit, withIds = false): string {
   const head = [
     session.startedAt.slice(0, 10),
     session.endedAt === null ? 'in progress' : null,
@@ -76,14 +85,8 @@ export function sessionDetail(session: SessionDetail, unit: WeightUnit): string 
     else runs.push([log])
   }
   const lines = runs.map((run) => {
-    const exercise = run[0]?.exercise ?? null
-    const sets = run
-      .map(
-        (log) =>
-          `${log.isWarmup ? 'w' : ''}${formatEffort(log, exercise?.tracking ?? null, unit)}${atRpe(log.rpe)}`,
-      )
-      .join(', ')
-    return `${exercise?.name ?? 'unavailable exercise'}: ${sets}`
+    const sets = run.map((log) => setText(log, unit, withIds)).join(', ')
+    return `${run[0]?.exercise?.name ?? 'unavailable exercise'}: ${sets}`
   })
   return [head, ...(lines.length === 0 ? ['No sets.'] : lines)].join('\n')
 }

@@ -1,6 +1,6 @@
-import { inArray } from 'drizzle-orm'
+import { eq, inArray } from 'drizzle-orm'
 import { type LogSetInput, type LoggedExercise, weightAllowed } from '@cedo/contract'
-import { db } from '../../db/client.ts'
+import { type Transaction, db } from '../../db/client.ts'
 import { visibleExercises } from '../../db/visible.ts'
 import { invalid, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
@@ -14,6 +14,27 @@ export const assistanceRefused = (path = 'weightG') =>
   invalid('Only a bodyweight movement can be assisted: a negative weight is assistance', [
     { path, message: 'Cannot be negative for this exercise' },
   ])
+
+/**
+ * A weight corrected on a logged set (#31), judged as a logged one: against its exercise, which must
+ * still be in reach — one out of reach cannot say whether a negative weight is assistance, so it
+ * takes no new weight at all. Its other corrections need no exercise, and are not refused.
+ */
+export async function assertWeightFor(
+  tx: Transaction,
+  caller: Caller,
+  exerciseId: string,
+  weightG: number | null,
+): Promise<void> {
+  const exercises = visibleExercises(caller)
+  const [exercise] = await tx
+    .select({ tracking: exercises.tracking })
+    .from(exercises)
+    .where(eq(exercises.id, exerciseId))
+    .limit(1)
+  if (exercise === undefined) throw notFound('exercise')
+  if (!weightAllowed(weightG, exercise.tracking)) throw assistanceRefused()
+}
 
 /**
  * What a set may reference, checked for a whole batch in one query per kind — `logSet` passes one

@@ -649,6 +649,74 @@ describe('logging a whole session', () => {
   })
 })
 
+/**
+ * "I did 80, not 100, on Monday" (#31): the AI reads the set's id from session_get, corrects it,
+ * and what is computed from it follows. It corrects; nothing is removed through MCP.
+ */
+describe('a past set corrected', () => {
+  test('is named by the id session_get shows, and its history follows', async () => {
+    const pat = await mintPat(alice)
+    const mine = expectContract(
+      Exercise,
+      (
+        await alice.wire('/exercises', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Squat',
+            muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+          }),
+        })
+      ).body,
+    )
+    const logged = textOf(
+      (
+        await callTool(pat, 'session_log', {
+          sets: [{ exerciseId: mine.id, weightG: 100_000, reps: 5 }],
+        })
+      ).body,
+    )
+    const sessionId = logged.match(/session ([0-9a-f-]{36})/u)?.[1] ?? ''
+    const detail = textOf((await callTool(pat, 'session_get', { sessionId })).body)
+    const setId = detail.match(/5 × 100 kg \[([0-9a-f-]{36})\]/u)?.[1] ?? ''
+    expect(setId).not.toBe('')
+
+    const fixed = textOf(
+      (await callTool(pat, 'session_fix_set', { sessionId, setId, weightG: 80_000 })).body,
+    )
+    expect(fixed).toBe(`Corrected. Squat: 5 × 80 kg [${setId}]`)
+    const history = textOf((await callTool(pat, 'exercise_history', { exerciseId: mine.id })).body)
+    expect(history).toContain('5 × 80 kg')
+    expect(history).not.toContain('100 kg')
+  })
+
+  test("never someone else's: a set of theirs is not found", async () => {
+    const bob = await h.as('bob')
+    const exercise = expectContract(
+      Exercise,
+      (
+        await bob.wire('/exercises', {
+          method: 'POST',
+          body: JSON.stringify({ name: 'Row', muscles: [{ muscle: 'quadriceps', loadPct: 100 }] }),
+        })
+      ).body,
+    )
+    const bobs = await mintPat(bob)
+    const logged = textOf(
+      (await callTool(bobs, 'session_log', { sets: [{ exerciseId: exercise.id, reps: 5 }] })).body,
+    )
+    const sessionId = logged.match(/session ([0-9a-f-]{36})/u)?.[1] ?? ''
+    const detail = textOf((await callTool(bobs, 'session_get', { sessionId })).body)
+    const setId = detail.match(/\[([0-9a-f-]{36})\]/u)?.[1] ?? ''
+    const { body } = await callTool(await mintPat(alice), 'session_fix_set', {
+      sessionId,
+      setId,
+      reps: 1,
+    })
+    expect(body.result?.isError).toBe(true)
+    expect(textOf(body)).toContain('No such session')
+  })
+})
+
 describe('editing a plan', () => {
   /**
    * The documented AI flow: fetch the editable JSON, change it, save it back. The round trip must

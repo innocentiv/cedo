@@ -6,6 +6,7 @@ import { VERSION } from '../version.ts'
 import { registerCoachingTools } from './tools/coaching.ts'
 import { registerDiagnosticTools } from './tools/diagnostics.ts'
 import { registerLibraryTools } from './tools/library.ts'
+import { registerSessionTools } from './tools/session.ts'
 import { registerTrainingTools } from './tools/training.ts'
 
 /**
@@ -54,6 +55,7 @@ export const mcpHandler = createMcpHandler(({ authInfo }) => {
 
   registerLibraryTools(server, caller)
   registerTrainingTools(server, caller)
+  registerSessionTools(server, caller)
   registerCoachingTools(server, caller)
   registerDiagnosticTools(server, caller, VERSION)
 

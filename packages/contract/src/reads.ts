@@ -12,11 +12,20 @@
 
 /**
  * What a read is built from, and so what a write changes. A session's logs are part of the
- * session: logging and finishing both write to it. `athlete` is someone else's training, read by
- * their coach (#30): they write it, on their own device, so no write here is ever OF it — it
- * catches up on the cache's window, and with what it embeds.
+ * session: logging and finishing both write to it. `pastSession` is a session already finished,
+ * written only when it is fixed (#31) — a set corrected or removed, or the session deleted — and
+ * always together with `session`: no read is OF it, it names what only a fix changes. `athlete`
+ * is someone else's training, read by their coach (#30): they write it, on their own device, so
+ * no write here is ever OF it — it catches up on the cache's window, and with what it embeds.
  */
-export type Source = 'exercise' | 'workout' | 'session' | 'token' | 'group' | 'athlete'
+export type Source =
+  | 'exercise'
+  | 'workout'
+  | 'session'
+  | 'pastSession'
+  | 'token'
+  | 'group'
+  | 'athlete'
 
 export interface ReadSources {
   /** The source the read is OF. A write to it must be read back before the next write. */
@@ -48,11 +57,11 @@ export const READS = {
   progression: { of: 'workout', embeds: ['exercise', 'session', 'group'] },
   /**
    * What a session asks of each entry: its plan, carried forward over the sessions before it, and
-   * last time's sets. Of the plan: a save changes what it prescribes. It embeds no session — the
-   * ones it reads are finished, which is final, and its own sets never count — so logging leaves
-   * it alone.
+   * last time's sets. Of the plan: a save changes what it prescribes. It embeds the sessions before
+   * it, which are finished — so not `session`: its own sets never count, and logging one would
+   * read it again for nothing — but `pastSession`, since a finished one can still be fixed (#31).
    */
-  sessionTargets: { of: 'workout', embeds: ['exercise', 'group'] },
+  sessionTargets: { of: 'workout', embeds: ['exercise', 'pastSession', 'group'] },
   /**
    * Each session names its workout and day, and counts its personal bests — judged by each
    * exercise's tracking mode, as far as the reader can see the exercise (#25).
@@ -92,16 +101,17 @@ const READ_NAMES: readonly Read[] = Object.keys(READS).filter((name) => isRead(n
  * The reads a write to `source` makes stale, split by urgency: those OF it, which the next write
  * may depend on (the next set is numbered from the session's refreshed logs), and those that only
  * EMBED it, which can catch up in the background — awaiting them kept the Log button busy until
- * progression had been recomputed, after every set.
+ * progression had been recomputed, after every set. A write to several sources at once — a fix to
+ * a finished session is to `session` and `pastSession` — makes stale what any of them would.
  */
-export function affectedBy(source: Source): {
+export function affectedBy(...sources: readonly Source[]): {
   readonly awaited: readonly Read[]
   readonly background: readonly Read[]
 } {
   const embedding = (read: Read): boolean =>
-    (READS[read].embeds as readonly Source[]).includes(source)
+    (READS[read].embeds as readonly Source[]).some((source) => sources.includes(source))
   const lagging = (read: Read): boolean => (READS[read] as ReadSources).lagging === true
-  const of = (read: Read): boolean => READS[read].of === source
+  const of = (read: Read): boolean => sources.includes(READS[read].of)
   return {
     awaited: READ_NAMES.filter((read) => of(read) && !lagging(read)),
     background: READ_NAMES.filter(

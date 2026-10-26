@@ -1321,7 +1321,7 @@ describe('RPE in half-points', () => {
 
 /**
  * The workout screen asks reserve after a set, not before (#24): how hard it was is said once it is
- * done — and only while the session is in progress, finishing being final.
+ * done — and, a past mistake being fixable (#31), after the session is finished too.
  */
 describe("a set's reserve, said after it", () => {
   test('sets the RPE of a set already logged, and answers it as read', async () => {
@@ -1350,7 +1350,7 @@ describe("a set's reserve, said after it", () => {
     })
 
     await finishSession(alice, session.id)
-    expect((await amend(9)).status).toBe(409)
+    expect(expectContract(SetLog, (await amend(9)).body).rpe).toBe(9)
   })
 
   test("is a 404 for a set of another session, or someone else's", async () => {

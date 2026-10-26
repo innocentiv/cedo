@@ -4,7 +4,6 @@ import {
   DuplicateInput,
   ExerciseHistoryQuery,
   OfAthlete,
-  SessionLogInput,
   WorkoutCreate,
   PlanSave,
   ReviewQuery,
@@ -13,7 +12,6 @@ import {
 import type { Caller } from '../../plugins/auth.ts'
 import * as CoachingService from '../../modules/coaching/service.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
-import { logWhole } from '../../modules/session/start.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
 import {
   historyLines,
@@ -198,27 +196,5 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
           caller.weightUnit,
         ),
       ),
-  )
-
-  server.registerTool(
-    'session_log',
-    {
-      title: 'Log a training session',
-      description:
-        'Record a whole, finished session in ONE call. All or nothing: if any set is invalid, ' +
-        'nothing is logged, so fix it and retry. Weights are in GRAMS; on a bodyweight exercise ' +
-        'a weight is ADDED load, and a negative one is assistance (a band), allowed there only. ' +
-        'Sets are numbered for you, ' +
-        'per plan entry (or per exercise, without one), in the order you send them, warm-ups ' +
-        'included — send them in the order they were done. Give `workoutId` and ' +
-        '`dayId` to tie it to a plan (then `entryId` may name the plan entry a set fulfils), or ' +
-        'omit both for ad-hoc training.',
-      inputSchema: SessionLogInput,
-      annotations: WRITE,
-    },
-    async (input) => {
-      const session = await logWhole(caller, input)
-      return text(`Logged session ${session.id} with ${session.logs.length} set(s).`)
-    },
   )
 }
