@@ -17,7 +17,8 @@
  * always together with `session`: no read is OF it, it names what only a fix changes. `athlete`
  * is someone else's training, read by their coach (#30): they write it, on their own device, so
  * no write here is ever OF it — it catches up on the cache's window, and with what it embeds.
- * `equipment` is what the caller has to train with (#34).
+ * `equipment` is what the caller has to train with (#34): every exercise read says whether they
+ * can do it (#35).
  */
 export type Source =
   | 'exercise'
@@ -46,15 +47,15 @@ export const READS = {
    * Every read but the token list embeds `group`: membership decides what it may answer. Leaving a
    * group takes its plans and exercises with it, and the names they lent your history.
    */
-  exerciseList: { of: 'exercise', embeds: ['group'] },
-  exercise: { of: 'exercise', embeds: ['group'] },
+  exerciseList: { of: 'exercise', embeds: ['group', 'equipment'] },
+  exercise: { of: 'exercise', embeds: ['group', 'equipment'] },
   /** Logged sets, by session. */
   exerciseHistory: { of: 'exercise', embeds: ['session', 'group'] },
   /** The exercises logged most lately (#27): a set logged moves one to the top. */
-  recentExercises: { of: 'exercise', embeds: ['session', 'group'] },
+  recentExercises: { of: 'exercise', embeds: ['session', 'group', 'equipment'] },
   workoutList: { of: 'workout', embeds: ['group'] },
   /** Every entry carries its whole exercise. */
-  workout: { of: 'workout', embeds: ['exercise', 'group'] },
+  workout: { of: 'workout', embeds: ['exercise', 'group', 'equipment'] },
   /** An exercise's name and tracking mode, judged against the caller's logged sessions. */
   progression: { of: 'workout', embeds: ['exercise', 'session', 'group'] },
   /**

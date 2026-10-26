@@ -207,3 +207,16 @@ export const equipmentCount = (equipment: AthleteEquipment): string => {
   const n = equipment.items.length
   return n === 0 ? 'No equipment at all' : `${String(n)} ${n === 1 ? 'item' : 'items'}`
 }
+
+/** What a reader has, as far as doable goes: whether they said, and the items. */
+export interface Kit {
+  readonly described: boolean
+  readonly items: readonly { readonly slug: EquipmentSlug }[]
+}
+
+/**
+ * Doable (#35): the reader has every item the exercise needs. True for an exercise nobody has
+ * described, and for a reader who has not said what they have — neither is a reason to hide it.
+ */
+export const isDoable = (needs: readonly EquipmentSlug[] | null, kit: Kit): boolean =>
+  needs === null || !kit.described || needs.every((item) => kit.items.some((i) => i.slug === item))

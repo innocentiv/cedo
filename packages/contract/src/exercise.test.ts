@@ -21,6 +21,7 @@ const exercise = Exercise.parse({
   muscles: [{ muscle: 'latissimus_dorsi', loadPct: 100 }],
   mediaIds: [crypto.randomUUID()],
   media: [],
+  doable: true,
   ownerGroupId: crypto.randomUUID(),
   createdBy: crypto.randomUUID(),
   createdAt: new Date().toISOString(),

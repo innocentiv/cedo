@@ -957,6 +957,59 @@ describe('equipment', () => {
     expect(tool?.annotations?.['destructiveHint']).toBe(true)
   })
 
+  test('exercise_search offers what your equipment lets you do; showAll the rest, marked', async () => {
+    const pat = await mintPat(alice)
+    for (const [name, equipment] of [
+      ['Home Goblet Squat', ['dumbbells']],
+      ['Gym Back Squat', ['barbell', 'rack']],
+    ] as const) {
+      await callTool(pat, 'exercise_create', {
+        name,
+        equipment,
+        muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+      })
+    }
+    await callTool(pat, 'equipment_set', { items: [{ slug: 'dumbbells', weights: null }] })
+
+    const doable = textOf((await callTool(pat, 'exercise_search', { q: 'Squat' })).body)
+    expect(doable).toContain('Home Goblet Squat')
+    expect(doable).not.toContain('Gym Back Squat')
+    const all = textOf((await callTool(pat, 'exercise_search', { q: 'Squat', showAll: true })).body)
+    expect(all).toMatch(/Gym Back Squat \| barbell \+ rack \|.*not doable with your equipment/u)
+    expect(all).not.toMatch(/Home Goblet Squat.*not doable/u)
+  })
+
+  test('workout_get keeps a planned exercise you cannot do, and says so', async () => {
+    const pat = await mintPat(alice)
+    const gym = expectContract(
+      Exercise,
+      (
+        await alice.wire('/exercises', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Gym Back Squat',
+            equipment: ['barbell', 'rack'],
+            muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+          }),
+        })
+      ).body,
+    )
+    const workout = expectContract(
+      Workout,
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Legs' }) }))
+        .body,
+    )
+    await callTool(pat, 'workout_save_plan', {
+      workoutId: workout.id,
+      days: [{ name: 'A', entries: [{ exerciseId: gym.id, sets: [{ targetReps: 5 }] }] }],
+    })
+    const outline = async () =>
+      textOf((await callTool(pat, 'workout_get', { workoutId: workout.id })).body)
+    expect(await outline()).not.toContain('not doable')
+    await callTool(pat, 'equipment_set', { items: [{ slug: 'dumbbells', weights: null }] })
+    expect(await outline()).toContain('- Gym Back Squat [not doable with your equipment]')
+  })
+
   test('refuses what the contract refuses, and keeps what was said', async () => {
     const pat = await mintPat(alice)
     await callTool(pat, 'equipment_set', { items: [{ slug: 'rack', weights: null }] })

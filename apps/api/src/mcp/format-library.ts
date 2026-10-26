@@ -28,6 +28,7 @@ export function exerciseLine(exercise: Exercise): string {
     exercise.tracking === 'weight_reps' ? null : exercise.tracking,
     exercise.isUnilateral ? 'unilateral' : null,
     exercise.canEdit ? null : 'read-only',
+    exercise.doable ? null : 'not doable with your equipment',
   ].filter(Boolean)
 
   return [
@@ -45,7 +46,7 @@ export function exerciseDetail(exercise: Exercise): string {
   return [
     `${exercise.name}  (${exercise.id})`,
     `tracking: ${exercise.tracking}${exercise.isUnilateral ? ', unilateral' : ''}`,
-    `needs: ${equipment(exercise)}`,
+    `needs: ${equipment(exercise)}${exercise.doable ? '' : ' — more than your equipment has'}`,
     `muscles: ${muscles(exercise)}`,
     exercise.description === '' ? null : `description: ${exercise.description}`,
     exercise.instructions === '' ? null : `instructions: ${exercise.instructions}`,

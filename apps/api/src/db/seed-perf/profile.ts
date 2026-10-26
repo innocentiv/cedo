@@ -32,6 +32,7 @@ export async function seedProfile(
 
   const { userId, personalGroupId } = await seedProfileUser(username, shape, sharedGroupId)
   await seedProfileLibrary(username, shape, userId, personalGroupId)
+  await describeEquipment(userId)
 
   const workoutId = await required(
     sql`insert into workouts (owner_group_id, created_by, name, notes)
@@ -43,6 +44,20 @@ export async function seedProfile(
   await seedProfileHistory(userId, workoutId, shape, sharedGroupId)
 
   return await profileFrom(label, userId, workoutId)
+}
+
+/**
+ * What the profile trains with (#35): described, and selective — the library's barbell and dumbbell
+ * kits are doable, its cable, machine and kettlebell ones are not — so a list's doable condition
+ * runs its real path, not the one that waves everything through for someone who never said.
+ */
+async function describeEquipment(userId: string): Promise<void> {
+  await db.execute(sql`update users set equipment_described_at = now() where id = ${userId}::uuid`)
+  await db.execute(sql`
+    insert into athlete_equipment (user_id, item)
+    select ${userId}::uuid, item::equipment_item
+      from unnest(array['barbell', 'rack', 'flat_bench', 'dumbbells']) item
+  `)
 }
 
 async function seedProfileUser(

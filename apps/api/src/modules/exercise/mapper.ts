@@ -1,10 +1,18 @@
 import { asc, desc, eq, inArray } from 'drizzle-orm'
-import { type Exercise, type Media, videoEmbedUrl, videoThumbnailUrl } from '@cedo/contract'
+import {
+  type Exercise,
+  type Kit,
+  type Media,
+  isDoable,
+  videoEmbedUrl,
+  videoThumbnailUrl,
+} from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupBy } from '../../lib/keyset.ts'
 import { media } from '../../db/schema.ts'
 import { type ExerciseRow, visibleExerciseMedia, visibleExerciseMuscles } from '../../db/visible.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { kitOf } from '../equipment/doable.ts'
 import { ownableFieldsOf } from '../ownable/service.ts'
 
 export type { ExerciseRow }
@@ -56,10 +64,12 @@ interface Attachments {
   readonly media: AttachedMedia[]
   readonly isFavourite: boolean
   readonly caller: Caller
+  /** What the caller has: whether each exercise is doable for them (#35). */
+  readonly kit: Kit
 }
 
 function toExercise(row: ExerciseRow, attachments: Attachments): Exercise {
-  const { muscles, media: attached, isFavourite, caller } = attachments
+  const { muscles, media: attached, isFavourite, caller, kit } = attachments
   return {
     id: row.id,
     name: row.name,
@@ -71,15 +81,16 @@ function toExercise(row: ExerciseRow, attachments: Attachments): Exercise {
     muscles,
     mediaIds: attached.map((m) => m.row.id),
     media: attached.map((m) => toMedia(m.row)),
+    doable: isDoable(row.equipment, kit),
     ...ownableFieldsOf(row, isFavourite, caller),
   }
 }
 
 /**
  * Loading exercises means loading their muscles and media too. Doing that per row is the textbook
- * N+1, so this issues exactly TWO queries regardless of how many rows it is given — one `inArray`
- * for muscles, one for media. Together with the caller's own query that is three per read, at any
- * page size.
+ * N+1, so this issues exactly THREE queries regardless of how many rows it is given — one `inArray`
+ * for muscles, one for media, and what the caller has to train with (#35). Together with the
+ * caller's own query that is four per read, at any page size.
  *
  * `bun run perf` asserts that count is identical whether the page holds 5 rows or 50.
  * See docs/adr/0018-n1-detection.md.
@@ -107,6 +118,8 @@ export async function hydrate(
     .innerJoin(media, eq(media.id, attached.mediaId))
     .where(inArray(attached.exerciseId, ids))
 
+  const kit = await kitOf(caller.userId)
+
   const musclesByExercise = groupBy(
     muscleRows,
     (m) => m.exerciseId,
@@ -124,6 +137,7 @@ export async function hydrate(
       media: (mediaByExercise.get(row.id) ?? []).toSorted((a, b) => a.sortIndex - b.sortIndex),
       isFavourite,
       caller,
+      kit,
     }),
   )
 }

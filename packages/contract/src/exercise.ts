@@ -153,6 +153,11 @@ export const Exercise = z.object({
   ...exerciseFields,
   /** Resolved media, not just ids — the UI renders without a second request. */
   media: z.array(Media),
+  /**
+   * Whether the READER has every item it needs (#35) — true while they have not said what they
+   * have, or nobody has said what it needs. Not doable is marked, never hidden from a plan.
+   */
+  doable: z.boolean(),
   ...ownableFields,
 })
 export type Exercise = z.output<typeof Exercise>
@@ -184,7 +189,14 @@ export const exerciseInputFrom = (exercise: Exercise): ExerciseCreate =>
 
 /** The ownable list query, plus the muscle an exercise loads. */
 export const ExerciseQuery = withGroupRule(
-  OwnableQueryFields.extend({ muscle: MuscleSlug.optional() }),
+  OwnableQueryFields.extend({
+    muscle: MuscleSlug.optional(),
+    /**
+     * Every exercise, not only those the caller can do (#35) — which is all of them until they
+     * say what they have. `stringbool`: a query string's "false" is not true.
+     */
+    showAll: z.stringbool().optional(),
+  }),
 )
 export type ExerciseQuery = z.output<typeof ExerciseQuery>
 

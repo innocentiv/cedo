@@ -86,6 +86,7 @@ describe('reads do not N+1', () => {
 
     expect(largeCount.count).toBe(smallCount.count)
     // summary + day count + days + entries + sets + exercises + favourites + muscles + media
+    // + what the caller has (#35)
     expect(largeCount.count).toBeLessThanOrEqual(10)
   })
 
@@ -208,14 +209,14 @@ describe('reads do not N+1', () => {
     expect(entries(largeCount.result)).toBe(8)
     expect(largeCount.count).toBe(smallCount.count)
 
-    // The day costs a fixed seven over a session that follows none: day, entries, sets, and the
-    // four exercise reads.
+    // The day costs a fixed eight over a session that follows none: day, entries, sets, and the
+    // five exercise reads — the fifth what the caller has, for whether each is doable (#35).
     const adHoc = expectContract(
       WorkoutSession,
       (await alice.wire('/sessions', { method: 'POST', body: '{}' })).body,
     ).id
     const adHocCount = await withQueryCount(() => getSession(own(alice.caller), adHoc))
     expect(adHocCount.result.plan).toBeNull()
-    expect(largeCount.count).toBe(adHocCount.count + 7)
+    expect(largeCount.count).toBe(adHocCount.count + 8)
   })
 })

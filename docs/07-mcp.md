@@ -92,7 +92,9 @@ described` — the last two kept apart, since an undescribed exercise is offered
 
 `equipment_get` and `equipment_set` (`mcp/tools/equipment.ts`) are what someone has to train with
 (#34): read before planning — an exercise needs every item `exercise_get` lists — and said whole,
-weights in grams. `equipment_get` takes the coaching tools' `athlete`, so a coach plans for an
+weights in grams. `exercise_search` offers only what the caller's equipment lets them do unless
+`showAll` (#35), and an exercise they cannot do is marked "not doable with your equipment" there,
+in `exercise_get` and in `workout_get`'s outline — never left out of a plan. `equipment_get` takes the coaching tools' `athlete`, so a coach plans for an
 athlete's gym; `equipment_set` is only ever your own.
 
 Writing to the shared library requires **curator** rights (below). Anything else lands in the

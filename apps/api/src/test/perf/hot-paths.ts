@@ -79,7 +79,8 @@ export const HOT_PATHS: readonly HotPath[] = [
     name: 'GET /exercises (list)',
     why: 'The library screen. A per-row query here means 50 round trips to draw one page.',
     dimension: 'page size (5 vs 50)',
-    maxQueries: 3,
+    // The page, its muscles, its media, and what the caller has to train with (#35).
+    maxQueries: 4,
     budgetMs: 60,
     noSeqScan: ['exercises', 'exercise_media', 'media'],
     indexes: ['exercises_name_id_idx'],
@@ -93,7 +94,8 @@ export const HOT_PATHS: readonly HotPath[] = [
       'The pinned list: the favourites join narrows 10,000 visible exercises to the few the caller ' +
       'pinned. It must find them through the favourites, not by walking the library to look.',
     dimension: 'page size (5 vs 50)',
-    maxQueries: 3,
+    // The page, its muscles, its media, and what the caller has to train with (#35).
+    maxQueries: 4,
     budgetMs: 60,
     noSeqScan: ['exercises', 'exercise_favourites'],
     indexes: ['exercise_favourites_user_id_target_id_pk'],
@@ -107,7 +109,8 @@ export const HOT_PATHS: readonly HotPath[] = [
       'term) and an ordered walk it can stop early (a common one); both are correct, so only the ' +
       'absence of a sequential scan is asserted here. The trigram index has its own test.',
     dimension: 'page size (5 vs 50)',
-    maxQueries: 3,
+    // The page, its muscles, its media, and what the caller has to train with (#35).
+    maxQueries: 4,
     budgetMs: 120,
     noSeqScan: ['exercises'],
     indexes: [],
@@ -122,7 +125,8 @@ export const HOT_PATHS: readonly HotPath[] = [
     name: 'GET /exercises?muscle= (filter)',
     why: 'Programming around an injury filters by muscle; it must not scan the join table.',
     dimension: 'page size (5 vs 50)',
-    maxQueries: 3,
+    // The page, its muscles, its media, and what the caller has to train with (#35).
+    maxQueries: 4,
     budgetMs: 120,
     noSeqScan: ['exercises', 'exercise_muscles'],
     indexes: ['exercises_name_id_idx', 'exercise_muscles_exercise_id_muscle_slug_pk'],
@@ -149,7 +153,8 @@ export const HOT_PATHS: readonly HotPath[] = [
     name: 'GET /workouts/:id (full plan)',
     why: 'The classic N+1: one query per day, per entry, per set. A 14-day plan would be hundreds.',
     dimension: 'plan size (1 day / 3 entries vs 14 days / 560 entries)',
-    maxQueries: 9,
+    // Plus what the caller has to train with, for whether each exercise is doable (#35).
+    maxQueries: 10,
     budgetMs: 120,
     noSeqScan: ['workout_days', 'workout_entries', 'workout_sets', 'exercises'],
     /**
@@ -226,8 +231,8 @@ export const HOT_PATHS: readonly HotPath[] = [
     name: 'GET /exercises/recent',
     why: "What the picker leads with (#27): one grouped read of the person's own sets, however long their history, then the exercises it names — never one read per exercise or per session.",
     dimension: 'sessions the person has finished (5 vs 200)',
-    // The ids by latest log; those of them visible; their muscles; their media.
-    maxQueries: 4,
+    // The ids by latest log; those of them visible; their muscles; their media; what the caller has.
+    maxQueries: 5,
     budgetMs: 80,
     noSeqScan: ['workout_sessions', 'set_logs', 'exercises'],
     indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
@@ -255,9 +260,9 @@ export const HOT_PATHS: readonly HotPath[] = [
     name: 'GET /sessions/:id',
     why: 'Read back during a live workout, with the day it follows. Must not issue one query per logged set, nor per entry of the day.',
     dimension: 'logged sets (9 vs 60), and the entries of the day followed',
-    // The session and its logs; then the day, its entries, their sets, and the four exercise reads;
+    // The session and its logs; then the day, its entries, their sets, and the five exercise reads;
     // and one grouped read of its exercises' earlier bests, to mark a personal best (#24).
-    maxQueries: 10,
+    maxQueries: 11,
     budgetMs: 60,
     // Its logs LEFT JOIN the plan's entries, which reach the days, and its day reads their sets.
     noSeqScan: ['set_logs', 'exercises', 'workout_entries', 'workout_days', 'workout_sets'],

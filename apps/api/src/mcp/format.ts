@@ -66,8 +66,10 @@ export function workoutDetail(workout: Workout, unit: WeightUnit): string {
         entry.progression.kind === 'none' ? '' : `, progression: ${entry.progression.kind}`
       // Null when the caller cannot see the exercise — see the note on WorkoutEntry.exercise.
       const name = entry.exercise?.name ?? '[unavailable exercise]'
+      // Kept in the plan, still loggable — but the AI is told before it plans around it (#35).
+      const kit = entry.exercise?.doable === false ? ' [not doable with your equipment]' : ''
       return [
-        `  - ${name}${superset}${rest}${rule}   [entry ${entry.id}]`,
+        `  - ${name}${kit}${superset}${rest}${rule}   [entry ${entry.id}]`,
         ...(entry.cue === null ? [] : [`      cue: ${entry.cue}`]),
         ...entry.sets.map((set) => `      ${setLine(set, entry.exercise?.tracking ?? null, unit)}`),
       ].join('\n')

@@ -54,8 +54,9 @@ describe('reads do not N+1', () => {
     expect(small.result.items).toHaveLength(1)
     expect(large.result.items).toHaveLength(30)
     expect(large.count).toBe(small.count)
-    // Exercises, muscles, media. If this ever needs raising, something began fanning out.
-    expect(large.count).toBeLessThanOrEqual(3)
+    // Exercises, muscles, media, and what the caller has (#35). If this ever needs raising,
+    // something began fanning out.
+    expect(large.count).toBeLessThanOrEqual(4)
   })
 
   test('a single fetch costs a fixed number of queries too', async () => {
@@ -65,7 +66,7 @@ describe('reads do not N+1', () => {
     if (id === undefined) throw new Error('seeding produced no exercise')
 
     const { count } = await withQueryCount(() => ExerciseService.get(alice.caller, id))
-    expect(count).toBeLessThanOrEqual(3)
+    expect(count).toBeLessThanOrEqual(4)
   })
 
   test('the muscle filter does not add a query per row', async () => {
@@ -74,6 +75,6 @@ describe('reads do not N+1', () => {
       ExerciseService.list(alice.caller, { limit: 50, scope: 'all', muscle: 'triceps_brachii' }),
     )
     expect(filtered.result.items).toHaveLength(20)
-    expect(filtered.count).toBeLessThanOrEqual(3)
+    expect(filtered.count).toBeLessThanOrEqual(4)
   })
 })

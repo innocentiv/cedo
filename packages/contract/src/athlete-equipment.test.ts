@@ -5,6 +5,7 @@ import {
   defaultWeights,
   equipmentCount,
   equipmentInputFrom,
+  isDoable,
   unfinishedWeights,
   weightsLine,
   withItemToggled,
@@ -50,6 +51,16 @@ test('how weights go, read in the person’s unit', () => {
   expect(weightsLine({ stepG: 2500, minG: 20_000, maxG: null }, 'kg')).toBe(
     'from 20 kg up, by 2.5 kg',
   )
+})
+
+test('doable: every item needed is had — and nothing hides before either side has said', () => {
+  const home = { described: true, items: [{ slug: 'dumbbells' as const }] }
+  expect(isDoable(['dumbbells'], home)).toBe(true)
+  expect(isDoable(['dumbbells', 'flat_bench'], home)).toBe(false)
+  expect(isDoable([], home)).toBe(true)
+  expect(isDoable(null, home)).toBe(true)
+  expect(isDoable(['barbell', 'rack'], { described: false, items: [] })).toBe(true)
+  expect(isDoable(['barbell'], { described: true, items: [] })).toBe(false)
 })
 
 test('in a word: not said yet, nothing at all, or how many', () => {
