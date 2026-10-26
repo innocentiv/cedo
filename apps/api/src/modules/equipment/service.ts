@@ -1,5 +1,10 @@
 import { asc, eq, sql } from 'drizzle-orm'
-import type { AthleteEquipment, AthleteEquipmentInput, OwnedItem } from '@cedo/contract'
+import type {
+  AthleteEquipment,
+  AthleteEquipmentInput,
+  ItemWeights,
+  OwnedItem,
+} from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { athleteEquipment, users } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
@@ -9,6 +14,18 @@ import { type Training, own } from '../session/service.ts'
  * What an athlete has to train with (#34): their own, read or replaced whole, and an athlete's read
  * by the coach they share their training with — through `Training`, as their sessions are.
  */
+
+type Row = typeof athleteEquipment.$inferSelect
+
+/** A row's weights: all three columns or none, as its CHECK holds them — none is not known. */
+const weightsOf = (r: Row): ItemWeights | null =>
+  r.stepG === null || r.minG === null ? null : { stepG: r.stepG, minG: r.minG, maxG: r.maxG }
+
+const columnsOf = (weights: ItemWeights | null) => ({
+  stepG: weights?.stepG ?? null,
+  minG: weights?.minG ?? null,
+  maxG: weights?.maxG ?? null,
+})
 
 export async function read(training: Training): Promise<AthleteEquipment> {
   const [[person], rows] = await Promise.all([
@@ -25,11 +42,7 @@ export async function read(training: Training): Promise<AthleteEquipment> {
   ])
   return {
     described: (person?.describedAt ?? null) !== null,
-    items: rows.map((r): OwnedItem => ({
-      slug: r.item,
-      weights:
-        r.stepG === null || r.minG === null ? null : { stepG: r.stepG, minG: r.minG, maxG: r.maxG },
-    })),
+    items: rows.map((r): OwnedItem => ({ slug: r.item, weights: weightsOf(r) })),
   }
 }
 
@@ -48,15 +61,11 @@ export async function replace(
       .where(eq(users.id, caller.userId))
     await tx.delete(athleteEquipment).where(eq(athleteEquipment.userId, caller.userId))
     if (input.items.length === 0) return
-    await tx.insert(athleteEquipment).values(
-      input.items.map((i) => ({
-        userId: caller.userId,
-        item: i.slug,
-        stepG: i.weights?.stepG ?? null,
-        minG: i.weights?.minG ?? null,
-        maxG: i.weights?.maxG ?? null,
-      })),
-    )
+    await tx
+      .insert(athleteEquipment)
+      .values(
+        input.items.map((i) => ({ userId: caller.userId, item: i.slug, ...columnsOf(i.weights) })),
+      )
   })
   return await read(own(caller))
 }

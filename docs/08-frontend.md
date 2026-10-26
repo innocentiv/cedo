@@ -8,8 +8,8 @@ two-pane layout. It depends on **`@cedo/contract` and nothing else** from this r
 This is the rule the whole frontend is organised around, and the reason the test suite can be as
 small as it is.
 
-> A screen **may**: call the hooks in `src/api/queries.ts`, `src/api/session-queries.ts` and
-> `src/api/athlete-queries.ts` (never
+> A screen **may**: call the hooks in `src/api/queries.ts`, `src/api/session-queries.ts`,
+> `src/api/athlete-queries.ts` and `src/api/equipment-queries.ts` (never
 > `api.*` or `fetch` directly),
 > render UI primitives, hold form state, and call pure helpers from `@cedo/contract`
 > (`formatEffort`, `formatWeight`, `formatPrescription`, `workingSetsDone`, `planInputFrom`).
@@ -59,6 +59,7 @@ src/ui/                      the entire visual vocabulary
 src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-client.ts, queries.ts,
                              session-queries.ts (a session's writes and its offline queue),
                              athlete-queries.ts (a coach's reads of an athlete's training),
+                             equipment-queries.ts (what you, or an athlete, train with),
                              retry.ts and pending.ts (+ their unit tests)
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
@@ -111,6 +112,7 @@ Two constraints found by building it:
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput`. `Input`'s `look` sets a name edited where it reads — a workout's title, a day's heading — with no box |
 | `Card`, `ListRow` | the one row shape every list uses |
 | `Chips` | one choice from a short flat set — list scopes, tracking mode, progression kind |
+| `Chip` | one choice of a set, on or off — what `Chips`, the muscle and equipment pickers and the equipment checklist are built of |
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |
 | `Loaded` | failed / not-yet / here, around any query. A screen never writes that ternary |
 | `ErrorBoundary` | the last line of defence |

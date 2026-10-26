@@ -1,4 +1,5 @@
 import type { Page } from '../harness.ts'
+import { linesOf } from './lines.ts'
 
 /**
  * The coach's view (#30): the athletes who share their training, and each one's — read-only. Their
@@ -21,13 +22,7 @@ export const athletes = (page: Page) => ({
   /** What they have to train with, as their Equipment card reads it under its label (#34). */
   equipment: async (): Promise<string[]> => {
     await page.waitFor('athlete-equipment')
-    return String(
-      await page.evaluate(`document.querySelector('[data-testid="athlete-equipment"]').innerText`),
-    )
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line !== '')
-      .slice(1)
+    return (await linesOf(page, 'athlete-equipment')).slice(1)
   },
   /** The session they are in now, as its row reads. */
   trainingNow: async (): Promise<string> => {

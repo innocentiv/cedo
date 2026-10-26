@@ -199,7 +199,7 @@ test(
     await withApp('equipment', async (page) => {
       const app = screens(page)
       await app.auth.register(unique('kit'))
-      expect(await app.equipment.said()).toEqual(['Not described yet: every exercise is offered'])
+      expect(await app.equipment.said()).toEqual(['Not described yet'])
 
       await app.equipment.open()
       await app.equipment.have('dumbbells')
@@ -213,9 +213,15 @@ test(
       await app.equipment.have('low_pulley')
       expect(await app.equipment.weights('low_pulley')).toEqual(['2.5', '5', ''])
       await app.equipment.shortcut(1)
+      // Half typed is not saved as not known, silently: the screen asks for the rest.
+      await app.equipment.empty('high_pulley', 'stepG')
+      expect(await app.equipment.saveRefused()).toBe(
+        'High pulley: give a step and where it starts, or empty all three.',
+      )
+      await app.equipment.type('high_pulley', 'stepG', '5')
       await app.equipment.save()
 
-      expect(await app.equipment.said()).toEqual(['5 items to train with'])
+      expect(await app.equipment.said()).toEqual(['5 items'])
       await app.equipment.open()
       expect(await app.equipment.ticked()).toEqual([
         'dumbbells',

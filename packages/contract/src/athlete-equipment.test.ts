@@ -3,7 +3,9 @@ import {
   AthleteEquipmentInput,
   EQUIPMENT_SHORTCUTS,
   defaultWeights,
+  equipmentCount,
   equipmentInputFrom,
+  unfinishedWeights,
   weightsLine,
   withItemToggled,
   withShortcut,
@@ -50,7 +52,27 @@ test('how weights go, read in the person’s unit', () => {
   )
 })
 
+test('in a word: not said yet, nothing at all, or how many', () => {
+  expect(equipmentCount({ described: false, items: [] })).toBe('Not described yet')
+  expect(equipmentCount({ described: true, items: [] })).toBe('No equipment at all')
+  expect(equipmentCount({ described: true, items: [{ slug: 'rack', weights: null }] })).toBe(
+    '1 item',
+  )
+})
+
 describe('ticked on the checklist', () => {
+  test('weights half typed are unfinished; none typed at all are simply not known', () => {
+    expect(
+      unfinishedWeights([
+        { slug: 'dumbbells', weights: { stepG: null, minG: 2000, maxG: 30_000 } },
+        { slug: 'barbell', weights: { stepG: 2500, minG: null, maxG: null } },
+        { slug: 'kettlebells', weights: { stepG: null, minG: null, maxG: null } },
+        { slug: 'leg_press', weights: { stepG: 5000, minG: 5000, maxG: null } },
+        { slug: 'rack', weights: null },
+      ]),
+    ).toEqual(['dumbbells', 'barbell'])
+  })
+
   test('saved, weights with a step or a least left empty are not known; no top is no cap', () => {
     expect(
       equipmentInputFrom([

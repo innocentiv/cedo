@@ -25,7 +25,7 @@ export const athleteEquipment = pgTable(
     primaryKey({ columns: [t.userId, t.item] }),
     check(
       'athlete_equipment_weights_ck',
-      sql`(${t.stepG} is null and ${t.minG} is null and ${t.maxG} is null) or (${t.stepG} > 0 and ${t.minG} >= 0 and (${t.maxG} is null or ${t.maxG} >= ${t.minG}))`,
+      sql`(${t.stepG} is null and ${t.minG} is null and ${t.maxG} is null) or (${t.stepG} > 0 and ${t.minG} >= 0 and (${t.maxG} is null or (${t.maxG} > 0 and ${t.maxG} >= ${t.minG})))`,
     ),
   ],
 )

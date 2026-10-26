@@ -7,7 +7,7 @@ import { useWeightUnit } from './weight-unit.ts'
 export function AthleteEquipmentCard({ id }: { readonly id: string }): React.JSX.Element {
   const unit = useWeightUnit()
   return (
-    <Loaded query={useAthleteEquipment(id, true)} testID="athlete-equipment">
+    <Loaded query={useAthleteEquipment(id)} testID="athlete-equipment">
       {(equipment) => (
         <Card testID="athlete-equipment">
           <Stack gap="xs">

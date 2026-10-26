@@ -925,10 +925,6 @@ describe('the MCP caller has exactly the permissions of the user', () => {
   })
 })
 
-/**
- * A coach's AI reads the athletes who share their training with the coach (#11), through the same
- * tools it reads the coach's own with — and nothing once the athlete stops sharing.
- */
 /** What you have to train with (#34): said whole, read back an item a line, by slug. */
 describe('equipment', () => {
   test('undescribed until said; then an item a line, weights as the person reads them', async () => {
@@ -954,6 +950,13 @@ describe('equipment', () => {
     expect(textOf((await callTool(pat, 'equipment_get')).body)).toBe('No equipment at all.')
   })
 
+  /** It replaces the list whole: an item left out is gone, so a client that asks first asks here. */
+  test('equipment_set is announced as destructive', async () => {
+    const { body } = await rpc(await mintPat(alice), 'tools/list')
+    const tool = (body.result?.tools ?? []).find((t) => t.name === 'equipment_set')
+    expect(tool?.annotations?.['destructiveHint']).toBe(true)
+  })
+
   test('refuses what the contract refuses, and keeps what was said', async () => {
     const pat = await mintPat(alice)
     await callTool(pat, 'equipment_set', { items: [{ slug: 'rack', weights: null }] })
@@ -965,6 +968,10 @@ describe('equipment', () => {
   })
 })
 
+/**
+ * A coach's AI reads the athletes who share their training with the coach (#11), through the same
+ * tools it reads the coach's own with — and nothing once the athlete stops sharing.
+ */
 describe('coaching', () => {
   let athlete: TestUser
   let squadId: string

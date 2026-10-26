@@ -52,14 +52,14 @@ export const users = pgTable(
     authProvider: authProvider('auth_provider').notNull().default('local'),
     externalId: text('external_id'),
     /**
-     * Created with the user, in the same transaction. Not null: a user without a personal group
-     * could not own anything, so there is no valid state where this is absent.
-     */
-    /**
      * When they last said what they train with (#34) — null until they have, when nothing is
      * filtered for them: no equipment rows is nothing at all only once this is set.
      */
     equipmentDescribedAt: timestamp('equipment_described_at', { withTimezone: true }),
+    /**
+     * Created with the user, in the same transaction. Not null: a user without a personal group
+     * could not own anything, so there is no valid state where this is absent.
+     */
     personalGroupId: uuid('personal_group_id')
       .notNull()
       .references(() => groups.id, { onDelete: 'restrict' }),

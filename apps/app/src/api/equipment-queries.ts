@@ -11,13 +11,12 @@ export const useEquipment = (): UseQueryResult<AthleteEquipment> =>
 export const useSaveEquipment = () =>
   useWriteTo('equipment', async (input: AthleteEquipmentInput) => await api.equipment.save(input))
 
-/** An athlete's, read by their coach while they share their training — never changed here. */
-export const useAthleteEquipment = (
-  id: string,
-  shared: boolean,
-): UseQueryResult<AthleteEquipment> =>
+/**
+ * An athlete's, read by their coach — never changed here. Asked only from their page's shared
+ * contents, so only while they share their training.
+ */
+export const useAthleteEquipment = (id: string): UseQueryResult<AthleteEquipment> =>
   useQuery({
     queryKey: keys.athleteEquipment(id),
     queryFn: async () => await api.athletes.equipment(id),
-    enabled: shared,
   })

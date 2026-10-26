@@ -186,3 +186,24 @@ export function ownedLines(
     return `${words.name(slug)}: ${weights === null ? 'weights not known' : weightsLine(weights, unit)}`
   })
 }
+
+/**
+ * Items whose weights are half typed: something given, but not the step or where it starts. Saved,
+ * they would be weights not known and what was typed lost — so the checklist asks for the rest, or
+ * for all three emptied.
+ */
+export const unfinishedWeights = (items: readonly DraftItem[]): EquipmentSlug[] =>
+  items
+    .filter(({ weights: w }) => {
+      if (w === null) return false
+      const typed = [w.stepG, w.minG, w.maxG].some((g) => g !== null)
+      return typed && (w.stepG === null || w.minG === null)
+    })
+    .map((i) => i.slug)
+
+/** How much someone has to train with, in a word: not said yet, nothing at all, or how many. */
+export const equipmentCount = (equipment: AthleteEquipment): string => {
+  if (!equipment.described) return 'Not described yet'
+  const n = equipment.items.length
+  return n === 0 ? 'No equipment at all' : `${String(n)} ${n === 1 ? 'item' : 'items'}`
+}

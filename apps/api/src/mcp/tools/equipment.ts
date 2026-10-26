@@ -8,10 +8,13 @@ import { text } from '../format.ts'
 import { equipmentLines } from '../format-library.ts'
 
 const READ = { readOnlyHint: true, openWorldHint: false } as const
-/** It replaces the setup whole — but it is the person's own setting, said again as often as asked. */
-const SETTING = {
+/**
+ * It replaces the list WHOLE: an item left out is gone, with its weights — so a client that asks
+ * before a destructive write asks here. Said twice, it is said once.
+ */
+const REPLACE = {
   readOnlyHint: false,
-  destructiveHint: false,
+  destructiveHint: true,
   idempotentHint: true,
   openWorldHint: false,
 } as const
@@ -46,7 +49,7 @@ export function registerEquipmentTools(server: McpServer, caller: Caller): void 
         'you do not have. Weights in GRAMS — "dumbbells from 2 to 30 kg, 2 kg apart" is ' +
         '{ minG: 2000, stepG: 2000, maxG: 30000 }; a barbell starts from the bar. Your own only.',
       inputSchema: AthleteEquipmentInput,
-      annotations: SETTING,
+      annotations: REPLACE,
     },
     async (input) =>
       text(

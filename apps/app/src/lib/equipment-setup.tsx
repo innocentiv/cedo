@@ -7,10 +7,13 @@ import {
   EQUIPMENT_SHORTCUTS,
   type EquipmentGroup,
   type TypedWeights,
+  type EquipmentSlug,
   equipmentInputFrom,
+  equipmentName,
   fieldFor,
   isWeighted,
   withItemToggled,
+  unfinishedWeights,
   withShortcut,
 } from '@cedo/contract'
 import { Button, Chip, DimensionInput, FormError, Screen, Stack, Text } from '../ui/index.ts'
@@ -34,45 +37,40 @@ export function EquipmentForm({
   const save = useSaveEquipment()
   const [items, setItems] = useState<readonly DraftItem[]>(initial)
   const { submit, busy, error } = useSubmit()
+  // Asked of the draft before it is sent: half-typed weights would save as not known, silently.
+  const [unfinished, setUnfinished] = useState<string | null>(null)
   const setWeights = (slug: DraftItem['slug'], weights: TypedWeights) => {
     setItems(items.map((i) => (i.slug === slug ? { slug, weights } : i)))
+  }
+  const onSave = () => {
+    const half = unfinishedWeights(items)
+    setUnfinished(
+      half.length === 0
+        ? null
+        : `${half.map((slug) => equipmentName(slug)).join(', ')}: give a step and where it starts, or empty all three.`,
+    )
+    if (half.length > 0) return
+    void submit(async () => {
+      await save.mutateAsync(equipmentInputFrom(items))
+      goBack()
+    })
   }
 
   return (
     <Screen
       title="Your equipment"
       testID="equipment-screen"
-      footer={
-        <Button
-          title="Save"
-          busy={busy}
-          onPress={() => {
-            void submit(async () => {
-              await save.mutateAsync(equipmentInputFrom(items))
-              goBack()
-            })
-          }}
-          testID="equipment-save"
-        />
-      }
+      footer={<Button title="Save" busy={busy} onPress={onSave} testID="equipment-save" />}
     >
       <Text tone="muted">
         Tick what you train with. What holds the load says how its weights go, so the next set steps
         as your rack does.
       </Text>
-      <Stack direction="row" gap="xs" wrap>
-        {EQUIPMENT_SHORTCUTS.map((shortcut, at) => (
-          <Chip
-            key={shortcut.name}
-            label={`+ ${shortcut.name}`}
-            selected={false}
-            onPress={() => {
-              setItems(withShortcut(items, shortcut.items, unit))
-            }}
-            testID={`equipment-shortcut-${String(at)}`}
-          />
-        ))}
-      </Stack>
+      <Shortcuts
+        onTick={(shortcut) => {
+          setItems(withShortcut(items, shortcut, unit))
+        }}
+      />
       {EQUIPMENT_GROUPS.map((group) => (
         <Group
           key={group}
@@ -84,8 +82,37 @@ export function EquipmentForm({
           onWeights={setWeights}
         />
       ))}
-      <FormError message={error} testID="equipment-error" />
+      {items.length === 0 ? (
+        <Text tone="muted" testID="equipment-nothing">
+          Nothing ticked: saved, you have no equipment at all, and only exercises that need none are
+          offered.
+        </Text>
+      ) : null}
+      <FormError message={unfinished ?? error} testID="equipment-error" />
     </Screen>
+  )
+}
+
+/** Several items at once: a column, a bench, a whole gym. They only ever tick. */
+function Shortcuts({
+  onTick,
+}: {
+  readonly onTick: (items: readonly EquipmentSlug[]) => void
+}): React.JSX.Element {
+  return (
+    <Stack direction="row" gap="xs" wrap>
+      {EQUIPMENT_SHORTCUTS.map((shortcut, at) => (
+        <Chip
+          key={shortcut.name}
+          label={`+ ${shortcut.name}`}
+          selected={false}
+          onPress={() => {
+            onTick(shortcut.items)
+          }}
+          testID={`equipment-shortcut-${String(at)}`}
+        />
+      ))}
+    </Stack>
   )
 }
 
@@ -124,7 +151,7 @@ function Group({
       {weighted.map((item) => (
         <Weights
           key={item.slug}
-          name={EQUIPMENT.find((e) => e.slug === item.slug)?.name ?? item.slug}
+          name={equipmentName(item.slug)}
           slug={item.slug}
           weights={item.weights ?? { stepG: null, minG: null, maxG: null }}
           onChange={(weights) => {

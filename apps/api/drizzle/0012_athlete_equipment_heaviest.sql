@@ -1,0 +1,2 @@
+ALTER TABLE "athlete_equipment" DROP CONSTRAINT "athlete_equipment_weights_ck";--> statement-breakpoint
+ALTER TABLE "athlete_equipment" ADD CONSTRAINT "athlete_equipment_weights_ck" CHECK (("athlete_equipment"."step_g" is null and "athlete_equipment"."min_g" is null and "athlete_equipment"."max_g" is null) or ("athlete_equipment"."step_g" > 0 and "athlete_equipment"."min_g" >= 0 and ("athlete_equipment"."max_g" is null or ("athlete_equipment"."max_g" > 0 and "athlete_equipment"."max_g" >= "athlete_equipment"."min_g"))));

@@ -1,4 +1,4 @@
-import type { AthleteEquipment, WeightUnit } from '@cedo/contract'
+import { type WeightUnit, equipmentCount } from '@cedo/contract'
 import {
   Button,
   type ChipOption,
@@ -20,14 +20,6 @@ const UNIT_OPTIONS: readonly ChipOption<WeightUnit>[] = [
   { value: 'kg', label: 'Kilograms' },
   { value: 'lb', label: 'Pounds' },
 ]
-
-/** What the Equipment row says of what was said (#34): nothing yet, or how much. */
-const equipmentSaid = (equipment: AthleteEquipment | undefined): string | undefined =>
-  equipment === undefined
-    ? undefined
-    : equipment.described
-      ? `${String(equipment.items.length)} ${equipment.items.length === 1 ? 'item' : 'items'} to train with`
-      : 'Not described yet: every exercise is offered'
 
 export default function Settings(): React.JSX.Element {
   const { me, signOut, setWeightUnit } = useAuth()
@@ -63,7 +55,7 @@ export default function Settings(): React.JSX.Element {
         <Stack gap="sm">
           <ListRow
             title="Equipment"
-            subtitle={equipmentSaid(equipment.data)}
+            subtitle={equipment.data === undefined ? undefined : equipmentCount(equipment.data)}
             testID="settings-equipment"
           />
           <NavButton
