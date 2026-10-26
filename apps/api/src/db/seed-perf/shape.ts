@@ -109,6 +109,8 @@ export const UNUSABLE_HASH = 'unusable'
  * is, because no substring is ever shared.
  */
 export const EQUIPMENT = `(array['Barbell','Dumbbell','Cable','Machine','Kettlebell','Bodyweight'])[1 + i % 6]`
+/** What each needs (#33), in step with its name: a barbell lift needs a barbell and a rack. */
+export const EQUIPMENT_ITEMS = `(case i % 6 when 0 then array['barbell','rack'] when 1 then array['dumbbells'] when 2 then array['high_pulley'] when 3 then array['leg_press'] when 4 then array['kettlebells'] else array[]::text[] end)::equipment_item[]`
 export const MOVEMENT = `(array['Bench Press','Row','Squat','Curl','Overhead Press','Fly','Extension','Lateral Raise','Pulldown','Deadlift'])[1 + i % 10]`
 
 /**

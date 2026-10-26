@@ -202,7 +202,7 @@ describe('update', () => {
       name: 'Plank',
       tracking: 'duration',
       instructions: 'Hold a straight line.',
-      equipment: 'Mat',
+      equipment: [],
       isUnilateral: true,
       mediaIds: [mediaId],
     })
@@ -218,7 +218,7 @@ describe('update', () => {
     )
     expect(patched.tracking).toBe('duration')
     expect(patched.instructions).toBe('Hold a straight line.')
-    expect(patched.equipment).toBe('Mat')
+    expect(patched.equipment).toEqual([])
     expect(patched.isUnilateral).toBe(true)
     expect(patched.media.map((m) => m.id)).toEqual([mediaId])
   })
@@ -291,7 +291,7 @@ describe('duplicate and transfer', () => {
       tracking: 'bodyweight_reps',
       description: 'One side at a time.',
       instructions: 'Brace on the bar.',
-      equipment: 'Rings',
+      equipment: ['pull_up_bar'],
       isUnilateral: true,
       mediaIds: [mediaId],
     })
@@ -302,7 +302,7 @@ describe('duplicate and transfer', () => {
     )
     expect(copy).toMatchObject({
       tracking: 'bodyweight_reps',
-      equipment: 'Rings',
+      equipment: ['pull_up_bar'],
       isUnilateral: true,
       mediaIds: [mediaId],
     })

@@ -156,7 +156,8 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
       title: 'Audit the exercise library',
       description:
         'Review a library for problems BEFORE editing it: likely duplicate names, muscles with ' +
-        'thin or no coverage, and entries missing instructions or media. Run this first when ' +
+        'thin or no coverage, and entries missing instructions, media or the equipment they ' +
+        'need. Run this first when ' +
         'asked to improve or extend the library.',
       inputSchema: z.object({
         groupId: z
@@ -189,6 +190,7 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
           ),
           section('Missing instructions', audit.missingInstructions),
           section('Missing media', audit.missingMedia),
+          section('Equipment not described', audit.undescribedEquipment),
           section(
             'Attributed to a single muscle (check these are really isolation lifts)',
             audit.singleMuscle,

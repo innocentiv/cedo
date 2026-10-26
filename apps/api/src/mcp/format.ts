@@ -41,6 +41,10 @@ const muscles = (exercise: Exercise) =>
     .map((m) => `${m.muscle} ${m.loadPct}%`)
     .join(', ')
 
+/** What it needs, as `exercise_update` takes it (#33) — needing nothing apart from unsaid. */
+const equipment = ({ equipment: e }: Exercise): string =>
+  e === null ? 'equipment not described' : e.length === 0 ? 'no equipment' : e.join(' + ')
+
 /** One line per exercise: enough to decide, not enough to bloat context. */
 export function exerciseLine(exercise: Exercise): string {
   const flags = [
@@ -51,7 +55,7 @@ export function exerciseLine(exercise: Exercise): string {
 
   return [
     exercise.name,
-    exercise.equipment ?? 'bodyweight',
+    equipment(exercise),
     muscles(exercise),
     flags.length > 0 ? `[${flags.join(', ')}]` : '',
     exercise.id,
@@ -64,7 +68,7 @@ export function exerciseDetail(exercise: Exercise): string {
   return [
     `${exercise.name}  (${exercise.id})`,
     `tracking: ${exercise.tracking}${exercise.isUnilateral ? ', unilateral' : ''}`,
-    `equipment: ${exercise.equipment ?? 'bodyweight'}`,
+    `needs: ${equipment(exercise)}`,
     `muscles: ${muscles(exercise)}`,
     exercise.description === '' ? null : `description: ${exercise.description}`,
     exercise.instructions === '' ? null : `instructions: ${exercise.instructions}`,

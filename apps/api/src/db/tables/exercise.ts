@@ -10,11 +10,19 @@ import {
   text,
   uuid,
 } from 'drizzle-orm/pg-core'
-import { type MuscleSlug, TRACKING_MODES } from '@cedo/contract'
+import { EQUIPMENT_SLUGS, type MuscleSlug, TRACKING_MODES } from '@cedo/contract'
 import { childOwner, favouriteTable, ownable, ownerKey, ownerTarget } from '../ownable.ts'
 import { media, muscles } from './reference.ts'
 
 export const trackingMode = pgEnum('tracking_mode', TRACKING_MODES)
+
+/** `pgEnum` takes a non-empty tuple; the contract's list is derived, so it is an array. */
+function nonEmpty<T>(values: readonly T[]): [T, ...T[]] {
+  const [first, ...rest] = values
+  if (first === undefined) throw new Error('An enum needs at least one value')
+  return [first, ...rest]
+}
+export const equipmentItem = pgEnum('equipment_item', nonEmpty(EQUIPMENT_SLUGS))
 
 export const exercises = pgTable(
   'exercises',
@@ -27,7 +35,11 @@ export const exercises = pgTable(
     tracking: trackingMode('tracking').notNull().default('weight_reps'),
     description: text('description').notNull().default(''),
     instructions: text('instructions').notNull().default(''),
-    equipment: text('equipment'),
+    /**
+     * What the exercise needs, all of it (#32). NULL is undescribed — nobody has said — and an empty
+     * array is nothing at all, which are not the same: an undescribed exercise is doable for all.
+     */
+    equipment: equipmentItem('equipment').array(),
     /** Logged weight is per side. A display hint; sides are not logged separately. */
     isUnilateral: boolean('is_unilateral').notNull().default(false),
   },

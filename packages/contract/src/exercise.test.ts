@@ -16,7 +16,7 @@ const exercise = Exercise.parse({
   tracking: 'bodyweight_reps',
   description: 'Row one side at a time.',
   instructions: 'Brace on the bench.',
-  equipment: 'Dumbbell',
+  equipment: ['dumbbells'],
   isUnilateral: true,
   muscles: [{ muscle: 'latissimus_dorsi', loadPct: 100 }],
   mediaIds: [crypto.randomUUID()],

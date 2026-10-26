@@ -194,6 +194,8 @@ describe('library curation', () => {
 
     expect(out).toContain('Barbell Back Squat')
     expect(out).toContain('quadriceps 45%')
+    // What it needs, by the slugs exercise_update takes (#33).
+    expect(out).toContain('Barbell Back Squat | barbell + rack |')
     // Compactness is the point: JSON would be an order of magnitude larger.
     expect(out.startsWith('{')).toBe(false)
   })
@@ -220,6 +222,32 @@ describe('library curation', () => {
     )
     expect(out).toContain('Created.')
     expect(out).toContain('My Lift')
+    expect(out).toContain('needs: equipment not described')
+  })
+
+  test('an exercise says what it needs, or that it needs nothing, and the audit names the unsaid', async () => {
+    const pat = await mintPat(alice)
+    const make = async (name: string, equipment?: unknown) =>
+      textOf(
+        (
+          await callTool(pat, 'exercise_create', {
+            name,
+            muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+            ...(equipment === undefined ? {} : { equipment }),
+          })
+        ).body,
+      )
+    expect(await make('Step-Up', ['dumbbells', 'flat_bench'])).toContain(
+      'needs: dumbbells + flat_bench',
+    )
+    expect(await make('Sissy Squat', [])).toContain('needs: no equipment')
+    await make('Mystery Lift')
+
+    const audit = textOf(
+      (await callTool(pat, 'library_audit', { groupId: alice.personalGroupId })).body,
+    )
+    const unsaid = audit.split('Equipment not described')[1]?.split('\n\n')[0]
+    expect(unsaid).toBe(' (1):\n  Mystery Lift')
   })
 
   test('contract invariants are enforced through MCP exactly as over HTTP', async () => {

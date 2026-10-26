@@ -3,6 +3,7 @@ import { DEFAULT_GROUP_SLUG } from '@cedo/contract'
 import { db } from '../client.ts'
 import {
   EQUIPMENT,
+  EQUIPMENT_ITEMS,
   MOVEMENT,
   PERF_VOLUME,
   UNUSABLE_HASH,
@@ -68,7 +69,7 @@ export async function seedSharedLibrary(
       insert into exercises (owner_group_id, created_by, name, description, instructions, equipment)
       select '${sharedGroupId}'::uuid, '${systemUserId}'::uuid,
              ${EQUIPMENT} || ' ' || ${MOVEMENT} || ' ' || i,
-             'Seeded for the performance suite.', 'Set up, execute, rack.', ${EQUIPMENT}
+             'Seeded for the performance suite.', 'Set up, execute, rack.', ${EQUIPMENT_ITEMS}
         from generate_series(1, ${PERF_VOLUME.sharedExercises}) i
     `),
   )
@@ -225,8 +226,7 @@ export async function seedBackgroundSessions(sharedGroupId: string): Promise<voi
   `)
 
   await fillLogs({
-    // Explicitly the sessions with no workout — the background ones. Selecting every session would
-    // be correct only until a profile is seeded before this runs.
+    // The background sessions only, with no workout: all of them holds until a profile seeds first.
     sessions: sql`select id, started_at from workout_sessions where workout_id is null`,
     perSession: PERF_VOLUME.logsPerSession,
     sharedGroupId,

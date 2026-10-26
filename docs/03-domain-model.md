@@ -174,6 +174,23 @@ progression rule which dimension to advance:
 | `duration` | plank, dead hang | progresses via `linear_duration` |
 | `distance_duration` | rowing, farmer's carry | progresses via `linear_distance`, at the prescribed pace; going faster is set deliberately — see [adr/0012](adr/0012-progression-rules.md) |
 
+### Equipment — a hardcoded list of capabilities
+
+`EQUIPMENT` in `@cedo/contract` is the source of truth, and the Postgres enum `equipment_item` is
+generated from it — a new item is a migration adding its value. Each item is a capability, not a
+product (*High pulley*, *Low pulley*, *Adjustable pulley*), grouped for the checklist, and
+`weighted` when it holds the load. See [adr/0023](adr/0023-equipment-is-a-fixed-list.md).
+
+`exercises.equipment` is what the exercise needs — all of it — as `equipment_item[]`. `NULL` is
+**undescribed** and `{}` is **needs nothing**: an undescribed exercise is doable for everyone, and
+the library audit lists it. The contract refuses an item twice, more than one weighted item, and a
+weight belt, which no exercise needs. The seed describes a library entry still undescribed, so an
+installation made before the list gets its library described at boot, and a curator's own
+description stands.
+
+A weight is logged as the equipment reads: a barbell's total, bar included; one dumbbell or
+kettlebell; the number on a stack.
+
 ### Workouts — three levels, supersets as a tag
 
 ```

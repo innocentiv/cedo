@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { ExerciseEquipment } from './equipment.ts'
 import { Media } from './media.ts'
 import { MuscleSlug } from './muscle.ts'
 import { OwnableQueryFields, ownableFields, withGroupRule } from './ownable.ts'
@@ -106,7 +107,8 @@ const exerciseFields = {
   tracking: TrackingMode.default('weight_reps'),
   description: z.string().max(4000).default(''),
   instructions: z.string().max(8000).default(''),
-  equipment: z.string().max(80).nullable().default(null),
+  /** What it needs, all of it (#32) — `null` undescribed, `[]` nothing. See equipment.ts. */
+  equipment: ExerciseEquipment.default(null),
   /** Performed one limb at a time, so logged weight is per side. */
   isUnilateral: z.boolean().default(false),
   muscles: z.array(MuscleLoad).min(1).max(12),

@@ -83,7 +83,12 @@ Reviewing and creating exercises from reliable sources, with correct muscle attr
 is creating "Barbell Bench Press" beside an existing "Bench Press", or attributing muscles
 inconsistently across similar movements. So `library_audit` reports near-duplicates (by the same
 `pg_trgm` similarity that backs search), muscles with thin or no coverage, and entries missing
-instructions or media. The tool descriptions tell the model to read before it writes.
+instructions, media or the equipment they need. The tool descriptions tell the model to read before
+it writes.
+
+An exercise's equipment is read and written as slugs from the fixed list (`EquipmentSlug`, whose
+JSON schema enumerates them), and printed as `barbell + rack`, `no equipment`, or `equipment not
+described` — the last two kept apart, since an undescribed exercise is offered to everyone (#33).
 
 Writing to the shared library requires **curator** rights (below). Anything else lands in the
 caller's own group — and `exercise_duplicate` is how an AI adapts a library exercise for someone

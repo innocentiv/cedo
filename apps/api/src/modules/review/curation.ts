@@ -35,6 +35,8 @@ export interface LibraryAudit {
   readonly thinCoverage: { readonly muscle: string; readonly exercises: number }[]
   readonly missingInstructions: string[]
   readonly missingMedia: string[]
+  /** Nobody has said what they need (#33), so they are doable for everyone, and filter nothing. */
+  readonly undescribedEquipment: string[]
   readonly singleMuscle: string[]
 }
 
@@ -62,6 +64,7 @@ export async function libraryAudit(caller: Caller, groupId: string): Promise<Lib
       .toSorted((a, b) => a.exercises - b.exercises),
     missingInstructions: rows.filter((r) => r.instructions.trim() === '').map((r) => r.name),
     missingMedia: rows.filter((r) => !withMedia.has(r.id)).map((r) => r.name),
+    undescribedEquipment: rows.filter((r) => r.equipment === null).map((r) => r.name),
     /**
      * A compound lift attributed to exactly one muscle is usually an incomplete entry rather than
      * a genuine isolation movement, so it is worth a look — not an error.
@@ -90,6 +93,7 @@ async function loadExercises(caller: Caller, groupId: string) {
       id: exercises.id,
       name: exercises.name,
       instructions: exercises.instructions,
+      equipment: exercises.equipment,
     })
     .from(exercises)
     .where(eq(exercises.ownerGroupId, groupId))

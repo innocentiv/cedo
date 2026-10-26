@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import { DEFAULT_GROUP_SLUG, ExerciseCreate, MUSCLES, parseMediaUrl } from '@cedo/contract'
 import { type Transaction, closeDatabase, db } from './client.ts'
 import { env } from '../env.ts'
@@ -164,6 +164,17 @@ async function attachDemonstration(
   })
 }
 
+/**
+ * Left undescribed, an entry takes the library's equipment (#33): how an installation made before
+ * the list gets its library described, at the boot that migrates it. A curator's own stands.
+ */
+async function describeEntry(id: string, equipment: ExerciseCreate['equipment']): Promise<void> {
+  await db
+    .update(exercises)
+    .set({ equipment })
+    .where(and(eq(exercises.id, id), isNull(exercises.equipment)))
+}
+
 /** Returns false when the exercise already exists — which is what makes re-running a no-op. */
 async function seedExercise(
   entry: SeedExercise,
@@ -172,15 +183,17 @@ async function seedExercise(
 ): Promise<boolean> {
   const parsed = validate(entry)
 
-  // Scoped to the seeded group. Matching on name alone means a user who creates their own
-  // "Barbell Back Squat" permanently suppresses that entry from the shared library on every
-  // future upgrade.
-  const existing = await db
+  // Scoped to the seeded group: by name alone, a user's own "Barbell Back Squat" would suppress
+  // the library's entry on every future upgrade.
+  const [existing] = await db
     .select({ id: exercises.id })
     .from(exercises)
     .where(and(eq(exercises.ownerGroupId, ownerGroupId), eq(exercises.name, parsed.name)))
     .limit(1)
-  if (existing.length > 0) return false
+  if (existing !== undefined) {
+    await describeEntry(existing.id, parsed.equipment)
+    return false
+  }
 
   await db.transaction(async (tx) => {
     const [created] = await tx

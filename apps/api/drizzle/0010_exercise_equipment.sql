@@ -1,0 +1,5 @@
+-- The free-text equipment cannot be read as items ('Dumbbell', 'Plate or neck harness'), so every
+-- exercise starts undescribed: the seed describes the library at boot (#33), and an exercise of
+-- someone's own waits for them to.
+CREATE TYPE "public"."equipment_item" AS ENUM('dumbbells', 'kettlebells', 'weight_plates', 'weight_belt', 'resistance_bands', 'barbell', 'ez_bar', 'trap_bar', 'rack', 'flat_bench', 'incline_bench', 'pull_up_bar', 'parallel_bars', 'back_extension_bench', 'high_pulley', 'low_pulley', 'adjustable_pulley', 'cable_crossover', 'leg_press', 'leg_extension', 'lying_leg_curl', 'seated_leg_curl', 'standing_calf_raise', 'seated_calf_raise', 'smith_machine', 'hack_squat', 'chest_press', 'shoulder_press', 'pec_deck', 'hip_abduction', 'assisted_pull_up', 'rowing_ergometer', 'treadmill', 'exercise_bike');--> statement-breakpoint
+ALTER TABLE "exercises" ALTER COLUMN "equipment" SET DATA TYPE "public"."equipment_item"[] USING NULL;
