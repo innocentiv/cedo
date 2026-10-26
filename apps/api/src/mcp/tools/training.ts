@@ -7,6 +7,7 @@ import {
   SessionLogInput,
   WorkoutCreate,
   PlanSave,
+  ReviewQuery,
   planSaveFrom,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
@@ -44,11 +45,8 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         '(sessions per week, streak, longest gap), which planned days are being skipped, working ' +
         'sets per muscle (and weight lifted) against the preceding period, and which exercises ' +
         'have stalled.',
-      inputSchema: z
-        .object({
-          weeks: z.int().min(1).max(52).default(8).describe('How far back to look'),
-        })
-        .safeExtend(OfAthlete.shape),
+      // The weeks to look back, as `GET /review` takes them: one schema, the contract's.
+      inputSchema: ReviewQuery.safeExtend(OfAthlete.shape),
       annotations: READ,
     },
     async ({ weeks, athlete: athleteId }) =>

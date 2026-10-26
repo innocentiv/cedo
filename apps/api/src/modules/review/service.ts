@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lt, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm'
 import { STALL_DEPTH, type TrainingReview } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
@@ -28,12 +28,6 @@ import { type WorkingSet, stalledOf } from './stalled.ts'
 
 const DAY_MS = 86_400_000
 
-/**
- * What one call answers: `TrainingReview` in the contract, where each part is said (#28) — this
- * module reads and judges it, and the HTTP route and the MCP tool both say it.
- */
-export type { MuscleWork, TrainingReview } from '@cedo/contract'
-
 export async function trainingReview(training: Training, weeks: number): Promise<TrainingReview> {
   const since = new Date(Date.now() - weeks * 7 * DAY_MS)
   const previousSince = new Date(Date.now() - weeks * 14 * DAY_MS)
@@ -60,32 +54,42 @@ export async function trainingReview(training: Training, weeks: number): Promise
   }
 }
 
+/**
+ * Every planned day of the workouts trained in the period, and how often each was — none, for a day
+ * skipped every time (#28): a day never trained is the one most worth seeing, and counting from the
+ * sessions alone left it out. In plan order, workout by workout.
+ */
 async function dayBalance(training: Training, since: Date): Promise<TrainingReview['dayBalance']> {
   const days = visibleWorkoutDays(training.reader)
   const workouts = visibleWorkouts(training.reader)
+  const inPeriod = and(sessionsOf(training), gte(workoutSessions.startedAt, since))
+  const trained = db
+    .selectDistinct({ id: workoutSessions.workoutId })
+    .from(workoutSessions)
+    .where(inPeriod)
   const rows = await db
     .select({
       day: days.name,
       workout: workouts.name,
-      sessions: sql<number>`count(*)`.mapWith(Number),
+      sessions: sql<number>`count(${workoutSessions.id})`.mapWith(Number),
     })
-    .from(workoutSessions)
     /**
      * INNER joins onto the visible relations, so a day whose workout is unreachable drops out
      * entirely — you cannot balance days you cannot see. A correlated subquery for the workout's
      * name (`select name from workouts where id = …`) is how this once named a workout the caller
      * had lost access to; there is no raw table left to write one against.
      */
-    .innerJoin(days, eq(days.id, workoutSessions.dayId))
+    .from(days)
     .innerJoin(workouts, eq(workouts.id, days.workoutId))
-    .where(and(sessionsOf(training), gte(workoutSessions.startedAt, since)))
+    .leftJoin(workoutSessions, and(eq(workoutSessions.dayId, days.id), inPeriod))
+    .where(inArray(days.workoutId, trained))
     /**
      * By ID, not by name. Two days can share a name across two plans, and two plans can share a
      * name outright — duplicating one is the documented way to get an editable copy. Grouping on
      * the text merges them into one row whose session count is the sum of both.
      */
-    .groupBy(days.id, days.name, workouts.name)
-    .orderBy(desc(sql`count(*)`))
+    .groupBy(days.id, days.name, days.index, workouts.id, workouts.name)
+    .orderBy(asc(workouts.name), asc(workouts.id), asc(days.index))
 
   return rows.map((r) => ({ day: r.day, workout: r.workout, sessions: r.sessions }))
 }

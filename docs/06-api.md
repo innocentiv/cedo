@@ -14,7 +14,7 @@ src/
   modules/<name>/     index.ts (routes) + service.ts (logic) + tests beside them. Not every
                       module has both halves: ownable/ is the lifecycle exercise/ and workout/
                       configure; progression/ is reached through the workout routes and MCP;
-                      review/ through MCP and admin/; admin/ is routes onto
+                      review/ through MCP, admin/ and coaching/'s GET /review; admin/ is routes onto
                       review/diagnostics.ts. A module grows write*.ts, lifecycle.ts and its pure
                       parts beside these as it needs them.
 ```

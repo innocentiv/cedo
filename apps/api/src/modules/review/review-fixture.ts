@@ -6,7 +6,8 @@ import { resolveCaller } from '../../plugins/auth.ts'
 import { expectContract } from '../../test/contract.ts'
 import type { TestUser } from '../../test/harness.ts'
 import { own } from '../session/service.ts'
-import { type TrainingReview, trainingReview } from './service.ts'
+import type { TrainingReview } from '@cedo/contract'
+import { trainingReview } from './service.ts'
 
 /** What the review's tests share: a person's exercises and sessions, made over the wire. */
 

@@ -1,11 +1,13 @@
 import {
+  type EffortDrift,
+  type Falling,
   type LoggedExercise,
-  type TrainingReview,
+  type RatedEffort,
   compareEfforts,
   estimatedMax,
   topSet,
 } from '@cedo/contract'
-import { type RatedEffort, type WorkingSet, sessionsByExercise } from './stalled.ts'
+import { type WorkingSet, sessionsByExercise } from './stalled.ts'
 
 /**
  * The deload signals `training_review` gives the AI, which deloads by saving a lighter plan — the
@@ -23,10 +25,6 @@ export const DRIFT_RPE = 1
 
 /** The latest sessions that must each have drifted: one hard session is a bad day. */
 export const DRIFT_SESSIONS = 2
-
-/** A weight lift falling, and the same set rated harder each time: as `TrainingReview` says them. */
-export type Falling = TrainingReview['falling'][number]
-export type EffortDrift = TrainingReview['effortDrift'][number]
 
 /**
  * A weight lift whose best estimated max fell in each of its latest `FALLING_SESSIONS` sessions or

@@ -62,7 +62,7 @@ export const coachingRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching
 
 /**
  * Your own training, reviewed (#28): the Progress tab's one read — the same review `training_review`
- * gives an AI, as `TrainingReview` says it. A coach's of an athlete comes with the coach's view.
+ * gives an AI, as `TrainingReview` says it. An athlete's, read by their coach, is for #30.
  */
 export const reviewRoutes = new Elysia({ prefix: '/review', tags: ['coaching'] })
   .use(authPlugin)

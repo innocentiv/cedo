@@ -1,4 +1,4 @@
-import type { MuscleWork, TrainingReview } from './service.ts'
+import type { MuscleWork, TrainingReview } from '@cedo/contract'
 
 /**
  * Pure: each muscle's work in two windows in, what is worth saying about it out. No database, so
@@ -50,8 +50,10 @@ export function muscleWorkOf(
       liftedG: Math.round(now.get(muscle)?.lifted ?? 0),
       // On the unrounded sums.
       changePct: setsBefore === 0 ? null : Math.round(((sets - setsBefore) / setsBefore) * 100),
+      // Said on the muscle itself, wherever it is listed — most declines are among the most worked.
+      declined: isDecline(sets, setsBefore),
     }
-    return { work, sets, lost: setsBefore - sets, declined: isDecline(sets, setsBefore) }
+    return { work, sets, lost: setsBefore - sets, declined: work.declined }
   })
 
   const top = muscles

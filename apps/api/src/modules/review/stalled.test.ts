@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import type { Effort, TrackingMode } from '@cedo/contract'
+import type { Effort, RatedEffort, TrackingMode } from '@cedo/contract'
 import { makeApi } from '../../test/harness.ts'
 import { reviewFixture } from './review-fixture.ts'
 import { STALL_DEPTH } from '@cedo/contract'
@@ -118,9 +118,9 @@ describe('measured from the logs', () => {
 /** What has stalled, from each exercise's sessions, newest first. See GLOSSARY.md, "Stalled". */
 describe('what has stalled', () => {
   const bench = { name: 'Bench Press', tracking: 'weight_reps' } as const
-  const lift = (reps: number, kg: number): Effort => ({ ...NOTHING, reps, weightG: kg * 1000 })
+  const lift = (reps: number, kg: number) => ({ ...NOTHING, reps, weightG: kg * 1000, rpe: null })
   /** `sessions[0]` the newest, each its working sets in the order logged. */
-  const logged = (sessions: readonly (readonly Effort[])[]): WorkingSet[] =>
+  const logged = (sessions: readonly (readonly RatedEffort[])[]): WorkingSet[] =>
     sessions.flatMap((efforts, i) =>
       efforts.map((effort) => ({
         exerciseId: 'bench',
@@ -129,7 +129,7 @@ describe('what has stalled', () => {
         effort,
       })),
     )
-  const three = (efforts: readonly Effort[]) => [efforts, efforts, efforts]
+  const three = (efforts: readonly RatedEffort[]) => [efforts, efforts, efforts]
 
   test('three sessions with the same top set have stalled, however the back-off sets went', () => {
     const missedARep = [lift(8, 60), lift(8, 60), lift(7, 60)]
@@ -157,7 +157,7 @@ describe('what has stalled', () => {
         exerciseId: 'pull-up',
         exercise: { name: 'Pull-up', tracking: 'bodyweight_reps' },
         sessionId: `s${i}`,
-        effort: { ...NOTHING, reps: 8, weightG: i === 1 ? added : null },
+        effort: { ...NOTHING, reps: 8, weightG: i === 1 ? added : null, rpe: null },
       }))
     expect(stalledOf(pullUps(0)).map((s) => s.sessions)).toEqual([3])
   })

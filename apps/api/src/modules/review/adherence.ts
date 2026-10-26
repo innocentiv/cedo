@@ -1,4 +1,4 @@
-import type { TrainingReview } from './service.ts'
+import type { TrainingReview } from '@cedo/contract'
 
 /** Pure: dates in, adherence out. No database, so the calendar arithmetic is unit-testable. */
 

@@ -4,10 +4,11 @@ import type {
   Page,
   SessionDetail,
   SessionQuery,
+  TrainingReview,
   WorkoutSessionSummary,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
-import { type TrainingReview, trainingReview } from '../review/service.ts'
+import { trainingReview } from '../review/service.ts'
 import { history as exerciseHistory } from '../session/history.ts'
 import { list as listSessions } from '../session/list.ts'
 import { get as getSession } from '../session/plan.ts'

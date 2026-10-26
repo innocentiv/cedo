@@ -6,6 +6,8 @@ import type {
   WeightUnit,
   Workout,
   WorkoutSummary,
+  MuscleWork,
+  TrainingReview,
 } from '@cedo/contract'
 import {
   AT_LEAST_SESSIONS,
@@ -16,13 +18,7 @@ import {
   formatWeight,
   pointsOf,
 } from '@cedo/contract'
-import {
-  DRIFT_RPE,
-  DRIFT_SESSIONS,
-  FALLING_SESSIONS,
-  type MuscleWork,
-  type TrainingReview,
-} from '../modules/review/service.ts'
+import { DRIFT_RPE, DRIFT_SESSIONS, FALLING_SESSIONS } from '../modules/review/service.ts'
 
 /**
  * Tool output is TEXT the model reads, and its size is the real cost of an MCP tool — not the

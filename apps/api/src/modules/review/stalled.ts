@@ -1,5 +1,4 @@
-import { type LoggedExercise, type RatedEffort, stallOf } from '@cedo/contract'
-import type { TrainingReview } from './service.ts'
+import { type LoggedExercise, type RatedEffort, type Stalled, stallOf } from '@cedo/contract'
 
 /**
  * Pure: each exercise's working sets, session by session, in; which have stalled out. No database,
@@ -8,9 +7,6 @@ import type { TrainingReview } from './service.ts'
  * read as "0kg"; distance left out of the effort compared. Grouped by exercise id here, and compared
  * as the exercise's tracking mode measures it. See GLOSSARY.md, "Stalled".
  */
-
-/** A set's measures, and how hard it was when that was said: the contract's `RatedEffort`. */
-export type { RatedEffort } from '@cedo/contract'
 
 /** One working set the caller logged, with the exercise and session it belongs to. */
 export interface WorkingSet {
@@ -28,7 +24,7 @@ export interface WorkingSet {
  * too. `sets` arrive newest session first, each session's together and in the order logged, at
  * most `STALL_DEPTH` sessions of each exercise.
  */
-export function stalledOf(sets: readonly WorkingSet[]): TrainingReview['stalled'] {
+export function stalledOf(sets: readonly WorkingSet[]): Stalled[] {
   return sessionsByExercise(sets).flatMap(({ exercise, sessions }) => {
     const stall = stallOf(sessions, exercise.tracking)
     return stall === null ? [] : [{ exercise, ...stall }]

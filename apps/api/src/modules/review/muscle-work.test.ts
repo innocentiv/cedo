@@ -112,7 +112,7 @@ describe('what is worth saying', () => {
   test('names a declined muscle however many others worked more', () => {
     const review = muscleWorkOf(worked(TOP_MUSCLES + 1), [work('declined', 6)])
     expect(review.declined).toEqual([
-      { muscle: 'declined', weightedSets: 0, liftedG: 0, changePct: -100 },
+      { muscle: 'declined', weightedSets: 0, liftedG: 0, changePct: -100, declined: true },
     ])
     expect(review.omitted).toBe(1)
   })
@@ -137,15 +137,18 @@ describe('what is worth saying', () => {
 
   test('a top muscle that declined is named once, in the top, where its change says so', () => {
     const review = muscleWorkOf([work('squat', 3)], [work('squat', 10)])
-    expect(review.top).toEqual([{ muscle: 'squat', weightedSets: 3, liftedG: 0, changePct: -70 }])
+    expect(review.top).toEqual([
+      { muscle: 'squat', weightedSets: 3, liftedG: 0, changePct: -70, declined: true },
+    ])
     expect(review.declined).toEqual([])
   })
 
   test('with room to spare, a muscle with no work now is named too, after the worked ones', () => {
     const review = muscleWorkOf([work('squat', 3)], [work('calves', 1)])
     expect(review.top).toEqual([
-      { muscle: 'squat', weightedSets: 3, liftedG: 0, changePct: null },
-      { muscle: 'calves', weightedSets: 0, liftedG: 0, changePct: -100 },
+      { muscle: 'squat', weightedSets: 3, liftedG: 0, changePct: null, declined: false },
+      // Too little before to call a decline (`DECLINE_FROM_SETS`).
+      { muscle: 'calves', weightedSets: 0, liftedG: 0, changePct: -100, declined: false },
     ])
     expect(review.omitted).toBe(0)
   })
