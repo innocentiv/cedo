@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import {
+  type EquipmentSlug,
   type Exercise,
   type ExerciseInput,
   type Media,
@@ -8,7 +9,16 @@ import {
   type TrackingMode,
   exerciseInputFrom,
 } from '@cedo/contract'
-import { Button, Chips, Field, FormError, Input, MusclePicker, Screen } from '../ui/index.ts'
+import {
+  Button,
+  Chips,
+  EquipmentPicker,
+  Field,
+  FormError,
+  Input,
+  MusclePicker,
+  Screen,
+} from '../ui/index.ts'
 import { MediaLinks } from './media-links.tsx'
 import { useGoBack } from './use-go-back.ts'
 import { useSubmit } from './use-submit.ts'
@@ -47,7 +57,7 @@ export function ExerciseForm({
   const [tracking, setTracking] = useState<TrackingMode>(initial?.tracking ?? 'weight_reps')
   const [description, setDescription] = useState(initial?.description ?? '')
   const [instructions, setInstructions] = useState(initial?.instructions ?? '')
-  const [equipment, setEquipment] = useState(initial?.equipment ?? '')
+  const [equipment, setEquipment] = useState<EquipmentSlug[] | null>(initial?.equipment ?? null)
   const [muscles, setMuscles] = useState<MuscleLoad[]>(
     initial?.muscles.map((m) => ({ ...m })) ?? [],
   )
@@ -64,7 +74,7 @@ export function ExerciseForm({
         tracking,
         description,
         instructions,
-        equipment: equipment.trim() === '' ? null : equipment.trim(),
+        equipment,
         muscles,
         mediaIds: media.map((m) => m.id),
       })
@@ -97,13 +107,7 @@ export function ExerciseForm({
       </Field>
 
       <Field label="Equipment" error={fieldError('equipment')}>
-        <Input
-          value={equipment}
-          onChangeText={setEquipment}
-          placeholder="Barbell"
-          autoCapitalize="sentences"
-          testID="exercise-equipment"
-        />
+        <EquipmentPicker value={equipment} onChange={setEquipment} />
       </Field>
 
       <Field label="Muscles" error={fieldError('muscles')}>

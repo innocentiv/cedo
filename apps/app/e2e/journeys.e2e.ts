@@ -54,9 +54,24 @@ test(
       // The contract requires loads summing to 100; the form shows the running total.
       await form.load('deltoid_posterior', '100')
       expect(await form.total()).toContain('100%')
+      // What it needs (#33): nothing said is undescribed, "nothing" a claim of its own, and an
+      // item chosen ends it.
+      expect(await form.equipmentSummary()).toContain('Not described yet')
+      await form.equipment('nothing')
+      expect(await form.equipmentSummary()).toBe('Needs no equipment.')
+      await form.equipment('high_pulley')
+      expect(await form.equipmentSummary()).toBe('Needs all of what is chosen.')
       await form.save()
 
       expect(await app.library.listText()).toContain('Cable Face Pull')
+      const detail = await app.library.find('Cable Face Pull')
+      expect(await detail.equipment()).toBe('High pulley')
+
+      // The last item dropped is undescribed again, not "needs nothing".
+      const edit = await detail.edit()
+      await edit.equipment('high_pulley')
+      await edit.save()
+      expect(await app.exercise.equipment()).toBe('Not described')
     })
   },
   E2E_TIMEOUT_MS,

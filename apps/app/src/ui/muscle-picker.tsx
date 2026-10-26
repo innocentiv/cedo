@@ -1,6 +1,6 @@
 import { MUSCLES, type MuscleLoad, type MuscleSlug, withMuscleToggled } from '@cedo/contract'
-import { Pressable, StyleSheet } from 'react-native'
-import { color, radius, space } from './tokens.ts'
+import { StyleSheet } from 'react-native'
+import { Chip } from './chips.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 import { NumberInput } from './input.tsx'
@@ -80,33 +80,18 @@ function MuscleOptions({
   return (
     <Stack direction="row" gap="xs" wrap testID="muscle-options">
       {MUSCLES.map((muscle) => (
-        <Pressable
+        <Chip
           key={muscle.slug}
-          accessibilityRole="button"
-          testID={`muscle-option-${muscle.slug}`}
+          label={muscle.name}
+          selected={chosen.has(muscle.slug)}
           onPress={() => {
             onToggle(muscle.slug)
           }}
-          style={[styles.chip, chosen.has(muscle.slug) ? styles.selected : null]}
-        >
-          <Text variant="caption" tone={chosen.has(muscle.slug) ? 'default' : 'muted'}>
-            {muscle.name}
-          </Text>
-        </Pressable>
+          testID={`muscle-option-${muscle.slug}`}
+        />
       ))}
     </Stack>
   )
 }
 
-const styles = StyleSheet.create({
-  name: { width: 120 },
-  chip: {
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface,
-  },
-  selected: { borderColor: color.text, backgroundColor: color.surfaceRaised },
-})
+const styles = StyleSheet.create({ name: { width: 120 } })

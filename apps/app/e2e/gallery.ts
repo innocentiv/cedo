@@ -139,7 +139,7 @@ async function seed(): Promise<World> {
   const custom = await api.exercises.create({
     name: 'Tempo Goblet Squat',
     tracking: 'weight_reps',
-    equipment: 'Dumbbell',
+    equipment: ['dumbbells'],
     description: 'A goblet squat with a three-second descent and a pause at the bottom.',
     instructions:
       'Hold the dumbbell at your chest. Descend for three seconds, pause one, drive up. Keep your elbows inside your knees.',

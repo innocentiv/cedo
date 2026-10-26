@@ -129,7 +129,8 @@ Two constraints found by building it:
 | `useLayout()`, `TABLET_MIN_WIDTH` | the only layout branch: `'phone' | 'tablet'`, and where it switches |
 
 Composites are here rather than in a screen, because each is used from more than one place or
-would otherwise be copied: `MusclePicker`, `EntryEditor` (one plan entry's fields, opened from its
+would otherwise be copied: `MusclePicker`, `EquipmentPicker` (what an exercise needs, by group,
+or nothing — none chosen is undescribed, #33), `EntryEditor` (one plan entry's fields, opened from its
 line in a workout's outline, #26), and the
 workout's (#24) — `FocusLogger` (the exercise in focus: its `SetMarks`, the next set's `Stepper`s,
 one Log button), `LastSet` (the set just logged: a best, its reserve, Undo), `RestBand`, `UpNext`

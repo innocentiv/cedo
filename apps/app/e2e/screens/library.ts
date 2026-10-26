@@ -1,4 +1,4 @@
-import type { OwnableScope } from '@cedo/contract'
+import type { EquipmentSlug, OwnableScope } from '@cedo/contract'
 import type { Page } from '../harness.ts'
 import { closed } from './form.ts'
 import { placement } from './placement.ts'
@@ -22,6 +22,12 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
     await page.click(`[data-testid="muscle-option-${muscle}"]`)
     await page.fill(`muscle-load-${muscle}`, percent)
   },
+  /** Chooses an item the exercise needs, or drops it — or `nothing`, that it needs none (#33). */
+  equipment: async (choice: EquipmentSlug | 'nothing'): Promise<void> => {
+    await page.click(`[data-testid="equipment-option-${choice}"]`)
+  },
+  /** What the form says the exercise needs, as chosen so far. */
+  equipmentSummary: async (): Promise<string> => (await page.text('equipment-summary')) ?? '',
   /** The running total the form shows under the muscles. */
   total: async (): Promise<string> => (await page.text('muscle-total')) ?? '',
   attachVideo: async (url: string): Promise<void> => {
@@ -116,6 +122,15 @@ export const exercise = (page: Page) => ({
   },
   shown: async (): Promise<void> => {
     await page.waitFor('exercise-detail-screen')
+  },
+  /** What it needs, as its Equipment card reads under its label: "High pulley", "Not described". */
+  equipment: async (): Promise<string> => {
+    await page.waitFor('exercise-equipment')
+    return String(
+      await page.evaluate(
+        `document.querySelector('[data-testid="exercise-equipment"]').innerText.split('\\n').slice(1).join(' ').trim()`,
+      ),
+    )
   },
   historyText: async (): Promise<string> => {
     await page.waitFor('exercise-history')

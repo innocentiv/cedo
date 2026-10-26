@@ -4,6 +4,7 @@ import {
   type ExerciseHistory,
   MEDIA_KIND_LABELS,
   type TrackingMode,
+  equipmentLine,
   formatEffort,
   musclesByLoad,
 } from '@cedo/contract'
@@ -80,6 +81,15 @@ export function About({ exercise }: { readonly exercise: Exercise }): React.JSX.
           {musclesByLoad(exercise.muscles).map((m) => (
             <Text key={m.name}>{`${m.name} · ${m.loadPct}%`}</Text>
           ))}
+        </Stack>
+      </Card>
+
+      <Card testID="exercise-equipment">
+        <Stack gap="xs">
+          <Text variant="label" tone="muted">
+            Equipment
+          </Text>
+          <Text>{equipmentLine(exercise.equipment)}</Text>
         </Stack>
       </Card>
 

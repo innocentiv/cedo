@@ -31,22 +31,44 @@ export function Chips<T extends string>({
   return (
     <View style={styles.row} testID={testID}>
       {options.map((option) => (
-        <Pressable
+        <Chip
           key={option.value}
-          accessibilityRole="button"
-          aria-selected={option.value === value}
-          testID={`${testID ?? 'chip'}-${option.value}`}
+          label={option.label}
+          selected={option.value === value}
           onPress={() => {
             onChange(option.value)
           }}
-          style={[styles.chip, option.value === value ? styles.selected : null]}
-        >
-          <Text variant="caption" tone={option.value === value ? 'default' : 'muted'}>
-            {option.label}
-          </Text>
-        </Pressable>
+          testID={`${testID ?? 'chip'}-${option.value}`}
+        />
       ))}
     </View>
+  )
+}
+
+/** One choice of a row, on or off — the one look every set of chips shares. */
+export function Chip({
+  label,
+  selected,
+  onPress,
+  testID,
+}: {
+  readonly label: string
+  readonly selected: boolean
+  readonly onPress: () => void
+  readonly testID: string
+}): React.JSX.Element {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      aria-selected={selected}
+      testID={testID}
+      onPress={onPress}
+      style={[styles.chip, selected ? styles.selected : null]}
+    >
+      <Text variant="caption" tone={selected ? 'default' : 'muted'}>
+        {label}
+      </Text>
+    </Pressable>
   )
 }
 
