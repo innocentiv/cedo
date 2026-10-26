@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { Progression } from '@cedo/contract'
+import type { AthleteEquipment, Progression } from '@cedo/contract'
 import { type EntryToEvaluate, type LoggedSet, type PrescribedSet, suggest } from './evaluate.ts'
 
 /**
@@ -14,8 +14,19 @@ const entry = (progression: Progression, id = 'bench'): EntryToEvaluate => ({
   exerciseId: `${id}-exercise`,
   exerciseName: 'Bench Press',
   tracking: 'weight_reps',
+  equipment: ['barbell', 'rack', 'flat_bench'],
   progression,
 })
+
+/** Someone who has not said what they train with: nothing is snapped (#36). */
+const UNDESCRIBED: AthleteEquipment = { described: false, items: [] }
+
+const suggestFor = (
+  entries: readonly EntryToEvaluate[],
+  sets: readonly PrescribedSet[],
+  logs: readonly LoggedSet[],
+  held: AthleteEquipment = UNDESCRIBED,
+) => suggest(entries, sets, logs, held)
 
 const prescribed = (weightG: number, reps: number, isWarmup = false): PrescribedSet => ({
   entryId: 'bench',
@@ -52,7 +63,7 @@ describe('suggesting the next prescription', () => {
    * every working set done would read as one set short, and never advance.
    */
   test('warm-ups count for nothing, prescribed or logged', () => {
-    const [suggestion] = suggest(
+    const [suggestion] = suggestFor(
       [entry(LINEAR)],
       [prescribed(20_000, 5, true), ...threeWorkingAt60],
       [
@@ -73,7 +84,7 @@ describe('suggesting the next prescription', () => {
    * working set shares one prescription when saved through the editor; the rows need not.
    */
   test('the prescription is the first working set, when the working sets differ', () => {
-    const [suggestion] = suggest(
+    const [suggestion] = suggestFor(
       [entry({ kind: 'none' })],
       [prescribed(20_000, 5, true), prescribed(60_000, 8), prescribed(70_000, 6)],
       [],
@@ -85,7 +96,7 @@ describe('suggesting the next prescription', () => {
   test('the session that arrives first is read as the most recent', () => {
     const missedToday = [1, 2, 3].map(() => logged('today', 60_000, 6))
     const clearedLastWeek = [1, 2, 3].map(() => logged('last-week', 60_000, 8))
-    const [suggestion] = suggest([entry(LINEAR)], threeWorkingAt60, [
+    const [suggestion] = suggestFor([entry(LINEAR)], threeWorkingAt60, [
       ...missedToday,
       ...clearedLastWeek,
     ])
@@ -97,7 +108,7 @@ describe('suggesting the next prescription', () => {
   test('reads only the logs of its own entry', () => {
     const cleared = (entryId: string | null) =>
       [1, 2, 3].map(() => logged('elsewhere', 60_000, 8, { entryId }))
-    const [suggestion] = suggest([entry(LINEAR)], threeWorkingAt60, [
+    const [suggestion] = suggestFor([entry(LINEAR)], threeWorkingAt60, [
       ...cleared(null),
       ...cleared('squat'),
     ])
@@ -106,7 +117,7 @@ describe('suggesting the next prescription', () => {
   })
 
   test('one suggestion per entry, in the order the entries arrive', () => {
-    const suggestions = suggest(
+    const suggestions = suggestFor(
       [entry({ kind: 'none' }, 'squat'), entry({ kind: 'none' }, 'bench')],
       threeWorkingAt60,
       [],
@@ -121,5 +132,33 @@ describe('suggesting the next prescription', () => {
       distanceMm: null,
     })
     expect(suggestions.every((s) => !s.changed)).toBe(true)
+  })
+})
+
+/** What the athlete can load (#36): judged against, and answered in, the weights they have. */
+describe('against the weights an athlete can load', () => {
+  test('22 kg logged on a 22.5 kg plan meets it on 2 kg dumbbells, and 24 is next', () => {
+    const press = { ...entry(LINEAR), equipment: ['dumbbells' as const] }
+    const plan = [prescribed(22_500, 8), prescribed(22_500, 8), prescribed(22_500, 8)]
+    const monday = [
+      logged('monday', 22_000, 8),
+      logged('monday', 22_000, 8),
+      logged('monday', 22_000, 8),
+    ]
+    const dumbbells: AthleteEquipment = {
+      described: true,
+      items: [{ slug: 'dumbbells', weights: { stepG: 2000, minG: 2000, maxG: 30_000 } }],
+    }
+
+    const [mine] = suggestFor([press], plan, monday, dumbbells)
+    expect(mine?.suggested.weightG).toBe(24_000)
+    expect(mine?.changed).toBe(true)
+    // The plan keeps what it says.
+    expect(mine?.current.weightG).toBe(22_500)
+
+    // Without the dumbbells' weights known, 22 is short of 22.5, as it always was.
+    const [unknown] = suggestFor([press], plan, monday)
+    expect(unknown?.suggested.weightG).toBe(22_500)
+    expect(unknown?.changed).toBe(false)
   })
 })

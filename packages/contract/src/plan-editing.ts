@@ -48,11 +48,25 @@ export const DEFAULT_INCREMENT_S = 15
 /** The distance a new distance rule adds: 500 m. Distance is metric for everyone (units.ts). */
 export const DEFAULT_INCREMENT_MM = 500_000
 
-/** A new rule of each kind, in the person's unit — one per kind, or this does not compile. */
-const NEW_RULE: { readonly [K in Progression['kind']]: (unit: WeightUnit) => Progression } = {
+/**
+ * A new rule of each kind, in the person's unit — one per kind, or this does not compile. A weight
+ * rule adds one step of the athlete's equipment for the exercise when it is known (#36): +2 kg on
+ * dumbbells that go 2 kg at a time, where 2.5 would load nothing heavier.
+ */
+const NEW_RULE: {
+  readonly [K in Progression['kind']]: (unit: WeightUnit, stepG: number | null) => Progression
+} = {
   none: () => NO_PROGRESSION,
-  linear: (unit) => ({ kind: 'linear', incrementG: DEFAULT_INCREMENT_G[unit], afterSuccesses: 1 }),
-  double: (unit) => ({ kind: 'double', repRange: [8, 12], incrementG: DEFAULT_INCREMENT_G[unit] }),
+  linear: (unit, stepG) => ({
+    kind: 'linear',
+    incrementG: stepG ?? DEFAULT_INCREMENT_G[unit],
+    afterSuccesses: 1,
+  }),
+  double: (unit, stepG) => ({
+    kind: 'double',
+    repRange: [8, 12],
+    incrementG: stepG ?? DEFAULT_INCREMENT_G[unit],
+  }),
   linear_duration: () => ({
     kind: 'linear_duration',
     incrementS: DEFAULT_INCREMENT_S,
@@ -73,7 +87,9 @@ export const progressionOf = (
   kind: Progression['kind'],
   previous: Progression,
   unit: WeightUnit,
-): Progression => (kind === previous.kind ? previous : NEW_RULE[kind](unit))
+  /** The athlete's weight step for the exercise, when their equipment says (#36). */
+  stepG: number | null = null,
+): Progression => (kind === previous.kind ? previous : NEW_RULE[kind](unit, stepG))
 
 /** A new day, named by its position. */
 export const newDay = (index: number): WorkoutDayInput => ({

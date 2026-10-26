@@ -264,6 +264,13 @@ or none — none being unknown — and only on an item that holds the load, whic
 `equipment_described_at` is set, nothing is filtered for them (#35); after, no rows means they
 have nothing. A save locks the person's row first, so two at once take turns.
 
+**Weights an athlete can load** (#36): an exercise's item that holds its load, and the athlete's
+weights for it, make a `Load` (`loadOf`) — or none, when either is unknown, and nothing is snapped.
+A plan keeps its weights; a target is the heaviest loadable weight not above it, capped at the
+heaviest and raised to the lightest (`loadable`), and progression judges a session against that
+(`nextLoadableTarget`), never the plan's number. `EntryTarget.limit` says where it stopped. See
+[adr/0024](adr/0024-targets-follow-the-athletes-equipment.md).
+
 ### Logs
 
 ```

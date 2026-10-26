@@ -1,4 +1,6 @@
 import type {
+  AthleteEquipment,
+  Load,
   ExerciseHistory,
   ProgressionSuggestion,
   TrackingMode,
@@ -10,6 +12,8 @@ import type {
 } from '@cedo/contract'
 import {
   AT_LEAST_SESSIONS,
+  loadOf,
+  loadable,
   MISSING_EQUIPMENT,
   estimatedMax,
   formatDuration,
@@ -48,14 +52,28 @@ const setLine = (
   set: Workout['days'][number]['entries'][number]['sets'][number],
   tracking: TrackingMode | null,
   unit: WeightUnit,
+  load: Load | null,
 ): string =>
-  `${set.isWarmup ? 'warm-up' : 'work'}: ${formatEffort(set.target, tracking, unit)}${atRpe(set.target.rpe)}`
+  `${set.isWarmup ? 'warm-up' : 'work'}: ${formatEffort(set.target, tracking, unit)}${atRpe(set.target.rpe)}${loads(set.target.weightG, load, unit)}`
+
+/** ` (loads 22 kg)` beside a weight the athlete's equipment cannot load as written (#36). */
+function loads(weightG: number | null, load: Load | null, unit: WeightUnit): string {
+  if (weightG === null) return ''
+  const can = loadable(load, weightG)
+  if (can.weightG === weightG) return ''
+  return ` (loads ${formatWeight(can.weightG, unit)}${can.limit === null ? '' : `, the ${can.limit}`})`
+}
 
 /** ` @ RPE 8.5` after a set prescribed or logged at one, and nothing after one without. */
 export const atRpe = (rpe: number | null): string => (rpe === null ? '' : ` @ RPE ${rpe}`)
 
 /** The whole plan as an outline. A 6-day plan is ~60 short lines rather than ~40 KB of JSON. */
-export function workoutDetail(workout: Workout, unit: WeightUnit): string {
+export function workoutDetail(
+  workout: Workout,
+  unit: WeightUnit,
+  /** What the athlete it is read for has: a weight they cannot load as written says so (#36). */
+  held: AthleteEquipment,
+): string {
   const header = `${workout.name}  (${workout.id})${workout.canEdit ? '' : '  [read-only]'}`
   const notes = workout.notes === null ? [] : [`notes: ${workout.notes}`]
 
@@ -72,7 +90,10 @@ export function workoutDetail(workout: Workout, unit: WeightUnit): string {
       return [
         `  - ${name}${kit}${superset}${rest}${rule}   [entry ${entry.id}]`,
         ...(entry.cue === null ? [] : [`      cue: ${entry.cue}`]),
-        ...entry.sets.map((set) => `      ${setLine(set, entry.exercise?.tracking ?? null, unit)}`),
+        ...entry.sets.map(
+          (set) =>
+            `      ${setLine(set, entry.exercise?.tracking ?? null, unit, entry.exercise === null ? null : loadOf(entry.exercise, held))}`,
+        ),
       ].join('\n')
     })
     // Its name, as the app shows a day: the outline's order is already its position, and a day

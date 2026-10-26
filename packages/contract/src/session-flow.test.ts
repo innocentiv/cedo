@@ -72,6 +72,15 @@ const log = (entryId: string | null, isWarmup = false): FlowLog => {
 describe("an entry's sets", () => {
   const squat = entry('squat', 0, { warmups: 2, working: 3 })
 
+  /** On the athlete's equipment (#36): the plan's own targets, as they can be loaded. */
+  test('the plan’s own targets asked as the athlete can load them; the session’s as sent', () => {
+    const bar = { stepG: 5000, minG: 25_000, maxG: null, assisted: false }
+    const sets = setsOf(squat, [], null, bar)
+    // A 20 kg warm-up under a 25 kg bar is the bar; 40 and 100 load as written.
+    expect(sets.map((s) => s.target.weightG)).toEqual([25_000, 40_000, 100_000, 100_000, 100_000])
+    expect(setsOf(squat, [], target(5, 102.5), bar).at(-1)?.target.weightG).toBe(102_500)
+  })
+
   test('warm-ups first, each with its own target; working sets ask what the session asks', () => {
     const sets = setsOf(squat, [], target(5, 102.5))
     expect(sets.map((s) => [s.key, s.isWarmup, s.target.weightG])).toEqual([

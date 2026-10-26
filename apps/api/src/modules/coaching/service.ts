@@ -58,10 +58,8 @@ export const review = async (
 ): Promise<TrainingReview> => await trainingReview(await ownOrCoached(caller, athleteId), weeks)
 
 /** What they have to train with (#34) — a coach plans for an athlete's gym, and changes none of it. */
-export const equipment = async (
-  caller: Caller,
-  athleteId: string | undefined,
-): Promise<AthleteEquipment> => await readEquipment(await ownOrCoached(caller, athleteId))
+export const equipment = async (caller: Caller, athleteId?: string): Promise<AthleteEquipment> =>
+  await readEquipment(await ownOrCoached(caller, athleteId))
 
 /**
  * The library, judged by what an athlete has (#35): a coach planning for their gym searches what
@@ -74,10 +72,19 @@ export const exercises = async (
 ): Promise<Page<Exercise>> =>
   await listExercises(caller, query, (await ownOrCoached(caller, athleteId)).athleteId)
 
-/** A workout, its exercises marked by what an athlete has (#35) — the plan a coach writes for them. */
-export const workout = async (
+/**
+ * A workout read for an athlete — the caller, or one a coach writes it for — with what they have:
+ * its exercises marked doable or not (#35), and its weights readable as they can load them (#36).
+ */
+export async function planFor(
   caller: Caller,
   athleteId: string | undefined,
   workoutId: string,
-): Promise<Workout> =>
-  await getWorkout(caller, workoutId, (await ownOrCoached(caller, athleteId)).athleteId)
+): Promise<{ readonly workout: Workout; readonly held: AthleteEquipment }> {
+  const training = await ownOrCoached(caller, athleteId)
+  const [workout, held] = await Promise.all([
+    getWorkout(caller, workoutId, training.athleteId),
+    readEquipment(training),
+  ])
+  return { workout, held }
+}

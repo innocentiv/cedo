@@ -1010,6 +1010,54 @@ describe('equipment', () => {
     expect(await outline()).toContain('- Gym Back Squat [Missing equipment]')
   })
 
+  test('workout_get says what a weight loads on your dumbbells, the plan kept as written', async () => {
+    const pat = await mintPat(alice)
+    const press = expectContract(
+      Exercise,
+      (
+        await alice.wire('/exercises', {
+          method: 'POST',
+          body: JSON.stringify({
+            name: 'Dumbbell Press',
+            equipment: ['dumbbells'],
+            muscles: [{ muscle: 'pectoralis_major', loadPct: 100 }],
+          }),
+        })
+      ).body,
+    )
+    const workout = expectContract(
+      Workout,
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Push' }) }))
+        .body,
+    )
+    await callTool(pat, 'workout_save_plan', {
+      workoutId: workout.id,
+      days: [
+        {
+          name: 'A',
+          entries: [
+            {
+              exerciseId: press.id,
+              sets: [
+                { targetReps: 8, targetWeightG: 22_500 },
+                { targetReps: 8, targetWeightG: 32_500 },
+              ],
+            },
+          ],
+        },
+      ],
+    })
+    const outline = async () =>
+      textOf((await callTool(pat, 'workout_get', { workoutId: workout.id })).body)
+    expect(await outline()).not.toContain('loads')
+    await callTool(pat, 'equipment_set', {
+      items: [{ slug: 'dumbbells', weights: { stepG: 2000, minG: 2000, maxG: 30_000 } }],
+    })
+    const read = await outline()
+    expect(read).toContain('work: 8 × 22.5 kg (loads 22 kg)')
+    expect(read).toContain('work: 8 × 32.5 kg (loads 30 kg, the heaviest)')
+  })
+
   test('refuses what the contract refuses, and keeps what was said', async () => {
     const pat = await mintPat(alice)
     await callTool(pat, 'equipment_set', { items: [{ slug: 'rack', weights: null }] })

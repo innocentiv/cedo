@@ -22,7 +22,7 @@ import {
 } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
 import * as CoachingService from '../coaching/service.ts'
-import { targetsForSession } from '../progression/service.ts'
+import { targetsForSession } from '../progression/targets.ts'
 import { start as startSession } from './start.ts'
 import { logSet } from './log-set.ts'
 import { today } from './today.ts'

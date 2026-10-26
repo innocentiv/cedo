@@ -1,3 +1,5 @@
+import type { Load } from './load.ts'
+import { loadableTarget } from './loadable-target.ts'
 import type { SetLog } from './log.ts'
 import { NO_TARGET, type SetTarget } from './progression.ts'
 import { DEFAULT_REST_S, type Rest } from './rest.ts'
@@ -50,27 +52,31 @@ export function setsOf<L extends FlowLog>(
   entry: Pick<FlowEntry, 'id' | 'sets'>,
   logs: readonly L[],
   working: SetTarget | null,
+  /** What the athlete can load on it (#36): the plan's own targets asked as they can load them. */
+  load: Load | null = null,
 ): SessionSet<L>[] {
+  const asLoaded = (target: SetTarget): SetTarget => loadableTarget(load, target).target
   const mine = logs.filter((l) => l.entryId === entry.id)
   const warmLogs = mine.filter((l) => l.isWarmup)
   const workLogs = mine.filter((l) => !l.isWarmup)
   const planned = entry.sets.toSorted((a, b) => a.index - b.index)
   const warmups = planned.filter((s) => s.isWarmup)
   const workingSets = planned.filter((s) => !s.isWarmup)
-  const workingTarget = working ?? workingSets[0]?.target ?? null
+  const planned0 = workingSets[0]?.target
+  const workingTarget = working ?? (planned0 === undefined ? null : asLoaded(planned0))
 
   const sets: SessionSet<L>[] = [
     ...warmups.map((s, i) => ({
       key: `w${i}`,
       isWarmup: true,
-      target: s.target,
+      target: asLoaded(s.target),
       log: warmLogs[i] ?? null,
       extra: false,
     })),
     ...workingSets.map((s, i) => ({
       key: `s${i}`,
       isWarmup: false,
-      target: workingTarget ?? s.target,
+      target: workingTarget ?? asLoaded(s.target),
       log: workLogs[i] ?? null,
       extra: false,
     })),

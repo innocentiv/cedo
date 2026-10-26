@@ -1,6 +1,9 @@
 import {
+  type AthleteEquipment,
   type Effort,
   type EntryTarget,
+  type EquipmentSlug,
+  type LoadLimit,
   type LoggedEffort,
   type Progression,
   type ProgressionSuggestion,
@@ -9,7 +12,8 @@ import {
   type SetTarget,
   type TrackingMode,
   type WorkoutSetInput,
-  nextTarget,
+  loadOf,
+  nextLoadableTarget,
   prescriptionOf,
   setTargetOf,
 } from '@cedo/contract'
@@ -28,6 +32,8 @@ export interface EntryToEvaluate {
   readonly exerciseId: string
   readonly exerciseName: string
   readonly tracking: TrackingMode
+  /** What it needs: the item holding its load says what weights the athlete can put on it (#36). */
+  readonly equipment: readonly EquipmentSlug[] | null
   readonly progression: Progression
 }
 
@@ -52,14 +58,25 @@ export function suggest(
   entries: readonly EntryToEvaluate[],
   prescribed: readonly PrescribedSet[],
   logs: readonly LoggedSet[],
+  held: AthleteEquipment,
 ): ProgressionSuggestion[] {
+  return evaluate(entries, prescribed, logs, held).map((e) => e.suggestion)
+}
+
+/** Each entry's suggestion, and where the athlete's equipment stopped its weight, if it did. */
+function evaluate(
+  entries: readonly EntryToEvaluate[],
+  prescribed: readonly PrescribedSet[],
+  logs: readonly LoggedSet[],
+  held: AthleteEquipment,
+): { readonly suggestion: ProgressionSuggestion; readonly limit: LoadLimit | null }[] {
   const setsByEntry = groupBy(prescribed, (s) => s.entryId)
   const logsByEntry = groupBy(
     logs.filter((l): l is LoggedSet & { entryId: string } => l.entryId !== null),
     (l) => l.entryId,
   )
   return entries.map((entry) =>
-    suggestForEntry(entry, setsByEntry.get(entry.id) ?? [], logsByEntry.get(entry.id) ?? []),
+    suggestForEntry(entry, setsByEntry.get(entry.id) ?? [], logsByEntry.get(entry.id) ?? [], held),
   )
 }
 
@@ -72,44 +89,55 @@ export function targetsFrom(
   entries: readonly EntryToEvaluate[],
   prescribed: readonly PrescribedSet[],
   logs: readonly LoggedSet[],
+  held: AthleteEquipment,
   lastByExercise: ReadonlyMap<string, LoggedEffort[]>,
 ): EntryTarget[] {
-  return suggest(entries, prescribed, logs).map((s) => ({
+  return evaluate(entries, prescribed, logs, held).map(({ suggestion: s, limit }) => ({
     entryId: s.entryId,
     prescribed: s.current,
     target: s.suggested,
     changed: s.changed,
+    limit,
     last: lastByExercise.get(s.exerciseId) ?? null,
   }))
 }
 
+/**
+ * Judged, and answered, in weights the athlete can load (#36): `changed` is the rule moving the
+ * prescription as shown, never the snapping alone — 22.5 kg shown as 22 has not progressed.
+ */
 function suggestForEntry(
   entry: EntryToEvaluate,
   prescribed: readonly PrescribedSet[],
   logs: readonly LoggedSet[],
-): ProgressionSuggestion {
+  held: AthleteEquipment,
+): { readonly suggestion: ProgressionSuggestion; readonly limit: LoadLimit | null } {
   const first = prescriptionOf({ sets: prescribed })
   const current = first === undefined ? NOTHING_PRESCRIBED : setTargetOf(first)
   const sessions = toSessions(logs)
 
-  const suggested = nextTarget({
-    rule: entry.progression,
-    target: current,
-    workingSets: prescribed.filter((s) => !s.isWarmup).length,
-    sessions,
-  })
+  const next = nextLoadableTarget(
+    {
+      rule: entry.progression,
+      target: current,
+      workingSets: prescribed.filter((s) => !s.isWarmup).length,
+      sessions,
+    },
+    loadOf(entry, held),
+  )
 
-  return {
+  const suggestion = {
     entryId: entry.id,
     exerciseId: entry.exerciseId,
     exerciseName: entry.exerciseName,
     tracking: entry.tracking,
     rule: entry.progression,
     current,
-    suggested,
-    changed: !sameTarget(current, suggested),
+    suggested: next.target,
+    changed: !sameTarget(next.shown, next.target),
     sessionsConsidered: sessions.length,
   }
+  return { suggestion, limit: next.limit }
 }
 
 /** An entry with no working set prescribes nothing — every target null. */

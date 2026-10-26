@@ -1,5 +1,6 @@
 import type { Effort } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
+import { type Load, steppedOn } from './load.ts'
 import { CLOCK, COUNT, type Typing, typing } from './typing.ts'
 import { type WeightUnit, gToKgShown, gToLbShown, kgToG, lbToG, mToMm, mmToM } from './units.ts'
 import type { WorkoutSetInput } from './workout.ts'
@@ -172,7 +173,8 @@ export const stepOf = (dimension: Dimension, unit: WeightUnit): number =>
 
 /**
  * A value moved one step up (`1`) or down (`-1`) — never below zero, except a bodyweight
- * movement's weight, which goes on down into assistance. An empty field steps from zero.
+ * movement's weight, which goes on down into assistance. An empty field steps from zero. A weight
+ * whose load is known (#36) moves to the next weight the athlete can load instead (`steppedOn`).
  */
 export function stepped(
   value: number | null,
@@ -180,7 +182,9 @@ export function stepped(
   dimension: Dimension,
   tracking: TrackingMode,
   unit: WeightUnit,
+  load: Load | null = null,
 ): number {
+  if (dimension === 'weight' && load !== null) return steppedOn(load, value, by)
   const next = (value ?? 0) + by * stepOf(dimension, unit)
   return assistable(dimension, tracking) ? next : Math.max(0, next)
 }

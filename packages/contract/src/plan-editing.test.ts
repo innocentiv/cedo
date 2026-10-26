@@ -204,6 +204,13 @@ describe('the issues a draft would be refused for', () => {
 })
 
 describe('a new rule', () => {
+  /** On the athlete's equipment (#36): +2 kg on 2 kg dumbbells, where 2.5 would load nothing. */
+  test("adds one step of the athlete's equipment when it is known", () => {
+    expect(progressionOf('linear', NO_PROGRESSION, 'kg', 2000)).toMatchObject({ incrementG: 2000 })
+    expect(progressionOf('double', NO_PROGRESSION, 'kg', 2000)).toMatchObject({ incrementG: 2000 })
+    expect(progressionOf('linear', NO_PROGRESSION, 'kg', null)).toMatchObject({ incrementG: 2500 })
+  })
+
   /** In the person's unit: 2.5 kg read in pounds was "+5.51 lb", and every target drifted off. */
   test('adds 2.5 kg — or 5 lb, for someone who reads pounds', () => {
     expect(progressionOf('linear', NO_PROGRESSION, 'kg')).toMatchObject({ incrementG: 2500 })

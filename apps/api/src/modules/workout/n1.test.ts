@@ -150,8 +150,9 @@ describe('reads do not N+1', () => {
     expect(largeCount.result).toHaveLength(48)
 
     expect(largeCount.count).toBe(smallCount.count)
-    // The workout, its entries, their prescribed sets, and the caller's logs.
-    expect(largeCount.count).toBeLessThanOrEqual(4)
+    // The workout, its entries, their prescribed sets, the caller's logs, and what they have to
+    // train with — the weights they can load (#36).
+    expect(largeCount.count).toBeLessThanOrEqual(5)
   })
 
   test('session history costs the same for 1 session as for 15', async () => {

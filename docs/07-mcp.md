@@ -165,6 +165,9 @@ the comparison is for (`review/muscle-work.ts`).
 function that pre-fills the app's logger (`GET /sessions/:id/targets`), over the sessions before
 the one being logged. So the two agree whenever no session is in progress, and differ during one
 only by the sets it has logged: the AI already counts them, the logger waits for the next session.
+Both judge and answer in weights the athlete can load (#36, `nextLoadableTarget`), and
+`workout_get` keeps the plan's weights as written, a set the athlete cannot load as written
+followed by `(loads 22 kg)` — or `, the heaviest` — for them, or for `athlete`.
 
 **Someone else's training** (#11) — `athlete_list` · `session_list` · `session_get` — is read
 through the same tools. A member who shares their training with a group (`GLOSSARY.md`, "Share

@@ -86,10 +86,10 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       inputSchema: z.object({ workoutId: z.uuid() }).safeExtend(OfAthlete.shape),
       annotations: READ,
     },
-    async ({ workoutId, athlete }) =>
-      text(
-        workoutDetail(await CoachingService.workout(caller, athlete, workoutId), caller.weightUnit),
-      ),
+    async ({ workoutId, athlete }) => {
+      const { workout, held } = await CoachingService.planFor(caller, athlete, workoutId)
+      return text(workoutDetail(workout, caller.weightUnit, held))
+    },
   )
 
   server.registerTool(
@@ -138,10 +138,11 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       inputSchema: PlanSave.safeExtend({ workoutId: z.uuid() }),
       annotations: WRITE,
     },
-    async ({ workoutId, ...plan }) =>
-      text(
-        `Saved.\n\n${workoutDetail(await WorkoutService.replacePlan(caller, workoutId, plan), caller.weightUnit)}`,
-      ),
+    async ({ workoutId, ...plan }) => {
+      const saved = await WorkoutService.replacePlan(caller, workoutId, plan)
+      const held = await CoachingService.equipment(caller)
+      return text(`Saved.\n\n${workoutDetail(saved, caller.weightUnit, held)}`)
+    },
   )
 
   server.registerTool(

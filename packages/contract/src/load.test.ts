@@ -1,0 +1,103 @@
+import { describe, expect, test } from 'bun:test'
+import type { AthleteEquipment } from './athlete-equipment.ts'
+import { type Load, loadOf, loadable, steppedOn } from './load.ts'
+
+const dumbbells: Load = { stepG: 2000, minG: 2000, maxG: 30_000, assisted: false }
+const barbell: Load = { stepG: 2500, minG: 20_000, maxG: null, assisted: false }
+const belt: Load = { stepG: 5000, minG: null, maxG: 40_000, assisted: true }
+
+const held = (items: AthleteEquipment['items']): AthleteEquipment => ({ described: true, items })
+
+describe("an exercise's load", () => {
+  test('is the weights of the one item that holds it', () => {
+    const mine = held([
+      { slug: 'dumbbells', weights: { stepG: 2000, minG: 2000, maxG: 30_000 } },
+      { slug: 'flat_bench', weights: null },
+    ])
+    const press = {
+      equipment: ['dumbbells', 'flat_bench'] as const,
+      tracking: 'weight_reps' as const,
+    }
+    expect(loadOf({ ...press, equipment: [...press.equipment] }, mine)).toEqual(dumbbells)
+  })
+
+  test('is not known without the item, its weights, or a description — and nothing snaps', () => {
+    const squat = {
+      equipment: ['barbell' as const, 'rack' as const],
+      tracking: 'weight_reps' as const,
+    }
+    expect(loadOf(squat, held([]))).toBeNull()
+    expect(loadOf(squat, held([{ slug: 'barbell', weights: null }]))).toBeNull()
+    expect(loadOf({ ...squat, equipment: null }, held([]))).toBeNull()
+    expect(loadable(null, 22_500)).toEqual({ weightG: 22_500, limit: null })
+  })
+
+  test('on a bodyweight movement is the weight belt: from nothing, assistance below', () => {
+    const pullUp = { equipment: ['pull_up_bar' as const], tracking: 'bodyweight_reps' as const }
+    const mine = held([{ slug: 'weight_belt', weights: { stepG: 5000, minG: 0, maxG: 40_000 } }])
+    expect(loadOf(pullUp, mine)).toEqual(belt)
+    expect(loadOf(pullUp, held([]))).toBeNull()
+  })
+
+  test('is nothing to a hold or a run', () => {
+    const plank = { equipment: [], tracking: 'duration' as const }
+    expect(
+      loadOf(plank, held([{ slug: 'weight_belt', weights: { stepG: 5000, minG: 0, maxG: null } }])),
+    ).toBeNull()
+  })
+})
+
+describe('stepping', () => {
+  test('dumbbells that go 2 kg at a time: 20, 22, 24', () => {
+    expect(steppedOn(dumbbells, 20_000, 1)).toBe(22_000)
+    expect(steppedOn(dumbbells, 22_000, -1)).toBe(20_000)
+  })
+
+  test('from a weight typed between two, to the one beside it', () => {
+    expect(steppedOn(dumbbells, 21_000, 1)).toBe(22_000)
+    expect(steppedOn(dumbbells, 21_000, -1)).toBe(20_000)
+  })
+
+  test('stops at the lightest and the heaviest; an empty field steps from nothing', () => {
+    expect(steppedOn(dumbbells, 30_000, 1)).toBe(30_000)
+    expect(steppedOn(dumbbells, 2000, -1)).toBe(2000)
+    expect(steppedOn(dumbbells, null, 1)).toBe(2000)
+    expect(steppedOn(barbell, 20_000, -1)).toBe(20_000)
+  })
+
+  test('a heaviest off the grid stops at the last weight under it', () => {
+    expect(steppedOn({ ...dumbbells, maxG: 31_000 }, 30_000, 1)).toBe(30_000)
+  })
+
+  test('a belt steps its added weight, and on down into assistance, uncapped below', () => {
+    expect(steppedOn(belt, 0, 1)).toBe(5000)
+    expect(steppedOn(belt, 0, -1)).toBe(-5000)
+    expect(steppedOn(belt, -20_000, -1)).toBe(-25_000)
+    expect(steppedOn(belt, 40_000, 1)).toBe(40_000)
+  })
+})
+
+describe('a target as it can be loaded', () => {
+  test('the heaviest weight not above it: 22.5 on 2 kg dumbbells is 22', () => {
+    expect(loadable(dumbbells, 22_500)).toEqual({ weightG: 22_000, limit: null })
+    expect(loadable(dumbbells, 22_000)).toEqual({ weightG: 22_000, limit: null })
+    expect(loadable(barbell, 61_000)).toEqual({ weightG: 60_000, limit: null })
+  })
+
+  test('above the heaviest it is the heaviest, and says so', () => {
+    expect(loadable(dumbbells, 32_500)).toEqual({ weightG: 30_000, limit: 'heaviest' })
+    // Landing on the heaviest is not enough: it is still less than was asked.
+    expect(loadable(dumbbells, 30_500)).toEqual({ weightG: 30_000, limit: 'heaviest' })
+    expect(loadable(dumbbells, 30_000)).toEqual({ weightG: 30_000, limit: null })
+  })
+
+  test('under the lightest it is the lightest — nothing lighter exists — and says so', () => {
+    expect(loadable(dumbbells, 1000)).toEqual({ weightG: 2000, limit: 'lightest' })
+    expect(loadable(barbell, 15_000)).toEqual({ weightG: 20_000, limit: 'lightest' })
+  })
+
+  test('assistance is loaded as the belt steps it, never floored', () => {
+    expect(loadable(belt, -12_500)).toEqual({ weightG: -15_000, limit: null })
+    expect(loadable(belt, 7500)).toEqual({ weightG: 5000, limit: null })
+  })
+})

@@ -9,7 +9,8 @@ import { get as getSession } from '../../modules/session/plan.ts'
 import { list as listSessions } from '../../modules/session/list.ts'
 import { history } from '../../modules/session/history.ts'
 import { today } from '../../modules/session/today.ts'
-import { suggestForWorkout, targetsForSession } from '../../modules/progression/service.ts'
+import { suggestForWorkout } from '../../modules/progression/service.ts'
+import { targetsForSession } from '../../modules/progression/targets.ts'
 import { trainingReview } from '../../modules/review/service.ts'
 import { libraryAudit } from '../../modules/review/curation.ts'
 import { type QueryPlan, explainInOrder, slowestOf } from '../explain.ts'
@@ -173,7 +174,8 @@ export const HOT_PATHS: readonly HotPath[] = [
     name: 'progression suggestions',
     why: 'Evaluates every entry against its history. A per-entry history query grows with the plan.',
     dimension: 'plan size (3 vs 560 entries)',
-    maxQueries: 4,
+    // The workout; its entries; their sets; the caller's logs; what they can load (#36).
+    maxQueries: 5,
     budgetMs: 200,
     noSeqScan: ['set_logs', 'workout_sets', 'workout_entries'],
     indexes: ['workout_entries_order_idx', 'workout_sets_order_idx'],
@@ -278,8 +280,9 @@ export const HOT_PATHS: readonly HotPath[] = [
       "Read as a live session opens: each entry's target, carried over the sessions before it, and " +
       "last time's sets. Must not issue a query per entry of the day, nor scan the logs table.",
     dimension: 'the entries of the day, and the history behind them',
-    // The session; the day's entries, their sets, their logs; last time's sets.
-    maxQueries: 5,
+    // The session; the day's entries, their sets, their logs; last time's sets; what the athlete
+    // can load (#36).
+    maxQueries: 6,
     budgetMs: 80,
     noSeqScan: ['set_logs', 'workout_sessions', 'workout_entries', 'workout_sets'],
     // Both log reads enter through the person's sessions, then each session's logs.
