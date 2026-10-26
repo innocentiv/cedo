@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useRouter } from 'expo-router'
 import type { MuscleSlug, OwnableScope } from '@cedo/contract'
 import {
+  Card,
   Chips,
+  Columns,
   Empty,
   Input,
   Loaded,
@@ -11,8 +13,10 @@ import {
   Screen,
   Stack,
   Text,
+  useLayout,
 } from '../../../src/ui/index.ts'
 import { useExercises } from '../../../src/api/queries.ts'
+import { ExerciseDetailView } from '../../../src/lib/exercise-detail.tsx'
 import { ExerciseListRow } from '../../../src/lib/exercise-media.tsx'
 
 const SCOPES: readonly { value: OwnableScope; label: string }[] = [
@@ -21,11 +25,18 @@ const SCOPES: readonly { value: OwnableScope; label: string }[] = [
   { value: 'favourites', label: 'Pinned' },
 ]
 
+/**
+ * The exercise library (#27): searched, scoped, narrowed to a muscle. On a desktop the exercise
+ * chosen opens beside the list (#29) — reading one and the next side by side; on a phone it is a
+ * screen of its own.
+ */
 export default function ExerciseList(): React.JSX.Element {
   const router = useRouter()
+  const desk = useLayout() === 'tablet'
   const [scope, setScope] = useState<OwnableScope>('all')
   const [search, setSearch] = useState('')
   const [muscle, setMuscle] = useState<MuscleSlug | null>(null)
+  const [open, setOpen] = useState<string | null>(null)
 
   const query = {
     scope,
@@ -35,19 +46,8 @@ export default function ExerciseList(): React.JSX.Element {
   }
   const exercises = useExercises(query)
 
-  return (
-    <Screen
-      title="Exercises"
-      testID="exercises-screen"
-      footer={
-        <NavButton
-          title="New exercise"
-          href="/exercises/new"
-          variant="primary"
-          testID="new-exercise"
-        />
-      }
-    >
+  const list = (
+    <Stack gap="lg">
       <Stack gap="sm">
         <Input
           value={search}
@@ -76,8 +76,10 @@ export default function ExerciseList(): React.JSX.Element {
                   key={exercise.id}
                   exercise={exercise}
                   tag={exercise.isFavourite ? 'Pinned' : undefined}
+                  chosen={desk && open === exercise.id}
                   onPress={() => {
-                    router.push(`/exercises/${exercise.id}`)
+                    if (desk) setOpen(exercise.id)
+                    else router.push(`/exercises/${exercise.id}`)
                   }}
                   testID={`exercise-row-${exercise.id}`}
                 />
@@ -91,6 +93,46 @@ export default function ExerciseList(): React.JSX.Element {
           )
         }
       </Loaded>
+    </Stack>
+  )
+
+  return (
+    <Screen
+      title="Exercises"
+      wide
+      testID="exercises-screen"
+      footer={
+        <NavButton
+          title="New exercise"
+          href="/exercises/new"
+          variant="primary"
+          testID="new-exercise"
+        />
+      }
+    >
+      {desk ? (
+        <Columns
+          main={list}
+          side={
+            <Card testID="exercise-pane">
+              {open === null ? (
+                <Text tone="muted">Choose an exercise to see it here.</Text>
+              ) : (
+                <ExerciseDetailView
+                  key={open}
+                  id={open}
+                  pane
+                  onGone={() => {
+                    setOpen(null)
+                  }}
+                />
+              )}
+            </Card>
+          }
+        />
+      ) : (
+        list
+      )}
     </Screen>
   )
 }

@@ -369,6 +369,11 @@ yellow dot was tried and read as too little; a sheet opens in the middle of the 
 its bottom edge. The sidebar carries the product's name and the
 account.
 
+As built (#29): the exercise chosen from the library opens in a pane beside the list
+(`ExerciseDetailView`, a screen of its own on a phone, a pane on a desktop — its title and Edit at
+its head), the list kept; the sidebar names the product at its head, and at its foot who is signed
+in — a tap to Settings — above the band of a session left open.
+
 ### The look
 
 The gym's own vernacular, the colour code of calibrated plates — red, blue, yellow, green, white —

@@ -57,6 +57,6 @@ export function ReturnBar({
 const styles = StyleSheet.create({
   bar: { backgroundColor: color.accent, paddingHorizontal: space.lg, paddingVertical: space.md },
   // The sidebar's own padding is `sm`: taken back, so the band meets its edges.
-  foot: { marginTop: 'auto', marginHorizontal: -space.sm },
+  foot: { marginHorizontal: -space.sm },
   pressed: { opacity: 0.85 },
 })

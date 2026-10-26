@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../../src/auth/auth-provider.tsx'
 import { useSubmit } from '../../src/lib/use-submit.ts'
 import { SessionReturn, onWorkout } from '../../src/lib/session-return.tsx'
+import { SidebarFoot, SidebarHead } from '../../src/lib/sidebar.tsx'
 
 /**
  * Signed in, but the server could not be asked who by: no signal, or the server down. The session
@@ -97,13 +98,14 @@ export default function AppLayout(): React.JSX.Element {
           onWorkout(pathname) ? styles.hidden : null,
         ]}
       >
+        {tablet ? <SidebarHead /> : null}
         {TABS.map((tab) => (
           <TabTrigger key={tab.name} name={tab.name} href={tab.href} asChild>
             <NavItem label={tab.label} horizontal={!tablet} />
           </TabTrigger>
         ))}
         {/* The navigator reads only the triggers in here; anything else is just drawn. */}
-        {tablet ? <SessionReturn inSidebar /> : null}
+        {tablet ? <SidebarFoot /> : null}
       </TabList>
       {tablet ? null : <SessionReturn />}
       <TabSlot />

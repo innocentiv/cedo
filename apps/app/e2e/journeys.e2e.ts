@@ -134,6 +134,32 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/**
+ * A desktop (#29): the sidebar names the product and who is signed in, and an exercise chosen from
+ * the library opens beside it — the list stays.
+ */
+test(
+  'on a desktop the sidebar says whose it is, and an exercise opens beside the list',
+  async () => {
+    await withApp(
+      'desktop-panes',
+      async (page) => {
+        const app = screens(page)
+        const username = unique('desk')
+        await app.auth.register(username)
+        expect(await app.desk.name()).toBe('cedo')
+        expect(await app.desk.account()).toContain(`@${username}`)
+        const pane = await app.desk.openExercise('Barbell Back Squat')
+        expect(pane).toContain('Barbell Back Squat')
+        expect(pane).toContain('Quads')
+        expect(await app.desk.listShown()).toBe(true)
+      },
+      { layout: 'desktop' },
+    )
+  },
+  E2E_TIMEOUT_MS,
+)
+
 /** A new exercise starts from its muscles (#27): chosen, their loads split evenly to total 100. */
 test(
   "a new exercise's muscles start as an even split, valid as they stand",
