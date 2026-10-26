@@ -1,7 +1,6 @@
 import {
   type Exercise,
   NO_TARGET,
-  type Rest,
   type SessionExercise,
   adHocSetsOf,
   markedSets,
@@ -11,7 +10,7 @@ import {
 } from '@cedo/contract'
 import type { PendingLog } from '../api/pending.ts'
 import { AddRow, Columns, FocusLogger, Stack, UpNext } from '../ui/index.ts'
-import { JustDone, type Reopened, ShownSet } from './shown-set.tsx'
+import { JustDone, type Reopened, type RestShown, ShownSet } from './shown-set.tsx'
 import { useLoads } from './use-loads.ts'
 import { useUntilNextSet } from './until-next-set.ts'
 import type { WorkoutSets } from './workout-state.ts'
@@ -58,7 +57,7 @@ export function AdHocDay({
   /** The exercises picked this open, whole: how to do them can be shown. */
   readonly full: readonly Exercise[]
   readonly sets: WorkoutSets
-  readonly rest: Rest | null
+  readonly rest: RestShown
   readonly added: string | null
   /** Every set the session holds, under its exercises. */
   readonly record: React.ReactNode

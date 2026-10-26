@@ -82,10 +82,17 @@ export const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutS
   endedAt: row.endedAt?.toISOString() ?? null,
   notes: row.notes,
   logs: logs.map((l) => toLog(l.log, l.exercise, l.entryId, l.personalBest)),
+  rest:
+    row.restSince === null || row.restEndsAt === null
+      ? null
+      : { since: row.restSince.toISOString(), endsAt: row.restEndsAt.toISOString() },
 })
 
 /** Said by every write only a session in progress takes. */
 const FINISHED = 'That session has already been finished'
+
+/** No rest running (#38): its set undone, or the session finished — its alert never sent. */
+export const NO_REST = { restSince: null, restEndsAt: null, restAlertedAt: null } as const
 
 export async function update(
   caller: Caller,
@@ -101,6 +108,8 @@ export async function update(
        * An ISO string, never a JS Date: raw `sql` bypasses the column encoder.
        */
       endedAt: sql<Date>`greatest(${patch.endedAt}::timestamptz, ${workoutSessions.startedAt})`,
+      // Finished, no rest runs on: its alert is not sent (#38).
+      ...NO_REST,
     }),
     ...(patch.notes !== undefined && { notes: patch.notes }),
   }
@@ -260,6 +269,9 @@ export async function removeLog(caller: Caller, sessionId: string, logId: string
       .where(and(eq(setLogs.id, logId), eq(setLogs.sessionId, sessionId)))
       .returning({ id: setLogs.id })
     if (deleted.length === 0) throw notFound('log')
+    // Undone, the rest it started goes with it, and its alert (#38). A set fixed in a finished
+    // session had none running.
+    await tx.update(workoutSessions).set(NO_REST).where(eq(workoutSessions.id, sessionId))
   })
 }
 

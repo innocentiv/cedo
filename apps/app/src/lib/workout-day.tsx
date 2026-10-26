@@ -1,7 +1,6 @@
 import {
   type EntryTarget,
   type Exercise,
-  type Rest,
   type SessionDay,
   type SessionExercise,
   formatPrescription,
@@ -10,7 +9,7 @@ import {
 } from '@cedo/contract'
 import { AddRow, Columns, Stack, UpNext } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
-import { JustDone, ShownSet } from './shown-set.tsx'
+import { JustDone, type RestShown, ShownSet } from './shown-set.tsx'
 import { AddedExercises } from './workout-adhoc.tsx'
 import { InFocus, usePlannedFocus } from './workout-focus.tsx'
 import type { WorkoutSets } from './workout-state.ts'
@@ -38,7 +37,7 @@ export function PlannedDay({
   readonly day: SessionDay
   readonly targets: readonly EntryTarget[]
   readonly sets: WorkoutSets
-  readonly rest: Rest | null
+  readonly rest: RestShown
   /** Exercises logged with no entry — swaps — then any added since: `exercisesInSession`. */
   readonly extras: readonly SessionExercise[]
   /** The exercises added this open, whole: how to do them can be shown. */

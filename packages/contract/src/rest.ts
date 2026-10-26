@@ -1,3 +1,6 @@
+import { z } from 'zod'
+import { Timestamp } from './primitives.ts'
+
 /**
  * The rest a plan entry prescribes between its working sets, and what the logger counts down.
  *
@@ -56,4 +59,34 @@ export function restRemaining(rest: Rest, extensions: number, now: number): numb
   const seconds = rest.seconds + extensions * REST_EXTENSION_S
   const left = Math.ceil(seconds - (now - Date.parse(rest.since)) / 1000)
   return Math.min(seconds, Math.max(0, left))
+}
+
+/**
+ * The rest a session has running, as the server keeps it (#38): from the set it follows, to when it
+ * ends — +30 s and skipping included. What the alert is sent at, and what the countdown counts to.
+ */
+export const SessionRest = z.object({ since: Timestamp, endsAt: Timestamp })
+export type SessionRest = z.output<typeof SessionRest>
+
+/**
+ * `POST /sessions/:id/rest`: +30 s, or skip — of the rest that started `since`. A change sent late,
+ * after the next set began another rest, names the one it meant, and changes nothing.
+ */
+export const RestChange = z.strictObject({
+  since: Timestamp,
+  change: z.enum(['extend', 'skip']),
+})
+export type RestChange = z.output<typeof RestChange>
+
+/**
+ * The rest the countdown counts (#38): the one the sets say (`restOf`) with this device's +30 s
+ * taps, or — when it is the same rest — as long as the server keeps it, whichever is longer: a tap
+ * on another device, or one made before a reload, is the server's to know. Never the two added: a
+ * tap here is sent there too.
+ */
+export function restCounted(counted: Rest, extensions: number, kept: SessionRest | null): Rest {
+  const here = counted.seconds + extensions * REST_EXTENSION_S
+  const same = kept !== null && Date.parse(kept.since) === Date.parse(counted.since)
+  const there = same ? Math.round((Date.parse(kept.endsAt) - Date.parse(kept.since)) / 1000) : 0
+  return { since: counted.since, seconds: Math.max(here, there) }
 }

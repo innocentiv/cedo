@@ -1,0 +1,21 @@
+CREATE TABLE "instance_secrets" (
+	"name" text PRIMARY KEY NOT NULL,
+	"value" text NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "push_subscriptions" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid NOT NULL,
+	"endpoint" text NOT NULL,
+	"p256dh" text NOT NULL,
+	"auth" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "push_subscriptions_endpoint_unique" UNIQUE("endpoint")
+);
+--> statement-breakpoint
+ALTER TABLE "workout_sessions" ADD COLUMN "rest_since" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "workout_sessions" ADD COLUMN "rest_ends_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "workout_sessions" ADD COLUMN "rest_alerted_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "push_subscriptions" ADD CONSTRAINT "push_subscriptions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "push_subscriptions_user_idx" ON "push_subscriptions" USING btree ("user_id");--> statement-breakpoint
+CREATE INDEX "workout_sessions_rest_due_idx" ON "workout_sessions" USING btree ("rest_ends_at") WHERE "workout_sessions"."rest_ends_at" is not null and "workout_sessions"."rest_alerted_at" is null;

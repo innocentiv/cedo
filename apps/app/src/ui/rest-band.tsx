@@ -1,5 +1,11 @@
 import { StyleSheet, View } from 'react-native'
-import { REST_EXTENSION_S, type Rest, formatDuration } from '@cedo/contract'
+import {
+  REST_EXTENSION_S,
+  type Rest,
+  type RestChange,
+  type SessionRest,
+  formatDuration,
+} from '@cedo/contract'
 import { useRestClock } from '../lib/rest-clock.ts'
 import { Button } from './button.tsx'
 import { IconButton } from './icon.tsx'
@@ -14,12 +20,18 @@ import { color, radius, space } from './tokens.ts'
  */
 export function RestBand({
   rest,
+  kept,
+  onChange,
   testID,
 }: {
   readonly rest: Rest | null
+  /** The same rest as the server keeps it (#38). */
+  readonly kept: SessionRest | null
+  /** +30 s and skip, told to the server too (#38). */
+  readonly onChange: (change: RestChange) => void
   readonly testID: string
 }): React.JSX.Element | null {
-  const { left, running, extend, skip } = useRestClock(rest)
+  const { left, running, extend, skip } = useRestClock(rest, kept, onChange)
   if (left === null) return null
   const tone = running ? 'default' : 'onAccent'
   return (

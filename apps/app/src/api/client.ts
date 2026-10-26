@@ -31,6 +31,7 @@ import {
   Today,
   type TodayQuery,
   type ReviewQuery,
+  type RestChange,
   TrainingReview,
   type SessionStart,
   type SessionUpdate,
@@ -173,6 +174,8 @@ const sessions = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
   /** A session and its sets, in progress or finished (#31). */
   remove: async (id: string) => await DELETE(`/sessions/${id}`, Ok),
   removeLog: async (id: string, logId: string) => await DELETE(`/sessions/${id}/logs/${logId}`, Ok),
+  /** +30 s, or skip, of the rest the server keeps (#38). */
+  changeRest: async (id: string, body: RestChange) => await POST(`/sessions/${id}/rest`, Ok, body),
   /** A set corrected: its reserve said after it (#24), or a past mistake fixed (#31). */
   amendLog: async (id: string, logId: string, body: SetLogUpdate) =>
     await PATCH(`/sessions/${id}/logs/${logId}`, SetLog, body),

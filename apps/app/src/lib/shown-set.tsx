@@ -1,9 +1,26 @@
-import { type LoggedExercise, type Rest, formatWithReserve, loggedLabel } from '@cedo/contract'
+import {
+  type LoggedExercise,
+  type Rest,
+  type SessionRest,
+  formatWithReserve,
+  loggedLabel,
+} from '@cedo/contract'
 import type { PendingLog } from '../api/pending.ts'
+import { useChangeRest } from '../api/session-queries.ts'
 import { LastSet, RestBand, Stack } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
 import type { WorkoutSets } from './workout-state.ts'
 import { useWeightUnit } from './weight-unit.ts'
+
+/**
+ * The rest after the latest set (#24): as the sets say it (`restOf`) — sets waiting for a signal
+ * too — and as the server keeps it (#38), with the session it is told to.
+ */
+export interface RestShown {
+  readonly rest: Rest | null
+  readonly kept: SessionRest | null
+  readonly sessionId: string
+}
 
 /** A set re-opened from its mark: of a plan entry, or of an exercise logged with none. */
 export interface Reopened {
@@ -21,14 +38,23 @@ export function JustDone({
   rest,
   children,
 }: {
-  readonly rest: Rest | null
+  readonly rest: RestShown
   /** The set shown — null when there is none to show. */
   readonly children: React.JSX.Element | null
 }): React.JSX.Element | null {
-  if (rest === null && children === null) return null
+  const tell = useChangeRest(rest.sessionId)
+  if (rest.rest === null && children === null) return null
   return (
     <Stack gap="sm">
-      <RestBand rest={rest} testID="rest-band" />
+      <RestBand
+        rest={rest.rest}
+        kept={rest.kept}
+        onChange={(change) => {
+          // In the session's queue; refused, the rest the server keeps stays as it was.
+          tell.mutate(change)
+        }}
+        testID="rest-band"
+      />
       {children}
     </Stack>
   )

@@ -19,7 +19,7 @@ export function WorkoutBody({ w }: { readonly w: Workout }): React.JSX.Element |
       <LoggedSets logs={w.sets.server} onRemove={w.undo} />
     </>
   )
-  const rest = restOf(day ?? null, w.sets.all)
+  const rest = { rest: restOf(day ?? null, w.sets.all), kept: session.data.rest, sessionId: w.id }
   return (
     <>
       {w.error === null ? null : (

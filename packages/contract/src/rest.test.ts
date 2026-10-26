@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { DEFAULT_REST_S, restLeft, restRemaining } from './rest.ts'
+import { DEFAULT_REST_S, restCounted, restLeft, restRemaining } from './rest.ts'
 
 /** What the logger counts down after a working set: the entry's rest, from when it was logged. */
 describe('rest left', () => {
@@ -72,5 +72,32 @@ describe('a rest running, extended', () => {
   test('never below zero, nor more than the rest against a server clock ahead', () => {
     expect(restRemaining(rest, 0, at(500))).toBe(0)
     expect(restRemaining(rest, 0, at(-20))).toBe(90)
+  })
+})
+
+/** The countdown and what the server keeps (#38): the longer, never the two added. */
+describe('the rest counted', () => {
+  const since = '2026-10-26T18:00:00.000Z'
+  const counted = { since, seconds: 90 }
+  const kept = (seconds: number, at = since) => ({
+    since: at,
+    endsAt: new Date(Date.parse(at) + seconds * 1000).toISOString(),
+  })
+
+  test('a tap here, already kept there, is counted once', () => {
+    expect(restCounted(counted, 1, kept(120)).seconds).toBe(120)
+  })
+
+  test('a tap on another device, or before a reload, is the server’s to know', () => {
+    expect(restCounted(counted, 0, kept(150)).seconds).toBe(150)
+  })
+
+  test('a tap here not yet kept there counts, and a rest the server does not keep is the sets’', () => {
+    expect(restCounted(counted, 2, kept(90)).seconds).toBe(150)
+    expect(restCounted(counted, 0, null).seconds).toBe(90)
+  })
+
+  test('what the server keeps of an earlier rest is not this one', () => {
+    expect(restCounted(counted, 0, kept(300, '2026-10-26T17:55:00.000Z')).seconds).toBe(90)
   })
 })

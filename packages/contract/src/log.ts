@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { LoggedDistanceMm, LoggedDurationS, LoggedReps, LoggedWeightG } from './measurement.ts'
+import { SessionRest } from './rest.ts'
 import { Rpe } from './rpe.ts'
 import { Exercise } from './exercise.ts'
 import { Id, PaginationQuery, Timestamp, patchOf } from './primitives.ts'
@@ -88,6 +89,8 @@ export const WorkoutSession = z.object({
   endedAt: Timestamp.nullable(),
   notes: z.string().nullable(),
   logs: z.array(SetLog),
+  /** The rest running after its latest set, as the server keeps it (#38); null when none runs. */
+  rest: SessionRest.nullable(),
 })
 export type WorkoutSession = z.output<typeof WorkoutSession>
 
@@ -124,7 +127,7 @@ export const SessionDetail = WorkoutSession.extend({ plan: SessionPlan })
 export type SessionDetail = z.output<typeof SessionDetail>
 
 /** List rows omit the logs, which are only needed when a single session is opened. */
-export const WorkoutSessionSummary = WorkoutSession.omit({ logs: true }).extend({
+export const WorkoutSessionSummary = WorkoutSession.omit({ logs: true, rest: true }).extend({
   workoutName: z.string().nullable(),
   dayName: z.string().nullable(),
   setCount: z.int().nonnegative(),

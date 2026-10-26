@@ -4,6 +4,7 @@ import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { startRest } from '../rest/service.ts'
 import { assertLoggable } from './loggable.ts'
 import { nextNumber } from './numbering.ts'
 import { lockInProgress, own, ownedBy, read, rethrowMissingEntry } from './service.ts'
@@ -46,8 +47,12 @@ export async function logSet(
       .catch(rethrowMissingEntry)
     return row ?? null
   })
-  // Answered as read, so it says what a read says of it — whether it was a personal best.
-  if (created !== null) return await storedById(caller, sessionId, created.id)
+  if (created !== null) {
+    // The rest it starts, kept so its end can be told with the app closed (#38).
+    await startRest(caller, sessionId)
+    // Answered as read, so it says what a read says of it — whether it was a personal best.
+    return await storedById(caller, sessionId, created.id)
+  }
   const replayed = await storedByKey(caller, sessionId, idempotencyKey)
   if (replayed === undefined) throw new Error('A stored key has no set')
   return replayed

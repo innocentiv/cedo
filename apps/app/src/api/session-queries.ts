@@ -1,5 +1,5 @@
 import { useMutationState } from '@tanstack/react-query'
-import type { LogSetInput, SessionUpdate, SetLog, SetLogUpdate } from '@cedo/contract'
+import type { LogSetInput, RestChange, SessionUpdate, SetLog, SetLogUpdate } from '@cedo/contract'
 import { api } from './http.ts'
 import { sendAgain } from './retry.ts'
 import { sessionQueue, useWriteTo } from './write-to.ts'
@@ -14,6 +14,15 @@ import { sessionQueue, useWriteTo } from './write-to.ts'
 export const useUpdateSession = (id: string) =>
   useWriteTo('session', async (input: SessionUpdate) => await api.sessions.update(id, input), {
     queued: { mutationKey: sessionQueue(id).update, scope: sessionQueue(id).scope },
+  })
+
+/**
+ * +30 s, or skip, of the rest the server keeps (#38) — in the session's queue, behind the set that
+ * started it, so offline it waits with the sets and is sent after them.
+ */
+export const useChangeRest = (id: string) =>
+  useWriteTo('session', async (input: RestChange) => await api.sessions.changeRest(id, input), {
+    queued: { mutationKey: ['changeRest', id], scope: sessionQueue(id).scope },
   })
 
 /** One set, its idempotency key made once when it was logged, so every retry of it is the same. */
