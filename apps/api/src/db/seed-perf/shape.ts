@@ -108,9 +108,17 @@ export const UNUSABLE_HASH = 'unusable'
  * A library of 10,000 rows all named "Exercise 4711" makes the GIN index look far better than it
  * is, because no substring is ever shared.
  */
-export const EQUIPMENT = `(array['Barbell','Dumbbell','Cable','Machine','Kettlebell','Bodyweight'])[1 + i % 6]`
-/** What each needs (#33), in step with its name: a barbell lift needs a barbell and a rack. */
-export const EQUIPMENT_ITEMS = `(case i % 6 when 0 then array['barbell','rack'] when 1 then array['dumbbells'] when 2 then array['high_pulley'] when 3 then array['leg_press'] when 4 then array['kettlebells'] else array[]::text[] end)::equipment_item[]`
+const KITS = [
+  ['Barbell', "'barbell','rack'"],
+  ['Dumbbell', "'dumbbells'"],
+  ['Cable', "'high_pulley'"],
+  ['Machine', "'leg_press'"],
+  ['Kettlebell', "'kettlebells'"],
+  ['Bodyweight', ''],
+] as const
+/** The word a name starts with, and what the exercise needs (#33), from the one list of kits. */
+export const NAME_PREFIX = `(array[${KITS.map(([word]) => `'${word}'`).join(',')}])[1 + i % ${KITS.length}]`
+export const EQUIPMENT_ITEMS = `(case i % ${KITS.length} ${KITS.map(([, items], at) => `when ${at} then array[${items}]::equipment_item[]`).join(' ')} end)`
 export const MOVEMENT = `(array['Bench Press','Row','Squat','Curl','Overhead Press','Fly','Extension','Lateral Raise','Pulldown','Deadlift'])[1 + i % 10]`
 
 /**

@@ -11,7 +11,8 @@ import type { Caller } from '../../plugins/auth.ts'
 import * as ExerciseService from '../../modules/exercise/service.ts'
 import * as MediaService from '../../modules/media/service.ts'
 import { libraryAudit, sharedGroupId } from '../../modules/review/curation.ts'
-import { exerciseDetail, exerciseLine, text } from '../format.ts'
+import { text } from '../format.ts'
+import { exerciseDetail, exerciseLine } from '../format-library.ts'
 
 const READ = { readOnlyHint: true, openWorldHint: false } as const
 

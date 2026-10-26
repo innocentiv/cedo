@@ -1,5 +1,4 @@
 import type {
-  Exercise,
   ExerciseHistory,
   ProgressionSuggestion,
   TrackingMode,
@@ -34,52 +33,6 @@ export const text = (body: string) => ({ content: [{ type: 'text' as const, text
 export const json = (value: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }],
 })
-
-const muscles = (exercise: Exercise) =>
-  exercise.muscles
-    .toSorted((a, b) => b.loadPct - a.loadPct)
-    .map((m) => `${m.muscle} ${m.loadPct}%`)
-    .join(', ')
-
-/** What it needs, as `exercise_update` takes it (#33) — needing nothing apart from unsaid. */
-const equipment = ({ equipment: e }: Exercise): string =>
-  e === null ? 'equipment not described' : e.length === 0 ? 'no equipment' : e.join(' + ')
-
-/** One line per exercise: enough to decide, not enough to bloat context. */
-export function exerciseLine(exercise: Exercise): string {
-  const flags = [
-    exercise.tracking === 'weight_reps' ? null : exercise.tracking,
-    exercise.isUnilateral ? 'unilateral' : null,
-    exercise.canEdit ? null : 'read-only',
-  ].filter(Boolean)
-
-  return [
-    exercise.name,
-    equipment(exercise),
-    muscles(exercise),
-    flags.length > 0 ? `[${flags.join(', ')}]` : '',
-    exercise.id,
-  ]
-    .filter((part) => part !== '')
-    .join(' | ')
-}
-
-export function exerciseDetail(exercise: Exercise): string {
-  return [
-    `${exercise.name}  (${exercise.id})`,
-    `tracking: ${exercise.tracking}${exercise.isUnilateral ? ', unilateral' : ''}`,
-    `needs: ${equipment(exercise)}`,
-    `muscles: ${muscles(exercise)}`,
-    exercise.description === '' ? null : `description: ${exercise.description}`,
-    exercise.instructions === '' ? null : `instructions: ${exercise.instructions}`,
-    exercise.media.length === 0
-      ? 'media: none'
-      : `media:\n${exercise.media.map((m) => `  - ${m.kind}: ${m.url}`).join('\n')}`,
-    `editable: ${exercise.canEdit ? 'yes' : 'no (owned by another group)'}`,
-  ]
-    .filter((line) => line !== null)
-    .join('\n')
-}
 
 export const workoutLine = (workout: WorkoutSummary): string =>
   `${workout.name} | ${workout.dayCount} day${workout.dayCount === 1 ? '' : 's'}` +

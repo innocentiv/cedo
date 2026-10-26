@@ -1,6 +1,9 @@
 import { describe, expect, test } from 'bun:test'
+import { z } from 'zod'
 import {
   EQUIPMENT,
+  EQUIPMENT_SLUGS,
+  EquipmentSlug,
   ExerciseEquipment,
   equipmentLine,
   isWeighted,
@@ -9,6 +12,12 @@ import {
 import { ExerciseCreate, ExerciseUpdate } from './exercise.ts'
 
 describe('the equipment list', () => {
+  /** How an AI learns what there is: a refinement would validate, and advertise nothing. */
+  test('serialises to JSON Schema as an explicit enum of every item', () => {
+    const json = z.toJSONSchema(EquipmentSlug) as { enum?: unknown[] }
+    expect(json.enum).toEqual(EQUIPMENT_SLUGS)
+  })
+
   test('names each item once', () => {
     const slugs = EQUIPMENT.map((e) => e.slug)
     expect(new Set(slugs).size).toBe(slugs.length)

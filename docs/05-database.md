@@ -131,6 +131,9 @@ crashes — which matters when the person reading the logs is a stranger self-ho
   value, so nobody can sign in as it.
 - **exercises** — matched by name, so re-running adds only what is new. That is the upgrade path: a
   release that extends the library reaches existing installations without duplicating anything.
+  An entry already there whose equipment is undescribed takes the seed's (#33), on every boot: how
+  an installation made before equipment was a list gets its library described. A curator's own
+  description stands — but one set back to undescribed is described again at the next boot.
 
 Every library entry is validated against `ExerciseCreate` before it is written, so a typo fails the
 seed rather than producing a silently wrong library. `seed-data/exercises.test.ts` runs the same

@@ -3,6 +3,7 @@ import {
   EQUIPMENT_GROUP_LABELS,
   type EquipmentSlug,
   NEEDABLE_EQUIPMENT,
+  sayEquipment,
   withEquipmentToggled,
 } from '@cedo/contract'
 import { Chip } from './chips.tsx'
@@ -29,11 +30,11 @@ export function EquipmentPicker({ value, onChange }: EquipmentPickerProps): Reac
   return (
     <Stack gap="sm" testID="equipment-picker">
       <Text variant="caption" tone="muted" testID="equipment-summary">
-        {value === null
-          ? 'Not described yet: offered to everyone, whatever they train with.'
-          : value.length === 0
-            ? 'Needs no equipment.'
-            : 'Needs all of what is chosen.'}
+        {sayEquipment(value, {
+          unsaid: 'Not described yet: offered to everyone, whatever they train with.',
+          nothing: 'Needs no equipment.',
+          listed: () => 'Needs all of what is chosen.',
+        })}
       </Text>
       <Stack direction="row" gap="xs" wrap>
         <Chip

@@ -98,8 +98,11 @@ const WEIGHTED: ReadonlySet<EquipmentSlug> = new Set(
 /** Whether an item holds the load, and so has a weight step. */
 export const isWeighted = (slug: EquipmentSlug): boolean => WEIGHTED.has(slug)
 
-/** What an exercise may need: every item but a weight belt, which loads one done without it. */
-export const NEEDABLE_EQUIPMENT = EQUIPMENT.filter((e) => e.slug !== 'weight_belt')
+/** Never needed: it loads an exercise done without it, as a pull-up is. */
+const NEVER_NEEDED: EquipmentSlug = 'weight_belt'
+
+/** What an exercise may need: every item but a weight belt. */
+export const NEEDABLE_EQUIPMENT = EQUIPMENT.filter((e) => e.slug !== NEVER_NEEDED)
 
 /** An item's name as a person reads it. */
 export const equipmentName = (slug: EquipmentSlug): string =>
@@ -111,6 +114,7 @@ export const equipmentName = (slug: EquipmentSlug): string =>
  */
 export const ExerciseEquipment = z
   .array(EquipmentSlug)
+  // The most a real exercise asks for is three or four (a bar, a rack, a bench); more is a mistake.
   .max(8)
   .nullable()
   .superRefine((items, ctx) => {
@@ -118,7 +122,7 @@ export const ExerciseEquipment = z
     if (new Set(items).size !== items.length) {
       ctx.addIssue({ code: 'custom', message: 'Each item may be listed only once' })
     }
-    if (items.some((item) => !NEEDABLE_EQUIPMENT.some((e) => e.slug === item))) {
+    if (items.includes(NEVER_NEEDED)) {
       ctx.addIssue({
         code: 'custom',
         message: 'No exercise needs a weight belt: it only loads one done without it',
@@ -138,13 +142,29 @@ export const ExerciseEquipment = z
   )
 export type ExerciseEquipment = z.output<typeof ExerciseEquipment>
 
+/**
+ * What an exercise needs, in the words of wherever it is said: undescribed, nothing, or its items.
+ * The one place the three are told apart, so no reader can take undescribed for nothing.
+ */
+export function sayEquipment(
+  items: readonly EquipmentSlug[] | null,
+  words: {
+    readonly unsaid: string
+    readonly nothing: string
+    readonly listed: (items: readonly EquipmentSlug[]) => string
+  },
+): string {
+  if (items === null) return words.unsaid
+  return items.length === 0 ? words.nothing : words.listed(items)
+}
+
 /** `Barbell, Rack`, `None needed`, or `Not described` — one exercise's equipment in a line. */
 export const equipmentLine = (items: readonly EquipmentSlug[] | null): string =>
-  items === null
-    ? 'Not described'
-    : items.length === 0
-      ? 'None needed'
-      : items.map((item) => equipmentName(item)).join(', ')
+  sayEquipment(items, {
+    unsaid: 'Not described',
+    nothing: 'None needed',
+    listed: (slugs) => slugs.map((slug) => equipmentName(slug)).join(', '),
+  })
 
 /**
  * An item chosen or dropped on a form, or `'nothing'` — the exercise needs no equipment (#33).

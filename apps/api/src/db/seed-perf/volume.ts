@@ -2,7 +2,7 @@ import { sql } from 'drizzle-orm'
 import { DEFAULT_GROUP_SLUG } from '@cedo/contract'
 import { db } from '../client.ts'
 import {
-  EQUIPMENT,
+  NAME_PREFIX,
   EQUIPMENT_ITEMS,
   MOVEMENT,
   PERF_VOLUME,
@@ -68,7 +68,7 @@ export async function seedSharedLibrary(
     sql.raw(`
       insert into exercises (owner_group_id, created_by, name, description, instructions, equipment)
       select '${sharedGroupId}'::uuid, '${systemUserId}'::uuid,
-             ${EQUIPMENT} || ' ' || ${MOVEMENT} || ' ' || i,
+             ${NAME_PREFIX} || ' ' || ${MOVEMENT} || ' ' || i,
              'Seeded for the performance suite.', 'Set up, execute, rack.', ${EQUIPMENT_ITEMS}
         from generate_series(1, ${PERF_VOLUME.sharedExercises}) i
     `),
