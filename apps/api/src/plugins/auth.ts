@@ -50,6 +50,28 @@ export async function resolveCaller(
   return foldCaller(first, rows)
 }
 
+/**
+ * A person as the server acts for them with no request of theirs — telling them a rest is over
+ * (#38) — with exactly the groups their own requests have. Null for someone who no longer exists.
+ */
+export async function callerOfUser(userId: string): Promise<Caller | null> {
+  const rows = await db
+    .select({
+      userId: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      weightUnit: users.weightUnit,
+      personalGroupId: users.personalGroupId,
+      groupId: groupMembers.groupId,
+      role: groupMembers.role,
+    })
+    .from(users)
+    .leftJoin(groupMembers, eq(groupMembers.userId, users.id))
+    .where(eq(users.id, userId))
+  const first = rows[0]
+  return first === undefined ? null : foldCaller(first, rows)
+}
+
 /** One row per membership arrives from the join; this is the shape the ACL consumes. */
 export interface MembershipRow {
   readonly groupId: string | null

@@ -17,6 +17,15 @@ const Env = z.object({
    * is just fixed at whatever shipped. See docs/07-mcp.md.
    */
   CEDO_CURATOR_USERNAME: z.string().min(1).optional(),
+  /**
+   * The key pair rest alerts are pushed with (#38) — both, or neither. Neither, the server makes one
+   * on first start and keeps it in the database, so nothing needs setting; set them to keep pushes
+   * working across a database restored elsewhere. `npx web-push generate-vapid-keys` makes a pair.
+   */
+  VAPID_PUBLIC_KEY: z.string().min(1).optional(),
+  VAPID_PRIVATE_KEY: z.string().min(1).optional(),
+  /** Who a push service may contact about this instance's pushes: a `mailto:` or `https:` URL. */
+  VAPID_SUBJECT: z.string().min(1).default('mailto:cedo@localhost'),
 })
 
 export type Env = z.output<typeof Env>
