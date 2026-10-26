@@ -285,6 +285,51 @@ test(
 )
 
 /**
+ * Weight steps (#36) — the problem #32 began with: dumbbells that go 2 kg at a time, and a plan of
+ * 22.5 kg. The logger asks 22, says the plan's own weight it stands for, and − / + land on the
+ * dumbbells there are, from a weight typed between two as well.
+ */
+test(
+  'the logger asks what your dumbbells weigh, and − / + step as they do',
+  async () => {
+    await withApp('weight-steps', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('steps'))
+      const mine = await page.client()
+      await mine.equipment.save({
+        items: [{ slug: 'dumbbells', weights: { stepG: 2000, minG: 2000, maxG: 30_000 } }],
+      })
+      const [goblet] = (await mine.exercises.list({ q: 'Goblet Squat', limit: 1 })).items
+      if (goblet === undefined) throw new Error('The seeded library has no Goblet Squat')
+      const plan = await mine.workouts.create({ name: 'Legs', notes: null })
+      const set = { targetReps: 8, targetWeightG: 22_500 }
+      await mine.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [{ name: 'A', entries: [{ exerciseId: goblet.id, sets: [set, set, set] }] }],
+        }),
+      )
+
+      await app.planEditor.open(plan.id)
+      await app.workouts.startDay(0)
+      const squat = app.session.entry(0)
+      expect(await squat.target()).toBe('Prescribed 8 × 22 kg')
+      expect(await squat.value('weight')).toBe('22')
+
+      await squat.step('weight', 'more')
+      expect(await squat.value('weight')).toBe('24')
+      await squat.fill('weight', '21')
+      await squat.step('weight', 'less')
+      expect(await squat.value('weight')).toBe('20')
+      await squat.fill('weight', '30')
+      await squat.step('weight', 'more')
+      expect(await squat.value('weight')).toBe('30')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * A coach reads an athlete's training (#30): the tab offered only while someone shares with them,
  * the session they are in, their Progress, their history — and from a session, an exercise's. Read
  * again on coming back, never polled: a session finished meanwhile is no longer "Training now".

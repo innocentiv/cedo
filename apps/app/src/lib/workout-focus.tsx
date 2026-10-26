@@ -1,4 +1,5 @@
 import {
+  LOAD_LIMIT_WORDS,
   type EntryTarget,
   type Exercise,
   NO_TARGET,
@@ -20,6 +21,7 @@ import {
 import { ConfirmButton, FocusLogger, Stack, Text } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
 import type { Reopened } from './shown-set.tsx'
+import { useLoads } from './use-loads.ts'
 import { useUntilNextSet } from './until-next-set.ts'
 import { AdHocFocus, adHocFocus } from './workout-adhoc.tsx'
 import type { WorkoutSets } from './workout-state.ts'
@@ -79,6 +81,9 @@ function Focus({
   const next = nextSet(entrySets)
   const words = nextSetWords(entrySets, next, true)
   const target = next?.target ?? asked?.target ?? prescriptionOf(entry)?.target ?? NO_TARGET
+  const load = useLoads()(exercise)
+  // Where the athlete's equipment stopped it (#36): their heaviest, or their lightest.
+  const limit = asked?.limit == null ? '' : ` · ${LOAD_LIMIT_WORDS[asked.limit]}`
   const { tracking } = exercise
   return (
     <FocusLogger
@@ -95,11 +100,12 @@ function Focus({
         asked === undefined
           ? null
           : asked.changed
-            ? `Progressed to ${formatWithReserve(asked.target, tracking, unit)} · the plan says ${formatEffort(asked.prescribed, tracking, unit)}`
-            : `Prescribed ${formatWithReserve(asked.target, tracking, unit)}`
+            ? `Progressed to ${formatWithReserve(asked.target, tracking, unit)}${limit} · the plan says ${formatEffort(asked.prescribed, tracking, unit)}`
+            : `Prescribed ${formatWithReserve(asked.target, tracking, unit)}${limit}`
       }
       last={asked?.last == null ? null : `Last time ${formatSets(asked.last, tracking, unit)}`}
       busy={sets.record.busy}
+      load={load}
       onLog={(effort, isWarmup) => {
         sets.record.log({ exerciseId: entry.exerciseId, entryId: entry.id, effort, isWarmup })
       }}
@@ -128,7 +134,9 @@ export function usePlannedFocus(
   const [chosen, choose] = useUntilNextSet<Chosen>(latest?.id ?? null)
   const [reopened, reopen] = useUntilNextSet<Reopened>(latest?.id ?? null)
   const asked = (entry: SessionEntry) => targets.find((t) => t.entryId === entry.id)
-  const setsFor = (entry: SessionEntry) => setsOf(entry, sets.all, asked(entry)?.target ?? null)
+  const loadFor = useLoads()
+  const setsFor = (entry: SessionEntry) =>
+    setsOf(entry, sets.all, asked(entry)?.target ?? null, loadFor(entry.exercise))
 
   const chosenEntry =
     chosen !== null && 'entry' in chosen

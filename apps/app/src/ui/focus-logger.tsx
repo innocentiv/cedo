@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import {
   type Effort,
+  type Load,
   type MarkedSet,
   type SetTarget,
   type TrackingMode,
@@ -36,6 +37,8 @@ export interface FocusLoggerProps {
   /** Last time's working sets, as read. */
   readonly last: string | null
   readonly busy: boolean
+  /** The weights the athlete can load on it, when known: − / + move between them (#36). */
+  readonly load: Load | null
   readonly onLog: (effort: Effort, isWarmup: boolean) => void
   /** How to do it — absent where there is nothing more to show than its name. */
   readonly onHowTo?: (() => void) | undefined
@@ -59,6 +62,7 @@ export function FocusLogger({
   progressed,
   last,
   busy,
+  load,
   onLog,
   onHowTo,
   testID,
@@ -119,6 +123,7 @@ export function FocusLogger({
                 <Stepper
                   dimension={field.dimension}
                   tracking={tracking}
+                  load={load}
                   value={effort[field.key]}
                   onChange={(value) => {
                     setEffort((current) => ({ ...current, [field.key]: value }))

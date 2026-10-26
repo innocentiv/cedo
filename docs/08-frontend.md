@@ -233,7 +233,12 @@ issue under #23. What each screen IS, so a slice builds toward one picture.
 **One thing at a time.** The current exercise fills the screen: a mark per set — warm-up, done,
 next, to do — the next set's numbers large, with − / + steppers whose steps are the contract's
 (2.5 kg or 5 lb, one rep, five seconds, a hundred metres) and a tap on a number to type it, and
-one Log button under the thumb. "Up next" is the rest of the day, an entry to a line, a superset
+one Log button under the thumb. A weight whose load the athlete's equipment knows (#36, `useLoads`,
+the contract's `loadOf`) steps between the weights they have instead — 20, 22, 24 on 2 kg
+dumbbells, from 21 typed to 22 or 20 — stopping at their lightest and heaviest; the plan's own
+targets (warm-ups) are asked as they can be loaded (`setsOf`), the session's as the server sends
+them, and the target says when it stopped at "your heaviest" or "your lightest". Typing is never
+refused. A new weight rule in the plan editor adds one step of that equipment. "Up next" is the rest of the day, an entry to a line, a superset
 drawn as one item; tapping one makes it current, and tapping a logged set re-opens it.
 
 - **Logging moves the focus** to the entry's next set, then to the next entry in day order with

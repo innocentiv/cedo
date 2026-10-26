@@ -20,6 +20,8 @@ export interface EntryEditorProps {
   readonly entry: EntryDraft
   /** Decides which target inputs exist. A plank has no kilograms. */
   readonly tracking: TrackingMode
+  /** The athlete's weight step for its exercise, when their equipment says (#36). */
+  readonly stepG: number | null
   readonly onChange: (entry: EntryDraft) => void
   readonly testID: string
 }
@@ -32,6 +34,7 @@ export interface EntryEditorProps {
 export function EntryEditor({
   entry,
   tracking,
+  stepG,
   onChange,
   testID,
 }: EntryEditorProps): React.JSX.Element {
@@ -62,6 +65,7 @@ export function EntryEditor({
 
       <ProgressionField
         rule={entry.progression}
+        stepG={stepG}
         onChange={(progression) => {
           onChange({ ...entry, progression })
         }}

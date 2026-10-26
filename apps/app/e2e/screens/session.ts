@@ -67,6 +67,11 @@ const logger = (page: Page, id: string, choose: string) => {
       await current()
       return await page.value(`${id}-${dimension}`)
     },
+    /** One step up or down with − / +: by the athlete's equipment, when it says (#36). */
+    step: async (dimension: Dimension, by: 'more' | 'less'): Promise<void> => {
+      await current()
+      await page.click(`[data-testid="${id}-${dimension}-${by}"]`)
+    },
     /** "Prescribed 8 × 60 kg", or "Progressed to … · the plan says …". */
     target: async (): Promise<string | null> => {
       await current()

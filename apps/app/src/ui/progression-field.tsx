@@ -37,10 +37,13 @@ const PROGRESSION_OPTIONS = PROGRESSION_KINDS.map((value) => ({
  */
 export function ProgressionField({
   rule,
+  stepG,
   onChange,
   testID,
 }: {
   readonly rule: Progression
+  /** What a new weight rule adds: the athlete's step for the exercise, when known (#36). */
+  readonly stepG: number | null
   readonly onChange: (rule: Progression) => void
   readonly testID: string
 }): React.JSX.Element {
@@ -54,7 +57,7 @@ export function ProgressionField({
         options={PROGRESSION_OPTIONS}
         value={rule.kind}
         onChange={(kind) => {
-          onChange(progressionOf(kind, rule, unit))
+          onChange(progressionOf(kind, rule, unit, stepG))
         }}
         testID={`${testID}-progression`}
       />
@@ -66,7 +69,7 @@ export function ProgressionField({
             label={`Add ${fieldFor('weight', unit).unit()}`}
             value={rule.incrementG}
             onChange={(g) => {
-              onChange({ ...rule, incrementG: g ?? DEFAULT_INCREMENT_G[unit] })
+              onChange({ ...rule, incrementG: g ?? stepG ?? DEFAULT_INCREMENT_G[unit] })
             }}
             testID={`${testID}-increment`}
           />

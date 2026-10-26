@@ -12,6 +12,7 @@ import {
 import type { PendingLog } from '../api/pending.ts'
 import { AddRow, Columns, FocusLogger, Stack, UpNext } from '../ui/index.ts'
 import { JustDone, type Reopened, ShownSet } from './shown-set.tsx'
+import { useLoads } from './use-loads.ts'
 import { useUntilNextSet } from './until-next-set.ts'
 import type { WorkoutSets } from './workout-state.ts'
 
@@ -176,6 +177,8 @@ export function AdHocFocus({
   readonly onHowTo: (exercise: Exercise) => void
 }): React.JSX.Element {
   const marks = adHocSetsOf(exercise.id, sets.all)
+  // Its weights as the athlete can load them, when the whole exercise is at hand (#36).
+  const load = useLoads()(whole)
   const next = nextSet(marks)
   const words = nextSetWords(marks, next, false)
   return (
@@ -196,6 +199,7 @@ export function AdHocFocus({
       progressed={null}
       last={null}
       busy={sets.record.busy}
+      load={load}
       onLog={(effort, isWarmup) => {
         sets.record.log({ exerciseId: exercise.id, entryId: null, effort, isWarmup })
       }}
