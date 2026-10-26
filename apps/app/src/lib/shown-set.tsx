@@ -7,8 +7,10 @@ import {
 } from '@cedo/contract'
 import type { PendingLog } from '../api/pending.ts'
 import { useChangeRest } from '../api/session-queries.ts'
-import { LastSet, RestBand, Stack } from '../ui/index.ts'
+import { Button, LastSet, RestBand, Stack } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
+import { useRestAlerts } from './rest-alerts.ts'
+import { useSubmit } from './use-submit.ts'
 import type { WorkoutSets } from './workout-state.ts'
 import { useWeightUnit } from './weight-unit.ts'
 
@@ -43,6 +45,8 @@ export function JustDone({
   readonly children: React.JSX.Element | null
 }): React.JSX.Element | null {
   const tell = useChangeRest(rest.sessionId)
+  const alerts = useRestAlerts()
+  const { submit } = useSubmit()
   if (rest.rest === null && children === null) return null
   return (
     <Stack gap="sm">
@@ -55,6 +59,19 @@ export function JustDone({
         }}
         testID="rest-band"
       />
+      {/* Offered while a rest runs, until answered: iOS asks only from a tap (#38). */}
+      {rest.rest !== null && alerts.state === 'ask' ? (
+        <Button
+          title="Tell me when rest is over"
+          variant="secondary"
+          size="small"
+          busy={alerts.busy}
+          onPress={() => {
+            void submit(alerts.turnOn)
+          }}
+          testID="rest-alerts-offer"
+        />
+      ) : null}
       {children}
     </Stack>
   )

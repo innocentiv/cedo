@@ -248,7 +248,11 @@ drawn as one item; tapping one makes it current, and tapping a logged set re-ope
   sets left. Entries of a superset alternate, and rest starts after the pair.
 - **Rest starts on its own** when a set is logged: a countdown band with +30 s and × to skip it,
   above the set it follows; at zero the band changes colour, beeps three times and buzzes where the
-  device can, if the app is open. In the background, a push from the server is #38.
+  device can, if the app is open. With the app closed, a push from the server says so (#38): the
+  server keeps the rest's end (+30 s and skip are writes, queued behind the sets), and the countdown
+  takes it when it is later (`restCounted`). Turned on from the band — "Tell me when rest is over",
+  until answered, iOS asking only from a tap — or Settings → Rest alerts (`useRestAlerts`); shown by
+  the service worker, whose payload is read by `src/pwa/rest-alert.ts`, plain and tested.
 - **Reserve is asked before Log** (#37), as one optional row in the logger, under the numbers, and
   only for a working set of an exercise measured in reps — which those are is the contract's, not
   the screen's. Whole reps, none to five, one row of segments; tapping the chosen one again takes it
