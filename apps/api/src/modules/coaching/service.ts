@@ -1,4 +1,5 @@
 import type {
+  AthleteEquipment,
   ExerciseHistory,
   ExerciseHistoryQuery,
   Page,
@@ -8,6 +9,7 @@ import type {
   WorkoutSessionSummary,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
+import { read as readEquipment } from '../equipment/service.ts'
 import { trainingReview } from '../review/service.ts'
 import { history as exerciseHistory } from '../session/history.ts'
 import { list as listSessions } from '../session/list.ts'
@@ -49,3 +51,9 @@ export const review = async (
   athleteId: string | undefined,
   weeks: number,
 ): Promise<TrainingReview> => await trainingReview(await ownOrCoached(caller, athleteId), weeks)
+
+/** What they have to train with (#34) — a coach plans for an athlete's gym, and changes none of it. */
+export const equipment = async (
+  caller: Caller,
+  athleteId: string | undefined,
+): Promise<AthleteEquipment> => await readEquipment(await ownOrCoached(caller, athleteId))

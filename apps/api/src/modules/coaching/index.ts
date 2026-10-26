@@ -2,6 +2,7 @@ import { Elysia } from 'elysia'
 import { z } from 'zod'
 import {
   Athlete,
+  AthleteEquipment,
   ExerciseHistory,
   ExerciseHistoryQuery,
   Id,
@@ -59,6 +60,11 @@ export const coachingRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching
       detail: { summary: "An athlete's logged sessions for one exercise the caller can see" },
     },
   )
+  .get('/:id/equipment', ({ caller, params: { id } }) => CoachingService.equipment(caller, id), {
+    params,
+    response: AthleteEquipment,
+    detail: { summary: 'What an athlete has to train with, and how its weights go (#34)' },
+  })
   .get(
     '/:id/review',
     ({ caller, params: { id }, query }) => CoachingService.review(caller, id, query.weeks),

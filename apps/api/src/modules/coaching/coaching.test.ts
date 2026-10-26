@@ -76,6 +76,7 @@ const statuses = async (user: TestUser, athleteId = athlete.userId) =>
       `/athletes/${athleteId}/sessions/${finished}`,
       `/athletes/${athleteId}/exercises/${squadLift}/history`,
       `/athletes/${athleteId}/review`,
+      `/athletes/${athleteId}/equipment`,
     ].map(async (path) => (await user.wire(path)).status),
   )
 
@@ -154,7 +155,7 @@ describe("a coach reads an athlete's training", () => {
 
 describe('nobody else reads it', () => {
   test('not before the athlete shares', async () => {
-    expect(await statuses(coach)).toEqual([404, 404, 404, 404])
+    expect(await statuses(coach)).toEqual([404, 404, 404, 404, 404])
   })
 
   test('not a reader of the group, nor someone outside it', async () => {
@@ -162,22 +163,22 @@ describe('nobody else reads it', () => {
     const teammate = await h.as('teammate')
     await post(coach, `/groups/${squadId}/members`, { username: teammate.username, role: 'reader' })
     const stranger = await h.as('stranger')
-    expect(await statuses(teammate)).toEqual([404, 404, 404, 404])
-    expect(await statuses(stranger)).toEqual([404, 404, 404, 404])
+    expect(await statuses(teammate)).toEqual([404, 404, 404, 404, 404])
+    expect(await statuses(stranger)).toEqual([404, 404, 404, 404, 404])
   })
 
   test('not the coach once the athlete stops sharing — the past included', async () => {
     await share(athlete, squadId, true)
-    expect(await statuses(coach)).toEqual([200, 200, 200, 200])
+    expect(await statuses(coach)).toEqual([200, 200, 200, 200, 200])
     await share(athlete, squadId, false)
-    expect(await statuses(coach)).toEqual([404, 404, 404, 404])
+    expect(await statuses(coach)).toEqual([404, 404, 404, 404, 404])
     expect(await athletes(coach)).toEqual([])
   })
 
   test('not the coach once the athlete leaves the group', async () => {
     await share(athlete, squadId, true)
     await athlete.wire(`/groups/${squadId}/members/${athlete.userId}`, { method: 'DELETE' })
-    expect(await statuses(coach)).toEqual([404, 404, 404, 404])
+    expect(await statuses(coach)).toEqual([404, 404, 404, 404, 404])
   })
 
   test('not the coach once they leave the group themselves', async () => {
@@ -185,8 +186,8 @@ describe('nobody else reads it', () => {
     const other = await h.as('other')
     await post(coach, `/groups/${squadId}/members`, { username: other.username, role: 'editor' })
     await coach.wire(`/groups/${squadId}/members/${coach.userId}`, { method: 'DELETE' })
-    expect(await statuses(coach)).toEqual([404, 404, 404, 404])
-    expect(await statuses(other)).toEqual([200, 200, 200, 200])
+    expect(await statuses(coach)).toEqual([404, 404, 404, 404, 404])
+    expect(await statuses(other)).toEqual([200, 200, 200, 200, 200])
   })
 
   test('a coach reading their own training as an athlete is a 404 — it is under /sessions', async () => {

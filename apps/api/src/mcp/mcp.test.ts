@@ -929,6 +929,42 @@ describe('the MCP caller has exactly the permissions of the user', () => {
  * A coach's AI reads the athletes who share their training with the coach (#11), through the same
  * tools it reads the coach's own with — and nothing once the athlete stops sharing.
  */
+/** What you have to train with (#34): said whole, read back an item a line, by slug. */
+describe('equipment', () => {
+  test('undescribed until said; then an item a line, weights as the person reads them', async () => {
+    const pat = await mintPat(alice)
+    expect(textOf((await callTool(pat, 'equipment_get')).body)).toBe(
+      'Not described yet: every exercise counts as doable.',
+    )
+    const saved = textOf(
+      (
+        await callTool(pat, 'equipment_set', {
+          items: [
+            { slug: 'rack', weights: null },
+            { slug: 'barbell', weights: { stepG: 2500, minG: 20_000, maxG: null } },
+            { slug: 'kettlebells', weights: null },
+          ],
+        })
+      ).body,
+    )
+    expect(saved).toBe(
+      'Saved.\n\nkettlebells: weights not known\nbarbell: from 20 kg up, by 2.5 kg\nrack',
+    )
+    await callTool(pat, 'equipment_set', { items: [] })
+    expect(textOf((await callTool(pat, 'equipment_get')).body)).toBe('No equipment at all.')
+  })
+
+  test('refuses what the contract refuses, and keeps what was said', async () => {
+    const pat = await mintPat(alice)
+    await callTool(pat, 'equipment_set', { items: [{ slug: 'rack', weights: null }] })
+    const refused = await callTool(pat, 'equipment_set', {
+      items: [{ slug: 'rack', weights: { stepG: 1000, minG: 0, maxG: null } }],
+    })
+    expect(JSON.stringify(refused.body)).toContain('holds the load')
+    expect(textOf((await callTool(pat, 'equipment_get')).body)).toBe('rack')
+  })
+})
+
 describe('coaching', () => {
   let athlete: TestUser
   let squadId: string
@@ -967,6 +1003,21 @@ describe('coaching', () => {
 
   const share = async (sharesTraining: boolean) =>
     await post(athlete, `/groups/${squadId}/membership`, { sharesTraining }, 'PATCH')
+
+  test("equipment_get reads an athlete's equipment while they share, and equipment_set is only yours", async () => {
+    await callTool(await mintPat(athlete), 'equipment_set', {
+      items: [{ slug: 'dumbbells', weights: { stepG: 2000, minG: 2000, maxG: 30_000 } }],
+    })
+    const pat = await mintPat(alice)
+    const read = async () =>
+      JSON.stringify((await callTool(pat, 'equipment_get', { athlete: athlete.userId })).body)
+    expect(await read()).not.toContain('dumbbells')
+    await share(true)
+    expect(await read()).toContain('dumbbells: from 2 kg to 30 kg, by 2 kg')
+    // Saying yours never says theirs.
+    await callTool(pat, 'equipment_set', { items: [] })
+    expect(await read()).toContain('dumbbells')
+  })
 
   test('athlete_list names who shares with you, and their id', async () => {
     const pat = await mintPat(alice)

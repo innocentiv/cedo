@@ -243,6 +243,20 @@ MCP:
 - **A plan cannot be saved while it uses one** — rule (1) above. The editor's footer names the entry
   (`planIssues`, given what the editor can see) and Save waits until it is removed.
 
+### An athlete's equipment
+
+```
+athlete_equipment(user_id, item, step_g?, min_g?, max_g?)    -- PK (user_id, item)
+users.equipment_described_at?
+```
+
+What a person has to train with (#34), replaced whole. PERSONAL, as sessions are: a user's own,
+never ownable, read by a coach only through `Training` (`ownOrCoached`). The weights are all three
+or none — none being unknown — and only on an item that holds the load, which the contract checks
+(`AthleteEquipmentInput`) and a CHECK backs. **Undescribed is not "nothing at all"**: until
+`equipment_described_at` is set, nothing is filtered for them (#35); after, no rows means they
+have nothing. A save locks the person's row first, so two at once take turns.
+
 ### Logs
 
 ```

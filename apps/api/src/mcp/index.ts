@@ -3,11 +3,7 @@ import { z } from 'zod'
 import { WeightUnit } from '@cedo/contract'
 import type { Caller } from '../plugins/auth.ts'
 import { VERSION } from '../version.ts'
-import { registerCoachingTools } from './tools/coaching.ts'
-import { registerDiagnosticTools } from './tools/diagnostics.ts'
-import { registerLibraryTools } from './tools/library.ts'
-import { registerSessionTools } from './tools/session.ts'
-import { registerTrainingTools } from './tools/training.ts'
+import { registerTools } from './tools/index.ts'
 
 /**
  * The MCP server lives INSIDE the API — same process, same services, same ACL.
@@ -53,11 +49,7 @@ export const mcpHandler = createMcpHandler(({ authInfo }) => {
   if (!parsed.success) throw new Error('The MCP handler was reached without a resolved caller')
   const caller: Caller = parsed.data
 
-  registerLibraryTools(server, caller)
-  registerTrainingTools(server, caller)
-  registerSessionTools(server, caller)
-  registerCoachingTools(server, caller)
-  registerDiagnosticTools(server, caller, VERSION)
+  registerTools(server, caller)
 
   return server
 })

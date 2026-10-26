@@ -356,6 +356,14 @@ const ROUTES: Record<string, Case> = {
     read: async () => await http(`/athletes/${bob.userId}/review?weeks=52`),
     allowed: async () => await httpAllowed(`/athletes/${bob.userId}/review`),
   },
+  'GET /athletes/:id/equipment': {
+    // What he trains with, by the list's items: nothing of the crew's to name (#34).
+    named: false,
+    read: async () => await http(`/athletes/${bob.userId}/equipment`),
+    allowed: async () => await httpAllowed(`/athletes/${bob.userId}/equipment`),
+  },
+  // Her own equipment: the list's items, which belong to nobody's group.
+  'GET /equipment/': { named: false, read: async () => await http('/equipment') },
   // Curator-only, and Alice is no curator: she is refused before and after.
   'GET /admin/status': { named: false, read: async () => await http('/admin/status') },
   'GET /admin/slow-queries': { named: false, read: async () => await http('/admin/slow-queries') },
@@ -460,6 +468,13 @@ const TOOLS: Record<string, Case> = {
       ]),
     allowed: async (w) =>
       await toolAllowed(w, 'session_get', { sessionId: w.bobsSessionId, athlete: bob.userId }),
+  },
+  equipment_get: {
+    // The list's items — hers, and Bob's while she coaches him (#34).
+    named: false,
+    read: async (w) =>
+      await all([tool(w, 'equipment_get'), tool(w, 'equipment_get', { athlete: bob.userId })]),
+    allowed: async (w) => await toolAllowed(w, 'equipment_get', { athlete: bob.userId }),
   },
   // Curator-only.
   platform_status: { named: false, read: async (w) => await tool(w, 'platform_status') },

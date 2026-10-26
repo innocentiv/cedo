@@ -17,6 +17,7 @@
  * always together with `session`: no read is OF it, it names what only a fix changes. `athlete`
  * is someone else's training, read by their coach (#30): they write it, on their own device, so
  * no write here is ever OF it — it catches up on the cache's window, and with what it embeds.
+ * `equipment` is what the caller has to train with (#34).
  */
 export type Source =
   | 'exercise'
@@ -26,6 +27,7 @@ export type Source =
   | 'token'
   | 'group'
   | 'athlete'
+  | 'equipment'
 
 export interface ReadSources {
   /** The source the read is OF. A write to it must be read back before the next write. */
@@ -86,6 +88,10 @@ export const READS = {
   athleteSession: { of: 'athlete', embeds: ['exercise', 'workout', 'group'] },
   athleteHistory: { of: 'athlete', embeds: ['exercise', 'group'] },
   athleteReview: { of: 'athlete', embeds: ['exercise', 'workout', 'group'] },
+  /** What they have to train with (#34), while they share it. */
+  athleteEquipment: { of: 'athlete', embeds: ['group'] },
+  /** What the caller has to train with (#34). */
+  equipment: { of: 'equipment', embeds: [] },
   tokens: { of: 'token', embeds: [] },
   groups: { of: 'group', embeds: [] },
   /** A group's members, as the caller may see them. */

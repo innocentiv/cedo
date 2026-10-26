@@ -98,6 +98,7 @@ describe('what a write makes stale', () => {
     const { awaited, background } = affectedBy('group')
     expect(sorted(awaited)).toEqual(['athletes', 'groupMembers', 'groups'])
     expect(sorted(background)).toEqual([
+      'athleteEquipment',
       'athleteHistory',
       'athleteReview',
       'athleteSession',

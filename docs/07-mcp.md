@@ -90,6 +90,11 @@ An exercise's equipment is read and written as slugs from the fixed list (`Equip
 JSON schema enumerates them), and printed as `barbell + rack`, `no equipment`, or `equipment not
 described` — the last two kept apart, since an undescribed exercise is offered to everyone (#33).
 
+`equipment_get` and `equipment_set` (`mcp/tools/equipment.ts`) are what someone has to train with
+(#34): read before planning — an exercise needs every item `exercise_get` lists — and said whole,
+weights in grams. `equipment_get` takes the coaching tools' `athlete`, so a coach plans for an
+athlete's gym; `equipment_set` is only ever your own.
+
 Writing to the shared library requires **curator** rights (below). Anything else lands in the
 caller's own group — and `exercise_duplicate` is how an AI adapts a library exercise for someone
 without them: a copy in a group they edit, as `workout_duplicate` is for a shared workout.
@@ -268,10 +273,10 @@ Every tool carries `readOnlyHint` so a client can gate writes.
 
 1. If it needs data the API cannot already produce, add a **service** function first — never put the
    logic in the tool.
-2. Register it in `mcp/tools/library.ts`, `training.ts`, `session.ts`, `coaching.ts` or
-   `diagnostics.ts` with a contract schema,
+2. Register it in `mcp/tools/library.ts`, `equipment.ts`, `training.ts`, `session.ts`,
+   `coaching.ts` or `diagnostics.ts` with a contract schema,
    an annotation, and a description written for a model: say when to use it, and what NOT to do. A
-   new file must also be wired into `mcp/index.ts`, or its tools never load.
+   new file must also be wired into `mcp/tools/index.ts`, or its tools never load.
 3. Format the output for reading (`mcp/format.ts`), not for machines.
 4. Add a case to `mcp/mcp.test.ts`, which drives real JSON-RPC over HTTP rather than calling the
    handler directly — auth, framing and schema publication are exactly what a direct call skips.

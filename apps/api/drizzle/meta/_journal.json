@@ -78,6 +78,13 @@
       "when": 1793031177667,
       "tag": "0010_exercise_equipment",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793036600620,
+      "tag": "0011_athlete_equipment",
+      "breakpoints": true
     }
   ]
 }

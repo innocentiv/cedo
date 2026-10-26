@@ -10,6 +10,7 @@ import { createOpenapiPlugin } from './plugins/openapi.ts'
 import { adminRoutes } from './modules/admin/index.ts'
 import { authRoutes } from './modules/auth/index.ts'
 import { coachingRoutes, reviewRoutes } from './modules/coaching/index.ts'
+import { equipmentRoutes } from './modules/equipment/index.ts'
 import { exerciseRoutes } from './modules/exercise/index.ts'
 import { groupRoutes } from './modules/group/index.ts'
 import { mediaBlobRoutes, mediaRoutes } from './modules/media/index.ts'
@@ -49,6 +50,7 @@ export function createApp() {
     .use(authRoutes)
     .use(coachingRoutes)
     .use(reviewRoutes)
+    .use(equipmentRoutes)
     .use(exerciseRoutes)
     .use(exerciseHistoryRoutes)
     .use(groupRoutes)

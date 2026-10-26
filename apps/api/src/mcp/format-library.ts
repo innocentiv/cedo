@@ -1,4 +1,10 @@
-import { type Exercise, sayEquipment } from '@cedo/contract'
+import {
+  type AthleteEquipment,
+  type Exercise,
+  type WeightUnit,
+  ownedLines,
+  sayEquipment,
+} from '@cedo/contract'
 
 /** An exercise as the library tools print it, compact and by slug — see `format.ts`. */
 
@@ -51,3 +57,14 @@ export function exerciseDetail(exercise: Exercise): string {
     .filter((line) => line !== null)
     .join('\n')
 }
+
+/**
+ * What someone has to train with (#34), an item a line by the slugs `equipment_set` takes, a
+ * weighted one with how its weights go — and undescribed told apart from nothing at all.
+ */
+export const equipmentLines = (owned: AthleteEquipment, unit: WeightUnit): string =>
+  ownedLines(owned, unit, {
+    unsaid: 'Not described yet: every exercise counts as doable.',
+    nothing: 'No equipment at all.',
+    name: (slug) => slug,
+  }).join('\n')
