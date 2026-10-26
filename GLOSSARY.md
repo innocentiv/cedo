@@ -181,6 +181,26 @@ How a person reads and types weights: kilograms or pounds. Their own preference;
 they are shown, never what is stored.
 _Avoid_: units setting, locale
 
+## Equipment
+
+**Equipment**:
+What an exercise is done with — dumbbells, a barbell, a rack, a low pulley. An exercise needs some;
+an athlete has some.
+_Avoid_: gear, tools, gym setup
+
+**Weight step**:
+The smallest change in load an athlete's equipment allows: their dumbbells go up 2 kg at a time,
+their plates 2.5 kg a pair. Not the progression rule's increment, which is how much a plan adds
+when it advances.
+_Avoid_: increment (that is the progression rule's), plate step
+
+**Doable**:
+An exercise an athlete has all the equipment for. One whose equipment nobody has described yet
+counts as doable for everyone, and so does every exercise for an athlete who has not described
+what they have. Not doable hides an exercise from what is suggested; it never stops it being
+planned or logged.
+_Avoid_: available, in reach (those are about who can see an exercise)
+
 ## Plans
 
 **Workout**:
