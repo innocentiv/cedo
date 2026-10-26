@@ -24,12 +24,16 @@ export function ExerciseListRow({
   readonly onPress: () => void
   readonly testID: string
 }): React.JSX.Element {
+  // Said when the list holds everything, and in a plan, where it is never hidden (#35).
+  const tags = [exercise.doable ? undefined : 'Missing equipment', tag].filter(
+    (t) => t !== undefined,
+  )
   return (
     <ExerciseRow
       name={exercise.name}
       muscles={mainMuscles(exercise.muscles)}
       thumbnail={loadable(videoThumbnailOf(exercise))}
-      tag={tag}
+      tag={tags.length === 0 ? undefined : tags.join(' · ')}
       chosen={chosen ?? false}
       current={current ?? false}
       onPress={onPress}

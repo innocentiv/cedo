@@ -242,6 +242,49 @@ test(
 )
 
 /**
+ * Doable (#35): before you say what you train with, the library asks and offers everything; after,
+ * only what you can do — everything a tap away, what you cannot do marked — and a plan keeps the
+ * exercise you cannot do, marked, never removed.
+ */
+test(
+  'the library offers what your equipment lets you do, and a plan marks what it does not',
+  async () => {
+    await withApp('doable', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('gym'))
+      const mine = await page.client()
+      const [squat] = (await mine.exercises.list({ q: 'Barbell Back Squat', limit: 1 })).items
+      if (squat === undefined) throw new Error('The seeded library has no Back Squat')
+      const plan = await mine.workouts.create({ name: 'Legs', notes: null })
+      await mine.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [{ name: 'A', entries: [{ exerciseId: squat.id, sets: [{ targetReps: 5 }] }] }],
+        }),
+      )
+
+      expect(await app.library.prompted()).toBe(true)
+      expect(await app.library.shownText()).toContain('Barbell Back Squat')
+
+      await mine.equipment.save({ items: [{ slug: 'dumbbells', weights: null }] })
+      expect(await app.library.prompted()).toBe(false)
+      const doable = await app.library.shownText()
+      expect(doable).toContain('Goblet Squat')
+      expect(doable).not.toContain('Barbell Back Squat')
+      expect(doable).not.toContain('Missing equipment')
+
+      await app.library.showing('all')
+      await page.until(app.library.shownText, (text) => text.includes('Barbell Back Squat'))
+      expect(await app.library.shownText()).toContain('Missing equipment')
+
+      await app.planEditor.open(plan.id)
+      expect(await app.planEditor.entry(0, 0).text()).toContain('Missing equipment')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * A coach reads an athlete's training (#30): the tab offered only while someone shares with them,
  * the session they are in, their Progress, their history — and from a session, an exercise's. Read
  * again on coming back, never polled: a session finished meanwhile is no longer "Training now".

@@ -90,6 +90,11 @@ export function About({ exercise }: { readonly exercise: Exercise }): React.JSX.
             Equipment
           </Text>
           <Text>{equipmentLine(exercise.equipment)}</Text>
+          {exercise.doable ? null : (
+            <Text variant="caption" tone="muted" testID="exercise-missing-equipment">
+              More than your equipment has.
+            </Text>
+          )}
         </Stack>
       </Card>
 

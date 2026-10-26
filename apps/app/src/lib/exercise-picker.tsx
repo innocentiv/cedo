@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Exercise, MuscleSlug } from '@cedo/contract'
 import { useExercises, useRecentExercises } from '../api/queries.ts'
 import { ExerciseListRow } from './exercise-media.tsx'
+import { useDoableFilter } from './doable-filter.tsx'
 import { Button, Empty, Input, Loaded, MuscleFilter, Screen, Stack, Text } from '../ui/index.ts'
 
 export interface ExercisePickerProps {
@@ -14,7 +15,8 @@ export interface ExercisePickerProps {
 
 /**
  * Choosing exercises to add (#27): what was logged lately first, then the library — searched, or
- * narrowed to a muscle — each row its picture and what it mostly works. Several are picked at once,
+ * narrowed to a muscle, and only what your equipment lets you do unless asked for everything (#35)
+ * — each row its picture and what it mostly works. Several are picked at once,
  * in the order tapped, and added together.
  *
  * Rendered in place rather than pushed as a route: the page it adds to holds its own state, and
@@ -30,9 +32,11 @@ export function ExercisePicker({
   const [chosen, setChosen] = useState<readonly Exercise[]>([])
   const trimmed = search.trim()
   const narrowed = trimmed !== '' || muscle !== null
+  const doable = useDoableFilter('picker-kit')
   const exercises = useExercises({
     scope: 'all',
     limit: 50,
+    ...(doable.showAll ? { showAll: true } : {}),
     ...(trimmed === '' ? {} : { q: trimmed }),
     ...(muscle === null ? {} : { muscle }),
   })
@@ -96,6 +100,7 @@ export function ExercisePicker({
         </Stack>
         <MuscleFilter value={muscle} onChange={setMuscle} testID="picker-muscle" />
       </Stack>
+      {doable.control}
       {narrowed || recent.data === undefined || recent.data.length === 0 ? null : (
         <Stack gap="xs" testID="picker-recent">
           <Text variant="label" tone="muted">

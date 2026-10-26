@@ -224,6 +224,22 @@ export const library = (page: Page) => {
     /** Whether the list is on screen. */
     listShown: async (): Promise<boolean> => await page.shown('exercise-list'),
     /** Filters the list by scope. */
+    /** The library as it stands, without loading it again: the switch below keeps its choice. */
+    shownText: async (): Promise<string> => {
+      await page.waitFor('exercise-list')
+      return (await page.text('exercise-list')) ?? ''
+    },
+    /** Whether the library asks you to say what you train with (#35) — until you have. */
+    prompted: async (): Promise<boolean> => {
+      await list()
+      await page.waitFor('exercise-list')
+      return await page.shown('equipment-prompt')
+    },
+    /** What the library offers (#35): only what you can do, or everything. */
+    showing: async (showing: 'doable' | 'all'): Promise<void> => {
+      await list()
+      await page.click(`[data-testid="exercise-kit-${showing}"]`)
+    },
     scope: async (scope: OwnableScope): Promise<void> => {
       await page.goto('/exercises')
       await page.waitFor('exercise-scope')

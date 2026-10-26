@@ -149,7 +149,9 @@ export function EntryLine({
   return (
     <ListRow
       title={`${entry.supersetGroup === null ? '' : `${entry.supersetGroup} · `}${exercise.name}`}
-      subtitle={rule === null ? prescription : `${prescription} · ${rule}`}
+      subtitle={[exercise.doable ? null : 'Missing equipment', prescription, rule]
+        .filter((part) => part !== null)
+        .join(' · ')}
       onPress={onPress}
       selected={current}
       testID={`plan-line-${place}`}
