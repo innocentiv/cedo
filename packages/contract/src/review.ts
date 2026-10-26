@@ -1,7 +1,12 @@
 import { z } from 'zod'
+import { formatEffort } from './effort.ts'
 import { LoggedEffort, LoggedExercise } from './log.ts'
+import { MUSCLES } from './muscle.ts'
 import { Timestamp } from './primitives.ts'
-import { Rpe } from './rpe.ts'
+import { Rpe, reserveOf } from './rpe.ts'
+import { formatStall } from './stall.ts'
+import { type WeightUnit, formatWeight } from './units.ts'
+import { counted } from './week.ts'
 
 /**
  * The training review (#28): what a coach would look at, read in one call — by an AI through
@@ -29,12 +34,40 @@ export const MuscleWork = z.object({
   liftedG: z.int().nonnegative(),
   /** Against the period before; null when that period had none. */
   changePct: z.int().nullable(),
+  /** Half or less of its sets in the period before (GLOSSARY.md, "Declined muscle"). */
+  declined: z.boolean(),
 })
 export type MuscleWork = z.output<typeof MuscleWork>
 
 /** A top set and, when one was said, how hard it was: a stall's set is worth both. */
-export const RatedEffort = LoggedEffort.extend({ rpe: Rpe.nullable().optional() })
+export const RatedEffort = LoggedEffort.extend({ rpe: Rpe.nullable() })
 export type RatedEffort = z.output<typeof RatedEffort>
+
+/** The same top set, sessions running (GLOSSARY.md, "Stalled"): change something. */
+export const Stalled = z.object({
+  exercise: LoggedExercise,
+  sessions: z.int().positive(),
+  effort: RatedEffort,
+})
+export type Stalled = z.output<typeof Stalled>
+
+/** A weight lift's estimated max falling, session after session (GLOSSARY.md, "Falling"). */
+export const Falling = z.object({
+  exercise: LoggedExercise,
+  sessions: z.int().positive(),
+  fromG: z.int(),
+  toG: z.int(),
+})
+export type Falling = z.output<typeof Falling>
+
+/** The same set rated harder each time (GLOSSARY.md, "Effort drift"). */
+export const EffortDrift = z.object({
+  exercise: LoggedExercise,
+  effort: LoggedEffort,
+  fromRpe: z.number(),
+  toRpe: z.number(),
+})
+export type EffortDrift = z.output<typeof EffortDrift>
 
 export const TrainingReview = z.object({
   weeks: z.int().positive(),
@@ -55,27 +88,63 @@ export const TrainingReview = z.object({
     /** Muscles worked in either period that neither list names. */
     omitted: z.int().nonnegative(),
   }),
-  /** The same top set, sessions running: change something. */
-  stalled: z.array(
-    z.object({ exercise: LoggedExercise, sessions: z.int().positive(), effort: RatedEffort }),
-  ),
-  /** A weight lift's estimated max falling, session after session. */
-  falling: z.array(
-    z.object({
-      exercise: LoggedExercise,
-      sessions: z.int().positive(),
-      fromG: z.int(),
-      toG: z.int(),
-    }),
-  ),
-  /** The same set rated harder each time. */
-  effortDrift: z.array(
-    z.object({
-      exercise: LoggedExercise,
-      effort: LoggedEffort,
-      fromRpe: z.number(),
-      toRpe: z.number(),
-    }),
-  ),
+  stalled: z.array(Stalled),
+  falling: z.array(Falling),
+  effortDrift: z.array(EffortDrift),
 })
 export type TrainingReview = z.output<typeof TrainingReview>
+
+/** A muscle's work, as the Progress tab lists it (#28). */
+export interface MuscleRow {
+  readonly muscle: string
+  readonly name: string
+  /** `12.5 sets`. */
+  readonly sets: string
+  /** `+20%`, `−35%`, or `new` when the period before had none. */
+  readonly change: string
+  /** Its sets against the most worked muscle's: how long its bar is, 0 to 1. */
+  readonly share: number
+  /** Half or less of the period before: said apart, wherever it is listed. */
+  readonly declined: boolean
+}
+
+/** `+20%`, `−35%`, `new`: a change against the period before, as a list shows it. */
+export const formatChange = (changePct: number | null): string =>
+  changePct === null
+    ? 'new'
+    : `${changePct > 0 ? '+' : changePct < 0 ? '−' : ''}${String(Math.abs(changePct))}%`
+
+/** The muscles the review names, most worked first and the declined after, ready to list. */
+export function muscleRows(work: TrainingReview['muscleWork']): {
+  readonly top: MuscleRow[]
+  readonly declined: MuscleRow[]
+} {
+  const most = Math.max(0, ...[...work.top, ...work.declined].map((m) => m.weightedSets))
+  const row = (m: MuscleWork): MuscleRow => ({
+    muscle: m.muscle,
+    name: MUSCLES.find((x) => x.slug === m.muscle)?.name ?? m.muscle,
+    sets: counted(m.weightedSets, 'set'),
+    change: formatChange(m.changePct),
+    share: most === 0 ? 0 : m.weightedSets / most,
+    declined: m.declined,
+  })
+  return { top: work.top.map(row), declined: work.declined.map(row) }
+}
+
+/** `4 sessions at 5 × 80 kg`: the top set an exercise keeps repeating, as the stall says it. */
+export const stallLine = (s: Stalled, unit: WeightUnit): string =>
+  formatStall(s, s.exercise.tracking, unit)
+
+/** `Estimated max 77 kg → 70 kg, 2 sessions running`. */
+export const fallingLine = (f: Falling, unit: WeightUnit): string =>
+  `Estimated max ${formatWeight(f.fromG, unit)} → ${formatWeight(f.toG, unit)}, ${counted(f.sessions, 'session')} running`
+
+/** Reserve to one decimal: an average of RPEs is no half-point. */
+const reserveSaid = (rpe: number): string => String(Math.round(reserveOf(rpe) * 10) / 10)
+
+/**
+ * `5 × 60 kg: 3 → 1 in reserve` — effort drift said as it is asked, reps in reserve; averages, so
+ * to one decimal.
+ */
+export const driftLine = (d: EffortDrift, unit: WeightUnit): string =>
+  `${formatEffort(d.effort, d.exercise.tracking, unit)}: ${reserveSaid(d.fromRpe)} → ${reserveSaid(d.toRpe)} in reserve`

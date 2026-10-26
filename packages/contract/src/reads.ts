@@ -21,6 +21,11 @@ export interface ReadSources {
   readonly of: Source
   /** Other sources it carries data from — a name, a tracking mode, a count, an id. */
   readonly embeds: readonly Source[]
+  /**
+   * Caught up behind a write to what it is OF, never awaited: nothing the next write does depends on
+   * it, and it costs a whole aggregation to read again — the training review, after every set.
+   */
+  readonly lagging?: true
 }
 
 export const READS = {
@@ -56,6 +61,8 @@ export const READS = {
    * of the current workout, by name and its exercises' names.
    */
   today: { of: 'session', embeds: ['exercise', 'workout', 'group'] },
+  /** The training review (#28): every session of the period, judged. */
+  review: { of: 'session', embeds: ['exercise', 'workout', 'group'], lagging: true },
   /**
    * Each logged set names its exercise and how it is measured. And the session points into its
    * plan — a workout, a day, an entry per set — which a plan save or delete can set to null.
@@ -84,8 +91,12 @@ export function affectedBy(source: Source): {
 } {
   const embedding = (read: Read): boolean =>
     (READS[read].embeds as readonly Source[]).includes(source)
+  const lagging = (read: Read): boolean => (READS[read] as ReadSources).lagging === true
+  const of = (read: Read): boolean => READS[read].of === source
   return {
-    awaited: READ_NAMES.filter((read) => READS[read].of === source),
-    background: READ_NAMES.filter((read) => READS[read].of !== source && embedding(read)),
+    awaited: READ_NAMES.filter((read) => of(read) && !lagging(read)),
+    background: READ_NAMES.filter(
+      (read) => (of(read) && lagging(read)) || (!of(read) && embedding(read)),
+    ),
   }
 }
