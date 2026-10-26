@@ -149,10 +149,17 @@ test(
         await app.auth.register(username)
         expect(await app.desk.name()).toBe('cedo')
         expect(await app.desk.account()).toContain(`@${username}`)
-        const pane = await app.desk.openExercise('Barbell Back Squat')
+        await app.library.choose('Barbell Back Squat')
+        const pane = await app.desk.pane()
         expect(pane).toContain('Barbell Back Squat')
         expect(pane).toContain('Quads')
-        expect(await app.desk.listShown()).toBe(true)
+        expect(await app.library.listShown()).toBe(true)
+        // Its address keeps it open: a reload, and the exercise's own link, land on the pane.
+        await app.desk.reload()
+        expect(await app.desk.pane()).toContain('Barbell Back Squat')
+        await app.desk.openByItsAddress()
+        expect(await app.desk.pane()).toContain('Barbell Back Squat')
+        expect(await app.library.listShown()).toBe(true)
       },
       { layout: 'desktop' },
     )

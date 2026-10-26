@@ -69,6 +69,7 @@ export function ExerciseDetailView({
     <DuplicateIntoMyGroup
       duplicate={async () => await duplicate.mutateAsync(data.id)}
       editorOf={(copyId) => `/exercises/${copyId}/edit`}
+      over={pane}
       testID="duplicate-exercise"
     />
   )

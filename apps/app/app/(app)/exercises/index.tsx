@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useRouter } from 'expo-router'
+import { useLocalSearchParams, useRouter } from 'expo-router'
 import type { MuscleSlug, OwnableScope } from '@cedo/contract'
 import {
   Card,
@@ -28,7 +28,8 @@ const SCOPES: readonly { value: OwnableScope; label: string }[] = [
 /**
  * The exercise library (#27): searched, scoped, narrowed to a muscle. On a desktop the exercise
  * chosen opens beside the list (#29) — reading one and the next side by side; on a phone it is a
- * screen of its own.
+ * screen of its own. A filter that no longer lists the one open leaves it open: it is still being
+ * read.
  */
 export default function ExerciseList(): React.JSX.Element {
   const router = useRouter()
@@ -36,7 +37,11 @@ export default function ExerciseList(): React.JSX.Element {
   const [scope, setScope] = useState<OwnableScope>('all')
   const [search, setSearch] = useState('')
   const [muscle, setMuscle] = useState<MuscleSlug | null>(null)
-  const [open, setOpen] = useState<string | null>(null)
+  // In the address (`?open=`), so a reload or a link keeps it open (#29).
+  const open = useLocalSearchParams<{ open?: string }>().open ?? null
+  const setOpen = (id: string | null) => {
+    router.setParams({ open: id ?? undefined })
+  }
 
   const query = {
     scope,
@@ -76,7 +81,7 @@ export default function ExerciseList(): React.JSX.Element {
                   key={exercise.id}
                   exercise={exercise}
                   tag={exercise.isFavourite ? 'Pinned' : undefined}
-                  chosen={desk && open === exercise.id}
+                  current={desk && open === exercise.id}
                   onPress={() => {
                     if (desk) setOpen(exercise.id)
                     else router.push(`/exercises/${exercise.id}`)

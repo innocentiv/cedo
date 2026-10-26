@@ -17,6 +17,7 @@ export function ExerciseRow({
   thumbnail,
   tag,
   chosen = false,
+  current = false,
   onPress,
   testID,
 }: {
@@ -26,16 +27,22 @@ export function ExerciseRow({
   readonly thumbnail: string | null
   readonly tag?: string | undefined
   readonly chosen?: boolean
+  /** The one open beside the list (#29): its ground raised, as a list's current row is. */
+  readonly current?: boolean
   readonly onPress: () => void
   readonly testID: string
 }): React.JSX.Element {
   return (
     <Pressable
       accessibilityRole="button"
-      aria-selected={chosen}
+      aria-selected={chosen || current}
       onPress={onPress}
       testID={testID}
-      style={({ pressed }) => [styles.row, pressed ? styles.pressed : null]}
+      style={({ pressed }) => [
+        styles.row,
+        current ? styles.current : null,
+        pressed ? styles.pressed : null,
+      ]}
     >
       {thumbnail === null ? (
         <View style={styles.slot}>
@@ -70,6 +77,13 @@ const styles = StyleSheet.create({
     borderBottomColor: color.border,
   },
   pressed: { backgroundColor: color.surface },
+  /** Bled into the gutter, as `UpNext`'s current row: the name keeps the one left edge. */
+  current: {
+    backgroundColor: color.surface,
+    marginHorizontal: -space.md,
+    paddingHorizontal: space.md,
+    borderRadius: radius.md,
+  },
   slot: {
     width: ROW_THUMB_WIDTH,
     aspectRatio: 16 / 9,

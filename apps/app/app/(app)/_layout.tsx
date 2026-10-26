@@ -92,7 +92,10 @@ export default function AppLayout(): React.JSX.Element {
       <TabList
         style={[
           tablet
-            ? [styles.sidebar, { paddingTop: insets.top + space.md }]
+            ? [
+                styles.sidebar,
+                { paddingTop: insets.top + space.md, paddingBottom: insets.bottom + space.sm },
+              ]
             : [styles.bottomBar, { paddingBottom: insets.bottom + space.xs }],
           // A session has the app to itself: its header stands where the tabs were (#24).
           onWorkout(pathname) ? styles.hidden : null,

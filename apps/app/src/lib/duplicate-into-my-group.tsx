@@ -11,12 +11,18 @@ import { useSubmit } from './use-submit.ts'
 export function DuplicateIntoMyGroup({
   duplicate,
   editorOf,
+  over = false,
   testID,
 }: {
   /** Makes the copy, and says where it is. */
   readonly duplicate: () => Promise<{ readonly id: string }>
   /** The route of the copy's editor. */
   readonly editorOf: (copyId: string) => string
+  /**
+   * Opened OVER the screen it was asked from, rather than in its place — from a pane beside a list
+   * (#29), whose list is the root of its tab: replaced, there was nothing to come back to.
+   */
+  readonly over?: boolean
   readonly testID: string
 }): React.JSX.Element {
   const router = useRouter()
@@ -31,7 +37,8 @@ export function DuplicateIntoMyGroup({
         onPress={() => {
           void submit(async () => {
             const copy = await duplicate()
-            router.replace(editorOf(copy.id))
+            if (over) router.push(editorOf(copy.id))
+            else router.replace(editorOf(copy.id))
           })
         }}
         busy={busy}

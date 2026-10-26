@@ -196,6 +196,18 @@ export const library = (page: Page) => {
       await page.fill('exercise-search', name)
       return await openRow()
     },
+    /**
+     * Searches the library and chooses the first match, opening it where this layout opens one: a
+     * screen of its own on a phone, the pane beside the list on a desktop (#29).
+     */
+    choose: async (name: string): Promise<void> => {
+      await page.goto('/exercises')
+      await page.fill('exercise-search', name)
+      const row = await page.waitForSelector('[data-testid^="exercise-row-"]')
+      await page.click(`[data-testid="${row}"]`)
+    },
+    /** Whether the list is on screen. */
+    listShown: async (): Promise<boolean> => await page.shown('exercise-list'),
     /** Filters the list by scope. */
     scope: async (scope: OwnableScope): Promise<void> => {
       await page.goto('/exercises')

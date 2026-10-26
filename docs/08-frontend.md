@@ -59,7 +59,11 @@ src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-
                              retry.ts and pending.ts (+ their unit tests)
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
-src/lib/                     use-submit.ts, plan-draft.ts, forms, pickers, group-placement.tsx, duplicate-into-my-group.tsx
+src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ its unit test), forms,
+                             pickers, group-placement.tsx, duplicate-into-my-group.tsx, and each
+                             screen's parts: the workout's, Today's, Progress's, a workout's
+                             outline, an exercise's (exercise-detail.tsx, exercise-about.tsx,
+                             exercise-media.tsx), the desktop sidebar's (sidebar.tsx)
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts,
                              harness.e2e.ts (the harness's own tests), journeys.test.ts (the rules
                              journeys obey), screens/ (one driver per screen; test ids live here)
@@ -108,6 +112,7 @@ Two constraints found by building it:
 | `ErrorBoundary` | the last line of defence |
 | `ExerciseRow`, `MuscleFilter` | an exercise in a list — picture, name, main muscles — and narrowing a list to one muscle, by region |
 | `VideoPlayer` | an exercise's video, played in place once tapped, never fetched before |
+| `SidebarName`, `SidebarAccount` | a desktop sidebar's head — the product's name — and foot — who is signed in |
 | `Meter` | how much against the most — a muscle's sets — chalk, or red where it declined |
 | `RemoveButton` | removing a day or an entry from a plan edited in place: the bin, asked twice |
 | `Sheet` | something looked at without leaving where you are — a session's menu, how to do an exercise. From the bottom on a phone, in the middle on a desktop |

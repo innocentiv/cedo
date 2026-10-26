@@ -13,12 +13,14 @@ export function ExerciseListRow({
   exercise,
   tag,
   chosen,
+  current,
   onPress,
   testID,
 }: {
   readonly exercise: Exercise
   readonly tag?: string | undefined
   readonly chosen?: boolean
+  readonly current?: boolean
   readonly onPress: () => void
   readonly testID: string
 }): React.JSX.Element {
@@ -29,6 +31,7 @@ export function ExerciseListRow({
       thumbnail={loadable(videoThumbnailOf(exercise))}
       tag={tag}
       chosen={chosen ?? false}
+      current={current ?? false}
       onPress={onPress}
       testID={testID}
     />
