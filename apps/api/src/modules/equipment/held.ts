@@ -1,5 +1,11 @@
 import { asc, eq } from 'drizzle-orm'
-import type { AthleteEquipment, ItemWeights } from '@cedo/contract'
+import {
+  type AthleteEquipment,
+  type ItemWeights,
+  type LoadFor,
+  type WeightUnit,
+  loadOf,
+} from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { athleteEquipment, users } from '../../db/schema.ts'
 
@@ -43,3 +49,12 @@ export const columnsOf = (weights: ItemWeights | null) => ({
   minG: weights?.minG ?? null,
   maxG: weights?.maxG ?? null,
 })
+
+/**
+ * What someone can load on any exercise (#36), in the unit they read: read once, for a whole plan's
+ * targets or progression.
+ */
+export async function loadsOf(userId: string, unit: WeightUnit): Promise<LoadFor> {
+  const held = await heldBy(userId)
+  return (exercise) => loadOf(exercise, held, unit)
+}

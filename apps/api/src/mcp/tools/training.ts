@@ -139,9 +139,8 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       annotations: WRITE,
     },
     async ({ workoutId, ...plan }) => {
-      const saved = await WorkoutService.replacePlan(caller, workoutId, plan)
-      const held = await CoachingService.equipment(caller)
-      return text(`Saved.\n\n${workoutDetail(saved, caller.weightUnit, held)}`)
+      const { workout, held } = await CoachingService.savePlan(caller, workoutId, plan)
+      return text(`Saved.\n\n${workoutDetail(workout, caller.weightUnit, held)}`)
     },
   )
 

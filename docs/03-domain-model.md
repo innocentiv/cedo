@@ -268,7 +268,9 @@ have nothing. A save locks the person's row first, so two at once take turns.
 weights for it, make a `Load` (`loadOf`) — or none, when either is unknown, and nothing is snapped.
 A plan keeps its weights; a target is the heaviest loadable weight not above it, capped at the
 heaviest and raised to the lightest (`loadable`), and progression judges a session against that
-(`nextLoadableTarget`), never the plan's number. `EntryTarget.limit` says where it stopped. See
+(`nextLoadableTarget`), never the plan's number — and moves it up a loadable weight at least, so an
+increase under one step still moves. The grid is counted in the unit the athlete reads (`Load.unit`):
+grams are not whole pounds. `EntryTarget.limit` says where it stopped. See
 [adr/0024](adr/0024-targets-follow-the-athletes-equipment.md).
 
 ### Logs

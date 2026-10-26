@@ -1,6 +1,7 @@
 import { DIMENSION_FIELDS, WEIGHT_STEP_G, tracks } from './dimension.ts'
 import { type Effort, formatEffort } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
+import type { Load } from './load.ts'
 import { NO_PROGRESSION, type Progression } from './progression.ts'
 import { DEFAULT_REST_S } from './rest.ts'
 import type { WeightUnit } from './units.ts'
@@ -42,6 +43,13 @@ const split = (entry: WorkoutEntryInput) => ({
  */
 export const DEFAULT_INCREMENT_G: Readonly<Record<WeightUnit, number>> = WEIGHT_STEP_G
 
+/**
+ * What a new weight rule adds — and a weight increase emptied falls back to: one step of the
+ * athlete's equipment for the exercise when it is known (#36), else 2.5 kg or 5 lb.
+ */
+export const newIncrementG = (unit: WeightUnit, load: Load | null): number =>
+  load?.stepG ?? DEFAULT_INCREMENT_G[unit]
+
 /** The time a new duration rule adds. */
 export const DEFAULT_INCREMENT_S = 15
 
@@ -54,18 +62,18 @@ export const DEFAULT_INCREMENT_MM = 500_000
  * dumbbells that go 2 kg at a time, where 2.5 would load nothing heavier.
  */
 const NEW_RULE: {
-  readonly [K in Progression['kind']]: (unit: WeightUnit, stepG: number | null) => Progression
+  readonly [K in Progression['kind']]: (unit: WeightUnit, load: Load | null) => Progression
 } = {
   none: () => NO_PROGRESSION,
-  linear: (unit, stepG) => ({
+  linear: (unit, load) => ({
     kind: 'linear',
-    incrementG: stepG ?? DEFAULT_INCREMENT_G[unit],
+    incrementG: newIncrementG(unit, load),
     afterSuccesses: 1,
   }),
-  double: (unit, stepG) => ({
+  double: (unit, load) => ({
     kind: 'double',
     repRange: [8, 12],
-    incrementG: stepG ?? DEFAULT_INCREMENT_G[unit],
+    incrementG: newIncrementG(unit, load),
   }),
   linear_duration: () => ({
     kind: 'linear_duration',
@@ -87,9 +95,9 @@ export const progressionOf = (
   kind: Progression['kind'],
   previous: Progression,
   unit: WeightUnit,
-  /** The athlete's weight step for the exercise, when their equipment says (#36). */
-  stepG: number | null = null,
-): Progression => (kind === previous.kind ? previous : NEW_RULE[kind](unit, stepG))
+  /** What the athlete can load on the exercise, when their equipment says (#36). */
+  load: Load | null = null,
+): Progression => (kind === previous.kind ? previous : NEW_RULE[kind](unit, load))
 
 /** A new day, named by its position. */
 export const newDay = (index: number): WorkoutDayInput => ({

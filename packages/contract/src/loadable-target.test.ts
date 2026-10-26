@@ -3,7 +3,7 @@ import type { Load } from './load.ts'
 import { loadableTarget, nextLoadableTarget } from './loadable-target.ts'
 import type { SetTarget } from './progression.ts'
 
-const dumbbells: Load = { stepG: 2000, minG: 2000, maxG: 30_000, assisted: false }
+const dumbbells: Load = { stepG: 2000, minG: 2000, maxG: 30_000, assisted: false, unit: 'kg' }
 const plan = (weightG: number | null): SetTarget => ({
   reps: 8,
   weightG,
@@ -74,7 +74,7 @@ describe('progression, against what can be loaded', () => {
     expect(next.limit).toBeNull()
   })
 
-  test('an increase under one step loads nothing heavier', () => {
+  test('an increase under one step still moves one weight up — never held there for good', () => {
     const next = nextLoadableTarget(
       {
         rule: { ...linear, incrementG: 1000 },
@@ -84,6 +84,19 @@ describe('progression, against what can be loaded', () => {
       },
       dumbbells,
     )
-    expect(next.target.weightG).toBe(20_000)
+    expect(next.target.weightG).toBe(22_000)
+  })
+
+  test('double progression at the top of its reps moves one weight up, not round its reps again', () => {
+    const next = nextLoadableTarget(
+      {
+        rule: { kind: 'double', repRange: [8, 12], incrementG: 1000 },
+        target: { ...plan(22_000), reps: 12 },
+        workingSets: 3,
+        sessions: [Array.from({ length: 3 }, () => ({ weightG: 22_000, reps: 12 }))],
+      },
+      dumbbells,
+    )
+    expect(next.target).toMatchObject({ reps: 8, weightG: 24_000 })
   })
 })

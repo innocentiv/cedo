@@ -18,9 +18,16 @@ that is not above it, and a set is judged against the weight they were shown.**
 
 - 22.5 kg on 2 kg dumbbells is 22. It never rounds up: an athlete is never asked for more than the
   plan.
-- Above their heaviest, the target stops at it, and says so.
-- An increase smaller than one step changes nothing until increases add up to one.
+- Above their heaviest, the target stops at it, and says so; under their lightest, it is their
+  lightest, and says so — nothing lighter exists.
+- **When progression moves a weight up, it moves at least one loadable weight up**: the heaviest
+  they have that is not above what the rule asks, but never the weight they were already shown. A
+  1 kg increase on 2 kg dumbbells moves 22 to 24. (Amended while building #36: progression is one
+  step from the plan, never accumulated, so "until increases add up to one" could not happen — a
+  sub-step increase held forever, and double progression cycled its reps at one weight.)
 - A new plan entry's increase defaults to the athlete's step for its equipment.
+- The weights are counted in the unit the athlete reads: grams are not whole pounds, and stepped in
+  grams, 45 lb and 54 plates came to 315.01 lb.
 
 ## Rejected
 

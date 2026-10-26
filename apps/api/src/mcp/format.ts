@@ -12,6 +12,7 @@ import type {
 } from '@cedo/contract'
 import {
   AT_LEAST_SESSIONS,
+  LOAD_LIMIT_WORDS,
   loadOf,
   loadable,
   MISSING_EQUIPMENT,
@@ -54,14 +55,15 @@ const setLine = (
   unit: WeightUnit,
   load: Load | null,
 ): string =>
-  `${set.isWarmup ? 'warm-up' : 'work'}: ${formatEffort(set.target, tracking, unit)}${atRpe(set.target.rpe)}${loads(set.target.weightG, load, unit)}`
+  `${set.isWarmup ? 'warm-up' : 'work'}: ${formatEffort(set.target, tracking, unit)}${atRpe(set.target.rpe)}${loadsNote(set.target.weightG, load, unit)}`
 
 /** ` (loads 22 kg)` beside a weight the athlete's equipment cannot load as written (#36). */
-function loads(weightG: number | null, load: Load | null, unit: WeightUnit): string {
+function loadsNote(weightG: number | null, load: Load | null, unit: WeightUnit): string {
   if (weightG === null) return ''
   const can = loadable(load, weightG)
   if (can.weightG === weightG) return ''
-  return ` (loads ${formatWeight(can.weightG, unit)}${can.limit === null ? '' : `, the ${can.limit}`})`
+  const end = can.limit === null ? '' : `, ${LOAD_LIMIT_WORDS[can.limit]}`
+  return ` (loads ${formatWeight(can.weightG, unit)}${end})`
 }
 
 /** ` @ RPE 8.5` after a set prescribed or logged at one, and nothing after one without. */
@@ -87,13 +89,12 @@ export function workoutDetail(
       const name = entry.exercise?.name ?? '[unavailable exercise]'
       // Kept in the plan, still loggable — but the AI is told before it plans around it (#35).
       const kit = entry.exercise?.doable === false ? ` [${MISSING_EQUIPMENT}]` : ''
+      const load = entry.exercise === null ? null : loadOf(entry.exercise, held, unit)
+      const tracking = entry.exercise?.tracking ?? null
       return [
         `  - ${name}${kit}${superset}${rest}${rule}   [entry ${entry.id}]`,
         ...(entry.cue === null ? [] : [`      cue: ${entry.cue}`]),
-        ...entry.sets.map(
-          (set) =>
-            `      ${setLine(set, entry.exercise?.tracking ?? null, unit, entry.exercise === null ? null : loadOf(entry.exercise, held))}`,
-        ),
+        ...entry.sets.map((set) => `      ${setLine(set, tracking, unit, load)}`),
       ].join('\n')
     })
     // Its name, as the app shows a day: the outline's order is already its position, and a day

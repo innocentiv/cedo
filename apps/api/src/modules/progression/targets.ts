@@ -5,9 +5,9 @@ import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import { groupBy } from '../../lib/keyset.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { heldBy } from '../equipment/held.ts'
+import { loadsOf } from '../equipment/held.ts'
 import { targetsFrom } from './evaluate.ts'
-import { loadEntries } from './service.ts'
+import { loadEntries } from './entries.ts'
 
 /**
  * What a session asks of each entry of the day it follows — the logger's pre-fill — and what was
@@ -33,9 +33,11 @@ export async function targetsForSession(caller: Caller, sessionId: string): Prom
   const loaded = await loadEntries(caller, session.workoutId, session.dayId, session.startedAt)
   if (loaded === null) return []
   const exerciseIds = [...new Set(loaded.entries.map((e) => e.exerciseId))]
-  const last = await lastTimes(caller, exerciseIds, session.startedAt)
-  const held = await heldBy(caller.userId)
-  return targetsFrom(loaded.entries, loaded.prescribed, loaded.logs, held, last)
+  const [last, loadFor] = await Promise.all([
+    lastTimes(caller, exerciseIds, session.startedAt),
+    loadsOf(caller.userId, caller.weightUnit),
+  ])
+  return targetsFrom(loaded.entries, loaded.prescribed, loaded.logs, loadFor, last)
 }
 
 /**

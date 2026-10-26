@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import type { AthleteEquipment, Progression } from '@cedo/contract'
+import { type AthleteEquipment, type Progression, loadOf } from '@cedo/contract'
 import { type EntryToEvaluate, type LoggedSet, type PrescribedSet, suggest } from './evaluate.ts'
 
 /**
@@ -26,7 +26,7 @@ const suggestFor = (
   sets: readonly PrescribedSet[],
   logs: readonly LoggedSet[],
   held: AthleteEquipment = UNDESCRIBED,
-) => suggest(entries, sets, logs, held)
+) => suggest(entries, sets, logs, (exercise) => loadOf(exercise, held, 'kg'))
 
 const prescribed = (weightG: number, reps: number, isWarmup = false): PrescribedSet => ({
   entryId: 'bench',

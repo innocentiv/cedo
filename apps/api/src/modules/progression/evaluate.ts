@@ -1,8 +1,8 @@
 import {
-  type AthleteEquipment,
   type Effort,
   type EntryTarget,
   type EquipmentSlug,
+  type LoadFor,
   type LoadLimit,
   type LoggedEffort,
   type Progression,
@@ -12,7 +12,6 @@ import {
   type SetTarget,
   type TrackingMode,
   type WorkoutSetInput,
-  loadOf,
   nextLoadableTarget,
   prescriptionOf,
   setTargetOf,
@@ -58,9 +57,9 @@ export function suggest(
   entries: readonly EntryToEvaluate[],
   prescribed: readonly PrescribedSet[],
   logs: readonly LoggedSet[],
-  held: AthleteEquipment,
+  loadFor: LoadFor,
 ): ProgressionSuggestion[] {
-  return evaluate(entries, prescribed, logs, held).map((e) => e.suggestion)
+  return evaluate(entries, prescribed, logs, loadFor).map((e) => e.suggestion)
 }
 
 /** Each entry's suggestion, and where the athlete's equipment stopped its weight, if it did. */
@@ -68,7 +67,7 @@ function evaluate(
   entries: readonly EntryToEvaluate[],
   prescribed: readonly PrescribedSet[],
   logs: readonly LoggedSet[],
-  held: AthleteEquipment,
+  loadFor: LoadFor,
 ): { readonly suggestion: ProgressionSuggestion; readonly limit: LoadLimit | null }[] {
   const setsByEntry = groupBy(prescribed, (s) => s.entryId)
   const logsByEntry = groupBy(
@@ -76,7 +75,12 @@ function evaluate(
     (l) => l.entryId,
   )
   return entries.map((entry) =>
-    suggestForEntry(entry, setsByEntry.get(entry.id) ?? [], logsByEntry.get(entry.id) ?? [], held),
+    suggestForEntry(
+      entry,
+      setsByEntry.get(entry.id) ?? [],
+      logsByEntry.get(entry.id) ?? [],
+      loadFor,
+    ),
   )
 }
 
@@ -89,10 +93,10 @@ export function targetsFrom(
   entries: readonly EntryToEvaluate[],
   prescribed: readonly PrescribedSet[],
   logs: readonly LoggedSet[],
-  held: AthleteEquipment,
+  loadFor: LoadFor,
   lastByExercise: ReadonlyMap<string, LoggedEffort[]>,
 ): EntryTarget[] {
-  return evaluate(entries, prescribed, logs, held).map(({ suggestion: s, limit }) => ({
+  return evaluate(entries, prescribed, logs, loadFor).map(({ suggestion: s, limit }) => ({
     entryId: s.entryId,
     prescribed: s.current,
     target: s.suggested,
@@ -110,7 +114,7 @@ function suggestForEntry(
   entry: EntryToEvaluate,
   prescribed: readonly PrescribedSet[],
   logs: readonly LoggedSet[],
-  held: AthleteEquipment,
+  loadFor: LoadFor,
 ): { readonly suggestion: ProgressionSuggestion; readonly limit: LoadLimit | null } {
   const first = prescriptionOf({ sets: prescribed })
   const current = first === undefined ? NOTHING_PRESCRIBED : setTargetOf(first)
@@ -123,7 +127,7 @@ function suggestForEntry(
       workingSets: prescribed.filter((s) => !s.isWarmup).length,
       sessions,
     },
-    loadOf(entry, held),
+    loadFor(entry),
   )
 
   const suggestion = {

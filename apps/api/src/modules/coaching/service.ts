@@ -2,6 +2,7 @@ import type {
   AthleteEquipment,
   Exercise,
   ExerciseQuery,
+  PlanSave,
   ExerciseHistory,
   ExerciseHistoryQuery,
   Page,
@@ -18,7 +19,7 @@ import { trainingReview } from '../review/service.ts'
 import { history as exerciseHistory } from '../session/history.ts'
 import { list as listSessions } from '../session/list.ts'
 import { get as getSession } from '../session/plan.ts'
-import { get as getWorkout } from '../workout/service.ts'
+import { get as getWorkout, replacePlan } from '../workout/service.ts'
 import { ownOrCoached } from './athletes.ts'
 
 export { athletes } from './athletes.ts'
@@ -76,15 +77,31 @@ export const exercises = async (
  * A workout read for an athlete — the caller, or one a coach writes it for — with what they have:
  * its exercises marked doable or not (#35), and its weights readable as they can load them (#36).
  */
-export async function planFor(
+export const planFor = async (
   caller: Caller,
   athleteId: string | undefined,
   workoutId: string,
-): Promise<{ readonly workout: Workout; readonly held: AthleteEquipment }> {
+): Promise<PlanRead> => {
   const training = await ownOrCoached(caller, athleteId)
   const [workout, held] = await Promise.all([
     getWorkout(caller, workoutId, training.athleteId),
     readEquipment(training),
   ])
   return { workout, held }
+}
+
+/** A plan saved whole, read back as `planFor` reads the caller's own. */
+export const savePlan = async (
+  caller: Caller,
+  workoutId: string,
+  plan: PlanSave,
+): Promise<PlanRead> => {
+  const workout = await replacePlan(caller, workoutId, plan)
+  return { workout, held: await equipment(caller) }
+}
+
+/** A plan, and what the athlete it is read for has to train with. */
+interface PlanRead {
+  readonly workout: Workout
+  readonly held: AthleteEquipment
 }

@@ -74,7 +74,7 @@ describe("an entry's sets", () => {
 
   /** On the athlete's equipment (#36): the plan's own targets, as they can be loaded. */
   test('the plan’s own targets asked as the athlete can load them; the session’s as sent', () => {
-    const bar = { stepG: 5000, minG: 25_000, maxG: null, assisted: false }
+    const bar = { stepG: 5000, minG: 25_000, maxG: null, assisted: false, unit: 'kg' as const }
     const sets = setsOf(squat, [], null, bar)
     // A 20 kg warm-up under a 25 kg bar is the bar; 40 and 100 load as written.
     expect(sets.map((s) => s.target.weightG)).toEqual([25_000, 40_000, 100_000, 100_000, 100_000])

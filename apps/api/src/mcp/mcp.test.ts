@@ -1055,7 +1055,7 @@ describe('equipment', () => {
     })
     const read = await outline()
     expect(read).toContain('work: 8 × 22.5 kg (loads 22 kg)')
-    expect(read).toContain('work: 8 × 32.5 kg (loads 30 kg, the heaviest)')
+    expect(read).toContain('work: 8 × 32.5 kg (loads 30 kg, your heaviest)')
   })
 
   test('refuses what the contract refuses, and keeps what was said', async () => {

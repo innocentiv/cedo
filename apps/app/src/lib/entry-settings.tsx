@@ -28,7 +28,7 @@ export function EntrySettings({
   readonly onChange: (days: readonly DayDraft[]) => void
 }): React.JSX.Element | null {
   // What a new weight rule adds: a step of the athlete's equipment for it, when known (#36).
-  const stepG = useLoads()(exercise)?.stepG ?? null
+  const load = useLoads()(exercise)
   const day = days[at.day]
   const entry = day?.entries[at.entry]
   if (day === undefined || entry === undefined) return null
@@ -43,7 +43,7 @@ export function EntrySettings({
       <EntryEditor
         entry={entry}
         tracking={exercise.tracking}
-        stepG={stepG}
+        load={load}
         onChange={(next) => {
           onChange(withEntries(replaceAt(day.entries, at.entry, next)))
         }}

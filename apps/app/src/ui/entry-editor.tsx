@@ -1,4 +1,4 @@
-import { type SetKind, type TrackingMode, resizeSets, setCounts } from '@cedo/contract'
+import { type Load, type SetKind, type TrackingMode, resizeSets, setCounts } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
 import { Chips } from './chips.tsx'
 import { PrescriptionFields } from './prescription-fields.tsx'
@@ -20,8 +20,8 @@ export interface EntryEditorProps {
   readonly entry: EntryDraft
   /** Decides which target inputs exist. A plank has no kilograms. */
   readonly tracking: TrackingMode
-  /** The athlete's weight step for its exercise, when their equipment says (#36). */
-  readonly stepG: number | null
+  /** What the athlete can load on its exercise, when their equipment says (#36). */
+  readonly load: Load | null
   readonly onChange: (entry: EntryDraft) => void
   readonly testID: string
 }
@@ -34,7 +34,7 @@ export interface EntryEditorProps {
 export function EntryEditor({
   entry,
   tracking,
-  stepG,
+  load,
   onChange,
   testID,
 }: EntryEditorProps): React.JSX.Element {
@@ -65,7 +65,7 @@ export function EntryEditor({
 
       <ProgressionField
         rule={entry.progression}
-        stepG={stepG}
+        load={load}
         onChange={(progression) => {
           onChange({ ...entry, progression })
         }}

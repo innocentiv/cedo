@@ -62,8 +62,8 @@ export function setsOf<L extends FlowLog>(
   const planned = entry.sets.toSorted((a, b) => a.index - b.index)
   const warmups = planned.filter((s) => s.isWarmup)
   const workingSets = planned.filter((s) => !s.isWarmup)
-  const planned0 = workingSets[0]?.target
-  const workingTarget = working ?? (planned0 === undefined ? null : asLoaded(planned0))
+  const firstWorking = workingSets[0]?.target
+  const workingTarget = working ?? (firstWorking === undefined ? null : asLoaded(firstWorking))
 
   const sets: SessionSet<L>[] = [
     ...warmups.map((s, i) => ({

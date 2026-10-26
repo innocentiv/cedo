@@ -206,8 +206,19 @@ describe('the issues a draft would be refused for', () => {
 describe('a new rule', () => {
   /** On the athlete's equipment (#36): +2 kg on 2 kg dumbbells, where 2.5 would load nothing. */
   test("adds one step of the athlete's equipment when it is known", () => {
-    expect(progressionOf('linear', NO_PROGRESSION, 'kg', 2000)).toMatchObject({ incrementG: 2000 })
-    expect(progressionOf('double', NO_PROGRESSION, 'kg', 2000)).toMatchObject({ incrementG: 2000 })
+    const dumbbells = {
+      stepG: 2000,
+      minG: 2000,
+      maxG: 30_000,
+      assisted: false,
+      unit: 'kg' as const,
+    }
+    expect(progressionOf('linear', NO_PROGRESSION, 'kg', dumbbells)).toMatchObject({
+      incrementG: 2000,
+    })
+    expect(progressionOf('double', NO_PROGRESSION, 'kg', dumbbells)).toMatchObject({
+      incrementG: 2000,
+    })
     expect(progressionOf('linear', NO_PROGRESSION, 'kg', null)).toMatchObject({ incrementG: 2500 })
   })
 

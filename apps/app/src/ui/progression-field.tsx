@@ -1,12 +1,13 @@
 import {
-  DEFAULT_INCREMENT_G,
   DEFAULT_INCREMENT_MM,
   DEFAULT_INCREMENT_S,
+  type Load,
   PROGRESSION_KINDS,
   type Progression,
   describeProgression,
   fieldFor,
   formatWeight,
+  newIncrementG,
   progressionOf,
 } from '@cedo/contract'
 import { useWeightUnit } from '../lib/weight-unit.ts'
@@ -37,13 +38,13 @@ const PROGRESSION_OPTIONS = PROGRESSION_KINDS.map((value) => ({
  */
 export function ProgressionField({
   rule,
-  stepG,
+  load,
   onChange,
   testID,
 }: {
   readonly rule: Progression
-  /** What a new weight rule adds: the athlete's step for the exercise, when known (#36). */
-  readonly stepG: number | null
+  /** What the athlete can load on the exercise: a new weight rule adds one step of it (#36). */
+  readonly load: Load | null
   readonly onChange: (rule: Progression) => void
   readonly testID: string
 }): React.JSX.Element {
@@ -57,7 +58,7 @@ export function ProgressionField({
         options={PROGRESSION_OPTIONS}
         value={rule.kind}
         onChange={(kind) => {
-          onChange(progressionOf(kind, rule, unit, stepG))
+          onChange(progressionOf(kind, rule, unit, load))
         }}
         testID={`${testID}-progression`}
       />
@@ -69,7 +70,7 @@ export function ProgressionField({
             label={`Add ${fieldFor('weight', unit).unit()}`}
             value={rule.incrementG}
             onChange={(g) => {
-              onChange({ ...rule, incrementG: g ?? stepG ?? DEFAULT_INCREMENT_G[unit] })
+              onChange({ ...rule, incrementG: g ?? newIncrementG(unit, load) })
             }}
             testID={`${testID}-increment`}
           />

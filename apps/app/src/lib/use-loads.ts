@@ -1,16 +1,15 @@
-import { type EquipmentSlug, type Load, type TrackingMode, loadOf } from '@cedo/contract'
+import { type LoadFor, type LoadedExercise, loadOf } from '@cedo/contract'
 import { useEquipment } from '../api/equipment-queries.ts'
+import { useWeightUnit } from './weight-unit.ts'
 
 /**
- * The weights the signed-in athlete can load on an exercise (#36) — what − / + step between, and a
- * plan's own targets are asked as — or null while their equipment is read, or does not say.
+ * The weights the signed-in athlete can load on an exercise (#36), counted in the unit they read —
+ * what − / + step between, and what a plan's own targets are asked as — or null while their
+ * equipment is read, or does not say. The contract's `loadOf`, with their equipment bound.
  */
-export function useLoads(): (
-  exercise:
-    | { readonly equipment: readonly EquipmentSlug[] | null; readonly tracking: TrackingMode }
-    | null
-    | undefined,
-) => Load | null {
+export function useLoads(): (exercise: LoadedExercise | null | undefined) => ReturnType<LoadFor> {
   const held = useEquipment().data
-  return (exercise) => (held === undefined || exercise == null ? null : loadOf(exercise, held))
+  const unit = useWeightUnit()
+  return (exercise) =>
+    held === undefined || exercise == null ? null : loadOf(exercise, held, unit)
 }

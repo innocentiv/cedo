@@ -194,6 +194,13 @@ their plates 2.5 kg a pair. Not the progression rule's increment, which is how m
 when it advances.
 _Avoid_: increment (that is the progression rule's), plate step
 
+**Loadable weight**:
+A weight an athlete's equipment can put on an exercise: the lightest of the item holding its load,
+then a weight step at a time, up to the heaviest. A plan's weight is shown as the heaviest loadable
+weight not above it — or the lightest, under it — and a set is judged against that. When a plan
+moves up, it moves up a loadable weight at least.
+_Avoid_: available weight, real weight, snapped weight
+
 **Doable**:
 An exercise an athlete has all the equipment for. One whose equipment nobody has described yet
 counts as doable for everyone, and so does every exercise for an athlete who has not described
