@@ -110,6 +110,9 @@ export const ICON_SIZE = 24
 /** An exercise's picture in a row of a list (#27): small, at the 16:9 a video is. */
 export const ROW_THUMB_WIDTH = 64
 
+/** A `Meter`'s bar: a line, read at a glance beside the number it draws. */
+export const METER_HEIGHT = 4
+
 /** One set's mark on the workout; a warm-up's is a step smaller. */
 export const MARK_SIZE = 40
 

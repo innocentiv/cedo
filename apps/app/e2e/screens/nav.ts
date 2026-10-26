@@ -1,6 +1,6 @@
 import type { Page } from '../harness.ts'
 
-type Tab = 'today' | 'workouts' | 'exercises' | 'settings'
+type Tab = 'today' | 'workouts' | 'exercises' | 'progress' | 'settings'
 
 /**
  * The tab bar, and the screen each tab opens on. A tab keeps its stack, so switching returns to the

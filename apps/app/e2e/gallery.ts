@@ -426,6 +426,8 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await show(page, '/exercises/new', 'exercise-new-screen')
   await snap('12-exercise-new')
 
+  await show(page, '/progress', 'progress-consistency')
+  await snap('12b-progress')
   await show(page, '/settings', 'settings-screen')
   await snap('13-settings')
   await show(page, '/settings/groups', 'groups-screen')

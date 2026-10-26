@@ -58,7 +58,7 @@ function Unreachable({
  * The signed-in shell.
  *
  * ONE navigator for both form factors. The headless `Tabs` from `expo-router/ui` lets the chrome be
- * anything, so the same four triggers render as a bottom bar on a phone and a left sidebar on a
+ * anything, so the same five triggers render as a bottom bar on a phone and a left sidebar on a
  * tablet. Swapping navigators on a width change would remount every screen and throw away scroll
  * position and half-typed input mid-resize. See docs/08-frontend.md.
  */
@@ -66,6 +66,7 @@ const TABS = [
   { name: 'today', href: '/today', label: 'Today' },
   { name: 'workouts', href: '/workouts', label: 'Workouts' },
   { name: 'exercises', href: '/exercises', label: 'Exercises' },
+  { name: 'progress', href: '/progress', label: 'Progress' },
   { name: 'settings', href: '/settings', label: 'Settings' },
 ] as const
 

@@ -108,6 +108,7 @@ Two constraints found by building it:
 | `ErrorBoundary` | the last line of defence |
 | `ExerciseRow`, `MuscleFilter` | an exercise in a list — picture, name, main muscles — and narrowing a list to one muscle, by region |
 | `VideoPlayer` | an exercise's video, played in place once tapped, never fetched before |
+| `Meter` | how much against the most — a muscle's sets — chalk, or red where it declined |
 | `RemoveButton` | removing a day or an entry from a plan edited in place: the bin, asked twice |
 | `Sheet` | something looked at without leaving where you are — a session's menu, how to do an exercise. From the bottom on a phone, in the middle on a desktop |
 | `Icon`, `IconButton` | a secondary action as a glyph alone — back, menu, close, undo, how to — named aloud by its label |
@@ -339,6 +340,23 @@ As built (#27):
 **Today · Workouts · Exercises · Progress · Settings.** Progress is the training review — sessions a
 week and the streak, days skipped, work per muscle against the period before, and what has stalled,
 is falling or is drifting — the same read the AI gets, over HTTP.
+
+As built (#28): `GET /review?weeks=` answers `TrainingReview`, now a contract schema the route
+and `training_review` both say; the tab looks back 4, 8 or 12 weeks.
+
+- **How consistently** — a week, the streak, the longest gap, as numbers; how many sessions, and
+  when the last was.
+- **What needs attention** — Stalled, Falling, Harder each time, each a line of why it matters and
+  a row per exercise (`stallLine`, `fallingLine`, `driftLine`: drift said as reserve, as it is
+  asked) — or "Nothing has stalled or slipped"; with nothing logged, no verdict at all.
+- **Days trained** — every planned day of the workouts trained in the period, in plan order, and
+  how many times — a day never trained says Not trained, in red: the day skipped is the one most
+  worth seeing.
+- **Work per muscle** — named, in sets by its share of each exercise, against the period before,
+  a bar against the most worked (`Meter`, `muscleRows`); a declined muscle in red wherever it is
+  listed, and those beyond the most worked under their own heading.
+- The review is a read the cache catches up on behind a set, never awaits (`lagging` in `READS`):
+  it costs a whole aggregation, and nothing the next set does depends on it.
 
 ### Desktop
 

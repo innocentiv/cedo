@@ -27,6 +27,8 @@ import {
   type SessionQuery,
   Today,
   type TodayQuery,
+  type ReviewQuery,
+  TrainingReview,
   type SessionStart,
   type SessionUpdate,
   type SetLogUpdate,
@@ -176,6 +178,11 @@ const today = ({ GET }: Verbs) => ({
   get: async (query: TodayQuery) => await GET('/today', Today, asQuery(query)),
 })
 
+/** Your training, reviewed (#28): the Progress tab. */
+const review = ({ GET }: Verbs) => ({
+  get: async (query: ReviewQuery) => await GET('/review', TrainingReview, asQuery(query)),
+})
+
 const groups = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
   list: async () => await GET('/groups', z.array(GroupMembership)),
   create: async (body: GroupCreate) => await POST('/groups', GroupMembership, body),
@@ -210,6 +217,7 @@ export function createApi(request: SendRequest) {
     workouts: workouts(v),
     sessions: sessions(v),
     today: today(v),
+    review: review(v),
     groups: groups(v),
     media: media(v),
     tokens: tokens(v),

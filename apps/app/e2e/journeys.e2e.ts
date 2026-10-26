@@ -92,6 +92,48 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/**
+ * Progress (#28): the training review an AI reads, on the athlete's own tab — an exercise logged
+ * at the same top set session after session said to have stalled.
+ */
+test(
+  'Progress says how often you train, and what has stalled',
+  async () => {
+    await withApp('progress', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('prog'))
+      const mine = await page.client()
+      const [row] = (await mine.exercises.list({ q: 'Barbell Row', limit: 1 })).items
+      if (row === undefined) throw new Error('The library has no row')
+      for (let i = 0; i < 3; i += 1) {
+        // oxlint-disable-next-line no-await-in-loop -- one session at a time.
+        const session = await mine.sessions.start({ workoutId: null, dayId: null })
+        // oxlint-disable-next-line no-await-in-loop -- in order.
+        await mine.sessions.logSet(
+          session.id,
+          LogSetInput.parse({ exerciseId: row.id, weightG: kgToG(80), reps: 5 }),
+        )
+        // oxlint-disable-next-line no-await-in-loop -- finished before the next can start.
+        await mine.sessions.update(session.id, { endedAt: new Date().toISOString() })
+      }
+
+      await page.goto('/progress')
+      await app.progress.shown()
+      // Three sessions over the default eight weeks.
+      expect(await app.progress.perWeek()).toBe('0.4')
+      const attention = await app.progress.attention()
+      expect(attention).toContain('Stalled')
+      expect(attention).toContain('3 sessions at 5 × 80 kg')
+      await app.progress.period('4')
+      await page.until(
+        async () => await app.progress.perWeek(),
+        (said) => said === '0.8',
+      )
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
 /** A new exercise starts from its muscles (#27): chosen, their loads split evenly to total 100. */
 test(
   "a new exercise's muscles start as an even split, valid as they stand",

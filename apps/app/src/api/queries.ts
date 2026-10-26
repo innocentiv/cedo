@@ -30,6 +30,7 @@ import type {
   WorkoutQuery,
   SessionDetail,
   Today,
+  TrainingReview,
   WorkoutSessionSummary,
   WorkoutSummary,
 } from '@cedo/contract'
@@ -127,6 +128,14 @@ export function useHistory() {
       await api.sessions.list({ inProgress: false, limit: 20, cursor: pageParam }),
     initialPageParam: undefined,
     getNextPageParam: (last: Page<WorkoutSessionSummary>) => last.nextCursor ?? undefined,
+  })
+}
+
+/** Your training over the last `weeks`, reviewed (#28): the Progress tab's one read. */
+export function useReview(weeks: number): UseQueryResult<TrainingReview> {
+  return useQuery({
+    queryKey: keys.review(weeks),
+    queryFn: async () => await api.review.get({ weeks }),
   })
 }
 

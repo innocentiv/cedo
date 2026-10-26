@@ -121,11 +121,15 @@ export async function sharedApi(): Promise<ApiServer> {
     }
 
     const port = await freePort()
+    /**
+     * Its log dropped and its errors shown, never piped unread: a pipe nobody drains fills, and the
+     * server then blocks on its next write.
+     */
     const server = Bun.spawn(['bun', 'run', 'apps/api/src/index.ts'], {
       cwd: ROOT,
       env: childEnv(port),
-      stdout: 'pipe',
-      stderr: 'pipe',
+      stdout: 'ignore',
+      stderr: 'inherit',
     })
     const url = `http://127.0.0.1:${port}`
     await waitForHealth(url, server)

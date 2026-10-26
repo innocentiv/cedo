@@ -26,6 +26,7 @@ const ROUTES: readonly (readonly [string, string])[] = [
   ['/workouts', 'workouts-screen'],
   ['/exercises', 'exercises-screen'],
   ['/exercises/new', 'exercise-new-screen'],
+  ['/progress', 'progress-screen'],
   ['/settings', 'settings-screen'],
   ['/settings/groups', 'groups-screen'],
   ['/settings/tokens', 'tokens-screen'],
