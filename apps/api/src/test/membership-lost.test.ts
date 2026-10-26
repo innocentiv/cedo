@@ -350,6 +350,12 @@ const ROUTES: Record<string, Case> = {
     allowed: async (w) =>
       await httpAllowed(`/athletes/${bob.userId}/exercises/${w.bobsExerciseId}/history`),
   },
+  'GET /athletes/:id/review': {
+    // His days, by his plan's names, while she coaches him (#30).
+    named: true,
+    read: async () => await http(`/athletes/${bob.userId}/review?weeks=52`),
+    allowed: async () => await httpAllowed(`/athletes/${bob.userId}/review`),
+  },
   // Curator-only, and Alice is no curator: she is refused before and after.
   'GET /admin/status': { named: false, read: async () => await http('/admin/status') },
   'GET /admin/slow-queries': { named: false, read: async () => await http('/admin/slow-queries') },

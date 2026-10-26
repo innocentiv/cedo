@@ -19,6 +19,10 @@ describe('what a write makes stale', () => {
       'recentExercises',
     ])
     expect(sorted(background)).toEqual([
+      'athleteHistory',
+      'athleteReview',
+      'athleteSession',
+      'athleteSessions',
       'progression',
       'review',
       'session',
@@ -62,7 +66,15 @@ describe('what a write makes stale', () => {
   test('saving or deleting a plan refreshes its progression, and the sessions that point into it', () => {
     const { awaited, background } = affectedBy('workout')
     expect(sorted(awaited)).toEqual(['progression', 'sessionTargets', 'workout', 'workoutList'])
-    expect(sorted(background)).toEqual(['review', 'session', 'sessionList', 'today'])
+    expect(sorted(background)).toEqual([
+      'athleteReview',
+      'athleteSession',
+      'athleteSessions',
+      'review',
+      'session',
+      'sessionList',
+      'today',
+    ])
   })
 
   /**
@@ -72,8 +84,12 @@ describe('what a write makes stale', () => {
    */
   test('joining or leaving a group refreshes everything membership can show or hide', () => {
     const { awaited, background } = affectedBy('group')
-    expect(sorted(awaited)).toEqual(['groupMembers', 'groups'])
+    expect(sorted(awaited)).toEqual(['athletes', 'groupMembers', 'groups'])
     expect(sorted(background)).toEqual([
+      'athleteHistory',
+      'athleteReview',
+      'athleteSession',
+      'athleteSessions',
       'exercise',
       'exerciseHistory',
       'exerciseList',
@@ -87,6 +103,15 @@ describe('what a write makes stale', () => {
       'workout',
       'workoutList',
     ])
+  })
+
+  /**
+   * A coach's own sets are theirs (#30): logging one must not hold the Log button while an athlete's
+   * training is read again — nothing the coach does changes it.
+   */
+  test("a coach's own session leaves their athletes' training alone", () => {
+    const { awaited, background } = affectedBy('session')
+    expect([...awaited, ...background].filter((read) => read.startsWith('athlete'))).toEqual([])
   })
 
   test('a token touches nothing but the token list', () => {

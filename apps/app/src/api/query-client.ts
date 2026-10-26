@@ -66,4 +66,10 @@ export const keys = {
   groups: ['groups'] as const,
   groupMembers: (id: string) => ['groupMembers', id] as const,
   tokens: ['tokens'] as const,
+  athletes: ['athletes'] as const,
+  athleteSessions: (id: string, query: Record<string, unknown>) =>
+    ['athleteSessions', id, query] as const,
+  athleteSession: (id: string, sessionId: string) => ['athleteSession', id, sessionId] as const,
+  athleteHistory: (id: string, exerciseId: string) => ['athleteHistory', id, exerciseId] as const,
+  athleteReview: (id: string, weeks: number) => ['athleteReview', id, weeks] as const,
 } as const satisfies { readonly [R in Read]: KeyOf<R> | ((...args: never[]) => KeyOf<R>) }

@@ -12,9 +12,11 @@
 
 /**
  * What a read is built from, and so what a write changes. A session's logs are part of the
- * session: logging and finishing both write to it.
+ * session: logging and finishing both write to it. `athlete` is someone else's training, read by
+ * their coach (#30): they write it, on their own device, so no write here is ever OF it — it
+ * catches up on the cache's window, and with what it embeds.
  */
-export type Source = 'exercise' | 'workout' | 'session' | 'token' | 'group'
+export type Source = 'exercise' | 'workout' | 'session' | 'token' | 'group' | 'athlete'
 
 export interface ReadSources {
   /** The source the read is OF. A write to it must be read back before the next write. */
@@ -68,6 +70,13 @@ export const READS = {
    * plan — a workout, a day, an entry per set — which a plan save or delete can set to null.
    */
   session: { of: 'session', embeds: ['exercise', 'workout', 'group'] },
+  /** Who shares their training with a group the caller edits: membership, and its switch. */
+  athletes: { of: 'group', embeds: [] },
+  /** An athlete's sessions, named as their coach can see what they followed and logged (#30). */
+  athleteSessions: { of: 'athlete', embeds: ['exercise', 'workout', 'group'] },
+  athleteSession: { of: 'athlete', embeds: ['exercise', 'workout', 'group'] },
+  athleteHistory: { of: 'athlete', embeds: ['exercise', 'group'] },
+  athleteReview: { of: 'athlete', embeds: ['exercise', 'workout', 'group'] },
   tokens: { of: 'token', embeds: [] },
   groups: { of: 'group', embeds: [] },
   /** A group's members, as the caller may see them. */

@@ -210,8 +210,9 @@ reports that it is slow and there is no shell to log into. See `docs/10-testing.
 
 List endpoints take `PaginationQuery` (`cursor`, `limit` ≤ 100). The ownable lists — exercises and
 workouts — also take a `scope`; sessions are personal, so `GET /sessions` filters by `workoutId` and
-`since` instead. A coach reads an athlete's the same way, under `/athletes/:id/…` — GET only, and a
-404 for anyone not sharing their training with a group the caller edits (ADR-0021):
+`since` instead. A coach reads an athlete's the same way, under `/athletes/:id/…` — their sessions, one session,
+an exercise's history and the review — GET only, and a 404 for anyone not sharing their training
+with a group the caller edits (ADR-0021):
 
 | Scope | Means |
 | --- | --- |

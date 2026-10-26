@@ -59,10 +59,21 @@ export const coachingRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching
       detail: { summary: "An athlete's logged sessions for one exercise the caller can see" },
     },
   )
+  .get(
+    '/:id/review',
+    ({ caller, params: { id }, query }) => CoachingService.review(caller, id, query.weeks),
+    {
+      params,
+      query: ReviewQuery,
+      response: TrainingReview,
+      detail: { summary: "An athlete's training, reviewed as their own Progress reviews it (#30)" },
+    },
+  )
 
 /**
  * Your own training, reviewed (#28): the Progress tab's one read — the same review `training_review`
- * gives an AI, as `TrainingReview` says it. An athlete's, read by their coach, is for #30.
+ * gives an AI, as `TrainingReview` says it. An athlete's, read by their coach, is
+ * `/athletes/:id/review` (#30).
  */
 export const reviewRoutes = new Elysia({ prefix: '/review', tags: ['coaching'] })
   .use(authPlugin)
