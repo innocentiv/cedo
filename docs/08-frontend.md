@@ -155,7 +155,8 @@ its targets, reserve, rest and cue. The rest band's clock is `useRestClock`
 (`src/lib/use-now.ts`), a clock of its own that ticks once a second only while it must — so the
 band re-renders, not the day. The tone at the end of a rest is `src/lib/chime.ts`, made by the
 browser, nothing bundled — three beeps, played through iOS's silent switch where Safari lets a page
-say it plays media (`navigator.audioSession`), and a buzz where `navigator.vibrate` exists.
+say its sound is a short alert (`navigator.audioSession`, `transient`: it lowers the athlete's
+music for a moment, where `playback` would stop it), and a buzz where `navigator.vibrate` exists.
 
 Sets logged without a signal (#9) count as done on the workout — the next set comes up, rest
 starts — through `withPending` (`src/api/pending.ts`): app-owned state with no React in it, so

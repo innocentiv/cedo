@@ -87,8 +87,10 @@ function Focus({
   const { tracking } = exercise
   return (
     <FocusLogger
-      // Keyed by the set it logs: the numbers start again from what the NEXT set asks.
-      key={`${entry.id}:${next?.key ?? 'more'}:${sets.all.at(-1)?.id ?? ''}`}
+      // Keyed by the set it logs: the numbers start again from what the NEXT set asks. By how many
+      // sets there are, not the last one's id: a set logged without a signal changes id when the
+      // server has it, and a reserve already chosen for the next set would be lost to it (#37).
+      key={`${entry.id}:${next?.key ?? 'more'}:${String(sets.all.length)}`}
       name={exercise.name}
       cue={entry.cue}
       tracking={tracking}
@@ -106,8 +108,8 @@ function Focus({
       last={asked?.last == null ? null : `Last time ${formatSets(asked.last, tracking, unit)}`}
       busy={sets.record.busy}
       load={load}
-      onLog={(effort, isWarmup, rpe) => {
-        sets.record.log({ exerciseId: entry.exerciseId, entryId: entry.id, effort, isWarmup, rpe })
+      onLog={(set) => {
+        sets.record.log({ exerciseId: entry.exerciseId, entryId: entry.id, ...set })
       }}
       onHowTo={() => {
         onHowTo(exercise, entry.cue)

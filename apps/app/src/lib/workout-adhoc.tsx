@@ -183,7 +183,8 @@ export function AdHocFocus({
   const words = nextSetWords(marks, next, false)
   return (
     <FocusLogger
-      key={`${exercise.id}:${sets.all.at(-1)?.id ?? ''}`}
+      // By how many sets there are, not the last one's id, which changes when a set sent late lands.
+      key={`${exercise.id}:${String(sets.all.length)}`}
       name={exercise.name}
       cue={null}
       tracking={exercise.tracking}
@@ -200,8 +201,8 @@ export function AdHocFocus({
       last={null}
       busy={sets.record.busy}
       load={load}
-      onLog={(effort, isWarmup, rpe) => {
-        sets.record.log({ exerciseId: exercise.id, entryId: null, effort, isWarmup, rpe })
+      onLog={(set) => {
+        sets.record.log({ exerciseId: exercise.id, entryId: null, ...set })
       }}
       onHowTo={
         whole === undefined

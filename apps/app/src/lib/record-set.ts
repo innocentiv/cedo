@@ -1,4 +1,4 @@
-import type { Effort } from '@cedo/contract'
+import type { LoggedHere } from '../ui/index.ts'
 import { newIdempotencyKey } from '../api/retry.ts'
 import { useLogSet } from '../api/session-queries.ts'
 import { primeChime } from './chime.ts'
@@ -20,13 +20,9 @@ export function useRecordSet(sessionId: string) {
   return {
     busy,
     error,
-    log: (set: {
-      readonly exerciseId: string
-      readonly entryId: string | null
-      readonly effort: Effort
-      readonly isWarmup: boolean
-      readonly rpe: number | null
-    }): void => {
+    log: (
+      set: LoggedHere & { readonly exerciseId: string; readonly entryId: string | null },
+    ): void => {
       // The tap that logs a set starts the sound its rest will end with: iOS asks for a tap.
       primeChime()
       // Its key is made here, once: however many times it is sent, it is this one set (#9).

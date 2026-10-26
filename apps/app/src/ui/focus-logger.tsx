@@ -2,10 +2,11 @@ import { useState } from 'react'
 import {
   type Effort,
   type Load,
+  type LogSetInput,
   type MarkedSet,
   type SetTarget,
   type TrackingMode,
-  asksReserve,
+  asksReserveOf,
   fieldsOf,
 } from '@cedo/contract'
 import { Button } from './button.tsx'
@@ -26,6 +27,13 @@ export interface NextSet {
   readonly action: string
 }
 
+/** A set as the logger hands it over: its numbers, whether a warm-up, and its reserve. */
+export interface LoggedHere {
+  readonly effort: Effort
+  readonly isWarmup: boolean
+  readonly rpe: LogSetInput['rpe']
+}
+
 export interface FocusLoggerProps {
   readonly name: string
   readonly cue: string | null
@@ -42,7 +50,7 @@ export interface FocusLoggerProps {
   /** The weights the athlete can load on it, when known: − / + move between them (#36). */
   readonly load: Load | null
   /** The set's numbers, whether a warm-up, and how hard it was — reserve, said before (#37). */
-  readonly onLog: (effort: Effort, isWarmup: boolean, rpe: number | null) => void
+  readonly onLog: (set: LoggedHere) => void
   /** How to do it — absent where there is nothing more to show than its name. */
   readonly onHowTo?: (() => void) | undefined
   readonly testID: string
@@ -52,7 +60,8 @@ export interface FocusLoggerProps {
  * The exercise the session is on (#24): its sets as marks, the next one's numbers — as large as the
  * screen allows, with − / + — and one button to log it, under the thumb. The numbers start from what
  * the next set asks, and start again when the next set changes: the screen keys it by that set.
- * Which inputs appear is the contract's `fieldsOf`; reserve is asked after, not here.
+ * Which inputs appear is the contract's `fieldsOf`; reserve is asked here too, before the set is
+ * logged (#37), of the sets the contract's `asksReserveOf` names.
  */
 export function FocusLogger({
   name,
@@ -77,10 +86,11 @@ export function FocusLogger({
     durationS: next.target.durationS,
     distanceMm: next.target.distanceMm,
   })
-  // Asked before the set is logged, of a working set counted in reps, and never pre-filled — not
-  // even from a plan's RPE: the answer is the athlete's (#37). Empty when the next set comes.
+  // Asked before the set is logged, of a working set counted in reps (the contract's
+  // `asksReserveOf`), and never pre-filled — not even from a plan's RPE: the answer is the
+  // athlete's (#37). Empty for each set because the screen keys this logger by the set it logs.
   const [rpe, setRpe] = useState<number | null>(null)
-  const asked = asksReserve(tracking) && !next.isWarmup
+  const asked = asksReserveOf(next, tracking)
   return (
     <Stack gap="lg" testID={testID}>
       <Stack gap="sm">
@@ -154,7 +164,7 @@ export function FocusLogger({
               size="large"
               busy={busy}
               onPress={() => {
-                onLog(effort, next.isWarmup, asked ? rpe : null)
+                onLog({ effort, isWarmup: next.isWarmup, rpe: asked ? rpe : null })
               }}
               testID={`${testID}-log`}
             />
