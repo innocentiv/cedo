@@ -118,14 +118,16 @@ export function LoggedSets({
 
 /**
  * A finished session's sets by exercise (#25), each exercise once in the order first done: how it
- * is read back. Its personal bests marked green, as they were when logged. Nothing to undo: finishing
- * is final.
+ * is read back. Its personal bests marked green, as they are judged now. Each set opens to be fixed
+ * (#31) where the reader may fix it — their own; a coach's view reads them only.
  */
 export function SetsByExercise({
   logs,
   historyHref,
+  onOpen,
 }: {
   readonly logs: readonly SetLog[]
+  readonly onOpen?: (log: SetLog) => void
   /**
    * Where an exercise's history is, opened from its name — read by a coach (#30), whose session page
    * is the way into an athlete's history. Never for an exercise the reader cannot see: no name.
@@ -163,6 +165,13 @@ export function SetsByExercise({
                     PB
                   </Text>
                 ) : undefined
+              }
+              onPress={
+                onOpen === undefined
+                  ? undefined
+                  : () => {
+                      onOpen(log)
+                    }
               }
               testID={`logged-set-${log.id}`}
             />

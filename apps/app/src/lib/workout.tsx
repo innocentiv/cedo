@@ -1,10 +1,10 @@
 import { type Exercise, restOf } from '@cedo/contract'
-import { Columns, Spinner, Text } from '../ui/index.ts'
-import { LoggedSets, PlanUnavailable, SetsByExercise, UnsentSets } from './session-parts.tsx'
+import { Spinner, Text } from '../ui/index.ts'
+import { FinishedSession } from './finished-session.tsx'
+import { LoggedSets, PlanUnavailable, UnsentSets } from './session-parts.tsx'
 import { AdHocDay } from './workout-adhoc.tsx'
 import { PlannedDay } from './workout-day.tsx'
 import type { Workout } from './workout-state.ts'
-import { FinishedSummary, SessionNotes } from './workout-summary.tsx'
 
 /** The session's body: the day in progress, or what it came to; beside it, every set it holds. */
 export function WorkoutBody({ w }: { readonly w: Workout }): React.JSX.Element | null {
@@ -29,15 +29,7 @@ export function WorkoutBody({ w }: { readonly w: Workout }): React.JSX.Element |
       )}
       {w.plan?.reachable === false && !w.ended ? <PlanUnavailable /> : null}
       {w.ended ? (
-        <Columns
-          main={
-            <>
-              <FinishedSummary session={session.data} />
-              <SessionNotes notes={session.data.notes} onSave={w.saveNotes} />
-            </>
-          }
-          side={<SetsByExercise logs={w.sets.server} />}
-        />
+        <FinishedSession session={session.data} logs={w.sets.server} onSaveNotes={w.saveNotes} />
       ) : day === undefined ? (
         <AdHocDay
           exercises={w.adHocExercises}

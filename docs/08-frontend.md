@@ -276,6 +276,13 @@ As built (#25), on a phone top to bottom, on a desktop in two `Columns`:
 - **A finished session** — its date, time, working sets and bests; its notes written in place, kept
   as the field is left; its sets by exercise, a best marked `PB`. The menu is gone once finished:
   what it held is on the page, or done.
+- **A past mistake fixed** (#31) — a set of a finished session tapped opens a `Sheet`
+  (`fix-set.tsx`): its numbers on the logger's own `Stepper`s, how hard it was, Working set or
+  Warm-up, Save — and Remove set, asked twice. Never its exercise: that set is removed and logged
+  again. Delete session is last, under the sets, asked twice, and goes back to where it was opened
+  from. A set of an exercise out of reach shows no measures, so offers only how hard and which
+  kind. Bests, history and the next targets follow, being judged on read. A coach's view of the
+  same session has none of it (#30).
 
 The app says where its week starts (`startOfWeek`, local Monday); the server cannot know the
 reader's time zone. Weeks and lines are the contract's `week.ts`.
@@ -489,7 +496,9 @@ exercise; a session embeds `workout`, because it points into its plan. A write n
 it changes (`useWriteTo('exercise', …)`), and `affectedBy` derives the rest: the reads OF it are
 awaited — the next write may depend on them — and the reads that embed it refetch in the background.
 A write that makes nothing stale — creating a media link, which is an exercise's only once the
-exercise is saved with it — is a plain `useMutation`.
+exercise is saved with it — is a plain `useMutation`. A write to more than one names them all: a fix
+to a finished session (#31) writes `['session', 'pastSession']`, the second refreshing the targets
+carried over it, which a set logged leaves alone.
 
 It used to be per write: each mutation listed what else it touched, and the lists had gaps nobody
 could see. Renaming an exercise left the open plan, its progression and a live session showing the

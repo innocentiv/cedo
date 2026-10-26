@@ -467,6 +467,13 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await page.click('[data-testid="finish-session-confirm"]')
   await page.waitFor('session-finished')
   await snap('18-session-finished')
+  // A past mistake fixed (#31): a set tapped on the summary opens to be corrected or removed.
+  await page.evaluate(
+    `[...document.querySelectorAll('[data-testid^="logged-set-"]')].filter((e) => e.offsetParent != null)[0].click()`,
+  )
+  await page.waitFor('fix-set')
+  await snap('18b-session-fix-set')
+  await page.click('[data-testid="fix-set-close"]')
 
   // Sam back at it, and their coach reading along (#30).
   await startToday(page, world)

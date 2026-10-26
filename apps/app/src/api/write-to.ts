@@ -50,11 +50,13 @@ export interface WriteOptions<TInput> {
  * its `submit()` resolves when the set is sent, or says why it was refused.
  */
 export function useWriteTo<TInput, TResult>(
-  source: Source,
+  /** Several at once for a write to more than one — a fix to a finished session (#31). */
+  source: Source | readonly Source[],
   run: (input: TInput) => Promise<TResult>,
   { deletes, queued }: WriteOptions<TInput> = {},
 ): UseMutationResult<TResult, Error, TInput> {
   const queryClient = useQueryClient()
+  const sources = typeof source === 'string' ? [source] : source
   /**
    * Every cached read of `reads` — but none keyed by what the write deletes. `[read, id]` is the
    * thing itself: just deleted, or already gone (404), it is not asked for again by the screen
@@ -77,14 +79,14 @@ export function useWriteTo<TInput, TResult>(
     ...queued,
     onSuccess: async (_result, input) => {
       const deleted = deletes?.(input)
-      const { awaited, background } = affectedBy(source)
+      const { awaited, background } = affectedBy(...sources)
       void refresh(background, deleted)
       await refresh(awaited, deleted)
     },
     // Not awaited: the refusal reaches the form at once, and the re-read follows it.
     onError: (error, input) => {
       if (error instanceof ApiError && (error.code === 'not_found' || error.code === 'conflict')) {
-        void refresh(affectedBy(source).awaited, deletes?.(input))
+        void refresh(affectedBy(...sources).awaited, deletes?.(input))
       }
     },
   })

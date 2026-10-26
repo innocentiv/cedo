@@ -2,6 +2,7 @@ import type { Page } from '../harness.ts'
 import { athletes } from './athletes.ts'
 import { auth } from './auth.ts'
 import { desk } from './desk.ts'
+import { fix } from './fix.ts'
 import { groups } from './groups.ts'
 import { install } from './install.ts'
 import { exercise, library } from './library.ts'
@@ -28,6 +29,7 @@ export const screens = (page: Page) => ({
   planEditor: planEditor(page),
   workouts: workouts(page),
   session: session(page),
+  fix: fix(page),
   settings: settings(page),
   groups: groups(page),
   today: today(page),

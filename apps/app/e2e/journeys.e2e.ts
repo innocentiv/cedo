@@ -1339,6 +1339,82 @@ test(
 )
 
 /**
+ * A past mistake fixed (#31): 100 kg typed for 80 on an old session, and a set logged twice. Fixed
+ * on its summary, opened from Today's history — and what is judged from it follows: the next
+ * session's squat, no best beside a mistyped 100, now is one. A session logged by mistake is then
+ * deleted, and gone from the history it was opened from.
+ */
+test(
+  'a past mistake is fixed on its summary: a set corrected, one removed, a session deleted',
+  async () => {
+    await withApp('fix-past-mistake', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('fix'))
+      const mine = await page.client()
+      const [squat] = (await mine.exercises.list({ q: 'Back Squat', limit: 1 })).items
+      if (squat === undefined) throw new Error('The library has no squat')
+      const sessionOf = async (...kgs: number[]): Promise<string> => {
+        const session = await mine.sessions.start({ workoutId: null, dayId: null })
+        for (const kg of kgs) {
+          // oxlint-disable-next-line no-await-in-loop -- in order.
+          await mine.sessions.logSet(session.id, {
+            exerciseId: squat.id,
+            entryId: null,
+            weightG: kgToG(kg),
+            reps: 5,
+            rpe: null,
+            durationS: null,
+            distanceMm: null,
+            isWarmup: false,
+          })
+        }
+        await mine.sessions.update(session.id, { endedAt: new Date().toISOString() })
+        return session.id
+      }
+      const mistyped = await sessionOf(100, 80)
+      await sessionOf(85)
+
+      // Logged from the test process, which this app's cache cannot know of: opened afresh.
+      await page.goto('/today')
+      expect(await app.today.history()).toHaveLength(2)
+      expect((await app.today.rows())[0]).not.toContain('PB')
+
+      await app.today.open(1)
+      const [typo, twice] = await app.session.loggedIds()
+      if (typo === undefined || twice === undefined) throw new Error('The summary shows no sets')
+      await app.fix.open(typo)
+      expect(await app.fix.title()).toBe(`${squat.name} · Set 1`)
+      await app.fix.fill('weight', '80')
+      await app.fix.save()
+      await app.fix.open(twice)
+      await app.fix.remove()
+      await page.until(
+        async () => await app.session.loggedLines(),
+        (lines) => lines.join(' | ') === 'Set 1 | 5 × 80 kg',
+      )
+      expect((await mine.sessions.get(mistyped)).logs.map((l) => l.weightG)).toEqual([kgToG(80)])
+
+      // Judged on read: with 100 gone, the 85 after it is the best it always was.
+      await app.nav.tab('today')
+      const rows = await page.until(
+        async () => await app.today.rows(),
+        (shown) => shown[0]?.endsWith('| PB') === true,
+      )
+      expect(rows[1]).toContain('1 set')
+
+      await app.today.open(0)
+      await app.fix.deleteSession()
+      await app.nav.onToday()
+      await page.until(
+        async () => await app.today.history(),
+        (shown) => shown.length === 1,
+      )
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * An unavailable exercise: the plan is still yours, one of its exercises no longer is. Its logger
  * offered weight-and-reps fields — to a plank — and a Log button the server refused; its editor
  * offered the same fields, and a Save the server refused. See GLOSSARY.md, "Unavailable exercise".

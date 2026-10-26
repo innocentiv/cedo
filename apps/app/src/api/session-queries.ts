@@ -1,11 +1,11 @@
 import { useMutationState } from '@tanstack/react-query'
-import type { LogSetInput, SessionUpdate, SetLog } from '@cedo/contract'
+import type { LogSetInput, SessionUpdate, SetLog, SetLogUpdate } from '@cedo/contract'
 import { api } from './http.ts'
 import { sendAgain } from './retry.ts'
 import { sessionQueue, useWriteTo } from './write-to.ts'
 
 /**
- * A session's writes — finishing, logging a set, its reserve, an undo — and the queue its sets wait
+ * A session's writes — finishing, logging a set, its reserve, an undo, a past mistake fixed — and the queue its sets wait
  * in without a signal (#9). Apart from queries.ts, which holds every other read and write, because
  * these share one queue and one session.
  */
@@ -71,3 +71,24 @@ export const useAmendLog = (sessionId: string) =>
     async (input: { logId: string; rpe: number | null }) =>
       await api.sessions.amendLog(sessionId, input.logId, { rpe: input.rpe }),
   )
+
+/**
+ * A finished session's past mistakes fixed (#31): to the session, and to `pastSession` — the
+ * sessions the next one's targets are carried over. Never queued: a fix is made with a signal, at
+ * leisure, and said at once when refused.
+ */
+const FIX = ['session', 'pastSession'] as const
+
+export const useCorrectSet = (sessionId: string) =>
+  useWriteTo(
+    FIX,
+    async ({ logId, patch }: { logId: string; patch: SetLogUpdate }) =>
+      await api.sessions.amendLog(sessionId, logId, patch),
+  )
+
+export const useRemoveSet = (sessionId: string) =>
+  useWriteTo(FIX, async (logId: string) => await api.sessions.removeLog(sessionId, logId))
+
+/** The whole session: its own reads are not asked again, being gone (`deletes`). */
+export const useDeleteSession = (sessionId: string) =>
+  useWriteTo(FIX, async () => await api.sessions.remove(sessionId), { deletes: () => sessionId })
