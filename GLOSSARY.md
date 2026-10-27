@@ -67,7 +67,7 @@ _Avoid_: client, trainee
 
 **Coach**:
 An editor of a group whose members share their training with it. Not a role of its own: a coach
-reads an athlete's training and changes none of it.
+reads an athlete's training and changes none of it, and may write athlete notes about them.
 _Avoid_: trainer, admin
 
 **Access token**:
@@ -284,6 +284,18 @@ One set as it was done: the exercise, its effort, and — when the session follo
 entry it answers. It belongs to the session, and keeps its effort even when its exercise or plan is
 later out of reach.
 _Avoid_: entry (that is the plan's), result
+
+**Athlete note**:
+A standing fact about a person, written down to be remembered when their training is planned: an
+injury, a preference, what they said of a plan, a week away. Not of one session, nor of one plan.
+Read by the person and by everyone who reads their training; written by the person or a coach of
+theirs. Whoever wrote one may change or remove it, and the person may remove any about them.
+_Avoid_: comment, feedback, memo
+
+**Weigh-in**:
+A person's bodyweight on one day; another that day replaces it. The latest is their bodyweight, and
+the ones before it are its trend. Read and written as athlete notes are.
+_Avoid_: measurement (that is what a set records), body stat
 
 **Series**:
 The sets of one plan entry within a session — or, for sets logged with no plan entry, of one
