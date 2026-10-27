@@ -38,8 +38,8 @@ export const workoutSessions = pgTable(
     /**
      * The rest running after the set logged last (#38): from when, to when — the contract's
      * `restOf`, worked out as each set is logged, then +30 s or skipped as the athlete says. Kept
-     * here, not counted on the phone, so a reload or another device counts the same rest — and a
-     * native app can schedule its notification for the end (#39). Both null when no rest runs.
+     * here, not counted on the phone, so a reload or another device counts the same rest. Both null
+     * when no rest runs.
      */
     restSince: timestamp('rest_since', { withTimezone: true }),
     restEndsAt: timestamp('rest_ends_at', { withTimezone: true }),

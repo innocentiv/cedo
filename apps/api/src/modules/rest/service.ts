@@ -9,7 +9,8 @@ import { restNow } from './day.ts'
 /**
  * The rest a session has running, as the server keeps it (#38): worked out as each set is logged by
  * the contract's `restOf` — the app's own rule, so the phone and the server agree — then +30 s or
- * skipped as the athlete says. What the countdown counts to, on every device. Skipped, it ends when it began: kept, so a reload or another device reads it skipped.
+ * skipped as the athlete says. What the countdown counts to, on every device. Skipped, it ends
+ * when it began: kept, so a reload or another device reads it skipped.
  * See docs/adr/0025-rest-kept-by-the-server.md.
  */
 

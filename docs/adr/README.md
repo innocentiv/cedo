@@ -23,7 +23,7 @@ that says so and links back.
 | [0022](0022-plans-edited-in-place.md) | A workout's plan is edited in place, saved as each change is made | Accepted |
 | [0023](0023-equipment-is-a-fixed-list.md) | Equipment is a fixed list of capabilities, and an exercise needs all of its items | Accepted |
 | [0024](0024-targets-follow-the-athletes-equipment.md) | A plan keeps its weights; each athlete's target is the one their equipment can load | Accepted |
-| [0025](0025-rest-kept-by-the-server.md) | The rest is kept by the server | Accepted, amended |
+| [0025](0025-rest-kept-by-the-server.md) | The rest is kept by the server, and its end is pushed | Accepted, amended: not pushed |
 
 The numbering has gaps: decisions that were planned an ADR (such as 0005, the three-container
 deployment shape) are recorded in the relevant doc instead — `docs/01-architecture.md` for that

@@ -1,6 +1,7 @@
-# 0025 — The rest is kept by the server
+# 0025 — The rest is kept by the server, and its end is pushed
 
-**Status:** Accepted (2026-10-26), amended (2026-10-27: its end is no longer pushed — see below)
+**Status:** Accepted (2026-10-26), amended (2026-10-27: the end is no longer pushed — see the
+end)
 
 ## Context
 
@@ -15,40 +16,48 @@ installed web app, through Apple's push service.
 
 ## Decision
 
-**The server keeps when a rest ends.**
+**The server keeps when a rest ends, and sends a push when it does.**
 
-- `workout_sessions` keeps `rest_since` and `rest_ends_at`. Logging a set works them out with
-  `restOf` — the app's own rule, so the phone and the server agree; +30 s and skip are writes
-  (`POST /sessions/:id/rest`), naming the rest they mean by how many sets the session had when
-  tapped, so one sent late, after the next set, changes nothing. A skipped rest ends when it began.
-  Undo works it out again; finishing and deleting end it.
+- `workout_sessions` keeps `rest_since`, `rest_ends_at` and `rest_alerted_at`. Logging a set works
+  them out with `restOf` — the app's own rule, so the phone and the alert agree; +30 s and skip are
+  writes (`POST /sessions/:id/rest`), naming the rest they mean by its `since`, so one sent late,
+  after the next set, changes nothing. Undo, finishing and deleting end it.
 - The phone still counts its own rest — offline, from sets waiting for a signal too — and takes the
   server's end when it is the same rest and later (`restCounted`): a tap made elsewhere, or before
   a reload. Never the two added.
+- Web Push, with a key pair the server makes on first start and keeps in the database
+  (`instance_secrets`), or one an environment variable supplies: nothing for someone self-hosting
+  to set up. Every device the athlete allowed it on is told.
 
 ## Rejected
 
 - **A timer in the service worker.** iOS stops it in the background; it would sound only when it
   did not need to.
+- **The phone scheduling a local notification.** The web has no such API that iOS honours.
 - **The server as a second, separate count.** Two clocks disagree; one rule (`restOf`) on both sides,
   and the server's kept end read back, makes them one.
 
 ## Consequences
 
-- Logging a set does a little more: the rest is worked out and written.
-- A native app (#10) schedules its notification, and a Live Activity's countdown, for the same
-  `rest_ends_at` (#39).
+- Logging a set does a little more: the rest is worked out and written. Alerts need the API to run
+  a sender, once a second, over an index of the rests still to tell.
+- A future iOS app counts down to the same `rest_ends_at`, in a Live Activity updated by APNs: the
+  model stays, only the delivery changes.
 
 ## Amended (2026-10-27): the end is not pushed
 
-As accepted, the server also pushed the rest's end, by Web Push, to every device the athlete
-allowed: a key pair it made for itself (`instance_secrets`), a subscription per device
-(`push_subscriptions`), and a sender claiming ended rests once a second (`rest_alerted_at`). On a
-real iPhone, installed to the home screen with notifications allowed, nothing arrived — and Web Push
-gives no way to see why. A native app makes the whole of it unnecessary: the phone schedules a local
-notification for `rest_ends_at` itself, with no server, no keys and no signal needed.
+On a real iPhone, installed to the home screen with notifications allowed, no push arrived — and
+Web Push gives no way to see why. So the push half of this decision is withdrawn, and being told
+waits for the native app (#10, then #39). There, what this ADR rejected for the web is the answer:
+the phone schedules a local notification for `rest_ends_at` itself, with no server, no keys and no
+signal needed, and a Live Activity counts down to the same time.
 
-So the push was removed (migration `0014_no_web_push`), and being told is #39, after the native app.
-The rest the server keeps stayed: +30 s and skip still reach every device and survive a reload, and
-it is what the native app schedules from. The removed code is 7c5a8f1..34511e3, the starting point
-should the server ever need to tell other devices too (APNs).
+What was removed (migration `0014_no_web_push`): `rest_alerted_at` and the index over it, the
+sender, `push_subscriptions`, `instance_secrets` and its key pair, the `VAPID_*` variables, the
+`/push` routes, the service worker's push handlers, and the opt-in on the rest band and in
+Settings. It was built in 7c5a8f1..34511e3 and removed in the commit that adds this section — the
+starting point should the server ever need to tell other devices too, by APNs.
+
+What stays is the rest the server keeps: +30 s and skip still reach every device and survive a
+reload, named by the set count rather than by `since` (a tap made offline is dated by the phone
+until its set is sent). A skipped rest ends when it began.

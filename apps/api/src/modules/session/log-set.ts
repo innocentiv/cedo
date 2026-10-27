@@ -47,8 +47,8 @@ export async function logSet(
       .catch(rethrowMissingEntry)
     return row ?? null
   })
-  // The rest it starts, kept so its end can be told with the app closed (#38) — on a set sent again
-  // too: had working it out failed the first time, the retry is what keeps it.
+  // The rest it starts, kept so every device counts the same one (#38) — on a set sent again too:
+  // had working it out failed the first time, the retry is what keeps it.
   await startRest(caller, sessionId)
   // Answered as read, so it says what a read says of it — whether it was a personal best.
   if (created !== null) return await storedById(caller, sessionId, created.id)
