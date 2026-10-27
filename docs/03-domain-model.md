@@ -273,6 +273,20 @@ increase under one step still moves. The grid is counted in the unit the athlete
 grams are not whole pounds. `EntryTarget.limit` says where it stopped. See
 [adr/0024](adr/0024-targets-follow-the-athletes-equipment.md).
 
+### Athlete notes
+
+```
+athlete_notes(id, athlete_id, author_id?, text, written_at, edited_at?)
+```
+
+What is known about a person, written down for planning their training (#41) — an injury, a
+preference, what they said of a plan. PERSONAL, as sessions are: about one person, never ownable,
+read through `Training` (`ownOrCoached`) by them and by whoever coaches them now. Written by
+either: the one thing a coach writes of an athlete's. Only the author changes a note's words; the
+author or the athlete removes it. A coach's notes stay when they stop coaching; `author_id` goes
+null only with the author's account. At most 100 a person (`NOTES_PER_ATHLETE`), so a list is
+never paged; a note written locks the person's row first, so two at once cannot both pass the count.
+
 ### A rest
 
 ```
@@ -368,6 +382,7 @@ against a realistic data volume — see [adr/0018](adr/0018-n1-detection.md).
 | `set_logs_idempotency_idx` (unique, on `(session_id, idempotency_key)`) | one set per key in a session: the backstop to the check `logSet` makes under the session's lock |
 | `workout_sessions_user_time_idx` on `(user_id, started_at desc nulls first, id desc nulls first)` | the session list, newest first — `id` included because the keyset cursor is a row comparison; `nulls first` because that is what `ORDER BY … DESC` means, and a mismatch turns the walk into a sort |
 | `workout_sessions_workout_idx` | sessions belonging to a workout |
+| `athlete_notes_athlete_time_idx` on `(athlete_id, written_at desc nulls first, id desc nulls first)` | a person's notes, newest first, in one walk — `nulls first` for the same reason as the session list's |
 | `workout_sessions_in_progress_idx` (unique, partial: `ended_at is null`) on `user_id` | one session in progress per person, and finding it |
 | `sessions_user_idx`, `pats_user_idx` | listing or revoking a user's credentials |
 

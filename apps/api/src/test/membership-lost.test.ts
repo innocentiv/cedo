@@ -153,6 +153,8 @@ async function buildWorld(): Promise<World> {
     weightG: 60_000,
     reps: 5,
   })
+  // And says what his coach should remember (#41).
+  await post(bob, '/notes', { text: `${SENTINEL} left knee is sore on lunges` })
 
   return {
     crewId,
@@ -362,6 +364,14 @@ const ROUTES: Record<string, Case> = {
     read: async () => await http(`/athletes/${bob.userId}/equipment`),
     allowed: async () => await httpAllowed(`/athletes/${bob.userId}/equipment`),
   },
+  'GET /athletes/:id/notes': {
+    // What Bob said of himself, his coach's to read only while she coaches him (#41).
+    named: true,
+    read: async () => await http(`/athletes/${bob.userId}/notes`),
+    allowed: async () => await httpAllowed(`/athletes/${bob.userId}/notes`),
+  },
+  // Her own notes: what she said of herself.
+  'GET /notes': { named: false, read: async () => await http('/notes') },
   // Her own equipment: the list's items, which belong to nobody's group.
   'GET /equipment/': { named: false, read: async () => await http('/equipment') },
   // Curator-only, and Alice is no curator: she is refused before and after.

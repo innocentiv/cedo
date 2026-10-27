@@ -20,7 +20,8 @@ const params = z.object({ id: Id })
 
 /**
  * What a coach reads of the athletes who share their training with them (#11). GET only: a coach
- * changes nothing of an athlete's. Anyone not sharing with the caller is a 404 on every route.
+ * changes nothing of an athlete's training — their notes, which a coach writes too, are
+ * `modules/note` (#41). Anyone not sharing with the caller is a 404 on every route.
  * See docs/adr/0021-coaching-through-groups.md.
  */
 export const coachingRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching'] })

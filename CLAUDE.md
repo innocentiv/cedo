@@ -79,7 +79,9 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
 - **A race through the in-process harness may never race.** Six `start`s sent through `wire` never
   overlapped, so a test of the one-session-in-progress index passed with the index dropped; thirty
   calls to the service at once made 26 sessions. Drive the service directly, and drop the guard to
-  see it fail.
+  see it fail. **And warm the pool first**: a test run alone opens its connections one by one,
+  which lines the calls up — the note cap's race caught its missing lock 0 times in 8 alone, and
+  every time after it, or after thirty `select 1` at once.
 - **Run `/code-review` at each milestone boundary, before building on top.** Two reviews in this
   session found 30 real defects between them, including an ACL invariant violation and a design flaw
   that would have broken every image in the UI.

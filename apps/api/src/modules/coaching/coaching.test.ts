@@ -196,8 +196,14 @@ describe('nobody else reads it', () => {
   })
 })
 
-test('every /athletes route reads: a coach changes nothing of an athlete’s', () => {
+/** Their notes are the one thing a coach writes (#41) — ADR 0021's amendment; nothing else. */
+test('every /athletes route reads but their notes: a coach changes none of an athlete’s training', () => {
   const routes = createApp().routes.filter((r) => r.path.startsWith('/athletes'))
   expect(routes.length).toBeGreaterThan(0)
-  expect(routes.filter((r) => r.method !== 'GET').map((r) => `${r.method} ${r.path}`)).toEqual([])
+  const writes = routes.filter((r) => r.method !== 'GET').map((r) => `${r.method} ${r.path}`)
+  expect(writes).toEqual([
+    'POST /athletes/:id/notes',
+    'PATCH /athletes/:id/notes/:noteId',
+    'DELETE /athletes/:id/notes/:noteId',
+  ])
 })

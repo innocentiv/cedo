@@ -14,6 +14,7 @@ import { equipmentRoutes } from './modules/equipment/index.ts'
 import { exerciseRoutes } from './modules/exercise/index.ts'
 import { groupRoutes } from './modules/group/index.ts'
 import { mediaBlobRoutes, mediaRoutes } from './modules/media/index.ts'
+import { noteRoutes } from './modules/note/index.ts'
 import { exerciseHistoryRoutes, sessionRoutes, todayRoutes } from './modules/session/index.ts'
 import { restRoutes } from './modules/rest/index.ts'
 import { workoutRoutes } from './modules/workout/index.ts'
@@ -57,6 +58,7 @@ export function createApp() {
     .use(groupRoutes)
     .use(mediaBlobRoutes)
     .use(mediaRoutes)
+    .use(noteRoutes)
     .use(sessionRoutes)
     .use(restRoutes)
     .use(todayRoutes)

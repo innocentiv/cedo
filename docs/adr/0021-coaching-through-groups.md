@@ -1,6 +1,6 @@
 # 0021 — Coaching through groups: editors read the training members share
 
-**Status:** Accepted (2026-10-24)
+**Status:** Accepted (2026-10-24), amended (2026-10-28: a coach writes athlete notes — see the end)
 
 ## Context
 
@@ -72,3 +72,25 @@ role already means "runs this group".
 - In the app, the athlete's side came first — the switch on a group, and who reads your training.
   The coach's side is the Athletes tab (#30), shown only to someone with an athlete to read: each
   athlete's Progress and history, read-only, with nothing on it to press that would change them.
+
+## Amended (2026-10-28): a coach writes athlete notes
+
+What an athlete says of their training was lost by the next plan — "my left shoulder hurts on
+overhead work", "the last block was too much volume" — and a coach planning for them, or the AI
+acting for one, had nowhere to keep it (#41). So a coach now writes one thing of an athlete's: an
+**athlete note** (GLOSSARY.md), a standing fact about the person kept for planning their training.
+It is still true that **a coach changes none of their training**: no session, set, plan or
+equipment of theirs.
+
+- The notes are the athlete's, read by them and by everyone who reads their training now — coaches
+  read each other's — and written by any of them, under `/notes` and `/athletes/:id/notes`, and
+  through `note_*` MCP tools with the same optional `athlete`. One rule decides who may (`ownOrCoached`),
+  as for every read here.
+- Only the author changes a note's words; the author or the athlete removes it — so an athlete
+  can take back what is written about them without putting words in a coach's mouth.
+- A coach's notes stay with the athlete when the coach stops coaching: what was learnt about the
+  person is theirs. The coach reads none of it once they cannot read the training.
+
+This is not the comment thread rejected above. A note answers nothing and nobody is told of one: it
+is read when a plan is made, not as a conversation. Replies, notifications and a resolved state were
+each asked and left out.
