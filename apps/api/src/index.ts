@@ -2,7 +2,6 @@ import { createApp } from './app.ts'
 import { closeDatabase } from './db/client.ts'
 import { runMigrations } from './db/migrate.ts'
 import { runSeed } from './db/seed.ts'
-import { startRestAlerts } from './modules/push/alerts.ts'
 import { env } from './env.ts'
 import { MAX_UPLOAD_BYTES } from '@cedo/contract'
 
@@ -46,13 +45,9 @@ const app = createApp().listen({
 
 console.log(`cedo api listening on :${env.PORT} (${env.NODE_ENV})`)
 
-/** Rest alerts (#38): the ended rests pushed, once a second, for the life of the process. */
-const stopRestAlerts = startRestAlerts()
-
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {
     void (async () => {
-      await stopRestAlerts()
       await app.stop()
       await closeDatabase()
       process.exit(0)

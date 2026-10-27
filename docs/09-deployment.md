@@ -155,8 +155,6 @@ readable message rather than throwing something obscure on the first request.
 | `WEB_PORT` | Host port. Default 8080. |
 | `POSTGRES_PORT`, `POSTGRES_BIND` | Where Postgres is published on the host: `127.0.0.1:55432` by default, so only the machine itself can reach it. The containers never use this mapping. Set `POSTGRES_BIND=0.0.0.0` only to reach the database from another machine, deliberately. |
 | `CEDO_CURATOR_USERNAME` | Promoted to curator of the shared library on every seed run. Register the account first, then restart. Leave unset for a personal instance. |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Optional: the key pair rest alerts are pushed with (#38). Left out, the API makes one on first start and keeps it in the database (`instance_secrets`); set both to keep alerts working on a database restored elsewhere. |
-| `VAPID_SUBJECT` | Optional: who a push service may contact about this instance, `mailto:` or `https:`. Defaults to `mailto:cedo@localhost`; if Apple refuses the pushes, set it to a real address. |
 
 `DATABASE_URL` is **composed inside `docker-compose.yml`**, not read from `.env`. The host inside the
 network is always the service name, and a `DATABASE_URL` left pointing at `localhost` — the value a

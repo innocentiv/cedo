@@ -38,12 +38,11 @@ export const workoutSessions = pgTable(
     /**
      * The rest running after the set logged last (#38): from when, to when — the contract's
      * `restOf`, worked out as each set is logged, then +30 s or skipped as the athlete says. Kept
-     * here, not counted on the phone, so an alert can be sent when it ends with the app closed.
-     * `rest_alerted_at` is when it was, so it is sent once. All three null when no rest runs.
+     * here, not counted on the phone, so a reload or another device counts the same rest — and a
+     * native app can schedule its notification for the end (#39). Both null when no rest runs.
      */
     restSince: timestamp('rest_since', { withTimezone: true }),
     restEndsAt: timestamp('rest_ends_at', { withTimezone: true }),
-    restAlertedAt: timestamp('rest_alerted_at', { withTimezone: true }),
   },
   (t) => [
     /**
@@ -74,13 +73,6 @@ export const workoutSessions = pgTable(
     uniqueIndex('workout_sessions_in_progress_idx')
       .on(t.userId)
       .where(sql`${t.endedAt} is null`),
-    /**
-     * The rests whose alert is due (#38), read every second by the sender: only those still to be
-     * sent, so the index stays as small as the rests running right now.
-     */
-    index('workout_sessions_rest_due_idx')
-      .on(t.restEndsAt)
-      .where(sql`${t.restEndsAt} is not null and ${t.restAlertedAt} is null`),
   ],
 )
 

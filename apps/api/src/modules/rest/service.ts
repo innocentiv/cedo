@@ -8,16 +8,15 @@ import { restNow } from './day.ts'
 
 /**
  * The rest a session has running, as the server keeps it (#38): worked out as each set is logged by
- * the contract's `restOf` — the app's own rule, so the phone and the alert agree — then +30 s or
- * skipped as the athlete says. What the alert is sent at (`push/alerts.ts`), and what the countdown
- * counts to. Skipped, it ends when it began: kept, so a reload or another device reads it skipped.
+ * the contract's `restOf` — the app's own rule, so the phone and the server agree — then +30 s or
+ * skipped as the athlete says. What the countdown counts to, on every device. Skipped, it ends when it began: kept, so a reload or another device reads it skipped.
  * See docs/adr/0025-rest-kept-by-the-server.md.
  */
 
 /**
  * The rest running now, worked out again: after a set is logged — or sent again, or one undone. The
- * same rest as before — a set sent twice, an older one undone — keeps its +30 s, its skip, and
- * whether it was told; a new one starts untold. None runs in a finished session.
+ * same rest as before — a set sent twice, an older one undone — keeps its +30 s and its skip; a new
+ * one starts as long as its set says. None runs in a finished session.
  */
 export async function startRest(caller: Caller, sessionId: string): Promise<void> {
   const rest = await restNow(caller, sessionId)
@@ -37,7 +36,6 @@ export async function startRest(caller: Caller, sessionId: string): Promise<void
     .set({
       restSince: sql`${since}`,
       restEndsAt: sql`case when ${same} then ${workoutSessions.restEndsAt} else ${ends}::timestamptz end`,
-      restAlertedAt: sql`case when ${same} then ${workoutSessions.restAlertedAt} end`,
     })
     .where(and(ownedBy(caller), eq(workoutSessions.id, sessionId)))
 }
@@ -47,7 +45,7 @@ export async function startRest(caller: Caller, sessionId: string): Promise<void
  * by how many sets there were when it was tapped, not by a time: a set logged without a signal is
  * dated by the phone until the server has it, and by the server after. Sent in the session's queue
  * behind the sets, a change finds its rest still running — or, the next set logged since, changes
- * nothing. Moved, an alert already sent is due again; skipped, none is.
+ * nothing.
  */
 export async function changeRest(
   caller: Caller,
@@ -59,10 +57,9 @@ export async function changeRest(
     .update(workoutSessions)
     .set(
       change === 'skip'
-        ? { restEndsAt: sql`${workoutSessions.restSince}`, restAlertedAt: sql`now()` }
+        ? { restEndsAt: sql`${workoutSessions.restSince}` }
         : {
             restEndsAt: sql`${workoutSessions.restEndsAt} + make_interval(secs => ${REST_EXTENSION_S})`,
-            restAlertedAt: null,
           },
     )
     .where(

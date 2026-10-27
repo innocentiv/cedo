@@ -16,7 +16,6 @@ import { groupRoutes } from './modules/group/index.ts'
 import { mediaBlobRoutes, mediaRoutes } from './modules/media/index.ts'
 import { exerciseHistoryRoutes, sessionRoutes, todayRoutes } from './modules/session/index.ts'
 import { restRoutes } from './modules/rest/index.ts'
-import { pushRoutes } from './modules/push/index.ts'
 import { workoutRoutes } from './modules/workout/index.ts'
 import { tokenRoutes } from './modules/token/index.ts'
 
@@ -60,7 +59,6 @@ export function createApp() {
     .use(mediaRoutes)
     .use(sessionRoutes)
     .use(restRoutes)
-    .use(pushRoutes)
     .use(todayRoutes)
     .use(workoutRoutes)
     .use(tokenRoutes)

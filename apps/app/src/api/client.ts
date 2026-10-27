@@ -31,9 +31,6 @@ import {
   Today,
   type TodayQuery,
   type ReviewQuery,
-  PushKey,
-  type PushSubscriptionInput,
-  type PushUnsubscribe,
   type RestChange,
   TrainingReview,
   type SessionStart,
@@ -208,14 +205,6 @@ const athletes = ({ GET }: Verbs) => ({
   equipment: async (id: string) => await GET(`/athletes/${id}/equipment`, AthleteEquipment),
 })
 
-/** The devices told when a rest is over (#38). */
-const push = ({ GET, POST, DELETE }: Verbs) => ({
-  key: async () => await GET('/push/key', PushKey),
-  subscribe: async (body: PushSubscriptionInput) => await POST('/push/subscriptions', Ok, body),
-  unsubscribe: async ({ endpoint }: PushUnsubscribe) =>
-    await DELETE(`/push/subscriptions?endpoint=${encodeURIComponent(endpoint)}`, Ok),
-})
-
 /** What you have to train with (#34), replaced whole. */
 const equipment = ({ GET, PUT }: Verbs) => ({
   get: async () => await GET('/equipment', AthleteEquipment),
@@ -259,7 +248,6 @@ export function createApi(request: SendRequest) {
     review: review(v),
     athletes: athletes(v),
     equipment: equipment(v),
-    push: push(v),
     groups: groups(v),
     media: media(v),
     tokens: tokens(v),

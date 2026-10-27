@@ -26,7 +26,7 @@ export function useRestClock(
    * has from the phone first, and from the server once sent (#38).
    */
   sets: number,
-  /** Each tap told to the server, which sends the alert when the rest is over (#38). */
+  /** Each tap told to the server, so every device counts the same rest (#38). */
   tell: (change: RestChange) => void,
 ) {
   const after = rest === null ? null : String(sets)

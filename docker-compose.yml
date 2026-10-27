@@ -57,10 +57,6 @@ services:
       NODE_ENV: production
       UPLOAD_DIR: /data/uploads
       CEDO_CURATOR_USERNAME: ${CEDO_CURATOR_USERNAME:-}
-      # Rest alerts (#38): optional — left out, the server makes its own push key pair.
-      VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY:-}
-      VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY:-}
-      VAPID_SUBJECT: ${VAPID_SUBJECT:-}
     volumes:
       - uploads:/data/uploads
     depends_on:

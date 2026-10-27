@@ -23,17 +23,6 @@ export interface Caller extends AccessContext {
   readonly personalGroupId: string
 }
 
-/** What a caller is read from: who they are, and a row per group they belong to. */
-const CALLER_ROW = {
-  userId: users.id,
-  username: users.username,
-  displayName: users.displayName,
-  weightUnit: users.weightUnit,
-  personalGroupId: users.personalGroupId,
-  groupId: groupMembers.groupId,
-  role: groupMembers.role,
-} as const
-
 export async function resolveCaller(
   authorization: string | undefined | null,
 ): Promise<Caller | null> {
@@ -41,7 +30,15 @@ export async function resolveCaller(
   if (token === null) return null
 
   const rows = await db
-    .select(CALLER_ROW)
+    .select({
+      userId: users.id,
+      username: users.username,
+      displayName: users.displayName,
+      weightUnit: users.weightUnit,
+      personalGroupId: users.personalGroupId,
+      groupId: groupMembers.groupId,
+      role: groupMembers.role,
+    })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
     .leftJoin(groupMembers, eq(groupMembers.userId, users.id))
@@ -51,20 +48,6 @@ export async function resolveCaller(
   if (first === undefined) return null
 
   return foldCaller(first, rows)
-}
-
-/**
- * A person as the server acts for them with no request of theirs — telling them a rest is over
- * (#38) — with exactly the groups their own requests have. Null for someone who no longer exists.
- */
-export async function callerOfUser(userId: string): Promise<Caller | null> {
-  const rows = await db
-    .select(CALLER_ROW)
-    .from(users)
-    .leftJoin(groupMembers, eq(groupMembers.userId, users.id))
-    .where(eq(users.id, userId))
-  const first = rows[0]
-  return first === undefined ? null : foldCaller(first, rows)
 }
 
 /** One row per membership arrives from the join; this is the shape the ACL consumes. */

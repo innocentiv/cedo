@@ -23,7 +23,6 @@ export function RestBand({
   kept,
   sets,
   onChange,
-  whileRunning,
   testID,
 }: {
   readonly rest: Rest | null
@@ -33,46 +32,41 @@ export function RestBand({
   readonly sets: number
   /** +30 s and skip, told to the server too (#38). */
   readonly onChange: (change: RestChange) => void
-  /** Shown under the band while the rest runs, and only then. */
-  readonly whileRunning?: React.ReactNode
   readonly testID: string
 }): React.JSX.Element | null {
   const { left, running, extend, skip } = useRestClock(rest, kept, sets, onChange)
   if (left === null) return null
   const tone = running ? 'default' : 'onAccent'
   return (
-    <Stack gap="sm">
-      <View style={[styles.band, running ? styles.resting : styles.ready]} testID={testID}>
-        <Stack direction="row" align="center" gap="md">
-          <Stack direction="row" align="baseline" gap="sm" grow>
-            <Text variant="label" tone={tone}>
-              {running ? 'Rest' : 'Rest over'}
-            </Text>
-            <Text variant="number" tone={tone} testID={`${testID}-left`}>
-              {running ? formatDuration(left) : 'Next set'}
-            </Text>
-          </Stack>
-          {running ? (
-            <Button
-              title={`+${REST_EXTENSION_S} s`}
-              variant="secondary"
-              size="small"
-              onPress={extend}
-              testID={`${testID}-more`}
-            />
-          ) : null}
-          <IconButton
-            name="close"
-            label={running ? 'Skip the rest' : 'Dismiss'}
-            edge="end"
-            tone={tone}
-            onPress={skip}
-            testID={`${testID}-skip`}
-          />
+    <View style={[styles.band, running ? styles.resting : styles.ready]} testID={testID}>
+      <Stack direction="row" align="center" gap="md">
+        <Stack direction="row" align="baseline" gap="sm" grow>
+          <Text variant="label" tone={tone}>
+            {running ? 'Rest' : 'Rest over'}
+          </Text>
+          <Text variant="number" tone={tone} testID={`${testID}-left`}>
+            {running ? formatDuration(left) : 'Next set'}
+          </Text>
         </Stack>
-      </View>
-      {running ? whileRunning : null}
-    </Stack>
+        {running ? (
+          <Button
+            title={`+${REST_EXTENSION_S} s`}
+            variant="secondary"
+            size="small"
+            onPress={extend}
+            testID={`${testID}-more`}
+          />
+        ) : null}
+        <IconButton
+          name="close"
+          label={running ? 'Skip the rest' : 'Dismiss'}
+          edge="end"
+          tone={tone}
+          onPress={skip}
+          testID={`${testID}-skip`}
+        />
+      </Stack>
+    </View>
   )
 }
 

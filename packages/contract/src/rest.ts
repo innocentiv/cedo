@@ -63,8 +63,8 @@ export function restRemaining(rest: Rest, extensions: number, now: number): numb
 
 /**
  * The rest a session has running, as the server keeps it (#38): from the set it follows, to when it
- * ends — +30 s included. Skipped, it ends when it began. What the alert is sent at, and what the
- * countdown counts to.
+ * ends — +30 s included. Skipped, it ends when it began. What the countdown counts to, on every
+ * device — and what a native app will schedule its notification for (#39).
  */
 export const SessionRest = z.object({ since: Timestamp, endsAt: Timestamp })
 export type SessionRest = z.output<typeof SessionRest>

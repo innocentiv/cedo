@@ -1,4 +1,3 @@
-import { alertOf } from './rest-alert.ts'
 import { SHELL_CACHE, type Shell, precache, respond, routeOf } from './shell-cache.ts'
 
 /**
@@ -15,36 +14,13 @@ interface FetchEvent extends ExtendableEvent {
   readonly request: Request
   readonly respondWith: (response: Promise<Response>) => void
 }
-interface PushEvent extends ExtendableEvent {
-  readonly data: { readonly json: () => unknown } | null
-}
-interface NotificationEvent extends ExtendableEvent {
-  readonly notification: { readonly data: unknown; readonly close: () => void }
-}
-interface WindowClient {
-  readonly url: string
-  readonly focus: () => Promise<WindowClient>
-  readonly navigate: (url: string) => Promise<WindowClient | null>
-}
 interface WorkerScope {
   readonly location: Location
   readonly skipWaiting: () => Promise<void>
-  readonly clients: {
-    readonly claim: () => Promise<void>
-    readonly matchAll: (options: { type: 'window' }) => Promise<readonly WindowClient[]>
-    readonly openWindow: (url: string) => Promise<WindowClient | null>
-  }
-  readonly registration: {
-    readonly showNotification: (
-      title: string,
-      options: { body: string; data: unknown; tag: string; icon: string },
-    ) => Promise<void>
-  }
+  readonly clients: { readonly claim: () => Promise<void> }
   readonly addEventListener: {
     (type: 'install' | 'activate', listener: (event: ExtendableEvent) => void): void
     (type: 'fetch', listener: (event: FetchEvent) => void): void
-    (type: 'push', listener: (event: PushEvent) => void): void
-    (type: 'notificationclick', listener: (event: NotificationEvent) => void): void
   }
 }
 
@@ -95,41 +71,4 @@ worker.addEventListener('fetch', (event) => {
   const answer = respond(route, url.pathname + url.search, shell)
   event.respondWith(answer.response)
   event.waitUntil(answer.done)
-})
-
-/**
- * A rest is over (#38): said as the server wrote it — every push shown, as iOS requires of a web
- * app — one at a time, a newer replacing an older (`tag`).
- */
-worker.addEventListener('push', (event) => {
-  const alert = alertOf(event.data?.json() ?? null) ?? {
-    title: 'Rest over',
-    body: 'Time for the next set.',
-    url: '/',
-  }
-  event.waitUntil(
-    worker.registration.showNotification(alert.title, {
-      body: alert.body,
-      data: alert.url,
-      tag: 'rest',
-      icon: '/icons/icon-192.png',
-    }),
-  )
-})
-
-/** Tapped: the session it is of — in the app already open, or opened. */
-worker.addEventListener('notificationclick', (event) => {
-  event.notification.close()
-  const url = typeof event.notification.data === 'string' ? event.notification.data : '/'
-  event.waitUntil(
-    (async () => {
-      const [open] = await worker.clients.matchAll({ type: 'window' })
-      if (open === undefined) {
-        await worker.clients.openWindow(url)
-        return
-      }
-      await open.focus()
-      await open.navigate(url)
-    })(),
-  )
 })

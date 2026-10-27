@@ -91,8 +91,8 @@ export const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutS
 /** Said by every write only a session in progress takes. */
 const FINISHED = 'That session has already been finished'
 
-/** No rest running (#38): its set undone, or the session finished — its alert never sent. */
-export const NO_REST = { restSince: null, restEndsAt: null, restAlertedAt: null } as const
+/** No rest running (#38): its set undone, or the session finished. */
+export const NO_REST = { restSince: null, restEndsAt: null } as const
 
 export async function update(
   caller: Caller,
@@ -108,7 +108,7 @@ export async function update(
        * An ISO string, never a JS Date: raw `sql` bypasses the column encoder.
        */
       endedAt: sql<Date>`greatest(${patch.endedAt}::timestamptz, ${workoutSessions.startedAt})`,
-      // Finished, no rest runs on: its alert is not sent (#38).
+      // Finished, no rest runs on (#38).
       ...NO_REST,
     }),
     ...(patch.notes !== undefined && { notes: patch.notes }),

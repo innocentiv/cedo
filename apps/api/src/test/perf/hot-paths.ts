@@ -319,7 +319,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     // Four, plus reading the set's series under the lock to number it — its logs LEFT JOINed onto
     // the plan entries the caller can still reach, in the same query — then the set answered as its
     // session reads it, personal best and all (#24): the session, its logs, its earlier bests. And
-    // the rest it starts, kept for its alert (#38): the session, its sets, the day's entries and
+    // the rest it starts, kept by the server (#38): the session, its sets, the day's entries and
     // their sets' kinds — read narrowly (`rest/day.ts`) — then written.
     maxQueries: 13,
     budgetMs: 40,

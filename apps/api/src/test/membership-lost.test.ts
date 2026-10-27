@@ -362,8 +362,6 @@ const ROUTES: Record<string, Case> = {
     read: async () => await http(`/athletes/${bob.userId}/equipment`),
     allowed: async () => await httpAllowed(`/athletes/${bob.userId}/equipment`),
   },
-  // This instance's public push key (#38): the same for everyone, and nobody's.
-  'GET /push/key': { named: false, read: async () => await http('/push/key') },
   // Her own equipment: the list's items, which belong to nobody's group.
   'GET /equipment/': { named: false, read: async () => await http('/equipment') },
   // Curator-only, and Alice is no curator: she is refused before and after.

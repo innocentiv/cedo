@@ -99,6 +99,13 @@
       "when": 1793053972403,
       "tag": "0013_rest_alerts",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1793113215775,
+      "tag": "0014_no_web_push",
+      "breakpoints": true
     }
   ]
 }
