@@ -108,7 +108,14 @@ without them: a copy in a group they edit, as `workout_duplicate` is for a share
 
 `training_review` · `workout_list` · `workout_get` · `workout_get_editable` · `workout_create` ·
 `workout_save_plan` · `workout_duplicate` · `workout_progression` · `exercise_history` ·
-`session_log` · `session_fix_set`
+`session_log` · `session_fix_set` · `note_list` · `note_create` · `note_update`
+
+`note_list`, `note_create` and `note_update` (`mcp/tools/notes.ts`) are **athlete notes** (#41,
+`GLOSSARY.md`): what is known about someone, kept for planning their training — an injury, a
+preference, what they said of a plan. Each takes the coaching tools' `athlete`: a coach writes them
+too (ADR-0021, amended). `training_review` and the plan-writing tools say to read them first; the
+review does not carry them, so a plan made without asking is the model's omission, not a stale
+payload. Only the author rewords one, and none is removed here — the app does that, behind a tap.
 
 `session_log` and `session_fix_set` record training as it was done (`mcp/tools/session.ts`): a
 whole session the AI is told about, and a set already logged corrected (#31) — "80, not 100, on
@@ -267,7 +274,8 @@ validate identically and advertise nothing.
 
 ### Nothing can be deleted
 
-There is no `*_delete` tool, and a test asserts none appears. Deletion is rare, hard to undo, and a
+There is no `*_delete` tool, and a test asserts none appears — not even for an athlete note (#41),
+which the model may reword when it is no longer true, and a person removes. Deletion is rare, hard to undo, and a
 confused model destroying training history on a self-hosted box with no backup is a far worse
 outcome than it failing to tidy up. Tidying stays a human action in the UI.
 

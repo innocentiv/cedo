@@ -486,6 +486,13 @@ const TOOLS: Record<string, Case> = {
       await all([tool(w, 'equipment_get'), tool(w, 'equipment_get', { athlete: bob.userId })]),
     allowed: async (w) => await toolAllowed(w, 'equipment_get', { athlete: bob.userId }),
   },
+  note_list: {
+    // Hers, and what Bob said of himself while she coaches him (#41).
+    named: true,
+    read: async (w) =>
+      await all([tool(w, 'note_list'), tool(w, 'note_list', { athlete: bob.userId })]),
+    allowed: async (w) => await toolAllowed(w, 'note_list', { athlete: bob.userId }),
+  },
   // Curator-only.
   platform_status: { named: false, read: async (w) => await tool(w, 'platform_status') },
   db_slow_queries: { named: false, read: async (w) => await tool(w, 'db_slow_queries') },

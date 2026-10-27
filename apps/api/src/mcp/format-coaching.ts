@@ -1,5 +1,6 @@
 import {
   type Athlete,
+  type AthleteNote,
   type Page,
   type SessionDetail,
   type SetLog,
@@ -8,6 +9,7 @@ import {
   counted,
   formatEffort,
   formatWeight,
+  noteByline,
 } from '@cedo/contract'
 import { atRpe } from './format.ts'
 
@@ -90,3 +92,14 @@ export function sessionDetail(session: SessionDetail, unit: WeightUnit, withIds 
   })
   return [head, ...(lines.length === 0 ? ['No sets.'] : lines)].join('\n')
 }
+
+/**
+ * `Coach Kim · Mon 12 Oct · <id>`, then its words indented beneath — a note's id is what
+ * `note_update` takes. Newest first, as written.
+ */
+export const noteLines = (notes: readonly AthleteNote[], readerId: string): string =>
+  notes.length === 0
+    ? 'No notes yet.'
+    : notes
+        .map((n) => `${noteByline(n, readerId)} · ${n.id}\n  ${n.text.replaceAll('\n', '\n  ')}`)
+        .join('\n\n')

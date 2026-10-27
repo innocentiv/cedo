@@ -1230,3 +1230,62 @@ describe('coaching', () => {
     }
   })
 })
+
+/** Athlete notes (#41): read and written over MCP as in the app, and never removed here. */
+describe('athlete notes', () => {
+  const post = async (user: TestUser, path: string, body: unknown, method = 'POST') => {
+    const res = await user.wire(path, { method, body: JSON.stringify(body) })
+    if (res.status >= 300) throw new Error(`${method} ${path}: ${String(res.status)}`)
+    return res.body
+  }
+
+  test('are written, read and reworded as your own', async () => {
+    const pat = await mintPat(alice)
+    const created = await callTool(pat, 'note_create', { text: 'Left shoulder hurts overhead' })
+    const id = /· ([0-9a-f-]{36})\n/u.exec(textOf(created.body))?.[1] ?? ''
+    expect(textOf(created.body)).toContain('You · ')
+    await callTool(pat, 'note_update', { noteId: id, text: 'Left shoulder fine again' })
+    const listed = textOf((await callTool(pat, 'note_list')).body)
+    expect(listed).toContain('Left shoulder fine again')
+    expect(listed).toContain('edited')
+  })
+
+  test('a coach writes one about an athlete, and reads them only while coaching', async () => {
+    const athlete = await h.as('athlete')
+    const squad = expectContract(GroupMembership, await post(alice, '/groups', { name: 'Squad' }))
+    await post(alice, `/groups/${squad.id}/members`, { username: athlete.username, role: 'reader' })
+    await post(athlete, `/groups/${squad.id}/membership`, { sharesTraining: true }, 'PATCH')
+    const pat = await mintPat(alice)
+
+    await callTool(pat, 'note_create', { athlete: athlete.userId, text: 'Away 10–17 Nov' })
+    const theirs = await athlete.wire('/notes')
+    expect(JSON.stringify(theirs.body)).toContain('Away 10–17 Nov')
+
+    await post(athlete, `/groups/${squad.id}/membership`, { sharesTraining: false }, 'PATCH')
+    const refused = await callTool(pat, 'note_list', { athlete: athlete.userId })
+    expect(refused.body.result?.isError).toBe(true)
+    expect(textOf(refused.body)).not.toContain('Away')
+  })
+
+  test('only your own are reworded', async () => {
+    const bob = await h.as('bob')
+    const own = await post(bob, '/notes', { text: 'Bob prefers mornings' })
+    const id = z.object({ id: z.string() }).parse(own).id
+    const refused = await callTool(await mintPat(alice), 'note_update', { noteId: id, text: 'x' })
+    expect(refused.body.result?.isError).toBe(true)
+    expect(JSON.stringify((await bob.wire('/notes')).body)).toContain('Bob prefers mornings')
+  })
+
+  test('are what each planning tool says to read first', async () => {
+    const { body } = await rpc(await mintPat(alice), 'tools/list')
+    const tools = body.result?.tools ?? []
+    for (const name of [
+      'training_review',
+      'workout_create',
+      'workout_save_plan',
+      'workout_progression',
+    ]) {
+      expect(tools.find((t) => t.name === name)?.description).toContain('note_list')
+    }
+  })
+})

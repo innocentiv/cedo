@@ -42,7 +42,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'START HERE when asked about progress, consistency or what to change. Returns adherence ' +
         '(sessions per week, streak, longest gap), which planned days are being skipped, working ' +
         'sets per muscle (and weight lifted) against the preceding period, and which exercises ' +
-        'have stalled.',
+        'have stalled. Read note_list beside it: what they said of their training is there.',
       // The weeks to look back, as `GET /review` takes them: one schema, the contract's.
       inputSchema: ReviewQuery.safeExtend(OfAthlete.shape),
       annotations: READ,
@@ -111,7 +111,9 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     'workout_create',
     {
       title: 'Create an empty workout',
-      description: 'Create a workout with no days. Follow with `workout_save_plan`.',
+      description:
+        'Create a workout with no days. Follow with `workout_save_plan`. Read note_list first: ' +
+        'injuries, preferences and time away are noted there.',
       inputSchema: WorkoutCreate,
       annotations: WRITE,
     },
@@ -134,7 +136,8 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'the `id` of each day and entry you keep (from `workout_get_editable`): that keeps its ' +
         'logged history and progression. An entry with no id, or whose exercise you changed, ' +
         'starts with no history. Send the `version` workout_get_editable gave: if the plan was ' +
-        'changed since — by its owner, in the app — the save is refused, and you read it again.',
+        'changed since — by its owner, in the app — the save is refused, and you read it again. ' +
+        'Read note_list before changing a plan, and plan around what it says.',
       inputSchema: PlanSave.safeExtend({ workoutId: z.uuid() }),
       annotations: WRITE,
     },
@@ -167,7 +170,8 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       title: 'Suggest next targets',
       description:
         "What each entry's next target should be, computed from the caller's own logged history " +
-        'by the same rules the app uses. Read-only: apply them with `workout_save_plan`.',
+        'by the same rules the app uses. Read-only: apply them with `workout_save_plan`, ' +
+        'after reading note_list — a sore shoulder outranks a rule.',
       inputSchema: z.object({ workoutId: z.uuid() }),
       annotations: READ,
     },
