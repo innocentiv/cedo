@@ -18,7 +18,8 @@
  * is someone else's training, read by their coach (#30): they write it, on their own device, so
  * no write here is ever OF it — it catches up on the cache's window, and with what it embeds.
  * `equipment` is what the caller has to train with (#34): every exercise read says whether they
- * can do it (#35).
+ * can do it (#35). `note` is athlete notes (#41) — the caller's own, and an athlete's, which their
+ * coach writes too: unlike the rest of `athlete`, a write here is OF it.
  */
 export type Source =
   | 'exercise'
@@ -29,6 +30,7 @@ export type Source =
   | 'group'
   | 'athlete'
   | 'equipment'
+  | 'note'
 
 export interface ReadSources {
   /** The source the read is OF. A write to it must be read back before the next write. */
@@ -94,6 +96,9 @@ export const READS = {
   athleteEquipment: { of: 'athlete', embeds: ['group'] },
   /** What the caller has to train with (#34). */
   equipment: { of: 'equipment', embeds: [] },
+  /** What is known about the caller (#41), and about an athlete while they share their training. */
+  notes: { of: 'note', embeds: [] },
+  athleteNotes: { of: 'note', embeds: ['group'] },
   tokens: { of: 'token', embeds: [] },
   groups: { of: 'group', embeds: [] },
   /** A group's members, as the caller may see them. */

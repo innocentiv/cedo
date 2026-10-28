@@ -3,6 +3,8 @@ import {
   Athlete,
   AthleteEquipment,
   type AthleteEquipmentInput,
+  AthleteNote,
+  type AthleteNoteInput,
   AuthResult,
   type DuplicateInput,
   EntryTarget,
@@ -211,6 +213,21 @@ const equipment = ({ GET, PUT }: Verbs) => ({
   save: async (body: AthleteEquipmentInput) => await PUT('/equipment', AthleteEquipment, body),
 })
 
+/** Where notes are: about you, or — given their id — about an athlete you coach. */
+const notesOf = (athleteId: string | undefined) =>
+  athleteId === undefined ? '/notes' : `/athletes/${athleteId}/notes`
+
+/** Athlete notes (#41). */
+const notes = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
+  list: async (athleteId?: string) => await GET(notesOf(athleteId), z.array(AthleteNote)),
+  create: async (athleteId: string | undefined, body: AthleteNoteInput) =>
+    await POST(notesOf(athleteId), AthleteNote, body),
+  update: async (athleteId: string | undefined, id: string, body: AthleteNoteInput) =>
+    await PATCH(`${notesOf(athleteId)}/${id}`, AthleteNote, body),
+  remove: async (athleteId: string | undefined, id: string) =>
+    await DELETE(`${notesOf(athleteId)}/${id}`, Ok),
+})
+
 const groups = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
   list: async () => await GET('/groups', z.array(GroupMembership)),
   create: async (body: GroupCreate) => await POST('/groups', GroupMembership, body),
@@ -250,6 +267,7 @@ export function createApi(request: SendRequest) {
     equipment: equipment(v),
     groups: groups(v),
     media: media(v),
+    notes: notes(v),
     tokens: tokens(v),
   } as const
 }

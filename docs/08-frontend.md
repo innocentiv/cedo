@@ -435,7 +435,12 @@ never writes it. As built (#30):
 - **An athlete's page** (`AthleteView`): the session they are in now, if they are — a row that opens
   its sets so far — then their Progress, the same `Review` and periods as your own tab
   (`GET /athletes/:id/review`), then what they have to train with (#34, `AthleteEquipmentCard`),
-  then their history by week (`PagedHistory`, as Today's). Nothing on it changes their training.
+  then their notes (#41), then their history by week (`PagedHistory`, as Today's). Nothing on it
+  changes their training.
+- **Their notes are the one thing a coach writes** (#41, ADR-0021 amended): `Notes`, the same card
+  as on your own Progress, `/athletes/:id/notes` in place of `/notes`. Each note offers Edit to its
+  author and Remove to its author or the athlete — the server says which (`canEdit`,
+  `canDelete`); the card only shows it.
 - **Read again on coming back, never polled.** They train on their own device, so nothing the coach
   does marks it stale: on regaining focus the page asks who shares again, and only then — while
   they still do — their reads (`useReadAthleteAgain`). A share ended is learnt first, so their reads

@@ -395,6 +395,89 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/**
+ * Athlete notes (#41): what is known about someone, kept for planning their training. Written by
+ * the athlete or their coach, read by both; only the author rewords one, and the athlete or the
+ * author removes it. On your own Progress, and on an athlete's page.
+ */
+test(
+  'an athlete and their coach keep notes for planning their training',
+  async () => {
+    await withApp('athlete-notes', async (page) => {
+      const app = screens(page)
+      const coachName = unique('coach')
+      await app.auth.register(coachName)
+      await app.nav.onToday()
+      const { athlete } = await coachingSetUp(page, coachName)
+      await athlete.api.notes.create(undefined, { text: 'I hate lunges' })
+
+      // Theirs, on their page: read under their name, offered neither Edit nor Remove.
+      await page.goto('/today')
+      await app.nav.onToday()
+      await app.nav.tab('athletes')
+      await app.athletes.open(athlete.user.id)
+      expect(
+        await page.until(
+          async () => await app.notes.read('athlete'),
+          (n) => n.length === 1,
+        ),
+      ).toEqual([expect.stringMatching(/^Robin Vale · .+ \/ I hate lunges$/u)])
+      expect(await app.notes.offers('athlete', 0)).toEqual({ edit: false, remove: false })
+
+      // The coach's own, newest first: theirs to reword and remove.
+      await app.notes.add('athlete', 'Left shoulder: no overhead pressing')
+      const read = await page.until(
+        async () => await app.notes.read('athlete'),
+        (n) => n.length === 2,
+      )
+      expect(read[0]).toMatch(/^You · .+ \/ Left shoulder: no overhead pressing$/u)
+      expect(await app.notes.offers('athlete', 0)).toEqual({ edit: true, remove: true })
+      await app.notes.reword('athlete', 0, 'Left shoulder: no overhead pressing until December')
+      expect(
+        (
+          await page.until(
+            async () => await app.notes.read('athlete'),
+            (n) => n[0]?.includes('edited') === true,
+          )
+        )[0],
+      ).toContain('until December')
+
+      // The athlete reads it under the coach's name, and may remove it but not reword it.
+      const [theirs] = await athlete.api.notes.list()
+      expect(theirs).toMatchObject({
+        text: 'Left shoulder: no overhead pressing until December',
+        canEdit: false,
+        canDelete: true,
+      })
+
+      // Your own, on Progress: written, then removed when no longer true.
+      await app.nav.tab('progress')
+      await app.progress.shown()
+      expect(
+        await page.until(
+          async () => await app.notes.none('progress'),
+          (none) => none,
+        ),
+      ).toBe(true)
+      await app.notes.add('progress', 'Away 10–17 November')
+      expect(
+        await page.until(
+          async () => await app.notes.read('progress'),
+          (n) => n.length === 1,
+        ),
+      ).toEqual([expect.stringMatching(/^You · .+ \/ Away 10–17 November$/u)])
+      await app.notes.remove('progress', 0)
+      expect(
+        await page.until(
+          async () => await app.notes.none('progress'),
+          (none) => none,
+        ),
+      ).toBe(true)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
 /** On a desktop the athlete opens beside the list, as an exercise does in the library (#29). */
 test(
   'on a desktop an athlete opens beside the athletes',

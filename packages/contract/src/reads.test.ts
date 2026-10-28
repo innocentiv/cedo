@@ -107,12 +107,20 @@ describe('what a write makes stale', () => {
     ])
   })
 
+  /** A note is written by the athlete and by their coach (#41): either refreshes both lists. */
+  test('a note written refreshes your notes and an athlete’s, and nothing else', () => {
+    const { awaited, background } = affectedBy('note')
+    expect(sorted(awaited)).toEqual(['athleteNotes', 'notes'])
+    expect(background).toEqual([])
+  })
+
   test('joining or leaving a group refreshes everything membership can show or hide', () => {
     const { awaited, background } = affectedBy('group')
     expect(sorted(awaited)).toEqual(['athletes', 'groupMembers', 'groups'])
     expect(sorted(background)).toEqual([
       'athleteEquipment',
       'athleteHistory',
+      'athleteNotes',
       'athleteReview',
       'athleteSession',
       'athleteSessions',

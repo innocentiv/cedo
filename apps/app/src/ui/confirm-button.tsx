@@ -10,6 +10,8 @@ export interface ConfirmButtonProps {
   readonly busy?: boolean
   /** Why the server refused it, shown where it was asked — not at the top of a long screen. */
   readonly error?: string | null
+  /** Small beside other small actions, as on a note (#41); asking again is always full size. */
+  readonly size?: 'small' | 'regular'
   readonly testID: string
 }
 
@@ -26,6 +28,7 @@ export function ConfirmButton({
   onConfirm,
   busy = false,
   error = null,
+  size = 'regular',
   testID,
 }: ConfirmButtonProps): React.JSX.Element {
   const [asking, setAsking] = useState(false)
@@ -60,6 +63,7 @@ export function ConfirmButton({
         <Button
           title={title}
           variant="danger"
+          size={size}
           onPress={() => {
             setAsking(true)
           }}

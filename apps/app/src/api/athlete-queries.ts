@@ -100,9 +100,12 @@ export function useReadAthleteAgain(id: string): () => Promise<void> {
     const athletes = queryClient.getQueryData<Athlete[]>(keys.athletes) ?? []
     if (!athletes.some((athlete) => athlete.user.id === id)) return
     await Promise.all(
-      [keys.athleteSessions(id, {}), keys.athleteReview(id, 0), keys.athleteEquipment(id)].map(
-        async (key) => await queryClient.invalidateQueries({ queryKey: key.slice(0, 2) }),
-      ),
+      [
+        keys.athleteSessions(id, {}),
+        keys.athleteReview(id, 0),
+        keys.athleteEquipment(id),
+        keys.athleteNotes(id),
+      ].map(async (key) => await queryClient.invalidateQueries({ queryKey: key.slice(0, 2) })),
     )
   }, [queryClient, id])
 }

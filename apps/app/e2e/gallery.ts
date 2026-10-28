@@ -299,6 +299,11 @@ async function seed(): Promise<World> {
       { slug: 'low_pulley', weights: { stepG: 5000, minG: 5000, maxG: 90_000 } },
     ],
   })
+  // What is known about Sam (#41): their own words, and their coach's.
+  await api.notes.create(undefined, { text: 'Hate walking lunges — split squats are fine.' })
+  await coach.api.notes.create(sam.id, {
+    text: 'Left shoulder pinches on overhead pressing. Landmine press instead until it settles.',
+  })
 
   return {
     username,
