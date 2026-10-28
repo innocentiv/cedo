@@ -42,7 +42,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'START HERE when asked about progress, consistency or what to change. Returns adherence ' +
         '(sessions per week, streak, longest gap), which planned days are being skipped, working ' +
         'sets per muscle (and weight lifted) against the preceding period, and which exercises ' +
-        'have stalled. Read note_list beside it: what they said of their training is there.',
+        'have stalled. Read note_list first: what they said of their training is there.',
       // The weeks to look back, as `GET /review` takes them: one schema, the contract's.
       inputSchema: ReviewQuery.safeExtend(OfAthlete.shape),
       annotations: READ,

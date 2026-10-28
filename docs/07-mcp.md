@@ -275,9 +275,9 @@ validate identically and advertise nothing.
 ### Nothing can be deleted
 
 There is no `*_delete` tool, and a test asserts none appears — not even for an athlete note (#41),
-which the model may reword when it is no longer true, and a person removes. Deletion is rare, hard to undo, and a
-confused model destroying training history on a self-hosted box with no backup is a far worse
-outcome than it failing to tidy up. Tidying stays a human action in the UI.
+which the model may reword when it is no longer true, and a person removes. Deletion is rare, hard
+to undo, and a confused model destroying training history on a self-hosted box with no backup is a
+far worse outcome than it failing to tidy up. Tidying stays a human action in the UI.
 
 So `session_fix_set` (#31) corrects a set and never removes one: the app removes a set, or deletes
 a session, behind a person's tap. A correction is still a write that replaces what was logged, so

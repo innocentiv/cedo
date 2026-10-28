@@ -18,8 +18,9 @@ import { PagedHistory } from './today-parts.tsx'
 /**
  * An athlete's training, read by their coach (#30): the session they are in now, their Progress as
  * they read it themselves, and their history by week — read-only, nothing on it to press that would
- * change it. Their notes are the exception: a coach writes those too (#41). A screen of its own on a phone; on a desktop, the pane beside the athletes. Read again
- * each time the coach comes back to it, never polled. See docs/08-frontend.md, "The coach's view".
+ * change it. Their notes are the exception: a coach writes those too (#41). A screen of its own on
+ * a phone; on a desktop, the pane beside the athletes. Read again each time the coach comes back to
+ * it, never polled. See docs/08-frontend.md, "The coach's view".
  */
 export function AthleteView({
   id,

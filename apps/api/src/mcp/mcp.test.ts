@@ -1267,13 +1267,21 @@ describe('athlete notes', () => {
     expect(textOf(refused.body)).not.toContain('Away')
   })
 
-  test('only your own are reworded', async () => {
-    const bob = await h.as('bob')
-    const own = await post(bob, '/notes', { text: 'Bob prefers mornings' })
+  /** With `athlete`, so the call reaches the note and only the author check stands in the way. */
+  test('only your own are reworded — not an athlete’s, whom you coach', async () => {
+    const athlete = await h.as('athlete')
+    const squad = expectContract(GroupMembership, await post(alice, '/groups', { name: 'Squad' }))
+    await post(alice, `/groups/${squad.id}/members`, { username: athlete.username, role: 'reader' })
+    await post(athlete, `/groups/${squad.id}/membership`, { sharesTraining: true }, 'PATCH')
+    const own = await post(athlete, '/notes', { text: 'Prefers mornings' })
     const id = z.object({ id: z.string() }).parse(own).id
-    const refused = await callTool(await mintPat(alice), 'note_update', { noteId: id, text: 'x' })
+    const refused = await callTool(await mintPat(alice), 'note_update', {
+      athlete: athlete.userId,
+      noteId: id,
+      text: 'x',
+    })
     expect(refused.body.result?.isError).toBe(true)
-    expect(JSON.stringify((await bob.wire('/notes')).body)).toContain('Bob prefers mornings')
+    expect(JSON.stringify((await athlete.wire('/notes')).body)).toContain('Prefers mornings')
   })
 
   test('are what each planning tool says to read first', async () => {

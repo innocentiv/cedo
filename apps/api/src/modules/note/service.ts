@@ -33,8 +33,8 @@ const select = (training: Training, ...more: SQL[]) =>
 
 type Row = Awaited<ReturnType<typeof select>>[number]
 
-const toNote = (caller: Caller, training: Training, row: Row): AthleteNote => {
-  const mine = row.authorId === caller.userId
+const toNote = (training: Training, row: Row): AthleteNote => {
+  const mine = row.authorId === training.reader.userId
   return {
     id: row.id,
     text: row.text,
@@ -45,7 +45,7 @@ const toNote = (caller: Caller, training: Training, row: Row): AthleteNote => {
     writtenAt: row.writtenAt.toISOString(),
     editedAt: row.editedAt?.toISOString() ?? null,
     canEdit: mine,
-    canDelete: mine || training.athleteId === caller.userId,
+    canDelete: mine || training.athleteId === training.reader.userId,
   }
 }
 
@@ -53,13 +53,13 @@ const toNote = (caller: Caller, training: Training, row: Row): AthleteNote => {
 export async function list(caller: Caller, athleteId?: string): Promise<AthleteNote[]> {
   const training = await ownOrCoached(caller, athleteId)
   const rows = await select(training).orderBy(desc(athleteNotes.writtenAt), desc(athleteNotes.id))
-  return rows.map((row) => toNote(caller, training, row))
+  return rows.map((row) => toNote(training, row))
 }
 
-async function one(caller: Caller, training: Training, id: string): Promise<AthleteNote> {
+async function one(training: Training, id: string): Promise<AthleteNote> {
   const [row] = await select(training, eq(athleteNotes.id, id)).limit(1)
   if (row === undefined) throw notFound('note')
-  return toNote(caller, training, row)
+  return toNote(training, row)
 }
 
 /**
@@ -73,9 +73,11 @@ export async function create(
 ): Promise<AthleteNote> {
   const training = await ownOrCoached(caller, athleteId)
   const id = await db.transaction(async (tx) => {
-    await tx.execute(
-      sql`select 1 from ${users} where ${users.id} = ${training.athleteId} for update`,
-    )
+    await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, training.athleteId))
+      .for('update')
     const [kept] = await tx
       .select({ n: count() })
       .from(athleteNotes)
@@ -87,9 +89,11 @@ export async function create(
       .insert(athleteNotes)
       .values({ athleteId: training.athleteId, authorId: caller.userId, text: input.text })
       .returning({ id: athleteNotes.id })
-    return written?.id ?? ''
+    // Thrown, not defaulted: an empty id would reach a uuid column as a 500 (ownable/service.ts).
+    if (written === undefined) throw new Error('A note was inserted and returned nothing')
+    return written.id
   })
-  return await one(caller, training, id)
+  return await one(training, id)
 }
 
 /** Its words changed — by its author only. Anyone else is told there is no such note. */
@@ -107,7 +111,7 @@ export async function update(
       .where(about(training, id, eq(athleteNotes.authorId, caller.userId)))
       .returning({ id: athleteNotes.id }),
   )
-  return await one(caller, training, id)
+  return await one(training, id)
 }
 
 /** Removed — by its author, or by the person it is about. */

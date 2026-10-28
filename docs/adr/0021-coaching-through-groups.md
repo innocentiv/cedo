@@ -1,6 +1,7 @@
 # 0021 — Coaching through groups: editors read the training members share
 
-**Status:** Accepted (2026-10-24), amended (2026-10-28: a coach writes athlete notes — see the end)
+**Status:** Accepted (2026-10-24), amended (2026-10-28: a coach writes athlete notes — see the
+end)
 
 ## Context
 
@@ -84,8 +85,8 @@ equipment of theirs.
 
 - The notes are the athlete's, read by them and by everyone who reads their training now — coaches
   read each other's — and written by any of them, under `/notes` and `/athletes/:id/notes`, and
-  through `note_*` MCP tools with the same optional `athlete`. One rule decides who may (`ownOrCoached`),
-  as for every read here.
+  through `note_*` MCP tools with the same optional `athlete`. One rule decides who may
+  (`ownOrCoached`), as for every read here.
 - Only the author changes a note's words; the author or the athlete removes it — so an athlete
   can take back what is written about them without putting words in a coach's mouth.
 - A coach's notes stay with the athlete when the coach stops coaching: what was learnt about the
