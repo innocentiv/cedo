@@ -23,14 +23,9 @@ export const athleteNotes = pgTable(
   },
   (t) => [
     /**
-     * A person's notes, newest first, in one index walk. `.nullsFirst()` as on
-     * workout_sessions_user_time_idx: Drizzle's `.desc()` is NULLS LAST, which `ORDER BY … DESC`
-     * cannot walk.
+     * A person's notes. Their order is a sort of at most 100 (`NOTES_PER_ATHLETE`), which the
+     * planner rightly prefers to walking a wider index in order: `bun run perf` saw it do so.
      */
-    index('athlete_notes_athlete_time_idx').on(
-      t.athleteId,
-      t.writtenAt.desc().nullsFirst(),
-      t.id.desc().nullsFirst(),
-    ),
+    index('athlete_notes_athlete_idx').on(t.athleteId),
   ],
 )

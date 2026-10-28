@@ -15,7 +15,7 @@ import {
   seedTokens,
   truncateAll,
 } from './volume.ts'
-import { loadProfile, seedProfile } from './profile.ts'
+import { loadProfile, seedBackgroundNotes, seedProfile } from './profile.ts'
 import { loadCurator, seedCuratedLibrary } from './curated.ts'
 import { clearMarker, markSeeded, seededByThisSeed } from './marker.ts'
 
@@ -52,6 +52,7 @@ export async function seedPerf(): Promise<PerfFixtures> {
   await seedBackgroundWorkouts(sharedGroupId, systemUserId)
   await seedMedia(sharedGroupId, systemUserId)
   await seedTokens()
+  await seedBackgroundNotes()
   await seedBackgroundSessions(sharedGroupId)
 
   const small = await seedProfile('small', sharedGroupId)

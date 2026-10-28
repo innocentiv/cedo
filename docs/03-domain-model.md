@@ -382,7 +382,7 @@ against a realistic data volume — see [adr/0018](adr/0018-n1-detection.md).
 | `set_logs_idempotency_idx` (unique, on `(session_id, idempotency_key)`) | one set per key in a session: the backstop to the check `logSet` makes under the session's lock |
 | `workout_sessions_user_time_idx` on `(user_id, started_at desc nulls first, id desc nulls first)` | the session list, newest first — `id` included because the keyset cursor is a row comparison; `nulls first` because that is what `ORDER BY … DESC` means, and a mismatch turns the walk into a sort |
 | `workout_sessions_workout_idx` | sessions belonging to a workout |
-| `athlete_notes_athlete_time_idx` on `(athlete_id, written_at desc nulls first, id desc nulls first)` | a person's notes, newest first, in one walk — `nulls first` for the same reason as the session list's |
+| `athlete_notes_athlete_idx` | a person's notes — at most 100, so sorted rather than walked in order, which the planner prefers |
 | `workout_sessions_in_progress_idx` (unique, partial: `ended_at is null`) on `user_id` | one session in progress per person, and finding it |
 | `sessions_user_idx`, `pats_user_idx` | listing or revoking a user's credentials |
 

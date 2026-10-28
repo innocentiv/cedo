@@ -34,6 +34,8 @@ export const PERF_VOLUME = {
   logsPerSession: 48,
   /** Browser sessions per user, so the auth token lookup is measured against a real index. */
   tokensPerUser: 5,
+  /** What is known about each user (#41), so a person's notes are found among 20,000. */
+  notesPerUser: 40,
   favouritesPerUser: 5,
 } as const
 
@@ -83,10 +85,20 @@ export interface Shape {
   readonly logsPerSession: number
   /** Memberships beyond the personal and shared groups, to vary the auth query's fan-out. */
   readonly extraGroups: number
+  /** Notes about them (#41) — the large profile as many as anyone may keep. */
+  readonly notes: number
 }
 
 export const SHAPE: Record<ProfileLabel, Shape> = {
-  small: { exercises: 10, days: 1, entries: 3, sessions: 5, logsPerSession: 9, extraGroups: 1 },
+  small: {
+    exercises: 10,
+    days: 1,
+    entries: 3,
+    sessions: 5,
+    logsPerSession: 9,
+    extraGroups: 1,
+    notes: 5,
+  },
   large: {
     exercises: 1000,
     days: 14,
@@ -94,6 +106,7 @@ export const SHAPE: Record<ProfileLabel, Shape> = {
     sessions: 200,
     logsPerSession: 60,
     extraGroups: 50,
+    notes: 100,
   },
 }
 

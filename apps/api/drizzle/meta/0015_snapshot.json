@@ -1,5 +1,5 @@
 {
-  "id": "e6fc1ddb-bc11-4f60-b728-62cb29e9c030",
+  "id": "40326a32-62a5-4419-b272-25831224e45f",
   "prevId": "8018da8b-43b1-4fac-abb0-f535b730187d",
   "version": "7",
   "dialect": "postgresql",
@@ -2117,26 +2117,14 @@
         }
       },
       "indexes": {
-        "athlete_notes_athlete_time_idx": {
-          "name": "athlete_notes_athlete_time_idx",
+        "athlete_notes_athlete_idx": {
+          "name": "athlete_notes_athlete_idx",
           "columns": [
             {
               "expression": "athlete_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
-            },
-            {
-              "expression": "written_at",
-              "isExpression": false,
-              "asc": false,
-              "nulls": "first"
-            },
-            {
-              "expression": "id",
-              "isExpression": false,
-              "asc": false,
-              "nulls": "first"
             }
           ],
           "isUnique": false,

@@ -13,6 +13,7 @@ import { suggestForWorkout } from '../../modules/progression/service.ts'
 import { targetsForSession } from '../../modules/progression/targets.ts'
 import { trainingReview } from '../../modules/review/service.ts'
 import { libraryAudit } from '../../modules/review/curation.ts'
+import { list as listNotes } from '../../modules/note/service.ts'
 import { type QueryPlan, explainInOrder, slowestOf } from '../explain.ts'
 import type { RecordedQuery } from '../../db/client.ts'
 
@@ -351,6 +352,16 @@ export const HOT_PATHS: readonly HotPath[] = [
       const profile = pick(fixtures, size)
       return await trainingReview(sessionService.own(profile.caller), 8)
     },
+  },
+  {
+    name: 'GET /notes',
+    why: 'What is known about someone, read before every plan (#41). Who wrote each is one join, never a query per note; theirs are found by index among everyone’s, and sorted — at most 100, so not paged.',
+    dimension: 'notes about them (5 vs 100)',
+    maxQueries: 1,
+    budgetMs: 30,
+    noSeqScan: ['athlete_notes'],
+    indexes: ['athlete_notes_athlete_idx'],
+    run: async (fixtures, size) => await listNotes(pick(fixtures, size).caller),
   },
   {
     name: 'library audit',
