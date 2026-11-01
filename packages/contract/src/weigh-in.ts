@@ -1,13 +1,13 @@
 import { z } from 'zod'
+import { RecordAuthorship } from './athlete-record.ts'
 import { Id } from './primitives.ts'
 import { type WeightUnit, formatWeight } from './units.ts'
-import { User } from './user.ts'
 import { formatDay } from './week.ts'
 
 /**
  * Weigh-ins (#42): a person's bodyweight, one a day — another that day replaces it. The latest is
- * their bodyweight, the ones before it its trend. Read and written as athlete notes are: by them,
- * or by a coach of theirs. See GLOSSARY.md, "Weigh-in".
+ * their bodyweight, the ones before it its trend. An athlete record, read and written as every one
+ * is (`RecordAuthorship`). See GLOSSARY.md, "Weigh-in".
  */
 
 export const MIN_BODYWEIGHT_G = 20_000
@@ -46,10 +46,8 @@ export const WeighIn = z.object({
   id: Id,
   day: z.iso.date(),
   weightG: z.int(),
-  /** Who took it — null once their account is gone. */
-  author: User.pick({ id: true, displayName: true }).nullable(),
-  /** Its author removes it, and so does the person it is about. */
-  canDelete: z.boolean(),
+  /** Who took it, and whether the reader may remove it. */
+  ...RecordAuthorship.shape,
 })
 export type WeighIn = z.output<typeof WeighIn>
 
