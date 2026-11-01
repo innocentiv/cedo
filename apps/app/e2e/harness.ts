@@ -250,6 +250,12 @@ export interface Page {
    */
   readonly goOffline: () => Promise<void>
   readonly goOnline: () => Promise<void>
+  /**
+   * The device's calendar day, `daysAgo` before today, `YYYY-MM-DD` — as the app dates a weigh-in:
+   * in the browser's time zone. Never the test process's: `bun test` runs in UTC, so between local
+   * and UTC midnight its "today" is another day than the app's.
+   */
+  readonly calendarDay: (daysAgo?: number) => Promise<string>
   /** The next API request to `path` is stored, and its answer lost — see `StaticServer`. */
   readonly loseNextAnswer: (path: RegExp) => void
   readonly errors: readonly string[]
@@ -444,6 +450,14 @@ function makePage(view: Bun.WebView, site: StaticServer, errors: string[]): Page
     },
     goOnline: async () => {
       await view.evaluate(`window.dispatchEvent(new Event('online'))`)
+    },
+    calendarDay: async (daysAgo = 0) => {
+      // `calendarDayOf` (the contract's), written out: the page has no module to import it from.
+      const day = await view.evaluate(
+        `(() => { const d = new Date(Date.now() - ${String(daysAgo)} * 86400000); return [d.getFullYear(), d.getMonth() + 1, d.getDate()].map((n, i) => String(n).padStart(i === 0 ? 4 : 2, '0')).join('-') })()`,
+      )
+      if (typeof day !== 'string') throw new Error(`The page gave no calendar day: ${String(day)}`)
+      return day
     },
     loseNextAnswer: (path) => {
       site.loseNextAnswer(path)

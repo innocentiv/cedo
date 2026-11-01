@@ -8,7 +8,6 @@ import {
   WorkoutPlanInput,
   ageLine,
   ageThisYear,
-  calendarDayOf,
   formatCalendarDay,
   kgToG,
   planInputFrom,
@@ -496,8 +495,9 @@ test(
       await app.auth.register(coachName)
       await app.nav.onToday()
       const { athlete } = await coachingSetUp(page, coachName)
-      const today = calendarDayOf(new Date())
-      const yesterday = calendarDayOf(new Date(Date.now() - 86_400_000))
+      // The device's days, as the app dates a weigh-in — not this process's, which runs in UTC.
+      const today = await page.calendarDay()
+      const yesterday = await page.calendarDay(1)
       await athlete.api.weighIns.create(undefined, { day: yesterday, weightG: 83_000 })
       await athlete.api.auth.updateMe({ birthYear: 1990 })
 
