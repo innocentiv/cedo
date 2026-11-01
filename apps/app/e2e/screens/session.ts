@@ -154,6 +154,16 @@ const logger = (page: Page, id: string, choose: string) => {
   }
 }
 
+/** The picker, from a session: by its own Add exercise, either kind of session's — if not open. */
+async function openPicker(page: Page): Promise<void> {
+  if (await page.shown('exercise-picker')) return
+  const add = (await page.shown('adhoc-add-exercise'))
+    ? 'adhoc-add-exercise'
+    : 'session-add-exercise'
+  await page.click(`[data-testid="${add}"]`)
+  await page.waitFor('exercise-picker')
+}
+
 /** The sets shown as logged but not yet sent. */
 async function waitingCount(page: Page): Promise<number> {
   const count = await page.evaluate(
@@ -201,15 +211,27 @@ export const session = (page: Page) => {
      * that has; returns its id once its logger shows, in focus.
      */
     addExercise: async (search: string): Promise<string> => {
-      if (!(await page.shown('exercise-picker'))) {
-        const add = (await page.shown('adhoc-add-exercise'))
-          ? 'adhoc-add-exercise'
-          : 'session-add-exercise'
-        await page.click(`[data-testid="${add}"]`)
-      }
+      await openPicker(page)
       const exerciseId = await picker(page).pick(search)
       await page.waitFor(`adhoc-${exerciseId}`)
       return exerciseId
+    },
+    /**
+     * Picks several exercises into the session at once (#27), in order; returns their ids once
+     * each is listed among those added — which is in focus is `inFocus`'s to say.
+     */
+    addExercises: async (searches: readonly string[]): Promise<string[]> => {
+      await openPicker(page)
+      const ids = await picker(page).pickAll(searches)
+      for (const id of ids) {
+        // oxlint-disable-next-line no-await-in-loop -- each row, in the order picked.
+        await page.waitFor(`adhoc-row-${id}`)
+      }
+      return ids
+    },
+    /** Opens the picker from the session, to pick from or to put away (`skipPicking`). */
+    openPicker: async (): Promise<void> => {
+      await openPicker(page)
     },
 
     /** "+ set" on the set just logged: one more beyond its entry's prescription (#24). */

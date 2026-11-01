@@ -1964,6 +1964,40 @@ test(
 )
 
 /**
+ * A day of two entries — the bench, two sets; the squat, one — set up over HTTP, and a session
+ * started on it, the bench in focus: where choosing the squat is a choice the day would not make.
+ */
+async function startTwoEntryDay(page: Page): Promise<void> {
+  const app = screens(page)
+  const mine = await page.client()
+  const found = async (q: string): Promise<string> => {
+    const [exercise] = (await mine.exercises.list({ q, limit: 1 })).items
+    if (exercise === undefined) throw new Error(`The seeded library has no ${q}`)
+    return exercise.id
+  }
+  const set = (reps: number, kg: number) => ({ targetReps: reps, targetWeightG: kg * 1000 })
+  const plan = await mine.workouts.create({ name: 'Two', notes: null })
+  await mine.workouts.replacePlan(
+    plan.id,
+    WorkoutPlanInput.parse({
+      days: [
+        {
+          name: 'Day 1',
+          entries: [
+            { exerciseId: await found('Bench'), sets: [set(8, 60), set(8, 60)] },
+            { exerciseId: await found('Squat'), sets: [set(5, 100)] },
+          ],
+        },
+      ],
+    }),
+  )
+  await page.goto('/workouts')
+  await app.workouts.openFirst()
+  await app.workouts.startDay(0)
+  await page.until(app.session.inFocus, (focus) => focus === 'entry 0')
+}
+
+/**
  * An entry chosen while a set waits for a signal stays chosen when the set is sent. A set logged
  * offline is known by its key until the server has it, then by the server's id — so a choice held
  * to the latest set's id was lost as it landed, and the focus went back where the day's order leads.
@@ -1974,32 +2008,7 @@ test(
     await withApp('choice-across-the-signal', async (page) => {
       const app = screens(page)
       await app.auth.register(unique('chs'))
-      const mine = await page.client()
-      const found = async (q: string): Promise<string> => {
-        const [exercise] = (await mine.exercises.list({ q, limit: 1 })).items
-        if (exercise === undefined) throw new Error(`The seeded library has no ${q}`)
-        return exercise.id
-      }
-      const set = (reps: number, kg: number) => ({ targetReps: reps, targetWeightG: kg * 1000 })
-      const plan = await mine.workouts.create({ name: 'Two', notes: null })
-      await mine.workouts.replacePlan(
-        plan.id,
-        WorkoutPlanInput.parse({
-          days: [
-            {
-              name: 'Day 1',
-              entries: [
-                { exerciseId: await found('Bench'), sets: [set(8, 60), set(8, 60)] },
-                { exerciseId: await found('Squat'), sets: [set(5, 100)] },
-              ],
-            },
-          ],
-        }),
-      )
-      await page.goto('/workouts')
-      await app.workouts.openFirst()
-      await app.workouts.startDay(0)
-      await page.until(app.session.inFocus, (focus) => focus === 'entry 0')
+      await startTwoEntryDay(page)
 
       await page.goOffline()
       await app.session.entry(0).logWhileOffline()
@@ -2014,6 +2023,76 @@ test(
         (rows) => rows === 1,
       )
       expect(await app.session.inFocus()).toBe('entry 1')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/** Going to pick an exercise, and putting the picker away, forgets an entry chosen (#24). */
+test(
+  'an entry chosen is forgotten on going to pick an exercise, picked or not',
+  async () => {
+    await withApp('picker-forgets', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('pkf'))
+      await startTwoEntryDay(page)
+
+      await app.session.entry(1).shown()
+      expect(await app.session.inFocus()).toBe('entry 1')
+      await app.session.openPicker()
+      await app.session.skipPicking()
+      expect(await app.session.inFocus()).toBe('entry 0')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/** Undoing a set ends what was picked, as it ends any choice: the day has its focus back. */
+test(
+  'an exercise picked mid-plan gives the day back its focus once a set is undone',
+  async () => {
+    await withApp('undo-ends-pick', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('uep'))
+      await app.planEditor.create()
+      await app.planEditor.saveAndStart()
+
+      const bench = app.session.entry(0)
+      await bench.fill('weight', '60')
+      await bench.log()
+      const pushUp = await app.session.addExercise('Push-Up')
+      expect(await app.session.inFocus()).toBe(`adhoc ${pushUp}`)
+
+      const [logged] = await app.session.loggedIds()
+      if (logged === undefined) throw new Error('The bench set is not among those logged')
+      await app.session.undo(logged)
+      await page.until(
+        async () => (await app.session.loggedIds()).length,
+        (rows) => rows === 0,
+      )
+      expect(await app.session.inFocus()).toBe('entry 0')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * Exercises picked together into a session without a plan (#27): the first is chosen, so it takes
+ * the focus though the last was picked last — and keeps it once a set of it is logged.
+ */
+test(
+  'exercises picked together without a plan: the first takes the focus, and keeps it',
+  async () => {
+    await withApp('picked-together', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('ptg'))
+      await app.session.startAdhoc()
+      const [bench, squat] = await app.session.addExercises(['Bench', 'Squat'])
+      if (bench === undefined || squat === undefined) throw new Error('Two were picked')
+      expect(await app.session.inFocus()).toBe(`adhoc ${bench}`)
+
+      await app.session.adhoc(bench).log()
+      expect(await app.session.inFocus()).toBe(`adhoc ${bench}`)
     })
   },
   E2E_TIMEOUT_MS,
