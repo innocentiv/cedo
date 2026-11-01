@@ -4,8 +4,8 @@ import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises, visibleWorkoutSets } from '../../db/visible.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { ownedBy } from '../session/service.ts'
 import { planEntries } from '../workout/plan.ts'
+import { ownedBy } from './service.ts'
 
 /**
  * The rest running now in one of the caller's sessions, as the contract's `restOf` says (#38) — read

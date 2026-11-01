@@ -2,7 +2,6 @@ import { and, asc, eq, sql } from 'drizzle-orm'
 import {
   type LoggedExercise,
   type SessionUpdate,
-  type SetLogUpdate,
   type SetLog,
   type WorkoutSession,
   personalBestsIn,
@@ -13,7 +12,6 @@ import { visibleExercises } from '../../db/visible.ts'
 import { conflict, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { earlierBests } from './bests.ts'
-import { assertWeightFor } from './loggable.ts'
 import { planEntries } from '../workout/plan.ts'
 
 /**
@@ -138,10 +136,10 @@ export async function update(
 
 /**
  * Locks the caller's session for a write to its sets, and says whether it is finished. Every write
- * to its sets takes this lock, so they are taken in turn: the next set's number is read from the
- * sets as they stand.
+ * to its sets takes this lock (`writeSets`), so they are taken in turn: the next set's number is
+ * read from the sets as they stand.
  */
-async function lockOwn(
+export async function lockOwn(
   tx: Transaction,
   caller: Caller,
   id: string,
@@ -225,51 +223,6 @@ export async function read(training: Training, id: string): Promise<WorkoutSessi
 export function rethrowMissingEntry(error: unknown): never {
   if (isForeignKeyRefusal(error)) throw notFound('entry')
   throw error
-}
-
-/**
- * A set corrected (#31): how hard it was, said after it (#24), or a past mistake fixed — in a
- * session in progress or finished, with no time limit: it is the caller's own record. Personal
- * bests, progression and the review are computed on read, so they follow it. A weight is judged as
- * a logged one is (`assertWeightFor`), and the correction is rolled back with it.
- */
-export async function amendLog(
-  caller: Caller,
-  sessionId: string,
-  logId: string,
-  patch: SetLogUpdate,
-): Promise<SetLog> {
-  await db.transaction(async (tx) => {
-    await lockOwn(tx, caller, sessionId)
-    // Drizzle throws on `.set({})`; an empty correction changes nothing, and answers the set.
-    if (Object.keys(patch).length === 0) return
-    const [amended] = await tx
-      .update(setLogs)
-      .set(patch)
-      .where(and(eq(setLogs.id, logId), eq(setLogs.sessionId, sessionId)))
-      .returning({ exerciseId: setLogs.exerciseId })
-    if (amended === undefined) throw notFound('log')
-    if (patch.weightG !== undefined)
-      await assertWeightFor(tx, caller, amended.exerciseId, patch.weightG)
-  })
-  const amended = (await read(own(caller), sessionId)).logs.find((log) => log.id === logId)
-  if (amended === undefined) throw notFound('log')
-  return amended
-}
-
-/**
- * A set removed: an undo while the session is in progress, or a past mistake fixed once it is
- * finished (#31). Under the session's lock, so undoing the last set frees its number for the next.
- */
-export async function removeLog(caller: Caller, sessionId: string, logId: string): Promise<void> {
-  await db.transaction(async (tx) => {
-    await lockOwn(tx, caller, sessionId)
-    const deleted = await tx
-      .delete(setLogs)
-      .where(and(eq(setLogs.id, logId), eq(setLogs.sessionId, sessionId)))
-      .returning({ id: setLogs.id })
-    if (deleted.length === 0) throw notFound('log')
-  })
 }
 
 /**

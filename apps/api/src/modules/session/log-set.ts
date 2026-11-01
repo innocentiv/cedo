@@ -4,10 +4,10 @@ import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { startRest } from '../rest/service.ts'
 import { assertLoggable } from './loggable.ts'
 import { nextNumber } from './numbering.ts'
-import { lockInProgress, own, ownedBy, read, rethrowMissingEntry } from './service.ts'
+import { own, ownedBy, read, rethrowMissingEntry } from './service.ts'
+import { writeSets } from './write-sets.ts'
 
 /**
  * One performed set. With an `idempotencyKey`, a repeat of a key already stored in this session is
@@ -30,10 +30,10 @@ export async function logSet(
   if (stored !== undefined) return stored
   await assertLoggable(caller, session.workoutId, [input])
 
-  const created = await db.transaction(async (tx) => {
-    // `workout_id` never changes after a session starts, so the validation above needs no lock.
-    await lockInProgress(tx, caller, sessionId)
-
+  // `workout_id` never changes after a session starts, so the validation above needs no lock. The
+  // rest it starts is kept so every device counts the same one (#38) — on a set sent again too: had
+  // working it out failed the first time, the retry is what keeps it.
+  const created = await writeSets(caller, sessionId, { inProgress: true }, async (tx) => {
     const setIndex = await nextNumber(tx, caller, { id: sessionId, ...session }, input)
     // A key stored meanwhile — two sends of one set at once — is skipped, and answered below.
     const [row] = await tx
@@ -47,9 +47,6 @@ export async function logSet(
       .catch(rethrowMissingEntry)
     return row ?? null
   })
-  // The rest it starts, kept so every device counts the same one (#38) — on a set sent again too:
-  // had working it out failed the first time, the retry is what keeps it.
-  await startRest(caller, sessionId)
   // Answered as read, so it says what a read says of it — whether it was a personal best.
   if (created !== null) return await storedById(caller, sessionId, created.id)
   const replayed = await storedByKey(caller, sessionId, idempotencyKey)

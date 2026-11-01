@@ -322,7 +322,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     // the plan entries the caller can still reach, in the same query — then the set answered as its
     // session reads it, personal best and all (#24): the session, its logs, its earlier bests. And
     // the rest it starts, kept by the server (#38): the session, its sets, the day's entries and
-    // their sets' kinds — read narrowly (`rest/day.ts`) — then written.
+    // their sets' kinds — read narrowly (`session/rest.ts`) — then written.
     maxQueries: 13,
     budgetMs: 40,
     noSeqScan: ['workout_sessions', 'set_logs', 'workout_entries', 'workout_days'],

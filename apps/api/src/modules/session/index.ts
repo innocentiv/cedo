@@ -5,14 +5,9 @@ import {
   ExerciseHistory,
   ExerciseHistoryQuery,
   Id,
-  IDEMPOTENCY_KEY_HEADER,
-  LogSetHeaders,
-  LogSetInput,
   SessionQuery,
   SessionStart,
   SessionUpdate,
-  SetLog,
-  SetLogUpdate,
   SessionDetail,
   Today,
   TodayQuery,
@@ -24,7 +19,6 @@ import { authPlugin } from '../../plugins/auth.ts'
 import * as CoachingService from '../coaching/service.ts'
 import { targetsForSession } from '../progression/targets.ts'
 import { start as startSession } from './start.ts'
-import { logSet } from './log-set.ts'
 import { today } from './today.ts'
 import * as SessionService from './service.ts'
 
@@ -69,36 +63,6 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
       return { ok: true }
     },
     { params, detail: { summary: 'Delete a session and its sets, in progress or finished' } },
-  )
-  .post(
-    '/:id/logs',
-    ({ caller, params: { id }, body, headers }) =>
-      logSet(caller, id, body, headers[IDEMPOTENCY_KEY_HEADER]),
-    {
-      params,
-      body: LogSetInput,
-      headers: LogSetHeaders,
-      response: SetLog,
-      detail: {
-        summary: 'Record one performed set',
-        description:
-          'An `Idempotency-Key` header (a UUID) makes it safe to retry: a key already stored in ' +
-          'the session is answered with the stored set, never logged twice.',
-      },
-    },
-  )
-  .patch(
-    '/:id/logs/:logId',
-    ({ caller, params: { id, logId }, body }) => SessionService.amendLog(caller, id, logId, body),
-    {
-      params: z.object({ id: Id, logId: Id }),
-      body: SetLogUpdate,
-      response: SetLog,
-      detail: {
-        summary:
-          'Correct a set — what it measured, how hard it was, whether a warm-up — in progress or finished',
-      },
-    },
   )
 
 /** What to do next (#25): the first screen's one read. */
