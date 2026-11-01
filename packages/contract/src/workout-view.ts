@@ -18,13 +18,16 @@ import {
 
 /** What these rules read of a set as the workout shows it: the exercise it is of, too. */
 type ViewLog = FlowLog & { readonly exerciseId: string }
+/** What they read of an exercise added to a session, and of what the session asks of an entry. */
+type Added = { readonly id: string }
+type Asked = { readonly entryId: string; readonly target: SetTarget }
 
 /**
  * The exercise a set logged with no plan entry goes to (#24): the one chosen, else one just added
  * and not yet logged — each exercise added becomes the focus — else that of the set logged last,
  * else the last there is.
  */
-export function adHocFocus<X extends { readonly id: string }>(
+export function adHocFocus<X extends Added>(
   exercises: readonly X[],
   logs: readonly ViewLog[],
   chosen: string | null,
@@ -71,12 +74,7 @@ const loggable = <E extends FlowEntry>(entry: E): entry is Loggable<E> => entry.
  * What the focus is on: an entry, one out of the reader's reach, a swap or an exercise added, the
  * day all done — or, a session without a plan with nothing picked, nothing.
  */
-export type Focused<
-  E extends FlowEntry,
-  X,
-  L extends ViewLog,
-  T extends { readonly entryId: string },
-> =
+export type Focused<E extends FlowEntry, X extends Added, L extends ViewLog, T extends Asked> =
   | {
       readonly kind: 'entry'
       readonly entry: Loggable<E>
@@ -99,9 +97,9 @@ export type Focused<
 /** The workout screen, as these rules decide it; `workoutView`'s answer. */
 export interface WorkoutView<
   E extends FlowEntry,
-  X,
+  X extends Added,
   L extends ViewLog,
-  T extends { readonly entryId: string },
+  T extends Asked,
 > {
   readonly focus: Focused<E, X, L, T>
   /** The set shown above the focus — re-opened from its mark, else the one logged last. */
@@ -117,12 +115,7 @@ export interface WorkoutView<
   readonly setsFor: (entry: E) => SessionSet<L>[]
 }
 
-interface ViewInput<
-  E extends FlowEntry,
-  X extends { readonly id: string },
-  L extends ViewLog,
-  T extends { readonly entryId: string; readonly target: SetTarget },
-> {
+interface ViewInput<E extends FlowEntry, X extends Added, L extends ViewLog, T extends Asked> {
   /** The day the session follows, or null: a session without a plan, or one out of reach. */
   readonly day: { readonly entries: readonly E[] } | null
   readonly targets: readonly T[]
@@ -142,12 +135,9 @@ interface ViewInput<
 }
 
 /** What both kinds of session read alike: an entry's sets, an exercise added in focus, a set re-opened. */
-function readsOf<
-  E extends FlowEntry,
-  X extends { readonly id: string },
-  L extends ViewLog,
-  T extends { readonly entryId: string; readonly target: SetTarget },
->(input: ViewInput<E, X, L, T>) {
+function readsOf<E extends FlowEntry, X extends Added, L extends ViewLog, T extends Asked>(
+  input: ViewInput<E, X, L, T>,
+) {
   const { targets, sets, added, choices } = input
   const { chosen, reopened } = choices
   const asked = (entry: E) => targets.find((t) => t.entryId === entry.id)
@@ -171,12 +161,9 @@ function readsOf<
   }
 }
 
-type Reads<
-  E extends FlowEntry,
-  X extends { readonly id: string },
-  L extends ViewLog,
-  T extends { readonly entryId: string; readonly target: SetTarget },
-> = ReturnType<typeof readsOf<E, X, L, T>>
+type Reads<E extends FlowEntry, X extends Added, L extends ViewLog, T extends Asked> = ReturnType<
+  typeof readsOf<E, X, L, T>
+>
 
 /**
  * What the workout screen shows (#24), from the session's sets and what the athlete chose.
@@ -190,9 +177,9 @@ type Reads<
  */
 export function workoutView<
   E extends FlowEntry,
-  X extends { readonly id: string },
+  X extends Added,
   L extends ViewLog,
-  T extends { readonly entryId: string; readonly target: SetTarget },
+  T extends Asked,
 >(input: ViewInput<E, X, L, T>): WorkoutView<E, X, L, T> {
   if (input.day !== null) return dayView(input.day, readsOf(input))
   // A set re-opened on a plan entry — the plan out of reach since — is none of these sets: their
@@ -203,12 +190,9 @@ export function workoutView<
 }
 
 /** A session without a plan: an exercise added in focus, and the last set logged of one. */
-function adHocView<
-  E extends FlowEntry,
-  X extends { readonly id: string },
-  L extends ViewLog,
-  T extends { readonly entryId: string; readonly target: SetTarget },
->(r: Reads<E, X, L, T>): WorkoutView<E, X, L, T> {
+function adHocView<E extends FlowEntry, X extends Added, L extends ViewLog, T extends Asked>(
+  r: Reads<E, X, L, T>,
+): WorkoutView<E, X, L, T> {
   const focus = adHocFocus(r.added, r.sets, r.chosenAdded, r.justAdded)
   const log =
     r.reopened === null ? r.sets.findLast((l) => l.entryId === null) : r.adHocShown(r.reopened)
@@ -222,12 +206,10 @@ function adHocView<
 }
 
 /** A session that follows a day: its entries, and the swaps and exercises added to it. */
-function dayView<
-  E extends FlowEntry,
-  X extends { readonly id: string },
-  L extends ViewLog,
-  T extends { readonly entryId: string; readonly target: SetTarget },
->(day: { readonly entries: readonly E[] }, r: Reads<E, X, L, T>): WorkoutView<E, X, L, T> {
+function dayView<E extends FlowEntry, X extends Added, L extends ViewLog, T extends Asked>(
+  day: { readonly entries: readonly E[] },
+  r: Reads<E, X, L, T>,
+): WorkoutView<E, X, L, T> {
   const latest = r.sets.at(-1)
   const chosen = day.entries.find((e) => e.id === r.chosenEntry)
   const addedNext = adHocFocus(r.added, r.sets, r.chosenAdded, r.justAdded)
@@ -262,12 +244,7 @@ function dayView<
 }
 
 /** What a day has in focus, of the entry chosen, the exercise added in focus, and the day's next. */
-function dayFocus<
-  E extends FlowEntry,
-  X extends { readonly id: string },
-  L extends ViewLog,
-  T extends { readonly entryId: string; readonly target: SetTarget },
->(
+function dayFocus<E extends FlowEntry, X extends Added, L extends ViewLog, T extends Asked>(
   r: Reads<E, X, L, T>,
   chosen: E | undefined,
   addedInFocus: X | undefined,
@@ -286,12 +263,11 @@ function dayFocus<
 }
 
 /** The set a day shows above its focus: re-opened from its mark, else the one logged last. */
-function shownOfDay<
-  E extends FlowEntry,
-  X extends { readonly id: string },
-  L extends ViewLog,
-  T extends { readonly entryId: string; readonly target: SetTarget },
->(r: Reads<E, X, L, T>, shownEntry: E | undefined, latest: L | undefined): L | null {
+function shownOfDay<E extends FlowEntry, X extends Added, L extends ViewLog, T extends Asked>(
+  r: Reads<E, X, L, T>,
+  shownEntry: E | undefined,
+  latest: L | undefined,
+): L | null {
   const { reopened } = r
   if (reopened === null) return latest ?? null
   if (reopened.entryId === null) return r.adHocShown(reopened)
