@@ -114,7 +114,8 @@ describe('what the workout shows', () => {
     expect(v.current).toEqual({ upNext: null, addedToday: 'dip' })
   })
 
-  test('an exercise added and chosen — picked, or tapped — takes the focus from the day', () => {
+  // That picking chooses is the app's, proven by the journeys: here, only what a choice does.
+  test('an exercise added and chosen takes the focus from the day', () => {
     const choices = { chosen: { added: 'curl' }, reopened: null }
     expect(focusId(view([set('squat')], { added, choices }))).toBe('curl')
   })
@@ -194,7 +195,7 @@ describe('what the workout shows', () => {
       expect(v.current).toEqual({ upNext: null, addedToday: null })
     })
 
-    test('the focus: chosen — picked, or tapped — else logged last, else the last', () => {
+    test('the focus: chosen, else logged last, else the last', () => {
       const curl = [set(null, 'curl')]
       expect(focusId(adHoc(curl, { choices: { chosen: { added: 'dip' }, reopened: null } }))).toBe(
         'dip',
