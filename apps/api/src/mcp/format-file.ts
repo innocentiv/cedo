@@ -1,7 +1,9 @@
 import {
   type AthleteNote,
   type Bodyweight,
+  type Account,
   type TrainingReview,
+  type WeighIn,
   type WeightUnit,
   ageLine,
   formatCalendarDay,
@@ -26,10 +28,13 @@ export const noteLines = (notes: readonly AthleteNote[], readerId: string): stri
         .map((n) => `${noteByline(n, readerId)} · ${n.id}\n  ${n.text.replaceAll('\n', '\n  ')}`)
         .join('\n\n')
 
-/** The trend first, then `2026-10-30 (Fri 30 Oct): 82.4 kg` a line, newest first. */
+/** `2026-10-30 (Fri 30 Oct): 82.4 kg`. */
+export const weighInLine = (w: WeighIn, unit: WeightUnit): string =>
+  `${w.day} (${formatCalendarDay(w.day)}): ${formatWeight(w.weightG, unit)}`
+
+/** A period's weigh-ins, a line each and newest first, then the latest before them. */
 export function weighInLines(bodyweight: Bodyweight, weeks: number, unit: WeightUnit): string {
-  const line = (w: Bodyweight['weighIns'][number]) =>
-    `${w.day} (${formatCalendarDay(w.day)}): ${formatWeight(w.weightG, unit)}`
+  const line = (w: WeighIn) => weighInLine(w, unit)
   const { weighIns, before } = bodyweight
   return [
     weighIns.length === 0
@@ -52,4 +57,13 @@ export function aboutLine(
   const age =
     review.birthYear === null ? 'Age not given.' : `Age ${ageLine(review.birthYear, now)}.`
   return `${weight} ${age}`
+}
+
+/** `Saved. Born 1990: 36 this year; weights in kg.` — what `athlete_profile_set` left them as. */
+export function profileLine(account: Account, now: Date): string {
+  const born =
+    account.birthYear === null
+      ? 'Year of birth not given'
+      : `Born ${String(account.birthYear)}: ${ageLine(account.birthYear, now)}`
+  return `Saved. ${born}; weights in ${account.weightUnit}.`
 }

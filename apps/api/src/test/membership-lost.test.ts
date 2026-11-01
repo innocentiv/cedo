@@ -503,6 +503,16 @@ const TOOLS: Record<string, Case> = {
       await all([tool(w, 'note_list'), tool(w, 'note_list', { athlete: bob.userId })]),
     allowed: async (w) => await toolAllowed(w, 'note_list', { athlete: bob.userId }),
   },
+  weigh_in_list: {
+    // His bodyweight while she coaches him: days and grams, nothing of the crew's (#42).
+    named: false,
+    read: async (w) =>
+      await all([
+        tool(w, 'weigh_in_list', { weeks: 52 }),
+        tool(w, 'weigh_in_list', { weeks: 52, athlete: bob.userId }),
+      ]),
+    allowed: async (w) => await toolAllowed(w, 'weigh_in_list', { athlete: bob.userId }),
+  },
   // Curator-only.
   platform_status: { named: false, read: async (w) => await tool(w, 'platform_status') },
   db_slow_queries: { named: false, read: async (w) => await tool(w, 'db_slow_queries') },

@@ -12,6 +12,8 @@ import {
   type TrackingMode,
   Workout,
   PlanSave,
+  ageLine,
+  formatCalendarDay,
   page,
 } from '@cedo/contract'
 import { createApp } from '../app.ts'
@@ -1295,5 +1297,78 @@ describe('athlete notes', () => {
     ]) {
       expect(tools.find((t) => t.name === name)?.description).toContain('note_list')
     }
+  })
+})
+
+describe('weigh-ins and the year of birth', () => {
+  const post = async (user: TestUser, path: string, body: unknown, method = 'POST') => {
+    const res = await user.wire(path, { method, body: JSON.stringify(body) })
+    if (res.status >= 300) throw new Error(`${method} ${path}: ${String(res.status)}`)
+    return res.body
+  }
+  const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10)
+
+  test('are taken, one a day, and listed newest first with the latest before the period', async () => {
+    const pat = await mintPat(alice)
+    await post(alice, '/weigh-ins', { day: day(70), weightG: 85_000 })
+    const saved = textOf(
+      (await callTool(pat, 'weigh_in_create', { day: day(1), weightG: 83_000 })).body,
+    )
+    expect(saved).toBe(`Saved: ${day(1)} (${formatCalendarDay(day(1))}): 83 kg`)
+    await callTool(pat, 'weigh_in_create', { day: day(1), weightG: 82_400 })
+    const listed = textOf((await callTool(pat, 'weigh_in_list', { weeks: 4 })).body)
+    expect(listed).toContain(`${day(1)} (${formatCalendarDay(day(1))}): 82.4 kg`)
+    expect(listed).not.toContain('83 kg')
+    expect(listed).toContain(`The latest before them: ${day(70)}`)
+  })
+
+  test('a coach takes an athlete’s, and reads none once they stop sharing', async () => {
+    const athlete = await h.as('athlete')
+    const squad = expectContract(GroupMembership, await post(alice, '/groups', { name: 'Squad' }))
+    await post(alice, `/groups/${squad.id}/members`, { username: athlete.username, role: 'reader' })
+    await post(athlete, `/groups/${squad.id}/membership`, { sharesTraining: true }, 'PATCH')
+    const pat = await mintPat(alice)
+    await callTool(pat, 'weigh_in_create', {
+      athlete: athlete.userId,
+      day: day(0),
+      weightG: 70_000,
+    })
+    expect(JSON.stringify((await athlete.wire('/weigh-ins')).body)).toContain('70000')
+
+    await post(athlete, `/groups/${squad.id}/membership`, { sharesTraining: false }, 'PATCH')
+    const refused = await callTool(pat, 'weigh_in_list', { athlete: athlete.userId })
+    expect(refused.body.result?.isError).toBe(true)
+    expect(textOf(refused.body)).not.toContain('70 kg')
+  })
+
+  test('the year you were born is yours to set, and the review says your age', async () => {
+    const pat = await mintPat(alice)
+    expect(textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)).toContain(
+      'No weigh-ins yet. Age not given.',
+    )
+    const said = textOf((await callTool(pat, 'athlete_profile_set', { birthYear: 1990 })).body)
+    expect(said).toBe(`Saved. Born 1990: ${ageLine(1990, new Date())}; weights in kg.`)
+    await post(alice, '/weigh-ins', { day: day(40), weightG: 84_000 })
+    await post(alice, '/weigh-ins', { day: day(2), weightG: 82_400 })
+    expect(textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)).toContain(
+      `Bodyweight 82.4 kg on ${formatCalendarDay(day(2))}, −1.6 kg since ${formatCalendarDay(day(40))}. Age ${ageLine(1990, new Date())}.`,
+    )
+  })
+
+  test('the year you were born is refused out of range, and is never an athlete’s', async () => {
+    const pat = await mintPat(alice)
+    const refused = await callTool(pat, 'athlete_profile_set', { birthYear: 1899 })
+    expect(refused.body.result?.isError).toBe(true)
+    const theirs = await callTool(pat, 'athlete_profile_set', {
+      athlete: alice.userId,
+      birthYear: 1990,
+    })
+    expect(theirs.body.result?.isError).toBe(true)
+  })
+
+  test('taking a weigh-in is announced as replacing that day’s', async () => {
+    const { body } = await rpc(await mintPat(alice), 'tools/list')
+    const tool = (body.result?.tools ?? []).find((t) => t.name === 'weigh_in_create')
+    expect(tool?.annotations?.['destructiveHint']).toBe(true)
   })
 })
