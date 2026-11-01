@@ -19,7 +19,7 @@ that says so and links back.
 | [0018](0018-n1-detection.md) | N+1 detected by query-count invariant, not a threshold | Accepted |
 | [0019](0019-visible-relations.md) | Visibility is a relation modules join; children carry their owner | Accepted |
 | [0020](0020-rpe-is-numeric.md) | RPE is stored as `numeric(3,1)`, not as an integer | Accepted |
-| [0021](0021-coaching-through-groups.md) | Coaching through groups: editors read the training members share | Accepted, amended: a coach writes athlete notes |
+| [0021](0021-coaching-through-groups.md) | Coaching through groups: editors read the training members share | Accepted, amended: a coach writes athlete notes and weigh-ins |
 | [0022](0022-plans-edited-in-place.md) | A workout's plan is edited in place, saved as each change is made | Accepted |
 | [0023](0023-equipment-is-a-fixed-list.md) | Equipment is a fixed list of capabilities, and an exercise needs all of its items | Accepted |
 | [0024](0024-targets-follow-the-athletes-equipment.md) | A plan keeps its weights; each athlete's target is the one their equipment can load | Accepted |

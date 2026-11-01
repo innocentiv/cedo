@@ -1,7 +1,7 @@
 # 0021 — Coaching through groups: editors read the training members share
 
-**Status:** Accepted (2026-10-24), amended (2026-10-28: a coach writes athlete notes — see the
-end)
+**Status:** Accepted (2026-10-24), amended (2026-10-28: a coach writes athlete notes; 2026-11-01:
+and weigh-ins — see the end)
 
 ## Context
 
@@ -95,3 +95,14 @@ equipment of theirs.
 This is not the comment thread rejected above. A note answers nothing and nobody is told of one: it
 is read when a plan is made, not as a conversation. Replies, notifications and a resolved state were
 each asked and left out.
+
+## Amended (2026-11-01): a coach takes weigh-ins too
+
+A plan is weighed against the person as well as against what they lifted: their bodyweight and
+its trend, and their age (#42). So a coach writes a second thing of an athlete's, a **weigh-in**
+(GLOSSARY.md) — that day's bodyweight — on the same terms as a note: the athlete's, read and taken
+by them and by whoever coaches them now, removed by whoever took it or by the athlete, and kept
+when the coach stops coaching. A second weigh-in the same day replaces the first, whoever took it.
+
+The year they were born is not one of them: only the athlete says it, and a coach reads it only as
+the review's age. Their training is still never a coach's to change.

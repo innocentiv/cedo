@@ -108,14 +108,23 @@ without them: a copy in a group they edit, as `workout_duplicate` is for a share
 
 `training_review` · `workout_list` · `workout_get` · `workout_get_editable` · `workout_create` ·
 `workout_save_plan` · `workout_duplicate` · `workout_progression` · `exercise_history` ·
-`session_log` · `session_fix_set` · `note_list` · `note_create` · `note_update`
+`session_log` · `session_fix_set` · `note_list` · `note_create` · `note_update` · `weigh_in_list` ·
+`weigh_in_create` · `athlete_profile_set`
 
-`note_list`, `note_create` and `note_update` (`mcp/tools/notes.ts`) are **athlete notes** (#41,
+`note_list`, `note_create` and `note_update` (`mcp/tools/athlete-file.ts`) are **athlete notes** (#41,
 `GLOSSARY.md`): what is known about someone, kept for planning their training — an injury, a
 preference, what they said of a plan. Each takes the coaching tools' `athlete`: a coach writes them
 too (ADR-0021, amended). `training_review` and the plan-writing tools say to read them first; the
 review does not carry them, so a plan made without asking is the model's omission, not a stale
 payload. Only the author rewords one, and none is removed here — the app does that, behind a tap.
+
+`weigh_in_list` and `weigh_in_create` (the same file) are **weigh-ins** (#42): a bodyweight a day,
+in grams, read over the review's weeks with the latest before them — yours, or an athlete's with
+`athlete`. Another that day replaces the first, so `weigh_in_create` is announced destructive and
+idempotent. `training_review` carries the latest and its change over its weeks, and the age the
+year of birth makes: `Bodyweight 82.4 kg on Fri 30 Oct, −1.6 kg since Tue 1 Sep. Age 36 this
+year.` `athlete_profile_set` is `PATCH /auth/me`'s own schema (`MeUpdate`) — the year you were
+born, and how you read weights — and is only ever yours.
 
 `session_log` and `session_fix_set` record training as it was done (`mcp/tools/session.ts`): a
 whole session the AI is told about, and a set already logged corrected (#31) — "80, not 100, on
@@ -275,7 +284,8 @@ validate identically and advertise nothing.
 ### Nothing can be deleted
 
 There is no `*_delete` tool, and a test asserts none appears — not even for an athlete note (#41),
-which the model may reword when it is no longer true, and a person removes. Deletion is rare, hard
+which the model may reword when it is no longer true, and a person removes; nor for a weigh-in
+(#42), which a second that day replaces. Deletion is rare, hard
 to undo, and a confused model destroying training history on a self-hosted box with no backup is a
 far worse outcome than it failing to tidy up. Tidying stays a human action in the UI.
 

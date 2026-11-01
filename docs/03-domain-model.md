@@ -36,6 +36,11 @@ value — every weight is grams — only what is written for them: the app's scr
 text alike, which is why it lives on the account and travels on the caller. It is theirs alone: `Me`
 returns it (`Account`), and the `User` a fellow group member sees does not carry it.
 
+`users.birth_year?` is the year a person was born (#42): from 1900 to ten years ago, null until they
+say it, and set only by them — `PATCH /auth/me` and `athlete_profile_set`, which share `MeUpdate`.
+`Me` returns it; a fellow member is never shown it, and whoever coaches them reads it only as the
+review's age.
+
 ## The ownable trait
 
 ```ts
@@ -287,6 +292,21 @@ author or the athlete removes it. A coach's notes stay when they stop coaching; 
 null only with the author's account. At most 100 a person (`NOTES_PER_ATHLETE`), so a list is
 never paged; a note written locks the person's row first, so two at once cannot both pass the count.
 
+### Weigh-ins
+
+```
+weigh_ins(id, athlete_id, author_id?, day, weight_g, taken_at)
+```
+
+A person's bodyweight on one day (#42, GLOSSARY.md "Weigh-in"): `day` on their own calendar, as
+their device says it — never the server's; `weight_g` from 20 to 400 kg. One a day: the unique
+`(athlete_id, day)` index makes another that day replace it (`ON CONFLICT DO UPDATE`), with whoever
+took it as its author. Kept and read as athlete notes are: PERSONAL, through `Training`, written by
+them or a coach of theirs; removed by its author or the athlete. Read over the review's weeks
+(`Bodyweight`): the period's, newest first, and the latest before it, which the period's change is
+measured from (`bodyweightTrend`) — at most a year's, so never paged. The review carries that trend
+and the year they were born.
+
 ### A rest
 
 ```
@@ -385,6 +405,7 @@ against a realistic data volume — see [adr/0018](adr/0018-n1-detection.md).
 | `workout_sessions_in_progress_idx` (unique, partial: `ended_at is null`) on `user_id` | one session in progress per person, and finding it |
 | `sessions_user_idx`, `pats_user_idx` | listing or revoking a user's credentials |
 | `athlete_notes_athlete_idx` | a person's notes — at most 100, so sorted rather than walked in order, which the planner prefers |
+| `weigh_ins_athlete_day_idx` (unique, on `(athlete_id, day)`) | one weigh-in a day, which a second replaces; and a period's, found among everyone's — at most a year's, sorted |
 
 ### Why the list needs two index shapes
 
