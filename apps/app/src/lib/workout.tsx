@@ -57,7 +57,7 @@ export function WorkoutBody({ w }: { readonly w: Workout }): React.JSX.Element |
           day={day}
           sets={w.sets}
           rest={rest}
-          extras={w.adHocExercises}
+          added={w.adHocExercises}
           full={w.picked}
           view={w.view}
           onChoose={w.choose}

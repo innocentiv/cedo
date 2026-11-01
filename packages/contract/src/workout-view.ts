@@ -53,7 +53,8 @@ export interface Reopened {
 /**
  * What the athlete chose on the workout screen (GLOSSARY.md, "Focus"): an entry of the day or an
  * exercise logged with none, tapped to put in focus, and a set re-opened from its mark. The screen
- * holds them until the next set is logged; these rules only read them.
+ * holds them until the athlete logs or undoes a set, or goes to pick an exercise; these rules only
+ * read them.
  */
 export interface WorkoutChoices {
   readonly chosen: { readonly entry: string } | { readonly added: string } | null
@@ -129,7 +130,11 @@ interface ViewInput<
   readonly sets: readonly L[]
   /** The exercises logged with no plan entry, then any added since (`exercisesInSession`). */
   readonly added: readonly X[]
-  /** The first of the exercises added last: it takes the focus until a set of it is logged. */
+  /**
+   * The first of the exercises added last. Without a plan, it takes the focus until a set of it is
+   * logged. Following a day, while it is the last of those added, it has the focus whenever nothing
+   * else is chosen — sets of it logged or not, and over the day's order — until another is picked.
+   */
   readonly justAdded: string | null
   readonly choices: WorkoutChoices
   /** What the athlete can load on an entry's exercise (#36). */
@@ -188,8 +193,12 @@ export function workoutView<
   L extends ViewLog,
   T extends { readonly entryId: string; readonly target: SetTarget },
 >(input: ViewInput<E, X, L, T>): WorkoutView<E, X, L, T> {
-  const reads = readsOf(input)
-  return input.day === null ? adHocView(reads) : dayView(input.day, reads)
+  if (input.day !== null) return dayView(input.day, readsOf(input))
+  // A set re-opened on a plan entry — the plan out of reach since — is none of these sets: their
+  // keys count again from `s0`, and would name another.
+  const { reopened } = input.choices
+  const own = reopened?.entryId === null ? reopened : null
+  return adHocView(readsOf({ ...input, choices: { ...input.choices, reopened: own } }))
 }
 
 /** A session without a plan: an exercise added in focus, and the last set logged of one. */
@@ -220,13 +229,13 @@ function dayView<
 >(day: { readonly entries: readonly E[] }, r: Reads<E, X, L, T>): WorkoutView<E, X, L, T> {
   const latest = r.sets.at(-1)
   const chosen = day.entries.find((e) => e.id === r.chosenEntry)
-  const extra = adHocFocus(r.added, r.sets, r.chosenAdded, r.justAdded)
+  const addedNext = adHocFocus(r.added, r.sets, r.chosenAdded, r.justAdded)
   // An exercise added is in focus when chosen, just added, or the one a swap was logged to last.
-  const extraInFocus =
+  const addedInFocus =
     chosen === undefined &&
-    extra !== undefined &&
-    (r.chosenAdded !== null || r.justAdded === extra.id || latest?.entryId === null)
-      ? extra
+    addedNext !== undefined &&
+    (r.chosenAdded !== null || r.justAdded === addedNext.id || latest?.entryId === null)
+      ? addedNext
       : undefined
   const next = chosen !== undefined && loggable(chosen) ? chosen : focusOf(day, r.sets)
 
@@ -239,12 +248,12 @@ function dayView<
       ? shownEntry.id
       : null
   return {
-    focus: dayFocus(r, chosen, extraInFocus, next),
+    focus: dayFocus(r, chosen, addedInFocus, next),
     shown: log === null ? null : { log, exercise: shownEntry?.exercise ?? r.exerciseOf(log) },
     another,
     current: {
-      upNext: extraInFocus !== undefined || next === null ? null : next,
-      addedToday: extraInFocus?.id ?? null,
+      upNext: addedInFocus !== undefined || next === null ? null : next,
+      addedToday: addedInFocus?.id ?? null,
     },
     setsFor: r.setsFor,
   }
@@ -259,11 +268,11 @@ function dayFocus<
 >(
   r: Reads<E, X, L, T>,
   chosen: E | undefined,
-  extraInFocus: X | undefined,
+  addedInFocus: X | undefined,
   next: E | null,
 ): Focused<E, X, L, T> {
   if (chosen !== undefined && !loggable(chosen)) return { kind: 'unavailable', entry: chosen }
-  if (extraInFocus !== undefined) return r.addedFocus(extraInFocus)
+  if (addedInFocus !== undefined) return r.addedFocus(addedInFocus)
   if (next === null || !loggable(next)) return { kind: 'done' }
   return {
     kind: 'entry',

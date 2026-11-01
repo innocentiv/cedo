@@ -26,7 +26,7 @@ export function PlannedDay({
   day,
   sets,
   rest,
-  extras,
+  added,
   full,
   view,
   onChoose,
@@ -41,7 +41,7 @@ export function PlannedDay({
   readonly sets: WorkoutSets
   readonly rest: RestShown
   /** Exercises logged with no entry — swaps — then any added since: `exercisesInSession`. */
-  readonly extras: readonly SessionExercise[]
+  readonly added: readonly SessionExercise[]
   /** The exercises added this open, whole: how to do them can be shown. */
   readonly full: readonly Exercise[]
   readonly view: WorkoutShown
@@ -109,13 +109,13 @@ export function PlannedDay({
               }}
               testID="up-next"
             />
-            {extras.length === 0 ? add : null}
+            {added.length === 0 ? add : null}
           </Stack>
-          {extras.length === 0 ? null : (
+          {added.length === 0 ? null : (
             <Stack gap="xs">
               <AddedExercises
                 title="Added today"
-                exercises={extras}
+                exercises={added}
                 sets={sets}
                 current={current.addedToday}
                 onChoose={(id) => {

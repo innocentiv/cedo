@@ -126,8 +126,8 @@ const latestOfDay = (entries: readonly FlowEntry[], logs: readonly FlowLog[]): F
  * - otherwise the same entry, while it has sets left;
  * - otherwise the first entry of the day with sets left.
  *
- * Null once every prescribed set of the day is logged. An entry the athlete chose by tapping it is
- * the screen's to hold until the next set is logged, after which this takes over again.
+ * Null once every prescribed set of the day is logged. An entry the athlete chose by tapping it
+ * takes the focus instead (`workoutView`), for as long as the screen holds the choice.
  */
 export function focusOf<E extends FlowEntry>(
   day: { readonly entries: readonly E[] },

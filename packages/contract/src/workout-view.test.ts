@@ -199,5 +199,14 @@ describe('what the workout shows', () => {
       expect(v.shown?.log).toBe(sets[0])
       expect(v.another).toBeNull()
     })
+
+    /** The plan gone out of reach mid-session: a set re-opened on one of its entries is no set here. */
+    test('a set re-opened on a plan entry is not one of an exercise logged with none', () => {
+      const sets = [set(null, 'curl'), set(null, 'curl')]
+      const reopened = { entryId: 'squat', exerciseId: 'curl', key: 's0' }
+      const v = adHoc(sets, { choices: { chosen: null, reopened } })
+      expect(v.shown?.log).toBe(sets[1])
+      expect(v.focus.kind === 'added' && v.focus.selected).toBeNull()
+    })
   })
 })

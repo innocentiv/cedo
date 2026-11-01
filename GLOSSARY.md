@@ -307,8 +307,8 @@ _Avoid_: group, block
 
 **Focus**:
 What a session in progress puts forward to log next: an entry of its day, or an exercise logged
-with none. The one the athlete chose, else where the day's order leads; a choice holds until the
-next set is logged.
+with none. The one the athlete chose, else where the day's order leads; a choice holds until they
+log or undo a set, or add an exercise, which then takes the focus.
 _Avoid_: current exercise, active entry, selected entry
 
 **Swap**:
