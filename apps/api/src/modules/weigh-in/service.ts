@@ -1,16 +1,20 @@
-import { type SQL, and, desc, eq, gte, lt, sql } from 'drizzle-orm'
+import { type SQL, desc, eq, gte, lt, sql } from 'drizzle-orm'
 import { type Bodyweight, type WeighIn, type WeighInInput, utcDayWeeksBefore } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { users, weighIns } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { athleteRecords } from '../athlete-record/records.ts'
 import { type Training, ownOrCoached } from '../coaching/training.ts'
 
 /**
- * Weigh-ins (#42): the caller's bodyweight, or — given `athleteId` — an athlete's they coach. Read
- * and written as athlete notes are (../note/service.ts): by both; removed by whoever took it, or by
- * the person it is about. One a day: another that day replaces it. See GLOSSARY.md, "Weigh-in".
+ * Weigh-ins (#42): the caller's bodyweight, or — given `athleteId` — an athlete's they coach. An
+ * athlete record (../athlete-record/records.ts): read, written and removed as every one is. What
+ * is a weigh-in's own: one a day — another that day replaces it — read over a period. See
+ * GLOSSARY.md, "Weigh-in".
  */
+
+const records = athleteRecords(weighIns, 'weigh-in')
 
 /** Their weigh-ins, with who took each — `and` more, to narrow them. */
 const select = (training: Training, ...more: SQL[]) =>
@@ -19,30 +23,21 @@ const select = (training: Training, ...more: SQL[]) =>
       id: weighIns.id,
       day: weighIns.day,
       weightG: weighIns.weightG,
-      authorId: weighIns.authorId,
-      // Projected: a user row carries its password hash.
-      authorName: users.displayName,
+      ...records.authorColumns,
     })
     .from(weighIns)
-    .leftJoin(users, eq(users.id, weighIns.authorId))
-    .where(and(eq(weighIns.athleteId, training.athleteId), ...more))
+    .leftJoin(users, records.byAuthor)
+    .where(records.of(training, ...more))
     .orderBy(desc(weighIns.day))
 
 type Row = Awaited<ReturnType<typeof select>>[number]
 
-const toWeighIn = (training: Training, row: Row): WeighIn => {
-  const mine = row.authorId === training.reader.userId
-  return {
-    id: row.id,
-    day: row.day,
-    weightG: row.weightG,
-    author:
-      row.authorId === null || row.authorName === null
-        ? null
-        : { id: row.authorId, displayName: row.authorName },
-    canDelete: mine || training.athleteId === training.reader.userId,
-  }
-}
+const toWeighIn = (training: Training, row: Row): WeighIn => ({
+  id: row.id,
+  day: row.day,
+  weightG: row.weightG,
+  ...records.authored(training, row),
+})
 
 /**
  * The weigh-ins of the last `weeks`, newest first, and the latest before them — what the period's
@@ -76,36 +71,16 @@ export async function create(
   input: WeighInInput,
 ): Promise<WeighIn> {
   const training = await ownOrCoached(caller, athleteId)
-  const taken = { authorId: caller.userId, weightG: input.weightG, takenAt: sql`now()` }
+  const taken = { authorId: training.reader.userId, weightG: input.weightG, takenAt: sql`now()` }
   const [written] = await db
     .insert(weighIns)
     .values({ athleteId: training.athleteId, day: input.day, ...taken })
     .onConflictDoUpdate({ target: [weighIns.athleteId, weighIns.day], set: taken })
     .returning({ id: weighIns.id })
-  // Thrown, not defaulted: an empty id would reach a uuid column as a 500 (ownable/service.ts).
-  if (written === undefined) throw new Error('A weigh-in was written and returned nothing')
-  const [row] = await select(training, eq(weighIns.id, written.id)).limit(1)
+  const [row] = await select(training, eq(weighIns.id, records.inserted(written).id)).limit(1)
   if (row === undefined) throw notFound('weigh-in')
   return toWeighIn(training, row)
 }
 
 /** Removed — by whoever took it, or by the person it is about. */
-export async function remove(
-  caller: Caller,
-  athleteId: string | undefined,
-  id: string,
-): Promise<void> {
-  const training = await ownOrCoached(caller, athleteId)
-  const theirs = training.athleteId === caller.userId
-  const removed = await db
-    .delete(weighIns)
-    .where(
-      and(
-        eq(weighIns.athleteId, training.athleteId),
-        eq(weighIns.id, id),
-        theirs ? undefined : eq(weighIns.authorId, caller.userId),
-      ),
-    )
-    .returning({ id: weighIns.id })
-  if (removed.length === 0) throw notFound('weigh-in')
-}
+export const remove = records.remove
