@@ -170,6 +170,21 @@ export const session = (page: Page) => {
     shown,
     entry: (index: number) => logger(page, `log-entry-${index}`, `up-next-${index}`),
     adhoc: (exerciseId: string) => logger(page, `adhoc-${exerciseId}`, `adhoc-row-${exerciseId}`),
+    /**
+     * What is in focus, read without tapping anything: `entry 1`, `adhoc <exercise id>`, `done` — or
+     * null, before the screen shows one. Every logger action makes its own entry current first, by
+     * tapping it, so only this sees the focus go where it should not.
+     */
+    inFocus: async (): Promise<string | null> => {
+      const id = await page.evaluate(
+        `[...document.querySelectorAll('[data-testid]')].map((e) => e.dataset.testid).find((t) => /^(log-entry-\\d+|adhoc-[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}|day-done)$/.test(t)) ?? null`,
+      )
+      if (typeof id !== 'string') return null
+      if (id === 'day-done') return 'done'
+      return id.startsWith('adhoc-')
+        ? `adhoc ${id.slice('adhoc-'.length)}`
+        : `entry ${id.slice('log-entry-'.length)}`
+    },
 
     /**
      * Starts a session without a plan, from Today. It opens on the picker — there is nothing else

@@ -1965,6 +1965,62 @@ test(
 )
 
 /**
+ * An entry chosen while a set waits for a signal stays chosen when the set is sent. A set logged
+ * offline is known by its key until the server has it, then by the server's id — so a choice held
+ * to the latest set's id was lost as it landed, and the focus went back where the day's order leads.
+ */
+test(
+  'an entry chosen while a set waits for a signal stays in focus once the set is sent',
+  async () => {
+    await withApp('choice-across-the-signal', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('chs'))
+      const mine = await page.client()
+      const found = async (q: string): Promise<string> => {
+        const [exercise] = (await mine.exercises.list({ q, limit: 1 })).items
+        if (exercise === undefined) throw new Error(`The seeded library has no ${q}`)
+        return exercise.id
+      }
+      const set = (reps: number, kg: number) => ({ targetReps: reps, targetWeightG: kg * 1000 })
+      const plan = await mine.workouts.create({ name: 'Two', notes: null })
+      await mine.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [
+            {
+              name: 'Day 1',
+              entries: [
+                { exerciseId: await found('Bench'), sets: [set(8, 60), set(8, 60)] },
+                { exerciseId: await found('Squat'), sets: [set(5, 100)] },
+              ],
+            },
+          ],
+        }),
+      )
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await app.workouts.startDay(0)
+      await page.until(app.session.inFocus, (focus) => focus === 'entry 0')
+
+      await page.goOffline()
+      await app.session.entry(0).logWhileOffline()
+      // The bench has a set left, so the day would stay on it; the athlete goes to the squat.
+      await app.session.entry(1).shown()
+      expect(await app.session.inFocus()).toBe('entry 1')
+
+      await page.goOnline()
+      await app.session.sent()
+      await page.until(
+        async () => (await app.session.loggedIds()).length,
+        (rows) => rows === 1,
+      )
+      expect(await app.session.inFocus()).toBe('entry 1')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * A write refused because what it names is gone or out of reach says the screen's picture is
  * stale. The athlete is removed from the group mid-session, on the coach's device: the screen still
  * shows the plan, the next set against it is refused — and the session used to keep showing the plan
