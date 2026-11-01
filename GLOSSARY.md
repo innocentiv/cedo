@@ -285,16 +285,21 @@ entry it answers. It belongs to the session, and keeps its effort even when its 
 later out of reach.
 _Avoid_: entry (that is the plan's), result
 
+**Athlete record**:
+Something kept about a person, to be read when their training is planned: an athlete note, or a
+weigh-in. Read by the person and by everyone who reads their training; written by the person or a
+coach of theirs; removed by whoever wrote it, or by the person it is about.
+_Avoid_: personal data, profile
+
 **Athlete note**:
-A standing fact about a person, written down to be remembered when their training is planned: an
-injury, a preference, what they said of a plan, a week away. Not of one session, nor of one plan.
-Read by the person and by everyone who reads their training; written by the person or a coach of
-theirs. Whoever wrote one may change or remove it, and the person may remove any about them.
+An athlete record of a standing fact, written down to be remembered when their training is
+planned: an injury, a preference, what they said of a plan, a week away. Not of one session, nor of
+one plan. Whoever wrote one may also change its words.
 _Avoid_: comment, feedback, memo
 
 **Weigh-in**:
-A person's bodyweight on one day; another that day replaces it. The latest is their bodyweight, and
-the ones before it are its trend. Read and written as athlete notes are.
+An athlete record of a person's bodyweight on one day; another that day replaces it. The latest is
+their bodyweight, and the ones before it are its trend.
 _Avoid_: measurement (that is what a set records), body stat
 
 **Series**:
