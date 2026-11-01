@@ -7,7 +7,9 @@ import {
   estimatedMax,
   topSet,
 } from '@cedo/contract'
-import { type WorkingSet, sessionsByExercise } from './stalled.ts'
+import { type WorkingSet, sessionsByExercise, stalledOf } from './stalled.ts'
+
+export type { WorkingSet } from './stalled.ts'
 
 /**
  * The deload signals `training_review` gives the AI, which deloads by saving a lighter plan — the
@@ -97,3 +99,10 @@ const mean = (values: readonly number[]): number =>
   values.reduce((sum, v) => sum + v, 0) / values.length
 
 const oneDecimal = (value: number): number => Math.round(value * 10) / 10
+
+/** What the latest sessions say: stalled, falling, drifting — the AI's signals to change something. */
+export const judgedOver = (sets: readonly WorkingSet[]) => ({
+  stalled: stalledOf(sets),
+  falling: fallingOf(sets),
+  effortDrift: effortDriftOf(sets),
+})

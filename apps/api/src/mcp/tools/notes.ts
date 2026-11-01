@@ -4,7 +4,7 @@ import { AthleteNoteInput, OfAthlete } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import * as NoteService from '../../modules/note/service.ts'
 import { text } from '../format.ts'
-import { noteLines } from '../format-notes.ts'
+import { noteLines } from '../format-file.ts'
 
 const READ = { readOnlyHint: true, openWorldHint: false } as const
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const

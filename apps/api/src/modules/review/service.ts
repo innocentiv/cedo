@@ -9,13 +9,14 @@ import {
   visibleWorkouts,
 } from '../../db/visible.ts'
 import { type Training, sessionsOf } from '../session/service.ts'
+import { aboutThem } from './about.ts'
 import { adherenceOf } from './adherence.ts'
 import { muscleWorkOf } from './muscle-work.ts'
-import { effortDriftOf, fallingOf } from './deload.ts'
+import { judgedOver } from './deload.ts'
 
 /** The thresholds the review judges by, for whoever says its signals. */
 export { DRIFT_RPE, DRIFT_SESSIONS, FALLING_SESSIONS } from './deload.ts'
-import { type WorkingSet, stalledOf } from './stalled.ts'
+import type { WorkingSet } from './deload.ts'
 
 /**
  * A READ MODEL for coaching, not new domain rules.
@@ -51,6 +52,7 @@ export async function trainingReview(training: Training, weeks: number): Promise
       await workBetween(training, previousSince, since),
     ),
     ...judgedOver(await latestWorkingSets(training, since)),
+    ...(await aboutThem(training, weeks)),
   }
 }
 
@@ -167,13 +169,6 @@ async function latestWorkingSets(training: Training, since: Date): Promise<Worki
     },
   }))
 }
-
-/** What the latest sessions say: stalled, falling, drifting — the AI's signals to change something. */
-const judgedOver = (sets: readonly WorkingSet[]) => ({
-  stalled: stalledOf(sets),
-  falling: fallingOf(sets),
-  effortDrift: effortDriftOf(sets),
-})
 
 /**
  * The athlete's working sets in the window, each with its exercise as the reader can still see it — an

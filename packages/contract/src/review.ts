@@ -6,6 +6,7 @@ import { Timestamp } from './primitives.ts'
 import { Rpe, reserveOf } from './rpe.ts'
 import { formatStall } from './stall.ts'
 import { type WeightUnit, formatWeight } from './units.ts'
+import { BodyweightTrend } from './weigh-in.ts'
 import { counted } from './week.ts'
 
 /**
@@ -91,6 +92,10 @@ export const TrainingReview = z.object({
   stalled: z.array(Stalled),
   falling: z.array(Falling),
   effortDrift: z.array(EffortDrift),
+  /** Their bodyweight, and its change over the period (#42) — null with no weigh-in at all. */
+  bodyweight: BodyweightTrend.nullable(),
+  /** The year they were born, when they have said it (#42). */
+  birthYear: z.int().nullable(),
 })
 export type TrainingReview = z.output<typeof TrainingReview>
 

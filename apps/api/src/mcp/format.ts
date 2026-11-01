@@ -24,6 +24,7 @@ import {
   pointsOf,
 } from '@cedo/contract'
 import { DRIFT_RPE, DRIFT_SESSIONS, FALLING_SESSIONS } from '../modules/review/service.ts'
+import { aboutLine } from './format-file.ts'
 
 /**
  * Tool output is TEXT the model reads, and its size is the real cost of an MCP tool — not the
@@ -264,6 +265,7 @@ export function reviewSummary(review: TrainingReview, unit: WeightUnit): string 
 
   return [
     `Last ${weeks} weeks: ${a.sessions} sessions (${a.perWeek}/week).`,
+    aboutLine(review, unit, new Date()),
     a.lastSessionAt === null
       ? 'No sessions logged in this window.'
       : `Last session ${a.lastSessionAt}. Current streak ${a.currentStreakDays} days, longest gap ${a.longestGapDays} days.`,
