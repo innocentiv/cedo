@@ -25,7 +25,7 @@ import { seedLibrary } from '../../db/seed.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
-import { logSet } from './log-set.ts'
+import { logSet } from './set-writes.ts'
 import { logWhole } from './start.ts'
 
 const Page = page(WorkoutSessionSummary)

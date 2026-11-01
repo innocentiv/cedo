@@ -1,11 +1,45 @@
-import { and, asc, eq, inArray, isNull } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { NO_TARGET, type Rest, restOf } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises, visibleWorkoutSets } from '../../db/visible.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { planEntries } from '../workout/plan.ts'
-import { ownedBy } from './service.ts'
+import { NO_REST, ownedBy } from './service.ts'
+
+/**
+ * The rest a session has running, as the server keeps it (#38): worked out by the contract's
+ * `restOf` — the app's own rule, so the phone and the server agree — after every write to its sets
+ * (`writeSessionSets`), then +30 s or skipped as the athlete says (`changeRest`). What the countdown
+ * counts to, on every device. See docs/adr/0025-rest-kept-by-the-server.md.
+ */
+
+/**
+ * The rest running now, worked out again and kept: after a set is logged, corrected or removed. The
+ * same rest as before — a set sent twice, an older one undone — keeps its +30 s and its skip; a new
+ * one starts as long as its set says. None runs in a finished session.
+ */
+export async function keepRest(caller: Caller, sessionId: string): Promise<void> {
+  const rest = await restNow(caller, sessionId)
+  if (rest === null) {
+    await db
+      .update(workoutSessions)
+      .set(NO_REST)
+      .where(and(ownedBy(caller), eq(workoutSessions.id, sessionId)))
+    return
+  }
+  // ISO strings, cast in SQL: a JS Date inside raw `sql` bypasses the column encoder.
+  const since = sql`${rest.since}::timestamptz`
+  const ends = new Date(Date.parse(rest.since) + rest.seconds * 1000).toISOString()
+  const same = sql`${workoutSessions.restSince} = ${since}`
+  await db
+    .update(workoutSessions)
+    .set({
+      restSince: sql`${since}`,
+      restEndsAt: sql`case when ${same} then ${workoutSessions.restEndsAt} else ${ends}::timestamptz end`,
+    })
+    .where(and(ownedBy(caller), eq(workoutSessions.id, sessionId)))
+}
 
 /**
  * The rest running now in one of the caller's sessions, as the contract's `restOf` says (#38) — read

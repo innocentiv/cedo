@@ -17,7 +17,6 @@ import { mediaBlobRoutes, mediaRoutes } from './modules/media/index.ts'
 import { noteRoutes } from './modules/note/index.ts'
 import { weighInRoutes } from './modules/weigh-in/index.ts'
 import { exerciseHistoryRoutes, sessionRoutes, todayRoutes } from './modules/session/index.ts'
-import { setRoutes } from './modules/session/set-routes.ts'
 import { workoutRoutes } from './modules/workout/index.ts'
 import { tokenRoutes } from './modules/token/index.ts'
 
@@ -62,7 +61,6 @@ export function createApp() {
     .use(noteRoutes)
     .use(weighInRoutes)
     .use(sessionRoutes)
-    .use(setRoutes)
     .use(todayRoutes)
     .use(workoutRoutes)
     .use(tokenRoutes)

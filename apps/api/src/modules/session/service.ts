@@ -1,6 +1,8 @@
-import { and, asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, sql } from 'drizzle-orm'
 import {
   type LoggedExercise,
+  REST_EXTENSION_S,
+  type RestChange,
   type SessionUpdate,
   type SetLog,
   type WorkoutSession,
@@ -92,6 +94,39 @@ const FINISHED = 'That session has already been finished'
 /** No rest running (#38): its set undone, or the session finished. */
 export const NO_REST = { restSince: null, restEndsAt: null } as const
 
+/**
+ * +30 s, or skip — of the rest running after the session's `sets`th set, and only that one (#38).
+ * Named by how many sets there were when it was tapped, not by a time: a set logged without a
+ * signal is dated by the phone until the server has it, and by the server after. Sent in the
+ * session's queue behind the sets, a change finds its rest still running — or, the next set logged
+ * since, changes nothing. Skipped, it ends when it began: kept, so a reload or another device reads
+ * it skipped.
+ */
+export async function changeRest(
+  caller: Caller,
+  sessionId: string,
+  { sets, change }: RestChange,
+): Promise<void> {
+  const logged = db.$count(setLogs, eq(setLogs.sessionId, workoutSessions.id))
+  await db
+    .update(workoutSessions)
+    .set(
+      change === 'skip'
+        ? { restEndsAt: sql`${workoutSessions.restSince}` }
+        : {
+            restEndsAt: sql`${workoutSessions.restEndsAt} + make_interval(secs => ${REST_EXTENSION_S})`,
+          },
+    )
+    .where(
+      and(
+        ownedBy(caller),
+        eq(workoutSessions.id, sessionId),
+        isNotNull(workoutSessions.restSince),
+        sql`${logged} = ${sets}`,
+      ),
+    )
+}
+
 export async function update(
   caller: Caller,
   id: string,
@@ -136,8 +171,8 @@ export async function update(
 
 /**
  * Locks the caller's session for a write to its sets, and says whether it is finished. Every write
- * to its sets takes this lock (`writeSets`), so they are taken in turn: the next set's number is
- * read from the sets as they stand.
+ * to its sets takes this lock (`writeSessionSets`), so they are taken in turn: the next set's
+ * number is read from the sets as they stand.
  */
 export async function lockOwn(
   tx: Transaction,

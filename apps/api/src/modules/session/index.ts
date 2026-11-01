@@ -5,9 +5,15 @@ import {
   ExerciseHistory,
   ExerciseHistoryQuery,
   Id,
+  IDEMPOTENCY_KEY_HEADER,
+  LogSetHeaders,
+  LogSetInput,
+  RestChange,
   SessionQuery,
   SessionStart,
   SessionUpdate,
+  SetLog,
+  SetLogUpdate,
   SessionDetail,
   Today,
   TodayQuery,
@@ -21,8 +27,10 @@ import { targetsForSession } from '../progression/targets.ts'
 import { start as startSession } from './start.ts'
 import { today } from './today.ts'
 import * as SessionService from './service.ts'
+import { amendLog, logSet, removeLog } from './set-writes.ts'
 
 const params = z.object({ id: Id })
+const logParams = z.object({ id: Id, logId: Id })
 
 export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'] })
   .use(authPlugin)
@@ -63,6 +71,52 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
       return { ok: true }
     },
     { params, detail: { summary: 'Delete a session and its sets, in progress or finished' } },
+  )
+  .post(
+    '/:id/logs',
+    ({ caller, params: { id }, body, headers }) =>
+      logSet(caller, id, body, headers[IDEMPOTENCY_KEY_HEADER]),
+    {
+      params,
+      body: LogSetInput,
+      headers: LogSetHeaders,
+      response: SetLog,
+      detail: {
+        summary: 'Record one performed set',
+        description:
+          'An `Idempotency-Key` header (a UUID) makes it safe to retry: a key already stored in ' +
+          'the session is answered with the stored set, never logged twice.',
+      },
+    },
+  )
+  .patch(
+    '/:id/logs/:logId',
+    ({ caller, params: { id, logId }, body }) => amendLog(caller, id, logId, body),
+    {
+      params: logParams,
+      body: SetLogUpdate,
+      response: SetLog,
+      detail: {
+        summary:
+          'Correct a set — what it measured, how hard it was, whether a warm-up — in progress or finished',
+      },
+    },
+  )
+  .delete(
+    '/:id/logs/:logId',
+    async ({ caller, params: { id, logId } }) => {
+      await removeLog(caller, id, logId)
+      return { ok: true }
+    },
+    { params: logParams, detail: { summary: 'Remove a set: an undo, or a past mistake fixed' } },
+  )
+  .post(
+    '/:id/rest',
+    async ({ caller, params: { id }, body }) => {
+      await SessionService.changeRest(caller, id, body)
+      return { ok: true }
+    },
+    { params, body: RestChange, detail: { summary: 'Add 30 s to the rest running, or skip it' } },
   )
 
 /** What to do next (#25): the first screen's one read. */
