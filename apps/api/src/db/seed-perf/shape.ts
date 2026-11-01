@@ -36,6 +36,8 @@ export const PERF_VOLUME = {
   tokensPerUser: 5,
   /** What is known about each user (#41), so a person's notes are found among 20,000. */
   notesPerUser: 40,
+  /** Four months of daily weigh-ins each (#42), so a person's are found among 60,000. */
+  weighInsPerUser: 120,
   favouritesPerUser: 5,
 } as const
 
@@ -87,6 +89,8 @@ export interface Shape {
   readonly extraGroups: number
   /** Notes about them (#41) — the large profile as many as anyone may keep. */
   readonly notes: number
+  /** Weigh-ins, one a day (#42) — the large profile a year's, all of a 52-week period. */
+  readonly weighIns: number
 }
 
 export const SHAPE: Record<ProfileLabel, Shape> = {
@@ -98,6 +102,7 @@ export const SHAPE: Record<ProfileLabel, Shape> = {
     logsPerSession: 9,
     extraGroups: 1,
     notes: 5,
+    weighIns: 10,
   },
   large: {
     exercises: 1000,
@@ -107,6 +112,7 @@ export const SHAPE: Record<ProfileLabel, Shape> = {
     logsPerSession: 60,
     extraGroups: 50,
     notes: 100,
+    weighIns: 365,
   },
 }
 

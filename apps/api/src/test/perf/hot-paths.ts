@@ -14,6 +14,7 @@ import { targetsForSession } from '../../modules/progression/targets.ts'
 import { trainingReview } from '../../modules/review/service.ts'
 import { libraryAudit } from '../../modules/review/curation.ts'
 import { list as listNotes } from '../../modules/note/service.ts'
+import { list as listWeighIns } from '../../modules/weigh-in/service.ts'
 import { type QueryPlan, explainInOrder, slowestOf } from '../explain.ts'
 import type { RecordedQuery } from '../../db/client.ts'
 
@@ -344,9 +345,11 @@ export const HOT_PATHS: readonly HotPath[] = [
     name: 'training review',
     why: 'The MCP review tool. It aggregates a whole training block and is the slowest read here.',
     dimension: 'sessions in the window (5 vs 200)',
-    maxQueries: 5,
+    // Five over the training, and three about them (#42): the period's weigh-ins, the latest
+    // before it, and the year they were born.
+    maxQueries: 8,
     budgetMs: 400,
-    noSeqScan: ['set_logs', 'workout_sessions'],
+    noSeqScan: ['set_logs', 'workout_sessions', 'weigh_ins'],
     indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
@@ -362,6 +365,16 @@ export const HOT_PATHS: readonly HotPath[] = [
     noSeqScan: ['athlete_notes'],
     indexes: ['athlete_notes_athlete_idx'],
     run: async (fixtures, size) => await listNotes(pick(fixtures, size).caller),
+  },
+  {
+    name: 'GET /weigh-ins',
+    why: 'Bodyweight over a period, on Progress and an athlete’s page and in every review (#42). Who took each is one join; the period’s, and the latest before it, are each found by the (athlete, day) index among everyone’s. At most a year’s, so not paged — and sorted: `bun run perf` saw the planner rightly prefer a sort of 365 to an ordered walk.',
+    dimension: 'weigh-ins in a 52-week period (10 vs 365)',
+    maxQueries: 2,
+    budgetMs: 30,
+    noSeqScan: ['weigh_ins'],
+    indexes: ['weigh_ins_athlete_day_idx'],
+    run: async (fixtures, size) => await listWeighIns(pick(fixtures, size).caller, undefined, 52),
   },
   {
     name: 'library audit',

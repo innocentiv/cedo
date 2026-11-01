@@ -16,10 +16,10 @@ import {
   required,
   scalar,
 } from './shape.ts'
-import { seedProfileNotes } from './notes.ts'
+import { seedProfileFile } from './athlete-file.ts'
 
-/** Everyone's notes (#41), seeded before the profiles' own, which are found among them. */
-export { seedBackgroundNotes } from './notes.ts'
+/** Everyone's notes and weigh-ins (#41, #42), seeded before the profiles' own, found among them. */
+export { seedBackgroundFiles } from './athlete-file.ts'
 import { fillLogs } from './volume.ts'
 
 /**
@@ -37,7 +37,7 @@ export async function seedProfile(
   const { userId, personalGroupId } = await seedProfileUser(username, shape, sharedGroupId)
   await seedProfileLibrary(username, shape, userId, personalGroupId)
   await describeEquipment(userId)
-  await seedProfileNotes(userId, shape.notes)
+  await seedProfileFile(userId, shape)
 
   const workoutId = await required(
     sql`insert into workouts (owner_group_id, created_by, name, notes)
