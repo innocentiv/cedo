@@ -155,6 +155,8 @@ async function buildWorld(): Promise<World> {
   })
   // And says what his coach should remember (#41).
   await post(bob, '/notes', { text: `${SENTINEL} left knee is sore on lunges` })
+  // And weighs himself (#42).
+  await post(bob, '/weigh-ins', { day: new Date().toISOString().slice(0, 10), weightG: 82_400 })
 
   return {
     crewId,
@@ -370,6 +372,14 @@ const ROUTES: Record<string, Case> = {
     read: async () => await http(`/athletes/${bob.userId}/notes`),
     allowed: async () => await httpAllowed(`/athletes/${bob.userId}/notes`),
   },
+  'GET /athletes/:id/weigh-ins': {
+    // His bodyweight: days and grams, nothing of the crew's to name (#42).
+    named: false,
+    read: async () => await http(`/athletes/${bob.userId}/weigh-ins?weeks=52`),
+    allowed: async () => await httpAllowed(`/athletes/${bob.userId}/weigh-ins`),
+  },
+  // Her own weigh-ins.
+  'GET /weigh-ins': { named: false, read: async () => await http('/weigh-ins') },
   // Her own notes: what she said of herself.
   'GET /notes': { named: false, read: async () => await http('/notes') },
   // Her own equipment: the list's items, which belong to nobody's group.

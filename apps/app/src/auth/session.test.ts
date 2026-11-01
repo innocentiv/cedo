@@ -16,6 +16,7 @@ const me = (username: string): Me => ({
     displayName: username,
     createdAt: new Date().toISOString(),
     weightUnit: 'kg',
+    birthYear: null,
   },
   groups: [],
 })

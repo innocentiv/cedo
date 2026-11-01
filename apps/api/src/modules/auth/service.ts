@@ -36,9 +36,12 @@ const toUser = (row: PublicUserRow): User => ({
 })
 
 /** What only the person themselves is shown: who they are, and how they read. */
-const toAccount = (row: PublicUserRow & { readonly weightUnit: WeightUnit }): Account => ({
+const toAccount = (
+  row: PublicUserRow & { readonly weightUnit: WeightUnit; readonly birthYear: number | null },
+): Account => ({
   ...toUser(row),
   weightUnit: row.weightUnit,
+  birthYear: row.birthYear,
 })
 
 /** The person's own columns — the public ones and their preferences. Never the password hash. */
@@ -47,6 +50,7 @@ const ACCOUNT_COLUMNS = {
   username: users.username,
   displayName: users.displayName,
   weightUnit: users.weightUnit,
+  birthYear: users.birthYear,
   createdAt: users.createdAt,
 }
 
@@ -174,8 +178,14 @@ export async function me(caller: Caller): Promise<Me> {
   return { user: toAccount(row), groups: await GroupService.list(caller) }
 }
 
-/** What a person may change about themselves — their weight unit — answered with who they now are. */
+/**
+ * What a person may change about themselves — their weight unit, the year they were born — answered
+ * with who they now are. What the patch leaves out stays as it is; with nothing in it, nothing is
+ * written.
+ */
 export async function updateMe(caller: Caller, patch: MeUpdate): Promise<Me> {
-  await db.update(users).set({ weightUnit: patch.weightUnit }).where(eq(users.id, caller.userId))
+  if (Object.keys(patch).length > 0) {
+    await db.update(users).set(patch).where(eq(users.id, caller.userId))
+  }
   return await me(caller)
 }

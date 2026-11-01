@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from 'bun:test'
 import { ApiError, AuthResult, GroupMember, GroupMembership, Me } from '@cedo/contract'
 import { z } from 'zod'
 import { expectContract } from '../../test/contract.ts'
-import { TEST_PASSWORD, type TestApi, makeApi } from '../../test/harness.ts'
+import { TEST_PASSWORD, type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
 /**
  * Convention in this suite: drive the API with `wire` when asserting status codes or contract
@@ -286,5 +286,43 @@ describe('how a person reads weights', () => {
     const members = await alice.wire(`/groups/${squad.id}/members`)
     expectContract(z.array(GroupMember), members.body)
     expect(JSON.stringify(members.body)).not.toContain('weightUnit')
+  })
+})
+
+describe('the year a person was born (#42)', () => {
+  const patch = async (user: TestUser, body: unknown) =>
+    await user.wire('/auth/me', { method: 'PATCH', body: JSON.stringify(body) })
+
+  test('is unknown until they say it, changed alone, and forgotten with null', async () => {
+    const alice = await h.as('alice')
+    await patch(alice, { weightUnit: 'lb' })
+    expect(expectContract(Me, (await alice.wire('/auth/me')).body).user.birthYear).toBeNull()
+
+    const said = expectContract(Me, (await patch(alice, { birthYear: 1990 })).body)
+    expect(said.user).toMatchObject({ birthYear: 1990, weightUnit: 'lb' })
+
+    const unitAlone = expectContract(Me, (await patch(alice, { weightUnit: 'kg' })).body)
+    expect(unitAlone.user.birthYear).toBe(1990)
+
+    const forgotten = expectContract(Me, (await patch(alice, { birthYear: null })).body)
+    expect(forgotten.user.birthYear).toBeNull()
+  })
+
+  test('is from 1900 to ten years ago', async () => {
+    const alice = await h.as('alice')
+    for (const birthYear of [1899, new Date().getFullYear() - 9]) {
+      const refused = await patch(alice, { birthYear })
+      expect(refused.status).toBe(422)
+      expectContract(ApiError, refused.body)
+    }
+    expect(expectContract(Me, (await alice.wire('/auth/me')).body).user.birthYear).toBeNull()
+  })
+
+  test('an empty change changes nothing', async () => {
+    const alice = await h.as('alice')
+    await patch(alice, { birthYear: 1985 })
+    const same = await patch(alice, {})
+    expect(same.status).toBe(200)
+    expect(expectContract(Me, same.body).user.birthYear).toBe(1985)
   })
 })

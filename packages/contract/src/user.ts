@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { Id, NonEmptyString, Timestamp } from './primitives.ts'
+import { Id, NonEmptyString, Timestamp, patchOf } from './primitives.ts'
 import { WeightUnit } from './units.ts'
 
 /**
@@ -40,11 +40,36 @@ export type User = z.output<typeof User>
 export const Account = User.extend({
   /** How this person reads and types weights. Everything is stored in grams regardless. */
   weightUnit: WeightUnit,
+  /** Null until they say it (#42). */
+  birthYear: z.int().nullable(),
 })
 export type Account = z.output<typeof Account>
 
-/** `PATCH /auth/me` — what a person may change about themselves. */
-export const MeUpdate = z.strictObject({ weightUnit: WeightUnit })
+/**
+ * A year of birth: from 1900 to ten years ago. Only the person sets it — in Settings, or through
+ * `athlete_profile_set` — and a coach of theirs reads it as an age (#42).
+ */
+export const BirthYear = z
+  .int()
+  .min(1900, 'From 1900')
+  .refine((year) => year <= new Date().getFullYear() - 10, 'At least ten years ago')
+
+/** `36 this year`: the age a year of birth makes, as of `now`. */
+export const ageLine = (birthYear: number, now: Date): string =>
+  `${String(now.getFullYear() - birthYear)} this year`
+
+/**
+ * `PATCH /auth/me`, and the MCP's `athlete_profile_set` — what a person may change about
+ * themselves. Each part optional: what is left out stays as it is.
+ */
+export const MeUpdate = z.strictObject(
+  patchOf({
+    weightUnit: WeightUnit.describe('How you read and type weights'),
+    birthYear: BirthYear.nullable().describe(
+      'The year you were born, e.g. 1990; null to forget it',
+    ),
+  }),
+)
 export type MeUpdate = z.output<typeof MeUpdate>
 
 export const RegisterInput = z.strictObject({

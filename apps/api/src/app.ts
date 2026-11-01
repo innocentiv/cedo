@@ -15,6 +15,7 @@ import { exerciseRoutes } from './modules/exercise/index.ts'
 import { groupRoutes } from './modules/group/index.ts'
 import { mediaBlobRoutes, mediaRoutes } from './modules/media/index.ts'
 import { noteRoutes } from './modules/note/index.ts'
+import { weighInRoutes } from './modules/weigh-in/index.ts'
 import { exerciseHistoryRoutes, sessionRoutes, todayRoutes } from './modules/session/index.ts'
 import { restRoutes } from './modules/rest/index.ts'
 import { workoutRoutes } from './modules/workout/index.ts'
@@ -59,6 +60,7 @@ export function createApp() {
     .use(mediaBlobRoutes)
     .use(mediaRoutes)
     .use(noteRoutes)
+    .use(weighInRoutes)
     .use(sessionRoutes)
     .use(restRoutes)
     .use(todayRoutes)

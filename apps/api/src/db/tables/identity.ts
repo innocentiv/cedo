@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm'
 import {
   boolean,
   index,
+  integer,
   pgEnum,
   pgTable,
   primaryKey,
@@ -56,6 +57,8 @@ export const users = pgTable(
      * filtered for them: no equipment rows is nothing at all only once this is set.
      */
     equipmentDescribedAt: timestamp('equipment_described_at', { withTimezone: true }),
+    /** The year they were born (#42): null until they say it. Only they set it. */
+    birthYear: integer('birth_year'),
     /**
      * Created with the user, in the same transaction. Not null: a user without a personal group
      * could not own anything, so there is no valid state where this is absent.
