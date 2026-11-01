@@ -252,7 +252,8 @@ function dayView<
     shown: log === null ? null : { log, exercise: shownEntry?.exercise ?? r.exerciseOf(log) },
     another,
     current: {
-      upNext: addedInFocus !== undefined || next === null ? null : next,
+      // The entry chosen is the row marked, out of the reader's reach or not: it is what is shown.
+      upNext: addedInFocus === undefined ? (chosen ?? next) : null,
       addedToday: addedInFocus?.id ?? null,
     },
     setsFor: r.setsFor,

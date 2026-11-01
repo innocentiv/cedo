@@ -103,9 +103,10 @@ describe('what the workout shows', () => {
     expect(v.current.upNext?.id).toBe('rdl')
   })
 
-  test('an entry chosen that the reader cannot see says so, and logs nothing', () => {
+  test('an entry chosen that the reader cannot see says so, logs nothing, and is the row marked', () => {
     const v = view([], { choices: { chosen: { entry: 'gone' }, reopened: null } })
     expect(v.focus).toEqual({ kind: 'unavailable', entry: gone })
+    expect(v.current.upNext).toBe(gone)
   })
 
   test('a swap logged last keeps the focus, marked among those added', () => {
