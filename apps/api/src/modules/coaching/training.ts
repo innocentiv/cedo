@@ -13,13 +13,25 @@ import type { Caller } from '../../plugins/auth.ts'
  * shares their training with a group the coach edits; decided on every request from the caller's
  * groups as they are now, so a share switched off, a member gone or an editor gone ends it at once,
  * the past included. See docs/adr/0021-coaching-through-groups.md.
+ *
+ * Minted here only: it carries `resolved`, which no other module can name, so a `Training` written
+ * by hand does not compile. Whatever takes one was told whose it is by `own` or `ownOrCoached`.
  */
 export interface Training {
   readonly reader: Caller
   readonly athleteId: string
+  readonly [resolved]: true
 }
 
-export const own = (caller: Caller): Training => ({ reader: caller, athleteId: caller.userId })
+const resolved = Symbol('Training: resolved by own or ownOrCoached')
+
+const mint = (reader: Caller, athleteId: string): Training => ({
+  reader,
+  athleteId,
+  [resolved]: true,
+})
+
+export const own = (caller: Caller): Training => mint(caller, caller.userId)
 
 /** The sessions of this training: whose they are, never what the reader may see of them. */
 export const sessionsOf = (training: Training) => eq(workoutSessions.userId, training.athleteId)
@@ -45,7 +57,7 @@ async function coached(caller: Caller, athleteId: string): Promise<Training> {
     .where(and(sharingWith(caller), eq(groupMembers.userId, athleteId)))
     .limit(1)
   if (shared === undefined) throw notFound('athlete')
-  return { reader: caller, athleteId }
+  return mint(caller, athleteId)
 }
 
 /**
