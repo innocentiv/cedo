@@ -157,7 +157,8 @@ A keyset on a timestamp must keep the column's full microsecond precision in the
 ## 4. The routes
 
 `apps/api/src/modules/widget/index.ts`. Each handler is **at most five lines** and calls exactly one
-service function.
+service function — after resolving whose training it is, if it reads or writes for someone
+(`own(caller)`, `ownOrCoached(caller, id)`; `docs/02-conventions.md`, "Whose training").
 
 ```ts
 export const widgetRoutes = new Elysia({ prefix: '/widgets', tags: ['widgets'] })

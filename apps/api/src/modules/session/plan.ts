@@ -31,12 +31,7 @@ export async function get(training: Training, id: string): Promise<SessionDetail
 async function planOf(training: Training, session: WorkoutSession): Promise<SessionPlan> {
   if (session.workoutId === null || session.dayId === null) return null
   // Named as the reader can see it; doable for the athlete who trains it (#35).
-  const day = await hydrateDay(
-    training.reader,
-    session.workoutId,
-    session.dayId,
-    training.athleteId,
-  )
+  const day = await hydrateDay(training, session.workoutId, session.dayId)
   if (day === null) return { reachable: false }
   // Rows hydrated for this read alone: annotated in place, not copied.
   const entries = day.entries.map((entry) =>

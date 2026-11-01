@@ -31,8 +31,9 @@ export const groupRoutes = new Elysia({ prefix: '/groups', tags: ['groups'] })
   })
 ```
 
-A handler is at most five lines and calls exactly one service function. The same service function
-backs the MCP tool. If a rule exists in only one of those paths, it is a bug — see
+A handler is at most five lines and calls exactly one service function — having first resolved,
+where it reads or writes for someone, whose training it is (`own`, `ownOrCoached`; see
+`docs/02-conventions.md`, "Whose training"). The same service function backs the MCP tool. If a rule exists in only one of those paths, it is a bug — see
 `docs/02-conventions.md`.
 
 `.guard({ auth: true })` applies authentication to every route in the instance. Individual routes

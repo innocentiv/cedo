@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import { type WorkoutDay, type WorkoutEntry, setTargetOf } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupBy } from '../../lib/keyset.ts'
@@ -12,21 +12,7 @@ import {
 } from '../../db/visible.ts'
 import { hydrate as hydrateExercises } from '../exercise/mapper.ts'
 import type { Caller } from '../../plugins/auth.ts'
-
-/** Day counts for many workouts in one grouped query, not one per workout. */
-export async function dayCounts(
-  caller: Caller,
-  workoutIds: string[],
-): Promise<Map<string, number>> {
-  if (workoutIds.length === 0) return new Map()
-  const days = visibleWorkoutDays(caller)
-  const counts = await db
-    .select({ workoutId: days.workoutId, days: count() })
-    .from(days)
-    .where(inArray(days.workoutId, workoutIds))
-    .groupBy(days.workoutId)
-  return new Map(counts.map((c) => [c.workoutId, c.days]))
-}
+import type { Training } from '../coaching/training.ts'
 
 /**
  * The entries of one workout that the caller can read, as a relation to select from or join onto:
@@ -99,17 +85,17 @@ export async function hydratePlan(
 }
 
 /**
- * One day of a plan, as the caller can reach it — the day a session follows — or null when they
- * cannot: the plan is in a group they have left, or the day is gone. The same reads as
- * `hydratePlan`, narrowed to the day, so its cost does not grow with the rest of the plan.
+ * One day of a plan, as the reader can reach it — the day a session follows — or null when they
+ * cannot: the plan is in a group they have left, or the day is gone. Doable for the athlete the
+ * training is of (#35). The same reads as `hydratePlan`, narrowed to the day, so its cost does not
+ * grow with the rest of the plan.
  */
 export async function hydrateDay(
-  caller: Caller,
+  training: Training,
   workoutId: string,
   dayId: string,
-  judgedFor: string = caller.userId,
 ): Promise<WorkoutDay | null> {
-  const [day] = await hydrate(caller, workoutId, dayId, judgedFor)
+  const [day] = await hydrate(training.reader, workoutId, dayId, training.athleteId)
   return day ?? null
 }
 

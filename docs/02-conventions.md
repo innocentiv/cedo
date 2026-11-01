@@ -50,7 +50,9 @@ the service decides where it goes and whether the caller may.
 **Whose training** a read or an athlete record is of is resolved at the edge, once: the handler or
 tool passes `own(caller)`, or `ownOrCoached(caller, id)` for `/athletes/:id/…` and a tool's
 `athlete`, and the service takes the `Training` (`coaching/training.ts`). A service never takes a
-bare athlete id, and a `Training` cannot be written by hand — only those two mint one.
+bare athlete id. Only those two mint a `Training`: one written by hand, or spread from another and
+pointed at someone else, does not compile, and the lint refuses the cast that could force one
+(`no-unsafe-type-assertion`) and the spread (`no-misused-spread`); at run time, `isTraining` tells.
 
 ```ts
 .get('/:id/review', async ({ caller, params: { id }, query }) =>

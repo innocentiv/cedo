@@ -14,22 +14,32 @@ import type { Caller } from '../../plugins/auth.ts'
  * groups as they are now, so a share switched off, a member gone or an editor gone ends it at once,
  * the past included. See docs/adr/0021-coaching-through-groups.md.
  *
- * Minted here only: it carries `resolved`, which no other module can name, so a `Training` written
- * by hand does not compile. Whatever takes one was told whose it is by `own` or `ownOrCoached`.
+ * Minted here only: an instance of a class no other module can construct, its private field making
+ * it nominal — so neither a `Training` written by hand nor one spread from another (`{ ...own(me),
+ * athleteId }`) compiles, and a cast (`as Training`) or a spread of one is refused by the lint
+ * (`no-unsafe-type-assertion`, `no-misused-spread`); at run time `isTraining` tells. Whatever takes
+ * one was told whose it is by `own` or `ownOrCoached`.
  */
-export interface Training {
+class Resolved {
+  readonly #resolved = true
   readonly reader: Caller
   readonly athleteId: string
-  readonly [resolved]: true
+  constructor(reader: Caller, athleteId: string) {
+    this.reader = reader
+    this.athleteId = athleteId
+  }
+
+  static minted(value: unknown): value is Resolved {
+    return typeof value === 'object' && value !== null && #resolved in value && value.#resolved
+  }
 }
 
-const resolved = Symbol('Training: resolved by own or ownOrCoached')
+export type Training = Resolved
 
-const mint = (reader: Caller, athleteId: string): Training => ({
-  reader,
-  athleteId,
-  [resolved]: true,
-})
+/** Whether `value` was minted here — by `own` or `ownOrCoached` — and not built or copied. */
+export const isTraining = (value: unknown): value is Training => Resolved.minted(value)
+
+const mint = (reader: Caller, athleteId: string): Training => new Resolved(reader, athleteId)
 
 export const own = (caller: Caller): Training => mint(caller, caller.userId)
 
