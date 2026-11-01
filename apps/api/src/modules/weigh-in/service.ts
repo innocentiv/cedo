@@ -4,8 +4,7 @@ import { db } from '../../db/client.ts'
 import { users, weighIns } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { ownOrCoached } from '../coaching/athletes.ts'
-import type { Training } from '../session/service.ts'
+import { type Training, ownOrCoached } from '../coaching/training.ts'
 
 /**
  * Weigh-ins (#42): the caller's bodyweight, or — given `athleteId` — an athlete's they coach. Read

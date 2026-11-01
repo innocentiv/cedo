@@ -7,7 +7,7 @@ import { conflict, invalid, isUniqueViolation, notFound } from '../../lib/error.
 import type { Caller } from '../../plugins/auth.ts'
 import { assertLoggable } from './loggable.ts'
 import { numberedInOrder } from './numbering.ts'
-import { own, ownedBy, read, rethrowMissingEntry, toSession } from './service.ts'
+import { ownedBy, readOwn, rethrowMissingEntry, toSession } from './service.ts'
 
 /**
  * How a session comes to be: started, to be trained — one in progress at a time — or logged whole
@@ -107,5 +107,5 @@ export async function logWhole(caller: Caller, input: SessionLogInput): Promise<
     return created.id
   })
 
-  return await read(own(caller), id)
+  return await readOwn(caller, id)
 }

@@ -8,7 +8,7 @@ import {
   visibleWorkoutDays,
   visibleWorkouts,
 } from '../../db/visible.ts'
-import { type Training, sessionsOf } from '../session/service.ts'
+import { type Training, sessionsOf } from '../coaching/training.ts'
 import { aboutThem } from './about.ts'
 import { adherenceOf } from './adherence.ts'
 import { muscleWorkOf } from './muscle-work.ts'

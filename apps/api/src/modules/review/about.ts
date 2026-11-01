@@ -2,7 +2,7 @@ import { eq } from 'drizzle-orm'
 import { type TrainingReview, ageThisYear, bodyweightTrend } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { users } from '../../db/schema.ts'
-import type { Training } from '../session/service.ts'
+import type { Training } from '../coaching/training.ts'
 import { bodyweightOf } from '../weigh-in/service.ts'
 
 /**

@@ -5,7 +5,7 @@ import { workoutSessions } from '../../db/schema.ts'
 import { resolveCaller } from '../../plugins/auth.ts'
 import { expectContract } from '../../test/contract.ts'
 import type { TestUser } from '../../test/harness.ts'
-import { own } from '../session/service.ts'
+import { own } from '../coaching/training.ts'
 import type { TrainingReview } from '@cedo/contract'
 import { trainingReview } from './service.ts'
 

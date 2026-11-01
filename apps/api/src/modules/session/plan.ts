@@ -5,7 +5,8 @@ import {
   workingSetsDone,
 } from '@cedo/contract'
 import { hydrateDay } from '../workout/plan.ts'
-import { type Training, read } from './service.ts'
+import type { Training } from '../coaching/training.ts'
+import { read } from './service.ts'
 
 /**
  * The plan a session follows, as its reader can reach it — read with the session on its own

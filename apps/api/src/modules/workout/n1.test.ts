@@ -7,7 +7,7 @@ import * as ProgressionService from '../progression/service.ts'
 import { history } from '../session/history.ts'
 import { get as getSession } from '../session/plan.ts'
 import * as WorkoutService from './service.ts'
-import { own } from '../session/service.ts'
+import { own } from '../coaching/training.ts'
 
 let h: TestApi
 let alice: TestUser

@@ -1,7 +1,7 @@
 import { asc, desc, eq, sql } from 'drizzle-orm'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
-import { type Training, sessionsOf } from './service.ts'
+import { type Training, sessionsOf } from '../coaching/training.ts'
 
 /**
  * The exercises a training logged most lately, latest first, by id (#27) — whether the reader can

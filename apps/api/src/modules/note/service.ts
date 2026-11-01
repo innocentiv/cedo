@@ -4,8 +4,7 @@ import { db } from '../../db/client.ts'
 import { athleteNotes, users } from '../../db/schema.ts'
 import { conflict, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { ownOrCoached } from '../coaching/athletes.ts'
-import type { Training } from '../session/service.ts'
+import { type Training, ownOrCoached } from '../coaching/training.ts'
 
 /**
  * Athlete notes (#41): about the caller, or — given `athleteId` — about an athlete they coach. Read

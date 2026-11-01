@@ -1,27 +1,15 @@
-import { and, asc, eq, inArray, ne } from 'drizzle-orm'
+import { asc, eq } from 'drizzle-orm'
 import type { Athlete } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupMembers, groups, users } from '../../db/schema.ts'
-import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { type Training, own } from '../session/service.ts'
+import { sharingWith } from './training.ts'
 
 /**
- * A coach reading the training an athlete shares with them (#11): an editor of a group in which
- * the athlete's membership shares its training. Read-only by construction — every function here
- * reads — and decided on every request from the caller's groups as they are now, so a share
- * switched off, a member gone or an editor gone ends it at once, the past included.
+ * The athletes a coach has (#11): those whose membership of a group the caller edits shares their
+ * training. Read-only by construction. Whose training a read is of is `training.ts`'s.
  * See docs/adr/0021-coaching-through-groups.md.
  */
-
-/** Memberships that share their training with a group the caller edits — never the caller's own. */
-const sharingWith = (caller: Caller) =>
-  and(
-    inArray(groupMembers.groupId, caller.editorGroupIds),
-    eq(groupMembers.sharesTraining, true),
-    ne(groupMembers.userId, caller.userId),
-  )
-
 export async function athletes(caller: Caller): Promise<Athlete[]> {
   if (caller.editorGroupIds.length === 0) return []
   // Projected: a user row carries its password hash, which must never reach a response.
@@ -56,28 +44,3 @@ export async function athletes(caller: Caller): Promise<Athlete[]> {
   }
   return [...byUser.values()]
 }
-
-/**
- * An athlete's training, read by the caller who coaches them — or a 404 when they do not share it
- * with a group the caller edits. Indistinguishable from an account that does not exist, as an
- * invisible workout is.
- */
-async function coached(caller: Caller, athleteId: string): Promise<Training> {
-  if (caller.editorGroupIds.length === 0) throw notFound('athlete')
-  const [shared] = await db
-    .select({ userId: groupMembers.userId })
-    .from(groupMembers)
-    .where(and(sharingWith(caller), eq(groupMembers.userId, athleteId)))
-    .limit(1)
-  if (shared === undefined) throw notFound('athlete')
-  return { reader: caller, athleteId }
-}
-
-/**
- * The caller's own training, or — named — an athlete's they coach. The one place a read is told
- * whose it is: `/athletes/:id/…` always names one, an MCP tool's `athlete` may.
- */
-export const ownOrCoached = async (
-  caller: Caller,
-  athleteId: string | undefined,
-): Promise<Training> => (athleteId === undefined ? own(caller) : await coached(caller, athleteId))

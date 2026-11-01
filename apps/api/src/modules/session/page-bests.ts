@@ -4,7 +4,7 @@ import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises } from '../../db/visible.ts'
 import { earlierBests } from './bests.ts'
-import { type Training, sessionsOf } from './service.ts'
+import { type Training, sessionsOf } from '../coaching/training.ts'
 
 /**
  * How many personal bests each session of a page of history set (#25) — judged as each session's

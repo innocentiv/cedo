@@ -13,7 +13,7 @@ import { expectContract } from '../../test/contract.ts'
 import { type TestUser, makeApi } from '../../test/harness.ts'
 import { trainingReview } from '../review/service.ts'
 import { logWhole } from './start.ts'
-import { own } from './service.ts'
+import { own } from '../coaching/training.ts'
 
 /**
  * Assistance — a band, an assisted machine — is NEGATIVE added weight, on a bodyweight movement

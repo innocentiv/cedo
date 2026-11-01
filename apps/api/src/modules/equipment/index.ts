@@ -1,7 +1,7 @@
 import { Elysia } from 'elysia'
 import { AthleteEquipment, AthleteEquipmentInput } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
-import { own } from '../session/service.ts'
+import { own } from '../coaching/training.ts'
 import * as EquipmentService from './service.ts'
 
 /**

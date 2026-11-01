@@ -7,7 +7,7 @@ import type { Caller } from '../../plugins/auth.ts'
 import { assertLoggable, assertWeightFor } from './loggable.ts'
 import { nextNumber } from './numbering.ts'
 import { keepRest } from './rest.ts'
-import { lockInProgress, lockOwn, own, ownedBy, read, rethrowMissingEntry } from './service.ts'
+import { lockInProgress, lockOwn, ownedBy, readOwn, rethrowMissingEntry } from './service.ts'
 
 /**
  * Every write to a session's sets (#24, #31): under the session's row lock — so they are taken in
@@ -78,7 +78,7 @@ export async function logSet(
 
 /** A set as a read of its session shows it — names, entries and personal bests as visible. */
 async function storedById(caller: Caller, sessionId: string, id: string): Promise<SetLog> {
-  const stored = (await read(own(caller), sessionId)).logs.find((log) => log.id === id)
+  const stored = (await readOwn(caller, sessionId)).logs.find((log) => log.id === id)
   if (stored === undefined) throw new Error('A stored set is not in its session')
   return stored
 }
@@ -127,7 +127,7 @@ export async function amendLog(
     if (patch.weightG !== undefined)
       await assertWeightFor(tx, caller, amended.exerciseId, patch.weightG)
   })
-  const amended = (await read(own(caller), sessionId)).logs.find((log) => log.id === logId)
+  const amended = (await readOwn(caller, sessionId)).logs.find((log) => log.id === logId)
   if (amended === undefined) throw notFound('log')
   return amended
 }

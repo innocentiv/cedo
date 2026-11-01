@@ -5,7 +5,8 @@ import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
 import { afterCursor, cursorMicros, decodeCursor, encodeCursor } from './cursor.ts'
 import { bestsPerSession } from './page-bests.ts'
-import { type SessionRow, type Training, sessionsOf } from './service.ts'
+import { type Training, sessionsOf } from '../coaching/training.ts'
+import type { SessionRow } from './service.ts'
 
 /**
  * `GET /sessions` — the landing screen's query, and the one read that must survive losing access to

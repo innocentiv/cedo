@@ -6,7 +6,7 @@ import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 import { resolveCaller } from '../../plugins/auth.ts'
 import { list as listSessions } from '../session/list.ts'
 import { logSet } from '../session/set-writes.ts'
-import * as SessionService from '../session/service.ts'
+import { own } from '../coaching/training.ts'
 import { start as startSession } from '../session/start.ts'
 import { trainingReview } from './service.ts'
 
@@ -151,9 +151,9 @@ test('a set heavy enough to overflow int4 does not break the review', async () =
     isWarmup: false,
   })
 
-  const review = await trainingReview(SessionService.own(caller), 4)
+  const review = await trainingReview(own(caller), 4)
   expect(review.muscleWork.top.find((m) => m.muscle === 'quadriceps')?.liftedG).toBe(25_000_000)
 
-  const sessions = await listSessions(SessionService.own(caller), { limit: 5 })
+  const sessions = await listSessions(own(caller), { limit: 5 })
   expect(sessions.items[0]?.liftedG).toBe(25_000_000)
 })

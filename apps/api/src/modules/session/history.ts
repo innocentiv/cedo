@@ -11,7 +11,7 @@ import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises } from '../../db/visible.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { type Training, sessionsOf } from './service.ts'
+import { type Training, sessionsOf } from '../coaching/training.ts'
 
 /**
  * Per-exercise history, newest session first. One indexed read on

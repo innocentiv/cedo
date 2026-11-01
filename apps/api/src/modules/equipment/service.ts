@@ -3,7 +3,7 @@ import type { AthleteEquipment, AthleteEquipmentInput } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { athleteEquipment, users } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { type Training, own } from '../session/service.ts'
+import { type Training, own } from '../coaching/training.ts'
 import { columnsOf, heldBy } from './held.ts'
 
 /**

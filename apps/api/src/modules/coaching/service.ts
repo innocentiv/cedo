@@ -20,7 +20,7 @@ import { history as exerciseHistory } from '../session/history.ts'
 import { list as listSessions } from '../session/list.ts'
 import { get as getSession } from '../session/plan.ts'
 import { get as getWorkout, replacePlan } from '../workout/service.ts'
-import { ownOrCoached } from './athletes.ts'
+import { ownOrCoached } from './training.ts'
 
 export { athletes } from './athletes.ts'
 

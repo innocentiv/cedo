@@ -6,7 +6,7 @@ import { visibleExercises, visibleWorkoutDays, visibleWorkouts } from '../../db/
 import type { Caller } from '../../plugins/auth.ts'
 import { planEntries } from '../workout/plan.ts'
 import { list } from './list.ts'
-import { type Training, own, sessionsOf } from './service.ts'
+import { type Training, own, sessionsOf } from '../coaching/training.ts'
 
 /**
  * `GET /today` (#25): the session in progress, the next day of the current workout, and this week —
