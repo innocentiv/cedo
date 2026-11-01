@@ -70,8 +70,7 @@ export const exercises = async (
   caller: Caller,
   athleteId: string | undefined,
   query: ExerciseQuery,
-): Promise<Page<Exercise>> =>
-  await listExercises(caller, query, (await ownOrCoached(caller, athleteId)).athleteId)
+): Promise<Page<Exercise>> => await listExercises(await ownOrCoached(caller, athleteId), query)
 
 /**
  * A workout read for an athlete — the caller, or one a coach writes it for — with what they have:
@@ -84,7 +83,7 @@ export const planFor = async (
 ): Promise<PlanRead> => {
   const training = await ownOrCoached(caller, athleteId)
   const [workout, held] = await Promise.all([
-    getWorkout(caller, workoutId, training.athleteId),
+    getWorkout(training, workoutId),
     readEquipment(training),
   ])
   return { workout, held }

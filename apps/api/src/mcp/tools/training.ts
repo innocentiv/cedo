@@ -10,6 +10,7 @@ import {
   planSaveFrom,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
+import { own } from '../../modules/coaching/training.ts'
 import * as CoachingService from '../../modules/coaching/service.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
@@ -105,7 +106,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       inputSchema: z.object({ workoutId: z.uuid() }),
       annotations: READ,
     },
-    async ({ workoutId }) => json(planSaveFrom(await WorkoutService.get(caller, workoutId))),
+    async ({ workoutId }) => json(planSaveFrom(await WorkoutService.get(own(caller), workoutId))),
   )
 
   server.registerTool(

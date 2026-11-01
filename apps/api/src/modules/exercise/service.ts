@@ -13,7 +13,7 @@ import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { requireCurator } from '../review/curation.ts'
 import { recentlyLogged } from '../session/recent.ts'
-import { own } from '../coaching/training.ts'
+import { type Training, own } from '../coaching/training.ts'
 import { exerciseLifecycle } from './lifecycle.ts'
 import { hydrate } from './mapper.ts'
 import { insertExercise, updateExercise } from './write.ts'
@@ -25,16 +25,13 @@ import { insertExercise, updateExercise } from './write.ts'
  */
 
 /**
- * The library as the caller can see it — only what is doable unless `showAll` (#35), judged by the
- * caller's equipment, or by an athlete's they plan for (checked by the caller of this).
+ * The library as the reader can see it — only what is doable unless `showAll` (#35), judged by the
+ * equipment of the athlete the training is of: the reader's own, or an athlete's they plan for.
  */
-export async function list(
-  caller: Caller,
-  query: ExerciseQuery,
-  judgedFor: string = caller.userId,
-): Promise<Page<Exercise>> {
-  const page = await exerciseLifecycle.list(caller, { ...query, judgedFor })
-  return { items: await hydrate(caller, page.items, judgedFor), nextCursor: page.nextCursor }
+export async function list(training: Training, query: ExerciseQuery): Promise<Page<Exercise>> {
+  const { reader, athleteId: judgedFor } = training
+  const page = await exerciseLifecycle.list(reader, { ...query, judgedFor })
+  return { items: await hydrate(reader, page.items, judgedFor), nextCursor: page.nextCursor }
 }
 
 export async function get(caller: Caller, id: string): Promise<Exercise> {

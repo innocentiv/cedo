@@ -10,6 +10,7 @@ import {
   planSummary,
 } from '../explain.ts'
 import { withQueryCount } from '../../db/client.ts'
+import { own } from '../../modules/coaching/training.ts'
 import * as exerciseService from '../../modules/exercise/service.ts'
 
 /**
@@ -123,7 +124,7 @@ for (const path of HOT_PATHS) {
 test('a selective search uses the trigram index', async () => {
   const { statements } = await withQueryCount(
     async () =>
-      await exerciseService.list(fixtures.large.caller, {
+      await exerciseService.list(own(fixtures.large.caller), {
         scope: 'all',
         q: 'Kettlebell Pulldown 99',
         limit: 20,
@@ -145,7 +146,7 @@ test('a rare muscle filter enters through the muscle index', async () => {
   // key. Uniform seed data never produced the second case, which made the index look dead.
   const { statements } = await withQueryCount(
     async () =>
-      await exerciseService.list(fixtures.large.caller, {
+      await exerciseService.list(own(fixtures.large.caller), {
         scope: 'all',
         muscle: 'adductors',
         limit: 20,

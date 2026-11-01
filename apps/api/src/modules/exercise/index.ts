@@ -12,6 +12,7 @@ import {
   page,
 } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
+import { own } from '../coaching/training.ts'
 import * as ExerciseService from './service.ts'
 
 const params = z.object({ id: Id })
@@ -19,7 +20,7 @@ const params = z.object({ id: Id })
 export const exerciseRoutes = new Elysia({ prefix: '/exercises', tags: ['exercises'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller, query }) => ExerciseService.list(caller, query), {
+  .get('/', ({ caller, query }) => ExerciseService.list(own(caller), query), {
     query: ExerciseQuery,
     response: page(Exercise),
     detail: { summary: 'List exercises visible to the caller' },

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
 import { type WorkoutDay, type WorkoutEntry, setTargetOf } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupBy } from '../../lib/keyset.ts'
@@ -12,6 +12,21 @@ import {
 } from '../../db/visible.ts'
 import { hydrate as hydrateExercises } from '../exercise/mapper.ts'
 import type { Caller } from '../../plugins/auth.ts'
+
+/** Day counts for many workouts in one grouped query, not one per workout. */
+export async function dayCounts(
+  caller: Caller,
+  workoutIds: string[],
+): Promise<Map<string, number>> {
+  if (workoutIds.length === 0) return new Map()
+  const days = visibleWorkoutDays(caller)
+  const counts = await db
+    .select({ workoutId: days.workoutId, days: count() })
+    .from(days)
+    .where(inArray(days.workoutId, workoutIds))
+    .groupBy(days.workoutId)
+  return new Map(counts.map((c) => [c.workoutId, c.days]))
+}
 
 /**
  * The entries of one workout that the caller can read, as a relation to select from or join onto:

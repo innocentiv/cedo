@@ -3,6 +3,7 @@ import { Exercise, page } from '@cedo/contract'
 import { withQueryCount } from '../../db/client.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
+import { own } from '../coaching/training.ts'
 import * as ExerciseService from './service.ts'
 
 const Page = page(Exercise)
@@ -43,12 +44,12 @@ describe('reads do not N+1', () => {
   test('listing issues the same number of queries for 1 exercise as for 30', async () => {
     await seedExercises(1)
     const small = await withQueryCount(() =>
-      ExerciseService.list(alice.caller, { limit: 50, scope: 'all' }),
+      ExerciseService.list(own(alice.caller), { limit: 50, scope: 'all' }),
     )
 
     await seedExercises(29)
     const large = await withQueryCount(() =>
-      ExerciseService.list(alice.caller, { limit: 50, scope: 'all' }),
+      ExerciseService.list(own(alice.caller), { limit: 50, scope: 'all' }),
     )
 
     expect(small.result.items).toHaveLength(1)
@@ -72,7 +73,11 @@ describe('reads do not N+1', () => {
   test('the muscle filter does not add a query per row', async () => {
     await seedExercises(20)
     const filtered = await withQueryCount(() =>
-      ExerciseService.list(alice.caller, { limit: 50, scope: 'all', muscle: 'triceps_brachii' }),
+      ExerciseService.list(own(alice.caller), {
+        limit: 50,
+        scope: 'all',
+        muscle: 'triceps_brachii',
+      }),
     )
     expect(filtered.result.items).toHaveLength(20)
     expect(filtered.count).toBeLessThanOrEqual(4)

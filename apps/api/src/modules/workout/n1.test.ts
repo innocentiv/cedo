@@ -75,10 +75,10 @@ describe('reads do not N+1', () => {
     const ids = await exerciseIds(12)
 
     const small = await planned(1, 1, ids)
-    const smallCount = await withQueryCount(() => WorkoutService.get(alice.caller, small))
+    const smallCount = await withQueryCount(() => WorkoutService.get(own(alice.caller), small))
 
     const large = await planned(6, 8, ids)
-    const largeCount = await withQueryCount(() => WorkoutService.get(alice.caller, large))
+    const largeCount = await withQueryCount(() => WorkoutService.get(own(alice.caller), large))
 
     expect(smallCount.result.days).toHaveLength(1)
     expect(largeCount.result.days).toHaveLength(6)
@@ -97,7 +97,7 @@ describe('reads do not N+1', () => {
   test('re-saving a plan costs the same for 1 day × 1 entry as for 6 days × 8 entries', async () => {
     const ids = await exerciseIds(12)
     const resave = async (workoutId: string) => {
-      const current = await WorkoutService.get(alice.caller, workoutId)
+      const current = await WorkoutService.get(own(alice.caller), workoutId)
       return await withQueryCount(() =>
         WorkoutService.replacePlan(alice.caller, workoutId, planInputFrom(current)),
       )
@@ -188,7 +188,7 @@ describe('reads do not N+1', () => {
   test('a session costs the same following a 1-entry day as an 8-entry day of a 6-day plan', async () => {
     const ids = await exerciseIds(12)
     const sessionOn = async (workoutId: string) => {
-      const day = (await WorkoutService.get(alice.caller, workoutId)).days[0]
+      const day = (await WorkoutService.get(own(alice.caller), workoutId)).days[0]
       const res = await alice.wire('/sessions', {
         method: 'POST',
         body: JSON.stringify({ workoutId, dayId: day?.id }),

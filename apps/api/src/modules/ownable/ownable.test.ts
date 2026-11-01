@@ -10,6 +10,7 @@ import * as WorkoutService from '../workout/service.ts'
 import type { workoutLifecycle } from '../workout/lifecycle.ts'
 import * as schema from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { own } from '../coaching/training.ts'
 import { ownableTableNames } from './write.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
@@ -61,7 +62,7 @@ const KINDS: readonly Kind[] = [
     body: (name) => ({ name, muscles: [{ muscle: 'quadriceps', loadPct: 100 }] }),
     one: Exercise,
     many: page(Exercise),
-    listDirectly: async (caller, query) => await ExerciseService.list(caller, query),
+    listDirectly: async (caller, query) => await ExerciseService.list(own(caller), query),
   },
   {
     table: 'workouts',

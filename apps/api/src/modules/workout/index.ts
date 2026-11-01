@@ -14,6 +14,7 @@ import {
   page,
 } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
+import { own } from '../coaching/training.ts'
 import * as ProgressionService from '../progression/service.ts'
 import * as WorkoutService from './service.ts'
 
@@ -33,7 +34,7 @@ export const workoutRoutes = new Elysia({ prefix: '/workouts', tags: ['workouts'
     body: WorkoutCreate,
     response: Workout,
   })
-  .get('/:id', ({ caller, params: { id } }) => WorkoutService.get(caller, id), {
+  .get('/:id', ({ caller, params: { id } }) => WorkoutService.get(own(caller), id), {
     params,
     response: Workout,
     detail: { summary: 'One workout with its full nested plan' },

@@ -89,7 +89,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     indexes: ['exercises_name_id_idx'],
     ordered: ['exercises'],
     run: async (fixtures, size) =>
-      await exerciseService.list(fixtures.large.caller, { scope: 'all', limit: PAGE[size] }),
+      await exerciseService.list(own(fixtures.large.caller), { scope: 'all', limit: PAGE[size] }),
   },
   {
     name: 'GET /exercises?scope=favourites',
@@ -103,7 +103,10 @@ export const HOT_PATHS: readonly HotPath[] = [
     noSeqScan: ['exercises', 'exercise_favourites'],
     indexes: ['exercise_favourites_user_id_target_id_pk'],
     run: async (fixtures, size) =>
-      await exerciseService.list(fixtures.large.caller, { scope: 'favourites', limit: PAGE[size] }),
+      await exerciseService.list(own(fixtures.large.caller), {
+        scope: 'favourites',
+        limit: PAGE[size],
+      }),
   },
   {
     name: 'GET /exercises?q= (search)',
@@ -118,7 +121,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     noSeqScan: ['exercises'],
     indexes: [],
     run: async (fixtures, size) =>
-      await exerciseService.list(fixtures.large.caller, {
+      await exerciseService.list(own(fixtures.large.caller), {
         scope: 'all',
         q: 'Bench',
         limit: PAGE[size],
@@ -134,7 +137,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     noSeqScan: ['exercises', 'exercise_muscles'],
     indexes: ['exercises_name_id_idx', 'exercise_muscles_exercise_id_muscle_slug_pk'],
     run: async (fixtures, size) =>
-      await exerciseService.list(fixtures.large.caller, {
+      await exerciseService.list(own(fixtures.large.caller), {
         scope: 'all',
         muscle: 'pectoralis_major',
         limit: PAGE[size],
@@ -169,7 +172,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     indexes: ['workout_days_order_idx', 'workout_entries_order_idx', 'workout_sets_order_idx'],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
-      return await workoutService.get(profile.caller, profile.workoutId)
+      return await workoutService.get(own(profile.caller), profile.workoutId)
     },
   },
   {
