@@ -83,7 +83,11 @@
       }
     },
     {
-      "files": ["**/modules/workout/service.ts", "**/modules/exercise/service.ts"],
+      "files": [
+        "**/modules/workout/service.ts",
+        "**/modules/exercise/service.ts",
+        "**/modules/session/index.ts"
+      ],
       "rules": {
         "import/max-dependencies": "off"
       }

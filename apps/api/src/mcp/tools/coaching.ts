@@ -2,7 +2,10 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { OfAthlete, SessionQuery } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
-import * as CoachingService from '../../modules/coaching/service.ts'
+import { athletes } from '../../modules/coaching/athletes.ts'
+import { ownOrCoached } from '../../modules/coaching/training.ts'
+import { list as listSessions } from '../../modules/session/list.ts'
+import { get as getSession } from '../../modules/session/plan.ts'
 import { text } from '../format.ts'
 import { athleteLines, sessionDetail, sessionLines } from '../format-coaching.ts'
 
@@ -30,7 +33,7 @@ export function registerCoachingTools(server: McpServer, caller: Caller): void {
       inputSchema: z.object({}),
       annotations: READ,
     },
-    async () => text(athleteLines(await CoachingService.athletes(caller))),
+    async () => text(athleteLines(await athletes(caller))),
   )
 
   server.registerTool(
@@ -48,7 +51,10 @@ export function registerCoachingTools(server: McpServer, caller: Caller): void {
     },
     async ({ athlete: athleteId, ...query }) =>
       text(
-        sessionLines(await CoachingService.sessions(caller, athleteId, query), caller.weightUnit),
+        sessionLines(
+          await listSessions(await ownOrCoached(caller, athleteId), query),
+          caller.weightUnit,
+        ),
       ),
   )
 
@@ -67,7 +73,7 @@ export function registerCoachingTools(server: McpServer, caller: Caller): void {
     async ({ sessionId, athlete: athleteId }) =>
       text(
         sessionDetail(
-          await CoachingService.session(caller, athleteId, sessionId),
+          await getSession(await ownOrCoached(caller, athleteId), sessionId),
           caller.weightUnit,
           athleteId === undefined,
         ),

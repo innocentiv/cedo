@@ -2,7 +2,6 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import {
   DuplicateInput,
-  ExerciseHistoryQuery,
   OfAthlete,
   WorkoutCreate,
   PlanSave,
@@ -10,12 +9,12 @@ import {
   planSaveFrom,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
-import { own } from '../../modules/coaching/training.ts'
-import * as CoachingService from '../../modules/coaching/service.ts'
+import { own, ownOrCoached } from '../../modules/coaching/training.ts'
+import { trainingReview } from '../../modules/review/service.ts'
+import { planFor, savePlanAndRead } from '../../modules/workout/plan-for.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
 import {
-  historyLines,
   json,
   reviewSummary,
   suggestionLines,
@@ -51,7 +50,10 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ weeks, athlete: athleteId }) =>
       text(
-        reviewSummary(await CoachingService.review(caller, athleteId, weeks), caller.weightUnit),
+        reviewSummary(
+          await trainingReview(await ownOrCoached(caller, athleteId), weeks),
+          caller.weightUnit,
+        ),
       ),
   )
 
@@ -89,7 +91,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       annotations: READ,
     },
     async ({ workoutId, athlete }) => {
-      const { workout, held } = await CoachingService.planFor(caller, athlete, workoutId)
+      const { workout, held } = await planFor(await ownOrCoached(caller, athlete), workoutId)
       return text(workoutDetail(workout, caller.weightUnit, held))
     },
   )
@@ -144,7 +146,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       annotations: WRITE,
     },
     async ({ workoutId, ...plan }) => {
-      const { workout, held } = await CoachingService.savePlan(caller, workoutId, plan)
+      const { workout, held } = await savePlanAndRead(caller, workoutId, plan)
       return text(`Saved.\n\n${workoutDetail(workout, caller.weightUnit, held)}`)
     },
   )
@@ -181,26 +183,6 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       text(
         suggestionLines(
           await ProgressionService.suggestForWorkout(caller, workoutId),
-          caller.weightUnit,
-        ),
-      ),
-  )
-
-  server.registerTool(
-    'exercise_history',
-    {
-      title: 'History for one exercise',
-      description:
-        'Logged sessions for one exercise, newest first, with each set and its RPE, the ' +
-        "session's best estimated max for a weight lift, and — when it has stalled — how many " +
-        'sessions it has repeated one top set.',
-      inputSchema: ExerciseHistoryQuery.safeExtend({ exerciseId: z.uuid(), ...OfAthlete.shape }),
-      annotations: READ,
-    },
-    async ({ exerciseId, athlete: athleteId, ...query }) =>
-      text(
-        historyLines(
-          await CoachingService.history(caller, athleteId, exerciseId, query),
           caller.weightUnit,
         ),
       ),

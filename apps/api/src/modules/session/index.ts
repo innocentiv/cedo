@@ -22,9 +22,12 @@ import {
   page,
 } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
-import * as CoachingService from '../coaching/service.ts'
+import { own } from '../coaching/training.ts'
 import { targetsForSession } from '../progression/targets.ts'
 import { start as startSession } from './start.ts'
+import { history } from './history.ts'
+import { list as listSessions } from './list.ts'
+import { get as getSession } from './plan.ts'
 import { today } from './today.ts'
 import * as SessionService from './service.ts'
 import { amendLog, logSet, removeLog } from './set-writes.ts'
@@ -35,7 +38,7 @@ const logParams = z.object({ id: Id, logId: Id })
 export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller, query }) => CoachingService.sessions(caller, undefined, query), {
+  .get('/', ({ caller, query }) => listSessions(own(caller), query), {
     query: SessionQuery,
     response: page(WorkoutSessionSummary),
     detail: { summary: 'Session history, newest first. Summaries only — no per-set detail.' },
@@ -45,7 +48,7 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
     response: WorkoutSession,
     detail: { summary: 'Start a session, from a workout day or ad hoc' },
   })
-  .get('/:id', ({ caller, params: { id } }) => CoachingService.session(caller, undefined, id), {
+  .get('/:id', ({ caller, params: { id } }) => getSession(own(caller), id), {
     params,
     response: SessionDetail,
     detail: { summary: 'A session, with the plan it follows as the caller can reach it' },
@@ -139,15 +142,11 @@ export const todayRoutes = new Elysia({ prefix: '/today', tags: ['sessions'] })
 export const exerciseHistoryRoutes = new Elysia({ prefix: '/exercises', tags: ['sessions'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get(
-    '/:id/history',
-    ({ caller, params: { id }, query }) => CoachingService.history(caller, undefined, id, query),
-    {
-      params,
-      query: ExerciseHistoryQuery,
-      response: ExerciseHistory,
-      detail: {
-        summary: "The caller's own logged sessions for one exercise, newest first",
-      },
+  .get('/:id/history', ({ caller, params: { id }, query }) => history(own(caller), id, query), {
+    params,
+    query: ExerciseHistoryQuery,
+    response: ExerciseHistory,
+    detail: {
+      summary: "The caller's own logged sessions for one exercise, newest first",
     },
-  )
+  })

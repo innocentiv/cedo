@@ -47,6 +47,16 @@ If a rule exists in only one of those two paths, it is a bug. Put it in the serv
 choice: `shared: true`, which creates into the shared library, is part of the one request shape, and
 the service decides where it goes and whether the caller may.
 
+**Whose training** a read or an athlete record is of is resolved at the edge, once: the handler or
+tool passes `own(caller)`, or `ownOrCoached(caller, id)` for `/athletes/:id/…` and a tool's
+`athlete`, and the service takes the `Training` (`coaching/training.ts`). A service never takes a
+bare athlete id, and a `Training` cannot be written by hand — only those two mint one.
+
+```ts
+.get('/:id/review', async ({ caller, params: { id }, query }) =>
+  await trainingReview(await ownOrCoached(caller, id), query.weeks), { … })
+```
+
 ## The ACL invariant
 
 Every owned table — an ownable (built with `ownable()`) or one of its children (`childOwner()`) — is

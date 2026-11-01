@@ -193,8 +193,9 @@ training") is an **athlete** to its editors; `athlete_list` names them, each wit
 (`OfAthlete` in the contract) to read theirs instead of yours. Omitted, they read your own —
 `session_list` and `session_get` are also how an AI reads your own sessions, notes and all.
 
-Each is the athlete's own read, given their training, through the same `coaching/service.ts`
-function the HTTP routes call — so it computes as the athlete's does, and differs only by what the
+Each is the athlete's own read, given their training — a `Training` the tool resolves once, with
+`ownOrCoached`, as the HTTP route does — and the same function the route calls with it, so it
+computes as the athlete's does, and differs only by what the
 coach can see (ADR-0019). How each read treats what the coach cannot see is the rule it already
 has: a session keeps every set and says "unavailable exercise"; the review **leaves out** the work
 of an exercise or plan the coach cannot see, as it leaves out one you have lost; the history of

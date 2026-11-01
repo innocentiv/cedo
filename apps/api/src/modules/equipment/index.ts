@@ -1,7 +1,8 @@
 import { Elysia } from 'elysia'
-import { AthleteEquipment, AthleteEquipmentInput } from '@cedo/contract'
+import { z } from 'zod'
+import { AthleteEquipment, AthleteEquipmentInput, Id } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
-import { own } from '../coaching/training.ts'
+import { own, ownOrCoached } from '../coaching/training.ts'
 import * as EquipmentService from './service.ts'
 
 /**
@@ -19,3 +20,18 @@ export const equipmentRoutes = new Elysia({ prefix: '/equipment', tags: ['equipm
     response: AthleteEquipment,
     detail: { summary: 'Say what you have to train with, all of it, replacing what was said' },
   })
+
+/** An athlete's equipment, read by their coach (#34) — and changed by none of them. */
+export const athleteEquipmentRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching'] })
+  .use(authPlugin)
+  .guard({ auth: true })
+  .get(
+    '/:id/equipment',
+    async ({ caller, params: { id } }) =>
+      await EquipmentService.read(await ownOrCoached(caller, id)),
+    {
+      params: z.object({ id: Id }),
+      response: AthleteEquipment,
+      detail: { summary: 'What an athlete has to train with, and how its weights go (#34)' },
+    },
+  )

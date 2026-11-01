@@ -1,20 +1,24 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
-import { SessionLogInput, SetLogUpdate } from '@cedo/contract'
+import { ExerciseHistoryQuery, OfAthlete, SessionLogInput, SetLogUpdate } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
+import { ownOrCoached } from '../../modules/coaching/training.ts'
+import { history } from '../../modules/session/history.ts'
 import { amendLog } from '../../modules/session/set-writes.ts'
 import { logWhole } from '../../modules/session/start.ts'
-import { text } from '../format.ts'
+import { historyLines, text } from '../format.ts'
 import { setLine } from '../format-coaching.ts'
 
+const READ = { readOnlyHint: true, openWorldHint: false } as const
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const
 /** It replaces what was logged, so a client that asks before a destructive write asks here. */
 const CORRECTION = { ...WRITE, destructiveHint: true, idempotentHint: true } as const
 
 /**
  * OBJECTIVE 2, as it was done — training an AI is told about: a whole session logged, and a set
- * already logged corrected (#31). Nothing is removed here: a set or a session deleted is a human
- * action in the app. See docs/07-mcp.md, "Nothing can be deleted".
+ * already logged corrected (#31); and how one exercise has gone, session by session — yours, or an
+ * athlete's with `athlete`. Nothing is removed here: a set or a session deleted is a human action in
+ * the app. See docs/07-mcp.md, "Nothing can be deleted".
  */
 export function registerSessionTools(server: McpServer, caller: Caller): void {
   server.registerTool(
@@ -56,6 +60,26 @@ export function registerSessionTools(server: McpServer, caller: Caller): void {
     async ({ sessionId, setId, ...patch }) =>
       text(
         `Corrected. ${setLine(await amendLog(caller, sessionId, setId, patch), caller.weightUnit)}`,
+      ),
+  )
+
+  server.registerTool(
+    'exercise_history',
+    {
+      title: 'History for one exercise',
+      description:
+        'Logged sessions for one exercise, newest first, with each set and its RPE, the ' +
+        "session's best estimated max for a weight lift, and — when it has stalled — how many " +
+        'sessions it has repeated one top set.',
+      inputSchema: ExerciseHistoryQuery.safeExtend({ exerciseId: z.uuid(), ...OfAthlete.shape }),
+      annotations: READ,
+    },
+    async ({ exerciseId, athlete: athleteId, ...query }) =>
+      text(
+        historyLines(
+          await history(await ownOrCoached(caller, athleteId), exerciseId, query),
+          caller.weightUnit,
+        ),
       ),
   )
 }

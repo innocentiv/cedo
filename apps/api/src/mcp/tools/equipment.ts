@@ -2,7 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { AthleteEquipmentInput, OfAthlete } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
-import * as CoachingService from '../../modules/coaching/service.ts'
+import { ownOrCoached } from '../../modules/coaching/training.ts'
 import * as EquipmentService from '../../modules/equipment/service.ts'
 import { text } from '../format.ts'
 import { equipmentLines } from '../format-library.ts'
@@ -37,7 +37,12 @@ export function registerEquipmentTools(server: McpServer, caller: Caller): void 
       annotations: READ,
     },
     async ({ athlete }) =>
-      text(equipmentLines(await CoachingService.equipment(caller, athlete), caller.weightUnit)),
+      text(
+        equipmentLines(
+          await EquipmentService.read(await ownOrCoached(caller, athlete)),
+          caller.weightUnit,
+        ),
+      ),
   )
 
   server.registerTool(

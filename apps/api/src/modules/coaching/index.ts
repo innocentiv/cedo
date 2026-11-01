@@ -2,7 +2,6 @@ import { Elysia } from 'elysia'
 import { z } from 'zod'
 import {
   Athlete,
-  AthleteEquipment,
   ExerciseHistory,
   ExerciseHistoryQuery,
   Id,
@@ -14,26 +13,34 @@ import {
   page,
 } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
-import * as CoachingService from './service.ts'
+import { trainingReview } from '../review/service.ts'
+import { history } from '../session/history.ts'
+import { list as listSessions } from '../session/list.ts'
+import { get as getSession } from '../session/plan.ts'
+import { athletes } from './athletes.ts'
+import { own, ownOrCoached } from './training.ts'
 
 const params = z.object({ id: Id })
 
 /**
- * What a coach reads of the athletes who share their training with them (#11). GET only: a coach
- * changes nothing of an athlete's training — their notes, which a coach writes too, are
- * `modules/note` (#41). Anyone not sharing with the caller is a 404 on every route.
- * See docs/adr/0021-coaching-through-groups.md.
+ * What a coach reads of the athletes who share their training with them (#11) — each the athlete's
+ * own read, for the `Training` resolved here (`ownOrCoached`), so it computes as theirs does. GET
+ * only: a coach changes nothing of an athlete's training — their notes and weigh-ins, which a coach
+ * writes too, are `modules/note` and `modules/weigh-in`; their equipment, `modules/equipment`.
+ * Anyone not sharing with the caller is a 404 on every route. See
+ * docs/adr/0021-coaching-through-groups.md.
  */
 export const coachingRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller }) => CoachingService.athletes(caller), {
+  .get('/', ({ caller }) => athletes(caller), {
     response: z.array(Athlete),
     detail: { summary: 'Members sharing their training with a group the caller edits' },
   })
   .get(
     '/:id/sessions',
-    ({ caller, params: { id }, query }) => CoachingService.sessions(caller, id, query),
+    async ({ caller, params: { id }, query }) =>
+      await listSessions(await ownOrCoached(caller, id), query),
     {
       params,
       query: SessionQuery,
@@ -43,7 +50,8 @@ export const coachingRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching
   )
   .get(
     '/:id/sessions/:sessionId',
-    ({ caller, params: { id, sessionId } }) => CoachingService.session(caller, id, sessionId),
+    async ({ caller, params: { id, sessionId } }) =>
+      await getSession(await ownOrCoached(caller, id), sessionId),
     {
       params: z.object({ id: Id, sessionId: Id }),
       response: SessionDetail,
@@ -52,8 +60,8 @@ export const coachingRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching
   )
   .get(
     '/:id/exercises/:exerciseId/history',
-    ({ caller, params: { id, exerciseId }, query }) =>
-      CoachingService.history(caller, id, exerciseId, query),
+    async ({ caller, params: { id, exerciseId }, query }) =>
+      await history(await ownOrCoached(caller, id), exerciseId, query),
     {
       params: z.object({ id: Id, exerciseId: Id }),
       query: ExerciseHistoryQuery,
@@ -61,14 +69,10 @@ export const coachingRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching
       detail: { summary: "An athlete's logged sessions for one exercise the caller can see" },
     },
   )
-  .get('/:id/equipment', ({ caller, params: { id } }) => CoachingService.equipment(caller, id), {
-    params,
-    response: AthleteEquipment,
-    detail: { summary: 'What an athlete has to train with, and how its weights go (#34)' },
-  })
   .get(
     '/:id/review',
-    ({ caller, params: { id }, query }) => CoachingService.review(caller, id, query.weeks),
+    async ({ caller, params: { id }, query }) =>
+      await trainingReview(await ownOrCoached(caller, id), query.weeks),
     {
       params,
       query: ReviewQuery,
@@ -85,7 +89,7 @@ export const coachingRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching
 export const reviewRoutes = new Elysia({ prefix: '/review', tags: ['coaching'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller, query }) => CoachingService.review(caller, undefined, query.weeks), {
+  .get('/', ({ caller, query }) => trainingReview(own(caller), query.weeks), {
     query: ReviewQuery,
     response: TrainingReview,
     detail: {

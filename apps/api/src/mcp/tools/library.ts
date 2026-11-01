@@ -9,7 +9,7 @@ import {
   OfAthlete,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
-import * as CoachingService from '../../modules/coaching/service.ts'
+import { ownOrCoached } from '../../modules/coaching/training.ts'
 import * as ExerciseService from '../../modules/exercise/service.ts'
 import * as MediaService from '../../modules/media/service.ts'
 import { libraryAudit, sharedGroupId } from '../../modules/review/curation.ts'
@@ -75,7 +75,7 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
       annotations: READ,
     },
     async ({ athlete, ...query }) => {
-      const page = await CoachingService.exercises(caller, athlete, query)
+      const page = await ExerciseService.list(await ownOrCoached(caller, athlete), query)
       if (page.items.length === 0) return text('No exercises matched.')
       return text(
         page.items.map((e) => exerciseLine(e)).join('\n') +

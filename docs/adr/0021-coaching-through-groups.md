@@ -39,8 +39,8 @@ role already means "runs this group".
   and named moves it into the shared group.
 - **MCP adds nothing to tokens.** A coach's token acts as the coach, so it reads exactly the athletes
   the coach can. `athlete_list` names them; the review, history and session tools take an optional
-  athlete and call the same `coaching/service.ts` functions the HTTP routes do — one read, whoever
-  asks for it, told whose it is in one place (`ownOrCoached`).
+  athlete and call the same functions the HTTP routes do — one read, whoever asks for it, told
+  whose it is in one place (`ownOrCoached`, `coaching/training.ts`).
 
 ## Rejected
 
