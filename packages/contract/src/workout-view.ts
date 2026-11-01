@@ -164,7 +164,8 @@ function readsOf<
       kind: 'added',
       exercise,
       sets: adHocSetsOf(exercise.id, sets),
-      selected: reopened?.exerciseId === exercise.id ? reopened.key : null,
+      selected:
+        reopened?.entryId === null && reopened.exerciseId === exercise.id ? reopened.key : null,
     }),
     exerciseOf: (log: L) => added.find((e) => e.id === log.exerciseId) ?? null,
   }

@@ -160,6 +160,15 @@ describe('what the workout shows', () => {
     expect(v.focus.kind === 'added' && v.focus.selected).toBe('s0')
   })
 
+  test('a set re-opened on an entry is not marked on the same exercise added to the day', () => {
+    // The squat both prescribed and added: its entry's first set is no set of the one added.
+    const reopened = { entryId: 'squat', exerciseId: 'squat', key: 's0' }
+    const choices = { chosen: { added: 'squat' }, reopened }
+    const v = view([set('squat')], { added: [{ id: 'squat' }], choices })
+    expect(focusId(v)).toBe('squat')
+    expect(v.focus.kind === 'added' && v.focus.selected).toBeNull()
+  })
+
   test('"+ set" goes to the entry of the set shown once it has all it asked, and only then', () => {
     expect(view([set('squat')]).another).toBeNull()
     expect(view([set('squat'), set('squat')]).another).toBe('squat')
