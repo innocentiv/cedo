@@ -1,7 +1,10 @@
 import {
   type Exercise,
   NO_TARGET,
+  type Reopened,
   type SessionExercise,
+  type SessionSet,
+  type WorkoutChoices,
   adHocSetsOf,
   markedSets,
   nextSet,
@@ -10,44 +13,23 @@ import {
 } from '@cedo/contract'
 import type { PendingLog } from '../api/pending.ts'
 import { AddRow, Columns, FocusLogger, Stack, UpNext } from '../ui/index.ts'
-import { JustDone, type Reopened, type RestShown, ShownSet } from './shown-set.tsx'
+import { JustDone, type RestShown, ShownSet } from './shown-set.tsx'
 import { useLoads } from './use-loads.ts'
-import { useUntilNextSet } from './until-next-set.ts'
-import type { WorkoutSets } from './workout-state.ts'
-
-/**
- * The exercise a set logged with no plan entry goes to (#24): the one chosen, else one just added
- * and not yet logged — each exercise added becomes the focus — else that of the set logged last,
- * else the last there is.
- */
-export function adHocFocus(
-  exercises: readonly SessionExercise[],
-  all: readonly PendingLog[],
-  chosen: string | null,
-  added: string | null,
-): SessionExercise | undefined {
-  const of = (id: string | null | undefined) => exercises.find((e) => e.id === id)
-  const fresh = added !== null && !all.some((l) => l.exerciseId === added) ? added : null
-  const latest = all.at(-1)
-  return (
-    of(chosen) ??
-    of(fresh) ??
-    (latest?.entryId === null ? of(latest.exerciseId) : undefined) ??
-    exercises.at(-1)
-  )
-}
+import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
 /**
  * A session with no plan behind it (#24): what was just done and the exercise in focus, then the
- * others, Add exercise, and every set — side by side on a desktop. Nothing was prescribed, so there is always a next set until the athlete
- * moves on.
+ * others, Add exercise, and every set — side by side on a desktop. Nothing was prescribed, so there
+ * is always a next set until the athlete moves on. What shows is the contract's `workoutView`.
  */
 export function AdHocDay({
   exercises,
   full,
   sets,
   rest,
-  added,
+  view,
+  onChoose,
+  onReopen,
   record,
   onAdd,
   onHowTo,
@@ -58,21 +40,15 @@ export function AdHocDay({
   readonly full: readonly Exercise[]
   readonly sets: WorkoutSets
   readonly rest: RestShown
-  readonly added: string | null
+  readonly view: WorkoutShown
+  readonly onChoose: (chosen: WorkoutChoices['chosen']) => void
+  readonly onReopen: (reopened: Reopened) => void
   /** Every set the session holds, under its exercises. */
   readonly record: React.ReactNode
   readonly onAdd: () => void
   readonly onHowTo: (exercise: Exercise) => void
 }): React.JSX.Element {
-  const latest = sets.all.at(-1)?.id ?? null
-  const [chosen, choose] = useUntilNextSet<string>(latest)
-  const [reopened, reopen] = useUntilNextSet<Reopened>(latest)
-  const focus = adHocFocus(exercises, sets.all, chosen, added)
-  const shown =
-    reopened === null
-      ? (sets.all.findLast((l) => l.entryId === null) ?? null)
-      : (adHocSetsOf(reopened.exerciseId, sets.all).find((s) => s.key === reopened.key)?.log ??
-        null)
+  const { focus, shown, current } = view
 
   return (
     <Columns
@@ -81,25 +57,22 @@ export function AdHocDay({
         <>
           <JustDone rest={rest}>
             {shown === null ? null : (
-              <ShownSet
-                log={shown}
-                exercise={exercises.find((e) => e.id === shown.exerciseId) ?? null}
-                sets={sets}
-              />
+              <ShownSet log={shown.log} exercise={shown.exercise} sets={sets} />
             )}
           </JustDone>
-          {focus === undefined ? null : (
+          {focus.kind === 'added' ? (
             <AdHocFocus
-              exercise={focus}
-              whole={full.find((e) => e.id === focus.id)}
+              exercise={focus.exercise}
+              marks={focus.sets}
+              whole={full.find((e) => e.id === focus.exercise.id)}
               sets={sets}
-              selected={reopened?.exerciseId === focus.id ? reopened.key : null}
+              selected={focus.selected}
               onSelect={(key) => {
-                reopen({ entryId: null, exerciseId: focus.id, key })
+                onReopen({ entryId: null, exerciseId: focus.exercise.id, key })
               }}
               onHowTo={onHowTo}
             />
-          )}
+          ) : null}
         </>
       }
       side={
@@ -108,8 +81,10 @@ export function AdHocDay({
             <AddedExercises
               exercises={exercises}
               sets={sets}
-              current={focus?.id ?? null}
-              onChoose={choose}
+              current={current.addedToday}
+              onChoose={(id) => {
+                onChoose({ added: id })
+              }}
             />
             <AddRow title="Add exercise" onPress={onAdd} testID="adhoc-add-exercise" />
           </Stack>
@@ -161,6 +136,7 @@ export function AddedExercises({
 /** An exercise logged with no plan entry, in focus: its sets, and one more from the last. */
 export function AdHocFocus({
   exercise,
+  marks,
   whole,
   sets,
   selected,
@@ -168,6 +144,8 @@ export function AdHocFocus({
   onHowTo,
 }: {
   readonly exercise: SessionExercise
+  /** Its sets, as the contract's `workoutView` gives them: those logged, then one more. */
+  readonly marks: readonly SessionSet<PendingLog>[]
   /** The whole exercise, when it was picked this open: how to do it can be shown. */
   readonly whole: Exercise | undefined
   readonly sets: WorkoutSets
@@ -175,7 +153,6 @@ export function AdHocFocus({
   readonly onSelect: (key: string) => void
   readonly onHowTo: (exercise: Exercise) => void
 }): React.JSX.Element {
-  const marks = adHocSetsOf(exercise.id, sets.all)
   // Its weights as the athlete can load them, when the whole exercise is at hand (#36).
   const load = useLoads()(whole)
   const next = nextSet(marks)

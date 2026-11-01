@@ -25,14 +25,6 @@ export interface RestShown {
   readonly sets: number
 }
 
-/** A set re-opened from its mark: of a plan entry, or of an exercise logged with none. */
-export interface Reopened {
-  readonly entryId: string | null
-  readonly exerciseId: string
-  /** The set's key among its entry's — or exercise's — sets (`SessionSet.key`). */
-  readonly key: string
-}
-
 /**
  * What was just done, as one group above the focus (#24 review): the rest it started, then the set.
  * Nothing, before the first set.

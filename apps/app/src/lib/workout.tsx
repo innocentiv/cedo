@@ -41,7 +41,9 @@ export function WorkoutBody({ w }: { readonly w: Workout }): React.JSX.Element |
           full={w.picked}
           sets={w.sets}
           rest={rest}
-          added={w.added}
+          view={w.view}
+          onChoose={w.choose}
+          onReopen={w.reopen}
           record={record}
           onAdd={w.startPicking}
           onHowTo={(exercise) => {
@@ -53,12 +55,13 @@ export function WorkoutBody({ w }: { readonly w: Workout }): React.JSX.Element |
       ) : (
         <PlannedDay
           day={day}
-          targets={w.targets.data}
           sets={w.sets}
           rest={rest}
           extras={w.adHocExercises}
           full={w.picked}
-          added={w.added}
+          view={w.view}
+          onChoose={w.choose}
+          onReopen={w.reopen}
           record={record}
           onAdd={w.startPicking}
           onHowTo={showHowTo}

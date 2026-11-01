@@ -1,13 +1,31 @@
 import { useMemo, useState } from 'react'
-import { type Exercise, type SetLog, exercisesInSession } from '@cedo/contract'
+import {
+  type EntryTarget,
+  type Exercise,
+  NO_CHOICES,
+  type Reopened,
+  type SessionEntry,
+  type SessionExercise,
+  type SessionPlan,
+  type SetLog,
+  type WorkoutChoices,
+  type WorkoutView,
+  exercisesInSession,
+  workoutView,
+} from '@cedo/contract'
 import { type PendingLog, withPending } from '../api/pending.ts'
 import { useSession, useSessionTargets } from '../api/queries.ts'
 import { useRemoveLog, useUnsentSets, useUpdateSession } from '../api/session-queries.ts'
 import { useRecordSet } from './record-set.ts'
+import { useLoads } from './use-loads.ts'
 import { useSubmit } from './use-submit.ts'
 
 /** Stable, so an absent session does not recompute the exercises on every render. */
 const NO_LOGS: readonly SetLog[] = []
+const NO_TARGETS: readonly EntryTarget[] = []
+
+/** What the workout screen shows: the contract's `workoutView`, of this session. */
+export type WorkoutShown = WorkoutView<SessionEntry, SessionExercise, PendingLog, EntryTarget>
 
 /**
  * A session's sets, as every part of the workout reads and changes them: as the server has them,
@@ -24,7 +42,7 @@ export interface WorkoutSets {
 /**
  * Everything the workout screen reads and writes, and the little it holds of its own — the menu, the
  * how-to, the exercises picked into a session without a plan (#24). The route renders it; the rules
- * are the contract's `session-flow`.
+ * are the contract's `session-flow` and `workout-view`.
  */
 export function useWorkout(id: string) {
   const session = useSession(id)
@@ -45,8 +63,6 @@ export function useWorkout(id: string) {
     id,
     session,
     plan,
-    // The plan as the server says the reader can reach it (`SessionPlan`) — never decided here.
-    day: plan?.reachable === true ? plan.day : undefined,
     targets,
     sets,
     ended,
@@ -73,6 +89,8 @@ export function useWorkout(id: string) {
     setHowTo,
     ...picks,
     ...writes,
+    // After the picks: picking starts afresh, so the view's `startPicking` takes the place of theirs.
+    ...useView(plan, targets.data, sets, picks),
   }
 }
 
@@ -92,6 +110,60 @@ const workoutSets = (
   record,
   undo,
 })
+
+/**
+ * The day the session follows, what the screen shows of it (the contract's `workoutView`), and what
+ * the athlete chose to look at (GLOSSARY.md, "Focus"): an entry or an exercise added, tapped to put
+ * in focus, and a set re-opened from its mark — held until the next set is logged, or until the
+ * athlete goes to pick an exercise: what they pick takes the focus.
+ */
+function useView(
+  plan: SessionPlan | undefined,
+  targets: readonly EntryTarget[] | undefined,
+  sets: WorkoutSets,
+  picks: {
+    readonly adHocExercises: readonly SessionExercise[]
+    readonly added: string | null
+    readonly startPicking: () => void
+  },
+) {
+  const latest = sets.all.at(-1)?.id ?? null
+  const [held, setHeld] = useState<{
+    readonly choices: WorkoutChoices
+    readonly at: string | null
+  }>()
+  const choices = held?.at === latest ? held.choices : NO_CHOICES
+  const hold = (next: WorkoutChoices) => {
+    setHeld({ choices: next, at: latest })
+  }
+  const loads = useLoads()
+  // The plan as the server says the reader can reach it (`SessionPlan`) — never decided here.
+  const day = plan?.reachable === true ? plan.day : undefined
+  const view: WorkoutShown = workoutView({
+    day: day ?? null,
+    targets: targets ?? NO_TARGETS,
+    sets: sets.all,
+    added: picks.adHocExercises,
+    justAdded: picks.added,
+    choices,
+    loadFor: (entry) => loads(entry.exercise),
+  })
+  return {
+    day,
+    /** What the screen shows, by the contract's rules: the focus, the set shown, "+ set". */
+    view,
+    choose: (chosen: WorkoutChoices['chosen']) => {
+      hold({ ...choices, chosen })
+    },
+    reopen: (reopened: Reopened) => {
+      hold({ ...choices, reopened })
+    },
+    startPicking: () => {
+      setHeld(undefined)
+      picks.startPicking()
+    },
+  }
+}
 
 /** The session's menu: open, or not. */
 function useMenu() {

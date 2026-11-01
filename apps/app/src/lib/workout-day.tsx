@@ -1,8 +1,9 @@
 import {
-  type EntryTarget,
   type Exercise,
+  type Reopened,
   type SessionDay,
   type SessionExercise,
+  type WorkoutChoices,
   formatPrescription,
   nextSet,
   progressOf,
@@ -11,23 +12,25 @@ import { AddRow, Columns, Stack, UpNext } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
 import { JustDone, type RestShown, ShownSet } from './shown-set.tsx'
 import { AddedExercises } from './workout-adhoc.tsx'
-import { InFocus, usePlannedFocus } from './workout-focus.tsx'
-import type { WorkoutSets } from './workout-state.ts'
+import { InFocus } from './workout-focus.tsx'
+import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 import { useWeightUnit } from './weight-unit.ts'
 
 /**
  * A session that follows a plan's day (#24): what was just done and the entry in focus, then the
- * rest of the day, what was added to it, and every set — side by side on a desktop. Every rule is the contract's `session-flow`; this holds only what the
- * athlete chose to look at, until the next set is logged. See docs/08-frontend.md.
+ * rest of the day, what was added to it, and every set — side by side on a desktop. What shows is
+ * the contract's `workoutView`; this renders it, and says what the athlete taps. See
+ * docs/08-frontend.md.
  */
 export function PlannedDay({
   day,
-  targets,
   sets,
   rest,
   extras,
   full,
-  added,
+  view,
+  onChoose,
+  onReopen,
   record,
   onAdd,
   onHowTo,
@@ -35,14 +38,15 @@ export function PlannedDay({
   finishing,
 }: {
   readonly day: SessionDay
-  readonly targets: readonly EntryTarget[]
   readonly sets: WorkoutSets
   readonly rest: RestShown
   /** Exercises logged with no entry — swaps — then any added since: `exercisesInSession`. */
   readonly extras: readonly SessionExercise[]
   /** The exercises added this open, whole: how to do them can be shown. */
   readonly full: readonly Exercise[]
-  readonly added: string | null
+  readonly view: WorkoutShown
+  readonly onChoose: (chosen: WorkoutChoices['chosen']) => void
+  readonly onReopen: (reopened: Reopened) => void
   /** Every set the session holds, under the day. */
   readonly record: React.ReactNode
   readonly onAdd: () => void
@@ -51,8 +55,7 @@ export function PlannedDay({
   readonly finishing: boolean
 }): React.JSX.Element {
   const unit = useWeightUnit()
-  const focused = usePlannedFocus(day, targets, sets, extras, added)
-  const { choose, setsFor, extraInFocus, focus, shown, shownEntry, another } = focused
+  const { shown, another, current, setsFor } = view
   const add = <AddRow title="Add exercise" onPress={onAdd} testID="session-add-exercise" />
 
   return (
@@ -62,25 +65,24 @@ export function PlannedDay({
           <JustDone rest={rest}>
             {shown === null ? null : (
               <ShownSet
-                log={shown}
-                exercise={
-                  shownEntry?.exercise ?? extras.find((e) => e.id === shown.exerciseId) ?? null
-                }
+                log={shown.log}
+                exercise={shown.exercise}
                 sets={sets}
                 onAnother={
                   another === null
                     ? undefined
                     : () => {
-                        choose({ entry: another })
+                        onChoose({ entry: another })
                       }
                 }
               />
             )}
           </JustDone>
           <InFocus
-            focused={focused}
+            focus={view.focus}
             sets={sets}
             full={full}
+            onReopen={onReopen}
             onHowTo={onHowTo}
             onFinish={onFinish}
             finishing={finishing}
@@ -100,10 +102,10 @@ export function PlannedDay({
                 done: nextSet(setsFor(entry)) === null,
                 superset: entry.supersetGroup,
               }))}
-              current={extraInFocus !== undefined || focus === null ? null : String(focus.index)}
+              current={current.upNext === null ? null : String(current.upNext.index)}
               onChoose={(index) => {
                 const entry = day.entries.find((e) => String(e.index) === index)
-                if (entry !== undefined) choose({ entry: entry.id })
+                if (entry !== undefined) onChoose({ entry: entry.id })
               }}
               testID="up-next"
             />
@@ -115,9 +117,9 @@ export function PlannedDay({
                 title="Added today"
                 exercises={extras}
                 sets={sets}
-                current={extraInFocus?.id ?? null}
+                current={current.addedToday}
                 onChoose={(id) => {
-                  choose({ added: id })
+                  onChoose({ added: id })
                 }}
               />
               {add}
