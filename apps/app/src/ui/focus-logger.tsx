@@ -135,19 +135,20 @@ export function FocusLogger({
             )}
           </Stack>
           <Stack gap="md">
+            {/* Each as tall as it is: `grow` in a column shared the height out equally, and a
+                weight whose unit wraps — "kg assistance" — ran over the reserve under it. */}
             {fieldsOf(tracking).map((field) => (
-              <Stack key={field.dimension} grow>
-                <Stepper
-                  dimension={field.dimension}
-                  tracking={tracking}
-                  load={load}
-                  value={effort[field.key]}
-                  onChange={(value) => {
-                    setEffort((current) => ({ ...current, [field.key]: value }))
-                  }}
-                  testID={`${testID}-${field.dimension}`}
-                />
-              </Stack>
+              <Stepper
+                key={field.dimension}
+                dimension={field.dimension}
+                tracking={tracking}
+                load={load}
+                value={effort[field.key]}
+                onChange={(value) => {
+                  setEffort((current) => ({ ...current, [field.key]: value }))
+                }}
+                testID={`${testID}-${field.dimension}`}
+              />
             ))}
           </Stack>
           {asked ? (
