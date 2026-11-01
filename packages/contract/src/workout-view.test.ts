@@ -72,7 +72,6 @@ describe('what the workout shows', () => {
       targets: [{ entryId: 'squat', target: target(5, 102) }],
       sets,
       added: [],
-      justAdded: null,
       choices: NO_CHOICES,
       loadFor: () => bar,
       ...options,
@@ -115,16 +114,13 @@ describe('what the workout shows', () => {
     expect(v.current).toEqual({ upNext: null, addedToday: 'dip' })
   })
 
-  test('an exercise just added takes the focus before anything of it is logged', () => {
-    expect(focusId(view([set('squat')], { added, justAdded: 'curl' }))).toBe('curl')
-  })
-
-  test('an exercise added and chosen takes the focus from the day', () => {
+  test('an exercise added and chosen — picked, or tapped — takes the focus from the day', () => {
     const choices = { chosen: { added: 'curl' }, reopened: null }
     expect(focusId(view([set('squat')], { added, choices }))).toBe('curl')
   })
 
-  test('an exercise added, neither chosen nor just added nor logged last, leaves the day its focus', () => {
+  test('an exercise added, neither chosen nor logged last, leaves the day its focus', () => {
+    // Logged, then a set of the day: the day has its focus back, though curl was the last added.
     expect(focusId(view([set(null, 'curl'), set('squat')], { added }))).toBe('squat')
   })
 
@@ -198,13 +194,12 @@ describe('what the workout shows', () => {
       expect(v.current).toEqual({ upNext: null, addedToday: null })
     })
 
-    test('the focus: chosen, else just added and not yet logged, else logged last, else the last', () => {
+    test('the focus: chosen — picked, or tapped — else logged last, else the last', () => {
       const curl = [set(null, 'curl')]
       expect(focusId(adHoc(curl, { choices: { chosen: { added: 'dip' }, reopened: null } }))).toBe(
         'dip',
       )
-      expect(focusId(adHoc(curl, { justAdded: 'dip' }))).toBe('dip')
-      expect(focusId(adHoc([set(null, 'dip'), ...curl], { justAdded: 'dip' }))).toBe('curl')
+      expect(focusId(adHoc([set(null, 'dip'), ...curl]))).toBe('curl')
       expect(focusId(adHoc([]))).toBe('dip')
       expect(adHoc(curl).current.addedToday).toBe('curl')
     })

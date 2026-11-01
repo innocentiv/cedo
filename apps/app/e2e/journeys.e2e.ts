@@ -2428,6 +2428,37 @@ test(
 )
 
 /**
+ * An exercise added mid-plan takes the focus as a choice does: its own set keeps it there — a swap
+ * logged last — and a set of the day gives the day its focus back. It used to hold the focus over
+ * the day's order for as long as it was the last exercise added.
+ */
+test(
+  'an exercise added mid-plan gives the day back its focus once a set of the day is logged',
+  async () => {
+    await withApp('added-gives-back', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('agb'))
+      await app.planEditor.create()
+      await app.planEditor.saveAndStart()
+
+      const bench = app.session.entry(0)
+      await bench.fill('weight', '60')
+      await bench.log()
+      const pushUp = await app.session.addExercise('Push-Up')
+      expect(await app.session.inFocus()).toBe(`adhoc ${pushUp}`)
+      const swap = app.session.adhoc(pushUp)
+      await swap.fill('reps', '12')
+      await swap.log()
+      expect(await app.session.inFocus()).toBe(`adhoc ${pushUp}`)
+
+      await bench.log()
+      expect(await app.session.inFocus()).toBe('entry 0')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * RPE, asked as reps in reserve: a target set in the editor, said of a set before it is logged
  * (#37) — never pre-filled from the plan's, never carried to the next set, which would be answers
  * the athlete did not give, and not asked again once the set is logged.

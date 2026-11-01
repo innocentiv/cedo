@@ -23,25 +23,18 @@ type Added = { readonly id: string }
 type Asked = { readonly entryId: string; readonly target: SetTarget }
 
 /**
- * The exercise a set logged with no plan entry goes to (#24): the one chosen, else one just added
- * and not yet logged — each exercise added becomes the focus — else that of the set logged last,
- * else the last there is.
+ * The exercise a set logged with no plan entry goes to (#24): the one chosen — each exercise picked
+ * is chosen, so it takes the focus — else that of the set logged last, else the last there is.
  */
 export function adHocFocus<X extends Added>(
   exercises: readonly X[],
   logs: readonly ViewLog[],
   chosen: string | null,
-  justAdded: string | null,
 ): X | undefined {
   const of = (id: string | null | undefined) => exercises.find((e) => e.id === id)
-  const fresh =
-    justAdded !== null && !logs.some((l) => l.exerciseId === justAdded) ? justAdded : null
   const latest = logs.at(-1)
   return (
-    of(chosen) ??
-    of(fresh) ??
-    (latest?.entryId === null ? of(latest.exerciseId) : undefined) ??
-    exercises.at(-1)
+    of(chosen) ?? (latest?.entryId === null ? of(latest.exerciseId) : undefined) ?? exercises.at(-1)
   )
 }
 
@@ -123,12 +116,6 @@ interface ViewInput<E extends FlowEntry, X extends Added, L extends ViewLog, T e
   readonly sets: readonly L[]
   /** The exercises logged with no plan entry, then any added since (`exercisesInSession`). */
   readonly added: readonly X[]
-  /**
-   * The first of the exercises added last. Without a plan, it takes the focus until a set of it is
-   * logged. Following a day, while it is the last of those added, it has the focus whenever nothing
-   * else is chosen — sets of it logged or not, and over the day's order — until another is picked.
-   */
-  readonly justAdded: string | null
   readonly choices: WorkoutChoices
   /** What the athlete can load on an entry's exercise (#36). */
   readonly loadFor: (entry: E) => Load | null
@@ -168,8 +155,8 @@ type Reads<E extends FlowEntry, X extends Added, L extends ViewLog, T extends As
 /**
  * What the workout screen shows (#24), from the session's sets and what the athlete chose.
  *
- * Following a day, the focus is the entry chosen — else an exercise added (chosen, just added, or
- * the one a swap was logged to last) — else `focusOf`'s; an entry chosen out of the reader's reach
+ * Following a day, the focus is the entry chosen — else an exercise added (chosen, or the one a swap
+ * was logged to last) — else `focusOf`'s; an entry chosen out of the reader's reach
  * says so, and with every set logged the day is done. Without a plan, the focus is `adHocFocus`'s.
  *
  * The set shown is the one re-opened from its mark, else the one logged last — without a plan, the
@@ -193,7 +180,7 @@ export function workoutView<
 function adHocView<E extends FlowEntry, X extends Added, L extends ViewLog, T extends Asked>(
   r: Reads<E, X, L, T>,
 ): WorkoutView<E, X, L, T> {
-  const focus = adHocFocus(r.added, r.sets, r.chosenAdded, r.justAdded)
+  const focus = adHocFocus(r.added, r.sets, r.chosenAdded)
   const log =
     r.reopened === null ? r.sets.findLast((l) => l.entryId === null) : r.adHocShown(r.reopened)
   return {
@@ -212,12 +199,13 @@ function dayView<E extends FlowEntry, X extends Added, L extends ViewLog, T exte
 ): WorkoutView<E, X, L, T> {
   const latest = r.sets.at(-1)
   const chosen = day.entries.find((e) => e.id === r.chosenEntry)
-  const addedNext = adHocFocus(r.added, r.sets, r.chosenAdded, r.justAdded)
-  // An exercise added is in focus when chosen, just added, or the one a swap was logged to last.
+  const addedNext = adHocFocus(r.added, r.sets, r.chosenAdded)
+  // An exercise added is in focus when chosen — picked, or tapped — or the one a swap was logged to
+  // last; a set of the day gives the day its focus back.
   const addedInFocus =
     chosen === undefined &&
     addedNext !== undefined &&
-    (r.chosenAdded !== null || r.justAdded === addedNext.id || latest?.entryId === null)
+    (r.chosenAdded !== null || latest?.entryId === null)
       ? addedNext
       : undefined
   const next = chosen !== undefined && loggable(chosen) ? chosen : focusOf(day, r.sets)

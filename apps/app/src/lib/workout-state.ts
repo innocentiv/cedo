@@ -56,7 +56,7 @@ export function useWorkout(id: string) {
   const serverLogs = session.data?.logs ?? NO_LOGS
   const choices = useChoices()
   const writes = useSessionWrites(id, submission.submit, menu.hide, choices.forget)
-  const picks = useAdHocPicks(serverLogs)
+  const picks = useAdHocPicks(serverLogs, choices)
   const ended = session.data?.endedAt != null
   const sets = workoutSets(serverLogs, unsent.sets, record, writes.undo, choices.forget)
 
@@ -90,8 +90,7 @@ export function useWorkout(id: string) {
     setHowTo,
     ...picks,
     ...writes,
-    // After the picks: picking starts afresh, so the view's `startPicking` takes the place of theirs.
-    ...useView(plan, targets.data, sets, picks, choices),
+    ...useView(plan, targets.data, sets, picks.adHocExercises, choices),
   }
 }
 
@@ -123,8 +122,8 @@ const workoutSets = (
 })
 
 /**
- * What the athlete chose to look at (GLOSSARY.md, "Focus"): an entry or an exercise added, tapped to
- * put in focus, and a set re-opened from its mark. Held until this device logs or undoes a set, or
+ * What the athlete chose to look at (GLOSSARY.md, "Focus"): an entry or an exercise added, tapped or
+ * picked to put in focus, and a set re-opened from its mark. Held until this device logs or undoes a set, or
  * goes to pick an exercise — by what was done, not by which set is latest: a set logged without a
  * signal changes id when the server has it, and a choice held to its id was lost as it landed.
  */
@@ -146,18 +145,13 @@ function useChoices() {
 
 /**
  * The day the session follows, and what the screen shows of it (the contract's `workoutView`) with
- * what the athlete chose. Going to pick an exercise forgets the choice: what they pick takes the
- * focus.
+ * what the athlete chose.
  */
 function useView(
   plan: SessionPlan | undefined,
   targets: readonly EntryTarget[] | undefined,
   sets: WorkoutSets,
-  picks: {
-    readonly adHocExercises: readonly SessionExercise[]
-    readonly added: string | null
-    readonly startPicking: () => void
-  },
+  added: readonly SessionExercise[],
   choices: ReturnType<typeof useChoices>,
 ) {
   const loads = useLoads()
@@ -167,8 +161,7 @@ function useView(
     day: day ?? null,
     targets: targets ?? NO_TARGETS,
     sets: sets.all,
-    added: picks.adHocExercises,
-    justAdded: picks.added,
+    added,
     choices: choices.held,
     loadFor: (entry) => loads(entry.exercise),
   })
@@ -178,10 +171,6 @@ function useView(
     view,
     choose: choices.choose,
     reopen: choices.reopen,
-    startPicking: () => {
-      choices.forget()
-      picks.startPicking()
-    },
   }
 }
 
@@ -203,32 +192,34 @@ function useMenu() {
  * The exercises of a session without a plan: what it has logged, then any picked since
  * (`exercisesInSession`). Picks are local — once a set is logged, the log carries the exercise.
  */
-function useAdHocPicks(logs: readonly SetLog[]) {
+function useAdHocPicks(logs: readonly SetLog[], choices: ReturnType<typeof useChoices>) {
   const [picking, setPicking] = useState(false)
   const [declined, setDeclined] = useState(false)
   const [picked, setPicked] = useState<Exercise[]>([])
-  // The first of those picked together: they are done in the order picked.
-  const [added, setAdded] = useState<string | null>(null)
   return {
     adHocExercises: useMemo(() => exercisesInSession(logs, picked), [logs, picked]),
     /** Whole, as picked: how to do them can be shown. */
     picked,
-    /** The first exercise of those added last: it takes the focus until the next set says otherwise. */
-    added,
     picking,
     declined,
+    /** Going to pick forgets what was chosen: what is picked takes the focus. */
     startPicking: () => {
+      choices.forget()
       setPicking(true)
     },
     cancelPicking: () => {
       setPicking(false)
       setDeclined(true)
     },
-    /** Several at once (#27), in the order picked: the first takes the focus. */
+    /**
+     * Several at once (#27), in the order picked: the first is chosen, so it takes the focus as a
+     * tap would — until a set is logged.
+     */
     pick: (exercises: readonly Exercise[]) => {
       const ids = new Set(exercises.map((e) => e.id))
       setPicked((now) => [...now.filter((e) => !ids.has(e.id)), ...exercises])
-      setAdded(exercises[0]?.id ?? null)
+      const [first] = exercises
+      if (first !== undefined) choices.choose({ added: first.id })
       setPicking(false)
     },
   }

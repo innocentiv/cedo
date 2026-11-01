@@ -247,7 +247,9 @@ refused. A new weight rule in the plan editor adds one step of that equipment. "
 drawn as one item; tapping one makes it current, and tapping a logged set re-opens it.
 
 - **A choice holds until this device logs or undoes a set**, or goes to pick an exercise — what is
-  picked takes the focus. Not until the latest set changes: a set logged without a signal is known
+  picked is chosen in turn, so it takes the focus; once a set is logged, a swap keeps the focus
+  while it is the set logged last, and a set of the day gives the day its focus back. Not until the
+  latest set changes: a set logged without a signal is known
   by its key until the server has it, then by the server's id, and a choice held to it was lost as
   it landed. The choices are the screen's own (`useWorkout`); what they put in focus is the
   contract's `workoutView`.
