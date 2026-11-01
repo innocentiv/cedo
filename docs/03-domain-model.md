@@ -316,9 +316,10 @@ workout_sessions.rest_since?, rest_ends_at?
 
 The rest after a set is kept by the server (#38): `rest_since` and `rest_ends_at` are worked out as
 each set is logged by the contract's `restOf`, moved by +30 s and ended by skip (`POST
-/sessions/:id/rest`, naming its rest by how many sets were logged), worked out again on Undo, and
-cleared by finishing. Being told it is over with the app closed waits for the native app (#39). See
-[adr/0025](adr/0025-rest-kept-by-the-server.md).
+/sessions/:id/rest`, naming its rest by how many sets were logged), worked out again on Undo and on
+a set corrected, and cleared by finishing. Every write to a session's sets goes through `writeSets`
+(`modules/session/write-sets.ts`), which keeps it. Being told it is over with the app closed waits
+for the native app (#39). See [adr/0025](adr/0025-rest-kept-by-the-server.md).
 
 ### Logs
 
