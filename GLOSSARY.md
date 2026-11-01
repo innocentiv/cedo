@@ -304,3 +304,14 @@ counts as logged with none. A set's number counts within its series, warm-ups in
 order performed: one past the highest, so a number below it is never given again, while undoing
 the last set lets the next take its number.
 _Avoid_: group, block
+
+**Focus**:
+What a session in progress puts forward to log next: an entry of its day, or an exercise logged
+with none. The one the athlete chose, else where the day's order leads; a choice holds until the
+next set is logged.
+_Avoid_: current exercise, active entry, selected entry
+
+**Swap**:
+An exercise done in a session that follows a plan without being an entry of its day, in place of
+one or beside them. Its sets are logged with no plan entry, so they are a series of their own.
+_Avoid_: substitution, extra (an extra is a set beyond what an entry prescribes)
