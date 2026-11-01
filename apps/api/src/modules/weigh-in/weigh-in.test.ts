@@ -37,7 +37,8 @@ const theirs = () => `/athletes/${athlete.userId}/weigh-ins`
 
 describe('weigh-ins', () => {
   test('are one a day: another that day replaces it', async () => {
-    await weigh(athlete, '/weigh-ins', daysAgo(0), 83_000)
+    const first = await weigh(athlete, '/weigh-ins', daysAgo(0), 83_000)
+    expect(first).toMatchObject({ day: daysAgo(0), weightG: 83_000 })
     await weigh(athlete, '/weigh-ins', daysAgo(0), 82_600)
     const { weighIns: kept } = await bodyweight(athlete)
     expect(kept.map((w) => w.weightG)).toEqual([82_600])

@@ -108,6 +108,14 @@ describe.each(KINDS)('$name', (kind) => {
       })
     })
 
+    test('removes one they wrote of an athlete', async () => {
+      const written = await kind.write(coach, theirs(), 1)
+      expect(await ok(coach, `${theirs()}/${written.id}`, undefined, 'DELETE')).toEqual({
+        ok: true,
+      })
+      expect(await kind.read(athlete, kind.own)).toEqual([])
+    })
+
     test('reads the athlete’s own, and removes none of them', async () => {
       const own = await kind.write(athlete, kind.own, 1)
       const [read] = await kind.read(coach, theirs())

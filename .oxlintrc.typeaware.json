@@ -67,17 +67,6 @@
     },
     {
       "files": [
-        "apps/api/src/db/**",
-        "apps/api/src/modules/*/write*.ts",
-        "apps/api/src/test/**",
-        "**/*.test.ts"
-      ],
-      "rules": {
-        "no-restricted-imports": "off"
-      }
-    },
-    {
-      "files": [
         "apps/api/src/modules/athlete-record/**",
         "apps/api/src/modules/note/**",
         "apps/api/src/modules/weigh-in/**"
@@ -104,6 +93,30 @@
             ]
           }
         ]
+      }
+    },
+    {
+      "files": ["apps/api/src/modules/*/write*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+                "importNames": ["athleteNotes", "weighIns"],
+                "allowTypeImports": true,
+                "message": "Athlete records are read and written only by their own modules (note/, weigh-in/), through athleteRecords(table, kind) in modules/athlete-record/. Elsewhere, call the kind's service. See docs/02-conventions.md."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/api/src/db/**", "apps/api/src/test/**", "**/*.test.ts"],
+      "rules": {
+        "no-restricted-imports": "off"
       }
     }
   ]

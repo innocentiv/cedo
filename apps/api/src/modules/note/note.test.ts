@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { ApiError, AthleteNote, NOTES_PER_ATHLETE } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { athleteNotes, users } from '../../db/schema.ts'
-import { coachedSquad, ok, send, share } from '../../test/coaching.ts'
+import { anotherAthlete, coachedSquad, ok, send, share } from '../../test/coaching.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 import { create } from './service.ts'
@@ -65,6 +65,7 @@ describe('a note’s words', () => {
     await ok(coach, `/groups/${squadId}/members`, { username: other.username, role: 'editor' })
     const own = await write(athlete, '/notes', 'Wants to squat 100 kg by summer')
     const coachs = await write(coach, theirs(), 'Too much volume last block')
+    expect(coachs.canEdit).toBe(true)
 
     expect((await reword(stranger, `/notes/${own.id}`)).status).toBe(404)
     expect((await reword(coach, `${theirs()}/${own.id}`)).status).toBe(404)
@@ -77,6 +78,15 @@ describe('a note’s words', () => {
       ['Wants to squat 100 kg by summer', true],
     ])
     expect((await notes(coach, theirs())).map((n) => n.canEdit)).toEqual([true, false])
+    expect((await notes(other, theirs())).map((n) => n.canEdit)).toEqual([false, false])
+  })
+
+  test('are changed only through the athlete the note is about', async () => {
+    const other = await anotherAthlete(h, coach, squadId)
+    const note = await write(coach, theirs(), 'About the athlete')
+    const wrong = `/athletes/${other.userId}/notes/${note.id}`
+    expect((await reword(coach, wrong)).status).toBe(404)
+    expect((await notes(athlete))[0]?.text).toBe('About the athlete')
   })
 
   test('of a coach’s note, are the coach’s to change while the athlete shares', async () => {

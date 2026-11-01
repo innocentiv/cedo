@@ -30,7 +30,10 @@ interface AuthoredRow {
 
 /** The rules of one kind of athlete record, bound to its table. */
 export interface AthleteRecords<T extends RecordTable> {
-  /** This athlete's rows — `and` more, to narrow them: where every read and write of them begins. */
+  /**
+   * This athlete's rows — `and` more, to narrow them: where every read, change and removal of them
+   * begins. An insert names the training's athlete itself.
+   */
   readonly of: (training: Training, ...more: (SQL | undefined)[]) => SQL | undefined
   /** Who wrote it, projected — a user row carries its password hash — and joined by `byAuthor`. */
   readonly authorColumns: { authorId: T['authorId']; authorName: typeof users.displayName }

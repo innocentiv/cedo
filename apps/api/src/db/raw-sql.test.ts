@@ -137,9 +137,10 @@ describe('no sql template outside the allowed files names an owned table', () =>
 })
 
 /**
- * Athlete records are personal, not owned, so no relation guards them: their own modules do, every
- * query beginning with `athleteRecords(…).of(training)`. The lint keeps their tables out of every
- * other module's imports; this keeps them out of every other module's raw SQL.
+ * Athlete records are personal, not owned, so no relation guards them: their own modules do — every
+ * read, change and removal narrowed by `athleteRecords(…).of(training)`, every insert naming the
+ * training's athlete. The lint keeps their tables out of every other module's imports, write files
+ * included; this keeps them out of every other module's raw SQL.
  */
 const RECORDS = /\b(athlete_notes|weigh_ins)\b/iu
 const RECORDS_ALLOWED = [
