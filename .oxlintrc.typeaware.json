@@ -36,6 +36,12 @@
             ],
             "allowTypeImports": true,
             "message": "Read owned tables through db/visible.ts (visibleExercises(caller), …). Writes belong in the module's write*.ts. See docs/adr/0019-visible-relations.md."
+          },
+          {
+            "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+            "importNames": ["athleteNotes", "weighIns"],
+            "allowTypeImports": true,
+            "message": "Athlete records are read and written only by their own modules (note/, weigh-in/), through athleteRecords(table, kind) in modules/athlete-record/. Elsewhere, call the kind's service. See docs/02-conventions.md."
           }
         ]
       }
@@ -68,6 +74,36 @@
       ],
       "rules": {
         "no-restricted-imports": "off"
+      }
+    },
+    {
+      "files": [
+        "apps/api/src/modules/athlete-record/**",
+        "apps/api/src/modules/note/**",
+        "apps/api/src/modules/weigh-in/**"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+                "importNames": [
+                  "exercises",
+                  "exerciseMuscles",
+                  "exerciseMedia",
+                  "workouts",
+                  "workoutDays",
+                  "workoutEntries",
+                  "workoutSets"
+                ],
+                "allowTypeImports": true,
+                "message": "Read owned tables through db/visible.ts (visibleExercises(caller), …). Writes belong in the module's write*.ts. See docs/adr/0019-visible-relations.md."
+              }
+            ]
+          }
+        ]
       }
     }
   ]

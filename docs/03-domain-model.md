@@ -278,6 +278,18 @@ increase under one step still moves. The grid is counted in the unit the athlete
 grams are not whole pounds. `EntryTarget.limit` says where it stopped. See
 [adr/0024](adr/0024-targets-follow-the-athletes-equipment.md).
 
+### Athlete records
+
+Athlete notes and weigh-ins are both athlete records (GLOSSARY.md): PERSONAL, as sessions are,
+read through `Training` (`ownOrCoached`, `coaching/training.ts`) by the person and by whoever
+coaches them now, written by either — the one thing a coach writes of an athlete's — and removed by
+whoever wrote it or by the person it is about. What they keep alike is
+`athleteRecords(table, kind)` (`modules/athlete-record/records.ts`), bound to each kind's table:
+the athlete's rows (`of`), the author projected and LEFT JOINed, who may remove one, and the 404.
+Their tables are named only in their own modules (`note/`, `weigh-in/`, `athlete-record/`), `db/`
+and tests: the lint refuses an import of them elsewhere, and `raw-sql.test.ts` a raw SQL mention.
+Only these two are structured; anything else worth knowing is an athlete note (#40).
+
 ### Athlete notes
 
 ```
@@ -285,10 +297,8 @@ athlete_notes(id, athlete_id, author_id?, text, written_at, edited_at?)
 ```
 
 What is known about a person, written down for planning their training (#41) — an injury, a
-preference, what they said of a plan. PERSONAL, as sessions are: about one person, never ownable,
-read through `Training` (`ownOrCoached`) by them and by whoever coaches them now. Written by
-either: the one thing a coach writes of an athlete's. Only the author changes a note's words; the
-author or the athlete removes it. A coach's notes stay when they stop coaching; `author_id` goes
+preference, what they said of a plan. An athlete record (above); only its author changes a note's
+words. A coach's notes stay when they stop coaching; `author_id` goes
 null only with the author's account. At most 100 a person (`NOTES_PER_ATHLETE`), so a list is
 never paged; a note written locks the person's row first, so two at once cannot both pass the count.
 
@@ -301,8 +311,7 @@ weigh_ins(id, athlete_id, author_id?, day, weight_g, taken_at)
 A person's bodyweight on one day (#42, GLOSSARY.md "Weigh-in"): `day` on their own calendar, as
 their device says it — never the server's; `weight_g` from 20 to 400 kg. One a day: the unique
 `(athlete_id, day)` index makes another that day replace it (`ON CONFLICT DO UPDATE`), with whoever
-took it as its author. Kept and read as athlete notes are: PERSONAL, through `Training`, written by
-them or a coach of theirs; removed by its author or the athlete. Read over the review's weeks
+took it as its author. An athlete record (above). Read over the review's weeks
 (`Bodyweight`): the period's, newest first, and the latest before it, which the period's change is
 measured from (`bodyweightTrend`) — at most a year's, so never paged, and the latest before the
 period is listed with them, so a weigh-in the card names is always one it can remove. The review

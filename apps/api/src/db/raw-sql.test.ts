@@ -135,3 +135,41 @@ describe('no sql template outside the allowed files names an owned table', () =>
     expect(offences).toEqual([])
   })
 })
+
+/**
+ * Athlete records are personal, not owned, so no relation guards them: their own modules do, every
+ * query beginning with `athleteRecords(…).of(training)`. The lint keeps their tables out of every
+ * other module's imports; this keeps them out of every other module's raw SQL.
+ */
+const RECORDS = /\b(athlete_notes|weigh_ins)\b/iu
+const RECORDS_ALLOWED = [
+  /^db\//u,
+  /^modules\/(athlete-record|note|weigh-in)\//u,
+  /^test\//u,
+  /\.test\.ts$/u,
+]
+
+describe('no sql template outside their own modules names an athlete record table', () => {
+  const root = new URL('..', import.meta.url).pathname
+  const files = [...new Glob('**/*.ts').scanSync(root)].filter(
+    (file) => !RECORDS_ALLOWED.some((allowed) => allowed.test(file)),
+  )
+
+  test('the scan reaches the modules it is meant to guard', () => {
+    expect(files).toContain('modules/review/about.ts')
+    expect(files).toContain('mcp/tools/athlete-file.ts')
+    expect(files).not.toContain('modules/weigh-in/service.ts')
+  })
+
+  test('every file', async () => {
+    const offences: string[] = []
+    for (const file of files) {
+      const source = await Bun.file(`${root}${file}`).text()
+      for (const literal of sqlLiterals(source)) {
+        const table = RECORDS.exec(literal)?.[1]
+        if (table !== undefined) offences.push(`${file}: names "${table}" in raw SQL`)
+      }
+    }
+    expect(offences).toEqual([])
+  })
+})

@@ -19,6 +19,12 @@ though it were written at once.
   | `<concept>.ts`   | One part of the service, named for what it decides — `plan.ts`, `references.ts`, `loggable.ts`, `numbering.ts` — when the service grows past one file | Any HTTP concept; a raw owned table; a vague name |
   | `<name>.test.ts` | Unit + integration tests, colocated                           | —                  |
 
+- **Athlete records keep their rules in one module.** Notes and weigh-ins (`note/`, `weigh-in/`)
+  build their services on `athleteRecords(table, kind)` (`modules/athlete-record/records.ts`): the
+  athlete's rows, the author, who may remove one. Their tables are personal, not owned, so no
+  relation guards them; instead only those modules, `db/` and tests may name them — the lint
+  refuses an import elsewhere, and `db/raw-sql.test.ts` a raw SQL mention. Anywhere else reads them
+  through the kind's service (`bodyweightOf`).
 - **Never create a `utils.ts`.** Name the file after what it does (`password.ts`, `token.ts`).
 
 ## The service rule
