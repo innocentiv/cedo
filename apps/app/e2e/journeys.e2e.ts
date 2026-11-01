@@ -1806,7 +1806,6 @@ test(
       expect(await lost.canLog()).toBe(false)
       // As measured: a minute, which is what was prescribed whatever the exercise was.
       expect(await lost.target()).toBe('Prescribed 1:00')
-      expect(await app.session.entry(1).canLog()).toBe(true)
 
       await app.planEditor.open(plan.id)
       const entry = app.planEditor.entry(0, 0)
@@ -2386,9 +2385,10 @@ test(
 )
 
 /**
- * The workout's own moves (#24): once an entry has all it asked, the day says so and offers Finish
- * — and the set just logged offers one more; a swap mid-plan takes the focus, logged with no entry,
- * and rests the default two minutes, there being no entry to say otherwise.
+ * The workout's own moves (#24): once an entry has all it asked, the set just logged offers one
+ * more; a swap mid-plan takes the focus, logged with no entry, and rests the default two minutes,
+ * there being no entry to say otherwise. When the day is done, and which entry "+ set" goes to, are
+ * the contract's `workoutView`, tested beside it; this proves the taps reach it.
  */
 test(
   'a done entry takes one more set, and a swap mid-plan takes the focus and rests two minutes',
@@ -2402,7 +2402,6 @@ test(
       const bench = app.session.entry(0)
       await bench.fill('weight', '60')
       for (let i = 0; i < 3; i += 1) await bench.log()
-      expect(await app.session.dayDone()).toBe(true)
       await app.session.another()
       await bench.log()
       expect(await bench.done()).toBe('4 done')

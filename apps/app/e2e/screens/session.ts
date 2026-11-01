@@ -216,8 +216,6 @@ export const session = (page: Page) => {
     another: async (): Promise<void> => {
       await page.click('[data-testid="last-set-another"]')
     },
-    /** Whether the screen says every set of the day is logged, offering Finish in Log's place. */
-    dayDone: async (): Promise<boolean> => await page.shown('day-done'),
     /**
      * Back to the session left open: the bar that follows it everywhere (#24) — but on Today, which
      * says it itself, larger, with Resume (#25).

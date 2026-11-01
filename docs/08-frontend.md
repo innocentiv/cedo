@@ -142,7 +142,9 @@ and `AddRow`,
 `weekStrip` gives them. They are still presentational — the rules they render (loads
 summing to 100, which inputs a tracking mode implies, what a progression rule contains, which set
 is next, where the focus goes, whose rest runs, what a set is called) all live in `@cedo/contract`:
-`session-flow.ts` and `set-marks.ts` for the workout. An unavailable exercise has no mode, so no
+`session-flow.ts` and `set-marks.ts` for the workout, and `workout-view.ts` for what its screen
+shows of them — the focus, the set above it, "+ set", the rows marked — from the sets and what the
+athlete chose. An unavailable exercise has no mode, so no
 inputs: the workout shows what it prescribed and that nothing more can be logged against it, and
 a workout's outline gives it a line that says so — what it prescribes, and the bin, which is the
 only way the plan saves again.
@@ -244,6 +246,11 @@ them, and the target says when it stopped at "your heaviest" or "your lightest".
 refused. A new weight rule in the plan editor adds one step of that equipment. "Up next" is the rest of the day, an entry to a line, a superset
 drawn as one item; tapping one makes it current, and tapping a logged set re-opens it.
 
+- **A choice holds until this device logs or undoes a set**, or goes to pick an exercise — what is
+  picked takes the focus. Not until the latest set changes: a set logged without a signal is known
+  by its key until the server has it, then by the server's id, and a choice held to it was lost as
+  it landed. The choices are the screen's own (`useWorkout`); what they put in focus is the
+  contract's `workoutView`.
 - **Logging moves the focus** to the entry's next set, then to the next entry in day order with
   sets left. Entries of a superset alternate, and rest starts after the pair.
 - **Rest starts on its own** when a set is logged: a countdown band with +30 s and × to skip it,
