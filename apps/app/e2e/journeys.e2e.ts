@@ -6,6 +6,8 @@ import {
   McpClientConfig,
   type TrackingMode,
   WorkoutPlanInput,
+  calendarDayOf,
+  formatCalendarDay,
   kgToG,
   planInputFrom,
 } from '@cedo/contract'
@@ -473,6 +475,83 @@ test(
           (none) => none,
         ),
       ).toBe(true)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * Bodyweight (#42): an athlete's, read and taken by their coach on their page beside the review —
+ * its change measured over the same weeks — and the coach's own on Progress; and the year someone
+ * was born, said in Settings.
+ */
+test(
+  'an athlete and their coach keep a bodyweight, and the year they were born',
+  async () => {
+    await withApp('bodyweight', async (page) => {
+      const app = screens(page)
+      const coachName = unique('weigh')
+      await app.auth.register(coachName)
+      await app.nav.onToday()
+      const { athlete } = await coachingSetUp(page, coachName)
+      const today = calendarDayOf(new Date())
+      const yesterday = calendarDayOf(new Date(Date.now() - 86_400_000))
+      await athlete.api.weighIns.create(undefined, { day: yesterday, weightG: 83_000 })
+
+      // Theirs, on their page: under their name, and not the coach's to remove.
+      await page.goto('/today')
+      await app.nav.onToday()
+      await app.nav.tab('athletes')
+      await app.athletes.open(athlete.user.id)
+      expect(
+        await page.until(
+          async () => await app.bodyweight.read('athlete'),
+          (lines) => lines.includes('83 kg'),
+        ),
+      ).toEqual(['83 kg', formatCalendarDay(yesterday), `${formatCalendarDay(yesterday)} · 83 kg`])
+      expect(await app.bodyweight.removable('athlete', 0)).toBe(false)
+
+      // Today's, taken by the coach: the latest, its change since yesterday, and the coach's own.
+      await app.bodyweight.take('athlete', '82.4')
+      expect(
+        await page.until(
+          async () => await app.bodyweight.read('athlete'),
+          (lines) => lines[0] === '82.4 kg',
+        ),
+      ).toEqual([
+        '82.4 kg',
+        `${formatCalendarDay(today)} · −0.6 kg since ${formatCalendarDay(yesterday)}`,
+        `${formatCalendarDay(today)} · 82.4 kg`,
+        `${formatCalendarDay(yesterday)} · 83 kg`,
+      ])
+      expect(await app.bodyweight.removable('athlete', 0)).toBe(true)
+      await page.screenshot('bodyweight-athlete')
+      const { weighIns: theirs } = await athlete.api.weighIns.list(undefined, { weeks: 8 })
+      expect(theirs[0]).toMatchObject({ day: today, weightG: 82_400, canDelete: true })
+
+      // Your own, on Progress: taken, then removed.
+      await app.nav.tab('progress')
+      await app.progress.shown()
+      expect(
+        await page.until(
+          async () => await app.bodyweight.read('progress'),
+          (lines) => lines.includes('No weigh-ins yet.'),
+        ),
+      ).toEqual(['No weigh-ins yet.'])
+      await app.bodyweight.take('progress', '90')
+      await page.until(
+        async () => await app.bodyweight.read('progress'),
+        (lines) => lines[0] === '90 kg',
+      )
+      await page.screenshot('bodyweight-progress')
+      await app.bodyweight.remove('progress', 0)
+      await page.until(
+        async () => await app.bodyweight.read('progress'),
+        (lines) => lines.includes('No weigh-ins yet.'),
+      )
+
+      // The year they were born, said in Settings and kept to their account.
+      await app.bodyweight.sayBirthYear('1990')
     })
   },
   E2E_TIMEOUT_MS,

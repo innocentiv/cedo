@@ -57,9 +57,16 @@ function anAuth(
   return {
     me: known,
     logout: async () => null,
-    updateMe: async ({ weightUnit }) => {
-      const found = await known()
-      return { ...found, user: { ...found.user, weightUnit } }
+    updateMe: async ({ weightUnit, birthYear }) => {
+      const { user, ...found } = await known()
+      return {
+        ...found,
+        user: {
+          ...user,
+          weightUnit: weightUnit ?? user.weightUnit,
+          birthYear: birthYear === undefined ? user.birthYear : birthYear,
+        },
+      }
     },
   }
 }
@@ -290,6 +297,13 @@ describe('signing in and out', () => {
     expect(session.token()).toBeNull()
   })
 
+  test('a change to the account is who they are from then on', async () => {
+    const session = aSession(aStore(), { a: me('alice') })
+    await session.adopt('a')
+    await session.update({ birthYear: 1990 })
+    expect(session.snapshot().me?.user).toMatchObject({ username: 'alice', birthYear: 1990 })
+  })
+
   test('tells whoever subscribed, each time it changes', async () => {
     const session = aSession(aStore(), { a: me('alice') })
     const seen: string[] = []
@@ -334,7 +348,7 @@ describe('an answer for someone no longer signed in', () => {
       }),
     })
     await session.adopt('a')
-    const updating = session.setWeightUnit('lb')
+    const updating = session.update({ weightUnit: 'lb' })
     await session.signOut()
     await session.adopt('b')
     saving.settle({ ...alice, user: { ...alice.user, weightUnit: 'lb' } })

@@ -1,7 +1,7 @@
 import { mkdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { SQL } from 'bun'
-import { type Workout, WorkoutPlanInput, kgToG, mToMm } from '@cedo/contract'
+import { type Workout, WorkoutPlanInput, calendarDayOf, kgToG, mToMm } from '@cedo/contract'
 import type { ApiClient } from '../src/api/client.ts'
 import {
   type Layout,
@@ -304,6 +304,22 @@ async function seed(): Promise<World> {
   await coach.api.notes.create(sam.id, {
     text: 'Left shoulder pinches on overhead pressing. Landmine press instead until it settles.',
   })
+  // Sam's bodyweight (#42): every few days over the block, drifting down, one taken by Dana.
+  for (const [ago, kg] of [
+    [52, 84.6],
+    [38, 84.1],
+    [24, 83.5],
+    [10, 83.2],
+    [3, 82.8],
+  ] as const) {
+    // oxlint-disable-next-line no-await-in-loop -- one a day, in order.
+    await api.weighIns.create(undefined, {
+      day: calendarDayOf(new Date(Date.now() - ago * 86_400_000)),
+      weightG: kgToG(kg),
+    })
+  }
+  await coach.api.weighIns.create(sam.id, { day: calendarDayOf(new Date()), weightG: kgToG(82.6) })
+  await api.auth.updateMe({ birthYear: 1994 })
 
   return {
     username,

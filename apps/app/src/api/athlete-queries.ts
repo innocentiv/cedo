@@ -105,6 +105,7 @@ export function useReadAthleteAgain(id: string): () => Promise<void> {
         keys.athleteReview(id, 0),
         keys.athleteEquipment(id),
         keys.athleteNotes(id),
+        keys.athleteBodyweight(id, 0),
       ].map(async (key) => await queryClient.invalidateQueries({ queryKey: key.slice(0, 2) })),
     )
   }, [queryClient, id])

@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { Screen } from '../../../src/ui/index.ts'
 import { useReview } from '../../../src/api/queries.ts'
 import { Notes } from '../../../src/lib/athlete-notes.tsx'
-import { FIRST_PERIOD, Period, Review } from '../../../src/lib/progress-parts.tsx'
+import { BodyweightCard, FIRST_PERIOD, Period, Review } from '../../../src/lib/progress-parts.tsx'
 
 /**
  * Progress (#28): your training reviewed — how consistently, what needs attention, which days, and
  * the work each muscle got against the period before. The same review an AI reads through
- * `training_review`, over HTTP — and what is known about you, kept for planning it (#41). See
+ * `training_review`, over HTTP — and your bodyweight over the same weeks (#42), and what is known
+ * about you, kept for planning it (#41). See
  * docs/08-frontend.md, "Progress, and the tabs".
  */
 export default function Progress(): React.JSX.Element {
@@ -16,6 +17,7 @@ export default function Progress(): React.JSX.Element {
     <Screen title="Progress" wide testID="progress-screen">
       <Period weeks={weeks} onChange={setWeeks} />
       <Review query={useReview(weeks)} testID="progress" />
+      <BodyweightCard weeks={weeks} testID="progress-bodyweight" />
       <Notes testID="progress-notes" />
     </Screen>
   )

@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
-import type { LoginInput, Me, RegisterInput, WeightUnit } from '@cedo/contract'
+import type { LoginInput, Me, MeUpdate, RegisterInput } from '@cedo/contract'
 import { api, session } from '../api/http.ts'
 import { WeightUnitProvider } from '../lib/weight-unit.ts'
 import type { AuthStatus } from './session.ts'
@@ -18,7 +18,7 @@ interface AuthValue {
   readonly register: (input: RegisterInput) => Promise<void>
   readonly signOut: () => Promise<void>
   /** Saved to the account, so it follows them to every device — and to what the AI writes them. */
-  readonly setWeightUnit: (unit: WeightUnit) => Promise<void>
+  readonly updateAccount: (patch: MeUpdate) => Promise<void>
   /** When unreachable: asks the server again about the token kept. */
   readonly retry: () => Promise<void>
 }
@@ -63,7 +63,7 @@ export function AuthProvider({
         await session.adopt((await api.auth.register(input)).token)
       },
       signOut: session.signOut,
-      setWeightUnit: session.setWeightUnit,
+      updateAccount: session.update,
       retry: session.restore,
     }),
     [status, me],

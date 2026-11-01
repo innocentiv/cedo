@@ -19,7 +19,8 @@
  * no write here is ever OF it — it catches up on the cache's window, and with what it embeds.
  * `equipment` is what the caller has to train with (#34): every exercise read says whether they
  * can do it (#35). `note` is athlete notes (#41) — the caller's own, and an athlete's, which their
- * coach writes too: unlike the rest of `athlete`, a write here is OF it.
+ * coach writes too: unlike the rest of `athlete`, a write here is OF it. `weighIn` is weigh-ins
+ * (#42), written alike, and read too by the review, which says the latest.
  */
 export type Source =
   | 'exercise'
@@ -31,6 +32,7 @@ export type Source =
   | 'athlete'
   | 'equipment'
   | 'note'
+  | 'weighIn'
 
 export interface ReadSources {
   /** The source the read is OF. A write to it must be read back before the next write. */
@@ -78,7 +80,7 @@ export const READS = {
    */
   today: { of: 'session', embeds: ['exercise', 'workout', 'group'] },
   /** The training review (#28): every session of the period, judged. */
-  review: { of: 'session', embeds: ['exercise', 'workout', 'group'], lagging: true },
+  review: { of: 'session', embeds: ['exercise', 'workout', 'group', 'weighIn'], lagging: true },
   /**
    * Each logged set names its exercise and how it is measured. And the session points into its
    * plan — a workout, a day, an entry per set — which a plan save or delete can set to null. Its
@@ -91,7 +93,7 @@ export const READS = {
   athleteSessions: { of: 'athlete', embeds: ['exercise', 'workout', 'group'] },
   athleteSession: { of: 'athlete', embeds: ['exercise', 'workout', 'group'] },
   athleteHistory: { of: 'athlete', embeds: ['exercise', 'group'] },
-  athleteReview: { of: 'athlete', embeds: ['exercise', 'workout', 'group'] },
+  athleteReview: { of: 'athlete', embeds: ['exercise', 'workout', 'group', 'weighIn'] },
   /** What they have to train with (#34), while they share it. */
   athleteEquipment: { of: 'athlete', embeds: ['group'] },
   /** What the caller has to train with (#34). */
@@ -99,6 +101,9 @@ export const READS = {
   /** What is known about the caller (#41), and about an athlete while they share their training. */
   notes: { of: 'note', embeds: [] },
   athleteNotes: { of: 'note', embeds: ['group'] },
+  /** Their bodyweight over a period (#42), and an athlete's while they share their training. */
+  bodyweight: { of: 'weighIn', embeds: [] },
+  athleteBodyweight: { of: 'weighIn', embeds: ['group'] },
   tokens: { of: 'token', embeds: [] },
   groups: { of: 'group', embeds: [] },
   /** A group's members, as the caller may see them. */

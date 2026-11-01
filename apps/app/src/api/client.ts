@@ -6,6 +6,7 @@ import {
   AthleteNote,
   type AthleteNoteInput,
   AuthResult,
+  Bodyweight,
   type DuplicateInput,
   EntryTarget,
   Exercise,
@@ -35,6 +36,8 @@ import {
   type ReviewQuery,
   type RestChange,
   TrainingReview,
+  WeighIn,
+  type WeighInInput,
   type SessionStart,
   type SessionUpdate,
   type SetLogUpdate,
@@ -228,6 +231,20 @@ const notes = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
     await DELETE(`${notesOf(athleteId)}/${id}`, Ok),
 })
 
+/** Where weigh-ins are: yours, or — given their id — an athlete's you coach. */
+const weighInsOf = (athleteId: string | undefined) =>
+  athleteId === undefined ? '/weigh-ins' : `/athletes/${athleteId}/weigh-ins`
+
+/** Weigh-ins (#42), over the review's weeks. */
+const weighIns = ({ GET, POST, DELETE }: Verbs) => ({
+  list: async (athleteId: string | undefined, query: ReviewQuery) =>
+    await GET(weighInsOf(athleteId), Bodyweight, asQuery(query)),
+  create: async (athleteId: string | undefined, body: WeighInInput) =>
+    await POST(weighInsOf(athleteId), WeighIn, body),
+  remove: async (athleteId: string | undefined, id: string) =>
+    await DELETE(`${weighInsOf(athleteId)}/${id}`, Ok),
+})
+
 const groups = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
   list: async () => await GET('/groups', z.array(GroupMembership)),
   create: async (body: GroupCreate) => await POST('/groups', GroupMembership, body),
@@ -268,6 +285,7 @@ export function createApi(request: SendRequest) {
     groups: groups(v),
     media: media(v),
     notes: notes(v),
+    weighIns: weighIns(v),
     tokens: tokens(v),
   } as const
 }

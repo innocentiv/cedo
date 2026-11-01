@@ -1,6 +1,7 @@
 import type { Page } from '../harness.ts'
 import { athletes } from './athletes.ts'
 import { auth } from './auth.ts'
+import { bodyweight } from './bodyweight.ts'
 import { desk } from './desk.ts'
 import { equipment } from './equipment.ts'
 import { fix } from './fix.ts'
@@ -40,6 +41,7 @@ export const screens = (page: Page) => ({
   progress: progress(page),
   athletes: athletes(page),
   notes: notes(page),
+  bodyweight: bodyweight(page),
   desk: desk(page),
   install: install(page),
 })

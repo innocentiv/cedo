@@ -23,6 +23,9 @@ import {
 } from '../ui/index.ts'
 import { useWeightUnit } from './weight-unit.ts'
 
+/** Bodyweight over the same period (#42), read beside the review it is weighed against. */
+export { BodyweightCard } from './bodyweight.tsx'
+
 /**
  * The Progress tab's parts (#28): how consistently, what needs attention, which days, and the work
  * each muscle got — the review `GET /review` answers, laid out. Every number and word is the

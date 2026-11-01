@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { type WeightUnit, equipmentCount } from '@cedo/contract'
 import {
   Button,
@@ -6,6 +7,7 @@ import {
   FormError,
   ListRow,
   NavButton,
+  NumberInput,
   Screen,
   Stack,
   Text,
@@ -22,7 +24,7 @@ const UNIT_OPTIONS: readonly ChipOption<WeightUnit>[] = [
 ]
 
 export default function Settings(): React.JSX.Element {
-  const { me, signOut, setWeightUnit } = useAuth()
+  const { me, signOut, updateAccount } = useAuth()
   const groups = useGroups()
   const equipment = useEquipment()
   const { submit, error } = useSubmit()
@@ -44,13 +46,15 @@ export default function Settings(): React.JSX.Element {
             value={unit}
             onChange={(chosen) => {
               void submit(async () => {
-                await setWeightUnit(chosen)
+                await updateAccount({ weightUnit: chosen })
               })
             }}
             testID="weight-unit"
           />
           <FormError message={error} testID="weight-unit-error" />
         </Stack>
+
+        <BirthYear />
 
         <Stack gap="sm">
           <ListRow
@@ -112,5 +116,40 @@ export default function Settings(): React.JSX.Element {
         />
       </Stack>
     </Screen>
+  )
+}
+
+/** The year they were born (#42), kept for whoever plans their training — empty to forget it. */
+function BirthYear(): React.JSX.Element {
+  const { me, updateAccount } = useAuth()
+  const saved = me?.user.birthYear ?? null
+  const [year, setYear] = useState(saved)
+  const { submit, busy, error } = useSubmit()
+  return (
+    <Stack gap="sm">
+      <ListRow
+        title="Year of birth"
+        subtitle="So whoever plans your training knows your age"
+        testID="settings-birth-year"
+      />
+      <Stack direction="row" gap="sm" align="center">
+        <Stack grow>
+          <NumberInput value={year} onChange={setYear} placeholder="1990" testID="birth-year" />
+        </Stack>
+        <Button
+          title="Save"
+          variant="secondary"
+          disabled={year === saved}
+          busy={busy}
+          onPress={() => {
+            void submit(async () => {
+              await updateAccount({ birthYear: year })
+            })
+          }}
+          testID="birth-year-save"
+        />
+      </Stack>
+      <FormError message={error} testID="birth-year-error" />
+    </Stack>
   )
 }

@@ -96,10 +96,46 @@ export function formatWeightChange(changeG: number, unit: WeightUnit): string {
   return `${changeG > 0 ? '+' : '−'}${formatWeight(Math.abs(changeG), unit)}`
 }
 
-/** `82.4 kg on Fri 30 Oct, −1.6 kg since Fri 4 Sep`: a trend, as a review says it. */
+/** Today on this device's calendar, `YYYY-MM-DD`: the day a weigh-in taken now is of. */
+export const calendarDayOf = (at: Date): string =>
+  [at.getFullYear(), at.getMonth() + 1, at.getDate()]
+    .map((n, i) => String(n).padStart(i === 0 ? 4 : 2, '0'))
+    .join('-')
+
+/** A trend's parts, as a screen sets them out: `82.4 kg`, `Fri 30 Oct`, `−1.6 kg since Tue 1 Sep`. */
+export function trendParts(
+  trend: BodyweightTrend,
+  unit: WeightUnit,
+): { readonly weight: string; readonly on: string; readonly change: string | null } {
+  const { latest, from } = trend
+  return {
+    weight: formatWeight(latest.weightG, unit),
+    on: formatCalendarDay(latest.day),
+    change:
+      from === null
+        ? null
+        : `${formatWeightChange(latest.weightG - from.weightG, unit)} since ${formatCalendarDay(from.day)}`,
+  }
+}
+
+/** `82.4 kg on Fri 30 Oct, −1.6 kg since Tue 1 Sep`: a trend, as a review says it. */
 export function trendLine(trend: BodyweightTrend, unit: WeightUnit): string {
-  const latest = `${formatWeight(trend.latest.weightG, unit)} on ${formatCalendarDay(trend.latest.day)}`
-  if (trend.from === null) return latest
-  const change = formatWeightChange(trend.latest.weightG - trend.from.weightG, unit)
-  return `${latest}, ${change} since ${formatCalendarDay(trend.from.day)}`
+  const { weight, on, change } = trendParts(trend, unit)
+  return change === null ? `${weight} on ${on}` : `${weight} on ${on}, ${change}`
+}
+
+/**
+ * `Thu 29 Oct · 82.8 kg`, and `· Dana Okafor` when someone else took it: named only when neither
+ * the reader nor the person it is of — a coach's, on the athlete's own Progress.
+ */
+export function weighInRow(
+  weighIn: WeighIn,
+  unit: WeightUnit,
+  who: { readonly readerId: string; readonly athleteId: string },
+): string {
+  const row = `${formatCalendarDay(weighIn.day)} · ${formatWeight(weighIn.weightG, unit)}`
+  const { author } = weighIn
+  return author === null || author.id === who.readerId || author.id === who.athleteId
+    ? row
+    : `${row} · ${author.displayName}`
 }

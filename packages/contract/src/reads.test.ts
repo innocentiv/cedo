@@ -114,10 +114,18 @@ describe('what a write makes stale', () => {
     expect(background).toEqual([])
   })
 
+  /** Taken by the athlete or their coach (#42): both lists, and the reviews that say the latest. */
+  test('a weigh-in taken refreshes both bodyweights, and the reviews behind them', () => {
+    const { awaited, background } = affectedBy('weighIn')
+    expect(sorted(awaited)).toEqual(['athleteBodyweight', 'bodyweight'])
+    expect(sorted(background)).toEqual(['athleteReview', 'review'])
+  })
+
   test('joining or leaving a group refreshes everything membership can show or hide', () => {
     const { awaited, background } = affectedBy('group')
     expect(sorted(awaited)).toEqual(['athletes', 'groupMembers', 'groups'])
     expect(sorted(background)).toEqual([
+      'athleteBodyweight',
       'athleteEquipment',
       'athleteHistory',
       'athleteNotes',

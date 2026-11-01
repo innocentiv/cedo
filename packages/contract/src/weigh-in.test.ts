@@ -8,6 +8,9 @@ import {
   formatWeightChange,
   trendLine,
   bodyweightTrend,
+  calendarDayOf,
+  trendParts,
+  weighInRow,
 } from './weigh-in.ts'
 
 const at = (n: number, day: string, weightG: number): WeighIn => ({
@@ -86,6 +89,35 @@ describe("a period's bodyweight", () => {
     expect(trendLine(trend, 'kg')).toBe('82.4 kg on Fri 30 Oct, −1.6 kg since Tue 1 Sep')
     expect(formatWeightChange(400, 'kg')).toBe('+0.4 kg')
     expect(formatWeightChange(0, 'lb')).toBe('no change')
+  })
+
+  test('is set out in parts for a screen: the weight, its day, and its change', () => {
+    const trend = bodyweightTrend(of([latest, first], before))
+    if (trend === null) throw new Error('no trend')
+    expect(trendParts(trend, 'kg')).toEqual({
+      weight: '82.4 kg',
+      on: 'Fri 30 Oct',
+      change: '−1.6 kg since Tue 1 Sep',
+    })
+    expect(trendParts({ ...trend, from: null }, 'kg').change).toBeNull()
+  })
+
+  test('takes today from the device’s own calendar, not UTC’s', () => {
+    expect(calendarDayOf(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05')
+    expect(calendarDayOf(new Date(2026, 10, 1, 0, 1))).toBe('2026-11-01')
+  })
+
+  test('names who took it only when they are neither the reader nor whom it is of', () => {
+    const sam = '00000000-0000-4000-8000-0000000000a1'
+    const dana = '00000000-0000-4000-8000-0000000000a2'
+    const by = (id: string, displayName: string) => ({ ...latest, author: { id, displayName } })
+    const onSams = { readerId: sam, athleteId: sam }
+    const onDanas = { readerId: dana, athleteId: sam }
+    expect(weighInRow(by(dana, 'Dana'), 'kg', onSams)).toBe('Fri 30 Oct · 82.4 kg · Dana')
+    expect(weighInRow(by(sam, 'Sam'), 'kg', onSams)).toBe('Fri 30 Oct · 82.4 kg')
+    expect(weighInRow(by(sam, 'Sam'), 'kg', onDanas)).toBe('Fri 30 Oct · 82.4 kg')
+    expect(weighInRow(by(dana, 'Dana'), 'kg', onDanas)).toBe('Fri 30 Oct · 82.4 kg')
+    expect(weighInRow(latest, 'lb', onSams)).toBe('Fri 30 Oct · 181.66 lb')
   })
 
   test('says a calendar day as that day, whatever the clock’s zone', () => {

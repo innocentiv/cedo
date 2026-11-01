@@ -12,13 +12,13 @@ import {
 import { athleteSession } from './addresses.ts'
 import { AthleteEquipmentCard } from './athlete-equipment.tsx'
 import { Notes } from './athlete-notes.tsx'
-import { FIRST_PERIOD, Period, Review } from './progress-parts.tsx'
+import { BodyweightCard, FIRST_PERIOD, Period, Review } from './progress-parts.tsx'
 import { PagedHistory } from './today-parts.tsx'
 
 /**
  * An athlete's training, read by their coach (#30): the session they are in now, their Progress as
  * they read it themselves, and their history by week — read-only, nothing on it to press that would
- * change it. Their notes are the exception: a coach writes those too (#41). A screen of its own on
+ * change it. Their notes and weigh-ins are the exception: a coach writes those too (#41, #42). A screen of its own on
  * a phone; on a desktop, the pane beside the athletes. Read again each time the coach comes back to
  * it, never polled. See docs/08-frontend.md, "The coach's view".
  */
@@ -46,6 +46,7 @@ export function AthleteView({
       <Stack gap="lg">
         <Period weeks={weeks} onChange={setWeeks} />
         <Review query={review} testID="athlete-progress" />
+        <BodyweightCard athleteId={id} weeks={weeks} testID="athlete-bodyweight" />
       </Stack>
       <AthleteEquipmentCard id={id} />
       <Notes athleteId={id} testID="athlete-notes" />

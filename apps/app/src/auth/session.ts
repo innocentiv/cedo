@@ -1,4 +1,4 @@
-import type { Me, WeightUnit } from '@cedo/contract'
+import type { Me, MeUpdate } from '@cedo/contract'
 import { ApiError, NetworkError } from '../api/errors.ts'
 
 /**
@@ -28,7 +28,7 @@ export interface TokenStore {
 export interface SessionAuth {
   readonly me: () => Promise<Me>
   readonly logout: () => Promise<unknown>
-  readonly updateMe: (patch: { readonly weightUnit: WeightUnit }) => Promise<Me>
+  readonly updateMe: (patch: MeUpdate) => Promise<Me>
 }
 
 export interface Session {
@@ -42,8 +42,11 @@ export interface Session {
   /** A token just minted — by signing in, or by registering. */
   readonly adopt: (token: string) => Promise<void>
   readonly signOut: () => Promise<void>
-  /** Saved to the account, so it follows them to every device — and to what the AI writes them. */
-  readonly setWeightUnit: (unit: WeightUnit) => Promise<void>
+  /**
+   * Saved to the account — their weight unit, the year they were born — so it follows them to every
+   * device, and to what the AI writes them.
+   */
+  readonly update: (patch: MeUpdate) => Promise<void>
   /**
    * The server refused `sentToken`. Signed out only if it is still the token in use: a slow
    * request made with the previous person's token, answering after a new sign-in, used to sign the
@@ -187,9 +190,9 @@ export function createSession({
         .catch(() => null)
       await held.forget()
     },
-    setWeightUnit: async (weightUnit) => {
+    update: async (patch) => {
       const updating = held.generation()
-      const updated = await auth().updateMe({ weightUnit })
+      const updated = await auth().updateMe(patch)
       // The answer is the previous person's if someone else signed in while it was in flight.
       if (updating === held.generation()) held.set({ status: 'signed-in', me: updated })
     },
