@@ -160,6 +160,14 @@ describe('what the workout shows', () => {
     expect(v.focus.kind === 'added' && v.focus.selected).toBe('s0')
   })
 
+  test('a swap’s set re-opened after an entry’s is shown as the swap’s exercise', () => {
+    const sets = [set(null, 'dip'), set('squat')]
+    const reopened = { entryId: null, exerciseId: 'dip', key: 's0' }
+    const v = view(sets, { added, choices: { chosen: null, reopened } })
+    expect(v.shown).toEqual({ log: sets[0]!, exercise: { id: 'dip' } })
+    expect(v.another).toBeNull()
+  })
+
   test('a set re-opened on an entry is not marked on the same exercise added to the day', () => {
     // The squat both prescribed and added: its entry's first set is no set of the one added.
     const reopened = { entryId: 'squat', exerciseId: 'squat', key: 's0' }

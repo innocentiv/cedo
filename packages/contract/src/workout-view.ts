@@ -222,7 +222,9 @@ function dayView<E extends FlowEntry, X extends Added, L extends ViewLog, T exte
       : undefined
   const next = chosen !== undefined && loggable(chosen) ? chosen : focusOf(day, r.sets)
 
-  const shownEntry = day.entries.find((e) => e.id === (r.reopened?.entryId ?? latest?.entryId))
+  // The entry of the set shown: a swap's set re-opened has none, whatever was logged last.
+  const shownId = r.reopened === null ? latest?.entryId : r.reopened.entryId
+  const shownEntry = day.entries.find((e) => e.id === shownId)
   const log = shownOfDay(r, shownEntry, latest)
   const another =
     shownEntry !== undefined &&
