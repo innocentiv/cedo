@@ -14,7 +14,7 @@ import { targetsForSession } from '../../modules/progression/targets.ts'
 import { trainingReview } from '../../modules/review/service.ts'
 import { libraryAudit } from '../../modules/review/curation.ts'
 import { list as listNotes } from '../../modules/note/service.ts'
-import { list as listWeighIns } from '../../modules/weigh-in/service.ts'
+import { bodyweightOf } from '../../modules/weigh-in/service.ts'
 import { type QueryPlan, explainInOrder, slowestOf } from '../explain.ts'
 import type { RecordedQuery } from '../../db/client.ts'
 
@@ -367,7 +367,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     budgetMs: 30,
     noSeqScan: ['athlete_notes'],
     indexes: ['athlete_notes_athlete_idx'],
-    run: async (fixtures, size) => await listNotes(pick(fixtures, size).caller),
+    run: async (fixtures, size) => await listNotes(own(pick(fixtures, size).caller)),
   },
   {
     name: 'GET /weigh-ins',
@@ -377,7 +377,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     budgetMs: 30,
     noSeqScan: ['weigh_ins'],
     indexes: ['weigh_ins_athlete_day_idx'],
-    run: async (fixtures, size) => await listWeighIns(pick(fixtures, size).caller, undefined, 52),
+    run: async (fixtures, size) => await bodyweightOf(own(pick(fixtures, size).caller), 52),
   },
   {
     name: 'library audit',

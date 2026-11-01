@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { AthleteNoteInput, MeUpdate, OfAthlete, ReviewQuery, WeighInInput } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import * as AuthService from '../../modules/auth/service.ts'
+import { ownOrCoached } from '../../modules/coaching/training.ts'
 import * as NoteService from '../../modules/note/service.ts'
 import * as WeighInService from '../../modules/weigh-in/service.ts'
 import { text } from '../format.ts'
@@ -30,7 +31,8 @@ export function registerNoteTools(server: McpServer, caller: Caller): void {
       inputSchema: z.object({}).safeExtend(OfAthlete.shape),
       annotations: READ,
     },
-    async ({ athlete }) => text(noteLines(await NoteService.list(caller, athlete), caller.userId)),
+    async ({ athlete }) =>
+      text(noteLines(await NoteService.list(await ownOrCoached(caller, athlete)), caller.userId)),
   )
 
   server.registerTool(
@@ -46,7 +48,12 @@ export function registerNoteTools(server: McpServer, caller: Caller): void {
       annotations: WRITE,
     },
     async ({ athlete, ...input }) =>
-      text(noteLines([await NoteService.create(caller, athlete, input)], caller.userId)),
+      text(
+        noteLines(
+          [await NoteService.create(await ownOrCoached(caller, athlete), input)],
+          caller.userId,
+        ),
+      ),
   )
 
   server.registerTool(
@@ -60,7 +67,12 @@ export function registerNoteTools(server: McpServer, caller: Caller): void {
       annotations: REWORD,
     },
     async ({ athlete, noteId, ...input }) =>
-      text(noteLines([await NoteService.update(caller, athlete, noteId, input)], caller.userId)),
+      text(
+        noteLines(
+          [await NoteService.update(await ownOrCoached(caller, athlete), noteId, input)],
+          caller.userId,
+        ),
+      ),
   )
 }
 
@@ -90,7 +102,11 @@ export function registerWeighInTools(server: McpServer, caller: Caller): void {
     },
     async ({ weeks, athlete }) =>
       text(
-        weighInLines(await WeighInService.list(caller, athlete, weeks), weeks, caller.weightUnit),
+        weighInLines(
+          await WeighInService.bodyweightOf(await ownOrCoached(caller, athlete), weeks),
+          weeks,
+          caller.weightUnit,
+        ),
       ),
   )
 
@@ -107,7 +123,7 @@ export function registerWeighInTools(server: McpServer, caller: Caller): void {
     },
     async ({ athlete, ...input }) =>
       text(
-        `Saved: ${weighInLine(await WeighInService.create(caller, athlete, input), caller.weightUnit)}`,
+        `Saved: ${weighInLine(await WeighInService.create(await ownOrCoached(caller, athlete), input), caller.weightUnit)}`,
       ),
   )
 

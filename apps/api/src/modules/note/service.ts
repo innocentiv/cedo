@@ -3,12 +3,12 @@ import { type AthleteNote, type AthleteNoteInput, NOTES_PER_ATHLETE } from '@ced
 import { db } from '../../db/client.ts'
 import { athleteNotes, users } from '../../db/schema.ts'
 import { conflict, notFound } from '../../lib/error.ts'
-import type { Caller } from '../../plugins/auth.ts'
 import { athleteRecords } from '../athlete-record/records.ts'
-import { type Training, ownOrCoached } from '../coaching/training.ts'
+import type { Training } from '../coaching/training.ts'
 
 /**
- * Athlete notes (#41): about the caller, or — given `athleteId` — about an athlete they coach. An
+ * Athlete notes (#41): about whoever the training is of — the caller, or an athlete they coach, as
+ * the route or tool resolved it (`own`, `ownOrCoached`). An
  * athlete record (../athlete-record/records.ts): read, written and removed as every one is. What is
  * a note's own: at most `NOTES_PER_ATHLETE` about anyone, and its words, which only its author
  * changes. Each route and MCP tool calls these, so whoever asks is told the same. See GLOSSARY.md,
@@ -43,8 +43,7 @@ const toNote = (training: Training, row: Row): AthleteNote => ({
 })
 
 /** Every note about them, newest first — at most `NOTES_PER_ATHLETE`, so never paged. */
-export async function list(caller: Caller, athleteId?: string): Promise<AthleteNote[]> {
-  const training = await ownOrCoached(caller, athleteId)
+export async function list(training: Training): Promise<AthleteNote[]> {
   const rows = await select(training).orderBy(desc(athleteNotes.writtenAt), desc(athleteNotes.id))
   return rows.map((row) => toNote(training, row))
 }
@@ -59,12 +58,7 @@ async function one(training: Training, id: string): Promise<AthleteNote> {
  * Written down, unless they have `NOTES_PER_ATHLETE` already. Their row is locked first, so two
  * notes written at once take turns at the count rather than both passing it.
  */
-export async function create(
-  caller: Caller,
-  athleteId: string | undefined,
-  input: AthleteNoteInput,
-): Promise<AthleteNote> {
-  const training = await ownOrCoached(caller, athleteId)
+export async function create(training: Training, input: AthleteNoteInput): Promise<AthleteNote> {
   const id = await db.transaction(async (tx) => {
     await tx
       .select({ id: users.id })
@@ -90,12 +84,10 @@ export async function create(
 
 /** Its words changed — by its author only. Anyone else is told there is no such note. */
 export async function update(
-  caller: Caller,
-  athleteId: string | undefined,
+  training: Training,
   id: string,
   input: AthleteNoteInput,
 ): Promise<AthleteNote> {
-  const training = await ownOrCoached(caller, athleteId)
   const changed = await db
     .update(athleteNotes)
     .set({ text: input.text, editedAt: sql`now()` })

@@ -6,6 +6,7 @@ import { weighIns } from '../../db/schema.ts'
 import { coachedSquad, ok, send } from '../../test/coaching.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
+import { own } from '../coaching/training.ts'
 import { create } from './service.ts'
 
 /**
@@ -91,8 +92,7 @@ describe('weigh-ins', () => {
     await Promise.all(
       Array.from(
         { length: 30 },
-        async (_, i) =>
-          await create(athlete.caller, undefined, { day: daysAgo(0), weightG: 80_000 + i }),
+        async (_, i) => await create(own(athlete.caller), { day: daysAgo(0), weightG: 80_000 + i }),
       ),
     )
     expect((await bodyweight(athlete)).weighIns).toHaveLength(1)

@@ -7,6 +7,7 @@ import { athleteNotes, users } from '../../db/schema.ts'
 import { anotherAthlete, coachedSquad, ok, send, share } from '../../test/coaching.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
+import { own } from '../coaching/training.ts'
 import { create } from './service.ts'
 
 /**
@@ -63,12 +64,12 @@ describe('a note’s words', () => {
     const stranger = await h.as('stranger')
     const other = await h.as('other')
     await ok(coach, `/groups/${squadId}/members`, { username: other.username, role: 'editor' })
-    const own = await write(athlete, '/notes', 'Wants to squat 100 kg by summer')
+    const athletes = await write(athlete, '/notes', 'Wants to squat 100 kg by summer')
     const coachs = await write(coach, theirs(), 'Too much volume last block')
     expect(coachs.canEdit).toBe(true)
 
-    expect((await reword(stranger, `/notes/${own.id}`)).status).toBe(404)
-    expect((await reword(coach, `${theirs()}/${own.id}`)).status).toBe(404)
+    expect((await reword(stranger, `/notes/${athletes.id}`)).status).toBe(404)
+    expect((await reword(coach, `${theirs()}/${athletes.id}`)).status).toBe(404)
     expect((await reword(other, `${theirs()}/${coachs.id}`)).status).toBe(404)
     expect((await reword(athlete, `/notes/${coachs.id}`)).status).toBe(404)
 
@@ -135,10 +136,7 @@ describe('how many', () => {
     // A cold pool opens its connections one by one, which lines the writes up: warm it first.
     await Promise.all(Array.from({ length: 30 }, async () => await db.execute(sql`select 1`)))
     const tries = await Promise.allSettled(
-      Array.from(
-        { length: 30 },
-        async () => await create(athlete.caller, undefined, { text: 'x' }),
-      ),
+      Array.from({ length: 30 }, async () => await create(own(athlete.caller), { text: 'x' })),
     )
     expect(tries.filter((t) => t.status === 'fulfilled')).toHaveLength(1)
     expect(await notes(athlete)).toHaveLength(NOTES_PER_ATHLETE)

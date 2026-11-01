@@ -3,12 +3,12 @@ import { type Bodyweight, type WeighIn, type WeighInInput, utcDayWeeksBefore } f
 import { db } from '../../db/client.ts'
 import { users, weighIns } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
-import type { Caller } from '../../plugins/auth.ts'
 import { athleteRecords } from '../athlete-record/records.ts'
-import { type Training, ownOrCoached } from '../coaching/training.ts'
+import type { Training } from '../coaching/training.ts'
 
 /**
- * Weigh-ins (#42): the caller's bodyweight, or — given `athleteId` — an athlete's they coach. An
+ * Weigh-ins (#42): the bodyweight of whoever the training is of — the caller, or an athlete they
+ * coach, as the route or tool resolved it (`own`, `ownOrCoached`). An
  * athlete record (../athlete-record/records.ts): read, written and removed as every one is. What
  * is a weigh-in's own: one a day — another that day replaces it — read over a period. See
  * GLOSSARY.md, "Weigh-in".
@@ -56,21 +56,8 @@ export async function bodyweightOf(training: Training, weeks: number): Promise<B
   }
 }
 
-export async function list(
-  caller: Caller,
-  athleteId: string | undefined,
-  weeks: number,
-): Promise<Bodyweight> {
-  return await bodyweightOf(await ownOrCoached(caller, athleteId), weeks)
-}
-
 /** That day's bodyweight — replacing one already taken that day, by whoever took it. */
-export async function create(
-  caller: Caller,
-  athleteId: string | undefined,
-  input: WeighInInput,
-): Promise<WeighIn> {
-  const training = await ownOrCoached(caller, athleteId)
+export async function create(training: Training, input: WeighInInput): Promise<WeighIn> {
   const taken = { authorId: training.reader.userId, weightG: input.weightG, takenAt: sql`now()` }
   const [written] = await db
     .insert(weighIns)

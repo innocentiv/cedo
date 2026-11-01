@@ -4,8 +4,7 @@ import type { RecordAuthorship } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { users } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
-import type { Caller } from '../../plugins/auth.ts'
-import { type Training, ownOrCoached } from '../coaching/training.ts'
+import type { Training } from '../coaching/training.ts'
 
 /**
  * Athlete records (GLOSSARY.md): what is kept about a person — athlete notes, weigh-ins. PERSONAL,
@@ -42,7 +41,7 @@ export interface AthleteRecords<T extends RecordTable> {
   /** What the reader is told of who wrote it, and whether they may remove it. */
   readonly authored: (training: Training, row: AuthoredRow) => RecordAuthorship
   /** Removed — by whoever wrote it, or by the person it is about. Anyone else: there is none. */
-  readonly remove: (caller: Caller, athleteId: string | undefined, id: string) => Promise<void>
+  readonly remove: (training: Training, id: string) => Promise<void>
   /** Thrown, not defaulted: an empty id would reach a uuid column as a 500 (ownable/service.ts). */
   readonly inserted: <R>(row: R | undefined) => R
 }
@@ -65,8 +64,7 @@ export function athleteRecords<T extends RecordTable>(table: T, kind: string): A
         row.authorId === training.reader.userId || training.athleteId === training.reader.userId,
     }),
 
-    remove: async (caller: Caller, athleteId: string | undefined, id: string): Promise<void> => {
-      const training = await ownOrCoached(caller, athleteId)
+    remove: async (training: Training, id: string): Promise<void> => {
       const theirs = training.athleteId === training.reader.userId
       const removed = await db
         .delete(table)
