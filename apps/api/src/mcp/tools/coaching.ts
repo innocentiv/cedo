@@ -10,8 +10,10 @@ const READ = { readOnlyHint: true, openWorldHint: false } as const
 
 /**
  * OBJECTIVE 2, for someone else — a coach's AI reading the athletes who share their training (#11).
- * Read-only, every one: a coach changes nothing of an athlete's. `training_review` and
- * `exercise_history` take the same optional `athlete`. See docs/adr/0021-coaching-through-groups.md.
+ * Every tool here reads: a coach changes none of an athlete's training. What a coach writes of
+ * theirs is their athlete records — `note_create`, `note_update`, `weigh_in_create`
+ * (athlete-file.ts). Every tool that takes the optional `athlete` reads, or writes, for them. See
+ * docs/adr/0021-coaching-through-groups.md.
  */
 export function registerCoachingTools(server: McpServer, caller: Caller): void {
   server.registerTool(
@@ -19,10 +21,12 @@ export function registerCoachingTools(server: McpServer, caller: Caller): void {
     {
       title: 'List the athletes you coach',
       description:
-        'Members who share their training with a group you edit — read-only, and only while ' +
-        'they share it. Pass an id as `athlete` to training_review, session_list or ' +
-        'exercise_history to read theirs instead of yours. Names of what you cannot see stay ' +
-        'unavailable in their training.',
+        'Members who share their training with a group you edit, while they share it. Pass an ' +
+        'id as `athlete` to read their training instead of yours — training_review, ' +
+        'session_list, session_get, exercise_history, workout_get, exercise_search, ' +
+        'equipment_get — which you cannot change; and their notes and weigh-ins (note_list, ' +
+        'weigh_in_list), which you may also write (note_create, note_update, weigh_in_create). ' +
+        'Names of what you cannot see stay unavailable in their training.',
       inputSchema: z.object({}),
       annotations: READ,
     },
