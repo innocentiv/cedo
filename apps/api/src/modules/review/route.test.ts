@@ -91,11 +91,11 @@ describe('your training, reviewed over HTTP', () => {
   })
 
   /** What a plan is weighed against (#42): their bodyweight over the period, and their age. */
-  test('says their bodyweight, its change over the period, and the year they were born', async () => {
+  test('says their bodyweight, its change over the period, and their age — never the year', async () => {
     const send = async (path: string, body: unknown, method = 'POST') =>
       await alice.wire(path, { method, body: JSON.stringify(body) })
     const blank = expectContract(TrainingReview, (await alice.wire('/review?weeks=4')).body)
-    expect(blank).toMatchObject({ bodyweight: null, birthYear: null })
+    expect(blank).toMatchObject({ bodyweight: null, age: null })
 
     const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10)
     for (const [ago, weightG] of [
@@ -112,7 +112,8 @@ describe('your training, reviewed over HTTP', () => {
       latest: { day: day(2), weightG: 82_400 },
       from: { day: day(40), weightG: 84_000 },
     })
-    expect(review.birthYear).toBe(1990)
+    expect(review.age).toBe(new Date().getFullYear() - 1990)
+    expect(JSON.stringify(review)).not.toContain('1990')
   })
 
   test('looks back eight weeks unless asked, and no more than a year', async () => {

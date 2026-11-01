@@ -4,6 +4,7 @@ import {
   Exercise,
   GroupMembership,
   MCP_SERVER_NAME,
+  Me,
   McpClientConfig,
   MUSCLE_SLUGS,
   PersonalAccessTokenCreated,
@@ -13,6 +14,7 @@ import {
   Workout,
   PlanSave,
   ageLine,
+  ageThisYear,
   formatCalendarDay,
   page,
 } from '@cedo/contract'
@@ -1347,11 +1349,11 @@ describe('weigh-ins and the year of birth', () => {
       'No weigh-ins yet. Age not given.',
     )
     const said = textOf((await callTool(pat, 'athlete_profile_set', { birthYear: 1990 })).body)
-    expect(said).toBe(`Saved. Born 1990: ${ageLine(1990, new Date())}; weights in kg.`)
+    expect(said).toBe(`Saved. Born 1990: ${ageLine(ageThisYear(1990, new Date()))}.`)
     await post(alice, '/weigh-ins', { day: day(40), weightG: 84_000 })
     await post(alice, '/weigh-ins', { day: day(2), weightG: 82_400 })
     expect(textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)).toContain(
-      `Bodyweight 82.4 kg on ${formatCalendarDay(day(2))}, −1.6 kg since ${formatCalendarDay(day(40))}. Age ${ageLine(1990, new Date())}.`,
+      `Bodyweight 82.4 kg on ${formatCalendarDay(day(2))}, −1.6 kg since ${formatCalendarDay(day(40))}. Age ${ageLine(ageThisYear(1990, new Date()))}.`,
     )
   })
 
@@ -1364,6 +1366,16 @@ describe('weigh-ins and the year of birth', () => {
       birthYear: 1990,
     })
     expect(theirs.body.result?.isError).toBe(true)
+  })
+
+  /** It sets the year you were born and nothing else: how you read weights is yours to choose. */
+  test('the year you were born is all it sets', async () => {
+    const pat = await mintPat(alice)
+    const unit = await callTool(pat, 'athlete_profile_set', { birthYear: 1990, weightUnit: 'lb' })
+    expect(unit.body.result?.isError).toBe(true)
+    expect((await callTool(pat, 'athlete_profile_set', {})).body.result?.isError).toBe(true)
+    const me = expectContract(Me, (await alice.wire('/auth/me')).body)
+    expect(me.user).toMatchObject({ weightUnit: 'kg', birthYear: null })
   })
 
   test('taking a weigh-in is announced as replacing that day’s', async () => {

@@ -31,6 +31,8 @@ export const athletes = (page: Page) => ({
   },
   /** Whether a session of theirs is in progress, as the page last read it. */
   inTraining: async (): Promise<boolean> => await page.shown('athlete-training-now'),
+  /** Under their name: who they are, whom they share through, and their age once said (#42). */
+  about: async (): Promise<string> => (await page.text('athlete-about')) ?? '',
   /** Opens the session they are in now: its sets so far. */
   openTrainingNow: async (): Promise<void> => {
     await page.click('[data-testid="athlete-training-now"]')

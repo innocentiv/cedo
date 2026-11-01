@@ -6,6 +6,7 @@ import {
   type WeighIn,
   type WeightUnit,
   ageLine,
+  ageThisYear,
   formatCalendarDay,
   formatWeight,
   noteByline,
@@ -46,24 +47,22 @@ export function weighInLines(bodyweight: Bodyweight, weeks: number, unit: Weight
 
 /** `Bodyweight 82.4 kg on Fri 30 Oct, −1.6 kg since Tue 1 Sep. Age 36 this year.` */
 export function aboutLine(
-  review: Pick<TrainingReview, 'bodyweight' | 'birthYear'>,
+  review: Pick<TrainingReview, 'bodyweight' | 'age'>,
   unit: WeightUnit,
-  now: Date,
 ): string {
   const weight =
     review.bodyweight === null
       ? 'No weigh-ins yet.'
       : `Bodyweight ${trendLine(review.bodyweight, unit)}.`
-  const age =
-    review.birthYear === null ? 'Age not given.' : `Age ${ageLine(review.birthYear, now)}.`
+  const age = review.age === null ? 'Age not given.' : `Age ${ageLine(review.age)}.`
   return `${weight} ${age}`
 }
 
-/** `Saved. Born 1990: 36 this year; weights in kg.` — what `athlete_profile_set` left them as. */
+/** `Saved. Born 1990: 36 this year.` — what `athlete_profile_set` left them as. */
 export function profileLine(account: Account, now: Date): string {
   const born =
     account.birthYear === null
       ? 'Year of birth not given'
-      : `Born ${String(account.birthYear)}: ${ageLine(account.birthYear, now)}`
-  return `Saved. ${born}; weights in ${account.weightUnit}.`
+      : `Born ${String(account.birthYear)}: ${ageLine(ageThisYear(account.birthYear, now))}`
+  return `Saved. ${born}.`
 }

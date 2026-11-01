@@ -1,6 +1,6 @@
 import { useCallback, useRef, useState } from 'react'
 import { useFocusEffect, useRouter } from 'expo-router'
-import { type Athlete, sessionLine, sessionName } from '@cedo/contract'
+import { type Athlete, ageLine, sessionLine, sessionName } from '@cedo/contract'
 import { Empty, ListRow, Loaded, Screen, Stack, Text } from '../ui/index.ts'
 import {
   useAthleteHistory,
@@ -37,6 +37,7 @@ export function AthleteView({
   const [weeks, setWeeks] = useState(FIRST_PERIOD)
   const shared = athlete !== undefined
   const review = useAthleteReview(id, weeks, shared)
+  const age = review.data?.age ?? null
   const history = useAthleteHistory(id, shared)
   useReadAgainOnReturn(id)
 
@@ -70,7 +71,11 @@ export function AthleteView({
       <Stack gap="lg" testID="athlete-pane">
         <Stack gap="xs">
           <Text variant="title">{athlete?.user.displayName ?? ''}</Text>
-          {athlete === undefined ? null : <Text tone="muted">{sharedThrough(athlete)}</Text>}
+          {athlete === undefined ? null : (
+            <Text tone="muted" testID="athlete-about">
+              {sharedThrough(athlete, age)}
+            </Text>
+          )}
         </Stack>
         {contents}
       </Stack>
@@ -78,7 +83,11 @@ export function AthleteView({
   }
   return (
     <Screen title={athlete?.user.displayName ?? ''} onBack={onBack} wide testID="athlete-screen">
-      {athlete === undefined ? null : <Text tone="muted">{sharedThrough(athlete)}</Text>}
+      {athlete === undefined ? null : (
+        <Text tone="muted" testID="athlete-about">
+          {sharedThrough(athlete, age)}
+        </Text>
+      )}
       {contents}
     </Screen>
   )
@@ -96,9 +105,16 @@ function useReadAgainOnReturn(id: string): void {
   )
 }
 
-/** `@sam · through Squad`: who they are, and the groups they share their training through. */
-const sharedThrough = (athlete: Athlete): string =>
-  `@${athlete.user.username} · through ${athlete.groups.map((g) => g.name).join(', ')}`
+/**
+ * `@sam · through Squad · 36 this year`: who they are, the groups they share their training
+ * through, and their age once they have said the year they were born (#42) — as the review says it.
+ */
+const sharedThrough = (athlete: Athlete, age: number | null): string =>
+  [
+    `@${athlete.user.username}`,
+    `through ${athlete.groups.map((g) => g.name).join(', ')}`,
+    ...(age === null ? [] : [ageLine(age)]),
+  ].join(' · ')
 
 /** The session they are in, if they are: a row that opens their sets so far. */
 function TrainingNow({ id }: { readonly id: string }): React.JSX.Element {

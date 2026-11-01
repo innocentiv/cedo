@@ -123,8 +123,9 @@ in grams, read over the review's weeks with the latest before them — yours, or
 `athlete`. Another that day replaces the first, so `weigh_in_create` is announced destructive and
 idempotent. `training_review` carries the latest and its change over its weeks, and the age the
 year of birth makes: `Bodyweight 82.4 kg on Fri 30 Oct, −1.6 kg since Tue 1 Sep. Age 36 this
-year.` `athlete_profile_set` is `PATCH /auth/me`'s own schema (`MeUpdate`) — the year you were
-born, and how you read weights — and is only ever yours.
+year.` — the age, never the year of birth. `athlete_profile_set` sets the year you were born, by
+`PATCH /auth/me`'s own schema narrowed to it (`MeUpdate.pick`), and is only ever yours: how you read
+weights stays yours to choose in the app.
 
 `session_log` and `session_fix_set` record training as it was done (`mcp/tools/session.ts`): a
 whole session the AI is told about, and a set already logged corrected (#31) — "80, not 100, on
@@ -300,7 +301,7 @@ Every tool carries `readOnlyHint` so a client can gate writes.
 1. If it needs data the API cannot already produce, add a **service** function first — never put the
    logic in the tool.
 2. Register it in `mcp/tools/library.ts`, `equipment.ts`, `training.ts`, `session.ts`,
-   `coaching.ts` or `diagnostics.ts` with a contract schema,
+   `coaching.ts`, `athlete-file.ts` or `diagnostics.ts` with a contract schema,
    an annotation, and a description written for a model: say when to use it, and what NOT to do. A
    new file must also be wired into `mcp/tools/index.ts`, or its tools never load.
 3. Format the output for reading (`mcp/format.ts`), not for machines.

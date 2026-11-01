@@ -265,7 +265,7 @@ export function reviewSummary(review: TrainingReview, unit: WeightUnit): string 
 
   return [
     `Last ${weeks} weeks: ${a.sessions} sessions (${a.perWeek}/week).`,
-    aboutLine(review, unit, new Date()),
+    aboutLine(review, unit),
     a.lastSessionAt === null
       ? 'No sessions logged in this window.'
       : `Last session ${a.lastSessionAt}. Current streak ${a.currentStreakDays} days, longest gap ${a.longestGapDays} days.`,

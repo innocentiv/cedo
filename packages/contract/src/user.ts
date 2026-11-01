@@ -54,9 +54,11 @@ export const BirthYear = z
   .min(1900, 'From 1900')
   .refine((year) => year <= new Date().getFullYear() - 10, 'At least ten years ago')
 
-/** `36 this year`: the age a year of birth makes, as of `now`. */
-export const ageLine = (birthYear: number, now: Date): string =>
-  `${String(now.getFullYear() - birthYear)} this year`
+/** The age a year of birth makes this year, as of `now`: 36, for 1990 in 2026. */
+export const ageThisYear = (birthYear: number, now: Date): number => now.getFullYear() - birthYear
+
+/** `36 this year`: an age as it is said — exact to within the year, as a year of birth is. */
+export const ageLine = (age: number): string => `${String(age)} this year`
 
 /**
  * `PATCH /auth/me`, and the MCP's `athlete_profile_set` — what a person may change about

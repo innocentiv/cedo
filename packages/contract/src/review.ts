@@ -94,8 +94,11 @@ export const TrainingReview = z.object({
   effortDrift: z.array(EffortDrift),
   /** Their bodyweight, and its change over the period (#42) — null with no weigh-in at all. */
   bodyweight: BodyweightTrend.nullable(),
-  /** The year they were born, when they have said it (#42). */
-  birthYear: z.int().nullable(),
+  /**
+   * The age they turn this year, when they have said the year they were born (#42) — the age, never
+   * the year: only they are shown that.
+   */
+  age: z.int().nullable(),
 })
 export type TrainingReview = z.output<typeof TrainingReview>
 

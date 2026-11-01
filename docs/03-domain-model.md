@@ -37,9 +37,9 @@ text alike, which is why it lives on the account and travels on the caller. It i
 returns it (`Account`), and the `User` a fellow group member sees does not carry it.
 
 `users.birth_year?` is the year a person was born (#42): from 1900 to ten years ago, null until they
-say it, and set only by them — `PATCH /auth/me` and `athlete_profile_set`, which share `MeUpdate`.
-`Me` returns it; a fellow member is never shown it, and whoever coaches them reads it only as the
-review's age.
+say it, and set only by them — `PATCH /auth/me`, and `athlete_profile_set`, which takes that part of
+its `MeUpdate` alone. `Me` returns it; a fellow member is never shown it, and whoever coaches them
+reads only the age it makes this year, which the review carries (`TrainingReview.age`).
 
 ## The ownable trait
 
@@ -304,8 +304,9 @@ their device says it — never the server's; `weight_g` from 20 to 400 kg. One a
 took it as its author. Kept and read as athlete notes are: PERSONAL, through `Training`, written by
 them or a coach of theirs; removed by its author or the athlete. Read over the review's weeks
 (`Bodyweight`): the period's, newest first, and the latest before it, which the period's change is
-measured from (`bodyweightTrend`) — at most a year's, so never paged. The review carries that trend
-and the year they were born.
+measured from (`bodyweightTrend`) — at most a year's, so never paged, and the latest before the
+period is listed with them, so a weigh-in the card names is always one it can remove. The review
+carries that trend and their age.
 
 ### A rest
 

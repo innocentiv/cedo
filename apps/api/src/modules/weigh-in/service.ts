@@ -1,5 +1,5 @@
 import { type SQL, and, desc, eq, gte, lt, sql } from 'drizzle-orm'
-import type { Bodyweight, WeighIn, WeighInInput } from '@cedo/contract'
+import { type Bodyweight, type WeighIn, type WeighInInput, utcDayWeeksBefore } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { users, weighIns } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
@@ -12,8 +12,6 @@ import type { Training } from '../session/service.ts'
  * and written as athlete notes are (../note/service.ts): by both; removed by whoever took it, or by
  * the person it is about. One a day: another that day replaces it. See GLOSSARY.md, "Weigh-in".
  */
-
-const DAY_MS = 86_400_000
 
 /** Their weigh-ins, with who took each — `and` more, to narrow them. */
 const select = (training: Training, ...more: SQL[]) =>
@@ -53,7 +51,7 @@ const toWeighIn = (training: Training, row: Row): WeighIn => {
  * the server's: a day either way at its edge, which a trend over weeks does not feel.
  */
 export async function bodyweightOf(training: Training, weeks: number): Promise<Bodyweight> {
-  const since = new Date(Date.now() - weeks * 7 * DAY_MS).toISOString().slice(0, 10)
+  const since = utcDayWeeksBefore(Date.now(), weeks)
   const [inPeriod, [before]] = await Promise.all([
     select(training, gte(weighIns.day, since)),
     select(training, lt(weighIns.day, since)).limit(1),

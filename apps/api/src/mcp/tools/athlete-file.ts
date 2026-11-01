@@ -65,7 +65,7 @@ export function registerNoteTools(server: McpServer, caller: Caller): void {
 }
 
 /** It replaces what was there — that day's weigh-in, the year said before — so a client asks. */
-const TAKE = {
+const REPLACE = {
   readOnlyHint: false,
   destructiveHint: true,
   idempotentHint: true,
@@ -103,7 +103,7 @@ export function registerWeighInTools(server: McpServer, caller: Caller): void {
         'it. In GRAMS: 82.4 kg is 82400, 180 lb is 81647. One a day: it REPLACES one already ' +
         'taken that day.',
       inputSchema: WeighInInput.safeExtend(OfAthlete.shape),
-      annotations: TAKE,
+      annotations: REPLACE,
     },
     async ({ athlete, ...input }) =>
       text(
@@ -116,10 +116,10 @@ export function registerWeighInTools(server: McpServer, caller: Caller): void {
     {
       title: 'Set your year of birth',
       description:
-        'Set what you say of yourself: the year you were born (null forgets it), and how you ' +
-        'read weights. Yours only — an athlete sets their own. What is left out stays as it is.',
-      inputSchema: MeUpdate,
-      annotations: TAKE,
+        'Set the year you were born, when you say it — null forgets it. Yours only: an athlete ' +
+        'sets their own. Whoever coaches you reads it as an age, in training_review.',
+      inputSchema: MeUpdate.pick({ birthYear: true }).required(),
+      annotations: REPLACE,
     },
     async (patch) =>
       text(profileLine((await AuthService.updateMe(caller, patch)).user, new Date())),

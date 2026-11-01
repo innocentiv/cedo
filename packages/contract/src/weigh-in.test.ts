@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { BirthYear, MeUpdate, ageLine } from './user.ts'
+import { BirthYear, MeUpdate, ageLine, ageThisYear } from './user.ts'
 import {
   type Bodyweight,
   type WeighIn,
@@ -10,6 +10,7 @@ import {
   bodyweightTrend,
   calendarDayOf,
   trendParts,
+  utcDayWeeksBefore,
   weighInRow,
 } from './weigh-in.ts'
 
@@ -102,6 +103,12 @@ describe("a period's bodyweight", () => {
     expect(trendParts({ ...trend, from: null }, 'kg').change).toBeNull()
   })
 
+  test('begins a period on the server’s day, the weeks before', () => {
+    const late = Date.UTC(2026, 10, 1, 23, 30)
+    expect(utcDayWeeksBefore(late, 1)).toBe('2026-10-25')
+    expect(utcDayWeeksBefore(late, 8)).toBe('2026-09-06')
+  })
+
   test('takes today from the device’s own calendar, not UTC’s', () => {
     expect(calendarDayOf(new Date(2026, 0, 5, 23, 59))).toBe('2026-01-05')
     expect(calendarDayOf(new Date(2026, 10, 1, 0, 1))).toBe('2026-11-01')
@@ -143,6 +150,8 @@ describe('a year of birth', () => {
   })
 
   test('is read as the age it makes this year', () => {
-    expect(ageLine(1990, new Date(2026, 10, 1))).toBe('36 this year')
+    expect(ageThisYear(1990, new Date(2026, 0, 1))).toBe(36)
+    expect(ageThisYear(1990, new Date(2026, 11, 31))).toBe(36)
+    expect(ageLine(36)).toBe('36 this year')
   })
 })

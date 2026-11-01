@@ -393,7 +393,8 @@ and `training_review` both say; the tab looks back 4, 8 or 12 weeks.
 - **Bodyweight** (#42, `BodyweightCard`) — under the review, over the same weeks
   (`GET /weigh-ins?weeks=`): the latest weigh-in and its change since the latest before the period
   (`bodyweightTrend`, `trendParts`), today's typed in the reader's unit and dated by the device's
-  calendar (`calendarDayOf`), and the period's weigh-ins, a week's until all are asked for. Then the
+  calendar (`calendarDayOf`), and the period's weigh-ins and the latest before it, a week's until all
+  are asked for. Then the
   notes (#41). The year of birth is said in Settings.
 - The review is a read the cache catches up on behind a set, never awaits (`lagging` in `READS`):
   it costs a whole aggregation, and nothing the next set does depends on it.
@@ -439,7 +440,8 @@ never writes it. As built (#30):
   know a route only by its trigger. Reached by its address with nobody sharing, it says so.
 - **An athlete's page** (`AthleteView`): the session they are in now, if they are — a row that opens
   its sets so far — then their Progress, the same `Review` and periods as your own tab
-  (`GET /athletes/:id/review`) and their bodyweight over the same weeks (#42, `BodyweightCard`),
+  (`GET /athletes/:id/review`) and their bodyweight over the same weeks (#42, `BodyweightCard`) —
+  their age, from the review, beside their name —
   then what they have to train with (#34, `AthleteEquipmentCard`), then their notes (#41), then
   their history by week (`PagedHistory`, as Today's). Nothing on it changes their training.
 - **Their notes and weigh-ins are what a coach writes** (#41, #42, ADR-0021 amended): `Notes` and

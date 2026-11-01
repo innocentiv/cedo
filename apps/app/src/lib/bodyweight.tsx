@@ -67,7 +67,15 @@ export function BodyweightCard({
                   </Stack>
                 )}
                 <Today athleteId={athleteId} testID={`${testID}-today`} />
-                <Past weighIns={bodyweight.weighIns} athleteId={athleteId} testID={testID} />
+                <Past
+                  weighIns={
+                    bodyweight.before === null
+                      ? bodyweight.weighIns
+                      : [...bodyweight.weighIns, bodyweight.before]
+                  }
+                  athleteId={athleteId}
+                  testID={testID}
+                />
               </Stack>
             )
           }}
@@ -121,7 +129,10 @@ function Today({
   )
 }
 
-/** The period's weigh-ins, newest first — a week's, until all are asked for. */
+/**
+ * The period's weigh-ins, newest first, then the latest before it — the one its change is from,
+ * which may be the latest of all, and is removed here too. A week's, until all are asked for.
+ */
 function Past({
   weighIns,
   athleteId,

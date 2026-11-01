@@ -15,8 +15,12 @@ export const MAX_BODYWEIGHT_G = 400_000
 
 const DAY_MS = 86_400_000
 
-/** `2026-11-01`, in UTC — what `CalendarDay` compares against. */
-const isoDay = (at: number): string => new Date(at).toISOString().slice(0, 10)
+/** `2026-11-01`: the day `at` (ms) falls on in UTC — the server's day, never a person's. */
+export const utcDayOf = (at: number): string => new Date(at).toISOString().slice(0, 10)
+
+/** The days from `at` back `weeks` weeks, as `utcDayOf` says them: where a period begins. */
+export const utcDayWeeksBefore = (at: number, weeks: number): string =>
+  utcDayOf(at - weeks * 7 * DAY_MS)
 
 /**
  * A day on the person's own calendar, `YYYY-MM-DD` — theirs, not the server's: a weigh-in at 7am in
@@ -24,7 +28,7 @@ const isoDay = (at: number): string => new Date(at).toISOString().slice(0, 10)
  */
 export const CalendarDay = z.iso
   .date()
-  .refine((day) => day <= isoDay(Date.now() + DAY_MS), 'Cannot be a day still to come')
+  .refine((day) => day <= utcDayOf(Date.now() + DAY_MS), 'Cannot be a day still to come')
 export type CalendarDay = z.output<typeof CalendarDay>
 
 /** `POST` — that day's bodyweight, replacing one already taken that day. */

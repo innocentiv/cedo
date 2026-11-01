@@ -6,6 +6,8 @@ import {
   McpClientConfig,
   type TrackingMode,
   WorkoutPlanInput,
+  ageLine,
+  ageThisYear,
   calendarDayOf,
   formatCalendarDay,
   kgToG,
@@ -497,6 +499,7 @@ test(
       const today = calendarDayOf(new Date())
       const yesterday = calendarDayOf(new Date(Date.now() - 86_400_000))
       await athlete.api.weighIns.create(undefined, { day: yesterday, weightG: 83_000 })
+      await athlete.api.auth.updateMe({ birthYear: 1990 })
 
       // Theirs, on their page: under their name, and not the coach's to remove.
       await page.goto('/today')
@@ -510,6 +513,14 @@ test(
         ),
       ).toEqual(['83 kg', formatCalendarDay(yesterday), `${formatCalendarDay(yesterday)} · 83 kg`])
       expect(await app.bodyweight.removable('athlete', 0)).toBe(false)
+      // Their age, as the review says it — never the year they were born.
+      const age = ageLine(ageThisYear(1990, new Date()))
+      expect(
+        await page.until(
+          async () => await app.athletes.about(),
+          (about) => about.endsWith(age),
+        ),
+      ).toBe(`@${athlete.user.username} · through Squad · ${age}`)
 
       // Today's, taken by the coach: the latest, its change since yesterday, and the coach's own.
       await app.bodyweight.take('athlete', '82.4')
@@ -550,7 +561,7 @@ test(
         (lines) => lines.includes('No weigh-ins yet.'),
       )
 
-      // The year they were born, said in Settings and kept to their account.
+      // The coach's own year of birth, said in Settings and kept to their account.
       await app.bodyweight.sayBirthYear('1990')
     })
   },
