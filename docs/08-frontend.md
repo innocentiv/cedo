@@ -246,13 +246,12 @@ them, and the target says when it stopped at "your heaviest" or "your lightest".
 refused. A new weight rule in the plan editor adds one step of that equipment. "Up next" is the rest of the day, an entry to a line, a superset
 drawn as one item; tapping one makes it current, and tapping a logged set re-opens it.
 
-- **A choice holds until this device logs or undoes a set**, or goes to pick an exercise — what is
-  picked is chosen in turn, so it takes the focus; once a set is logged, a swap keeps the focus
-  while it is the set logged last, and a set of the day gives the day its focus back. Not until the
-  latest set changes: a set logged without a signal is known
-  by its key until the server has it, then by the server's id, and a choice held to it was lost as
-  it landed. The choices are the screen's own (`useWorkout`); what they put in focus is the
-  contract's `workoutView`.
+- **A choice holds until this device logs or undoes a set**, or goes to pick an exercise — not
+  until the latest set changes: a set logged without a signal is known by its key until the server
+  has it, then by the server's id, and a choice held to it was lost as it landed. What is picked is
+  chosen in turn, so it takes the focus. Once a set is logged, a swap keeps the focus while a set
+  of it is the one logged last, and a set of the day gives the day its focus back. The choices are
+  the screen's own (`useWorkout`); what they put in focus is the contract's `workoutView`.
 - **Logging moves the focus** to the entry's next set, then to the next entry in day order with
   sets left. Entries of a superset alternate, and rest starts after the pair.
 - **Rest starts on its own** when a set is logged: a countdown band with +30 s and × to skip it,

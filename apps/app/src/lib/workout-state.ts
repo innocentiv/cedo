@@ -122,10 +122,11 @@ const workoutSets = (
 })
 
 /**
- * What the athlete chose to look at (GLOSSARY.md, "Focus"): an entry or an exercise added, tapped or
- * picked to put in focus, and a set re-opened from its mark. Held until this device logs or undoes a set, or
- * goes to pick an exercise — by what was done, not by which set is latest: a set logged without a
- * signal changes id when the server has it, and a choice held to its id was lost as it landed.
+ * What the athlete chose to look at (GLOSSARY.md, "Focus"): an entry or an exercise added, tapped
+ * or picked to put in focus, and a set re-opened from its mark. Held until this device logs or
+ * undoes a set, or goes to pick an exercise — by what was done, not by which set is latest: a set
+ * logged without a signal changes id when the server has it, and a choice held to its id was lost
+ * as it landed.
  */
 function useChoices() {
   const [held, setHeld] = useState<WorkoutChoices>(NO_CHOICES)
@@ -189,10 +190,14 @@ function useMenu() {
 }
 
 /**
- * The exercises of a session without a plan: what it has logged, then any picked since
- * (`exercisesInSession`). Picks are local — once a set is logged, the log carries the exercise.
+ * The exercises logged with no plan entry — the whole of a session without a plan, or the swaps in
+ * one with a plan — then any picked since (`exercisesInSession`). Picks are local: once a set is
+ * logged, the log carries the exercise. Picking one chooses it, so it takes the focus.
  */
-function useAdHocPicks(logs: readonly SetLog[], choices: ReturnType<typeof useChoices>) {
+function useAdHocPicks(
+  logs: readonly SetLog[],
+  choices: Pick<ReturnType<typeof useChoices>, 'choose' | 'forget'>,
+) {
   const [picking, setPicking] = useState(false)
   const [declined, setDeclined] = useState(false)
   const [picked, setPicked] = useState<Exercise[]>([])
