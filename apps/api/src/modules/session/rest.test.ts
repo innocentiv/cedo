@@ -178,6 +178,23 @@ describe('the rest a session has running', () => {
     expect(await restOf(s.id)).toBeNull()
   })
 
+  /** Corrected mid-session — over MCP's `session_fix_set`, or the PATCH — a set says its rest again. */
+  test('correcting its set to a warm-up ends it; correcting a warm-up to work starts one', async () => {
+    const s = await following()
+    const warm = await s.log(true)
+    const work = await s.log()
+    expect(await restOf(s.id)).not.toBeNull()
+    await post(`/sessions/${s.id}/logs/${work.id}`, { isWarmup: true }, 'PATCH')
+    expect(await restOf(s.id)).toBeNull()
+    await post(`/sessions/${s.id}/logs/${warm.id}`, { isWarmup: false }, 'PATCH')
+    // The latest set is a warm-up still: no rest after it, whatever came before.
+    expect(await restOf(s.id)).toBeNull()
+    await post(`/sessions/${s.id}/logs/${work.id}`, { isWarmup: false }, 'PATCH')
+    const rest = await restOf(s.id)
+    expect(rest?.since).toBe(work.loggedAt)
+    expect(seconds(rest)).toBe(90)
+  })
+
   test("is one's own: another's session cannot be changed", async () => {
     const s = await following()
     await s.log()

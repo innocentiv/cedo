@@ -99,8 +99,9 @@ export async function changeRest(
 /**
  * A set corrected (#31): how hard it was, said after it (#24), or a past mistake fixed — in a
  * session in progress or finished, with no time limit: it is the caller's own record. Personal
- * bests, progression and the review are computed on read, so they follow it. A weight is judged as
- * a logged one is (`assertWeightFor`), and the correction is rolled back with it.
+ * bests, progression and the review are computed on read, so they follow it — and the rest is
+ * worked out again, a set corrected to a warm-up, or from one, saying a rest of its own. A weight is
+ * judged as a logged one is (`assertWeightFor`), and the correction is rolled back with it.
  */
 export async function amendLog(
   caller: Caller,
@@ -108,8 +109,7 @@ export async function amendLog(
   logId: string,
   patch: SetLogUpdate,
 ): Promise<SetLog> {
-  await db.transaction(async (tx) => {
-    await lockOwn(tx, caller, sessionId)
+  await writeSets(caller, sessionId, { inProgress: false }, async (tx) => {
     // Drizzle throws on `.set({})`; an empty correction changes nothing, and answers the set.
     if (Object.keys(patch).length === 0) return
     const [amended] = await tx
