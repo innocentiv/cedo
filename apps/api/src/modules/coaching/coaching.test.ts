@@ -12,6 +12,7 @@ import {
   page,
 } from '@cedo/contract'
 import { createApp } from '../../app.ts'
+import { share } from '../../test/coaching.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
@@ -35,9 +36,6 @@ const post = async (user: TestUser, path: string, body: unknown, method = 'POST'
   if (res.status >= 300) throw new Error(`${method} ${path}: ${res.status}`)
   return res.body
 }
-
-const share = async (user: TestUser, groupId: string, sharesTraining: boolean) =>
-  await post(user, `/groups/${groupId}/membership`, { sharesTraining }, 'PATCH')
 
 const anExercise = async (user: TestUser, name: string) =>
   expectContract(
