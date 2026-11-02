@@ -121,8 +121,9 @@ The dimensions one set carries — prescribed as a target, or done as a log.
 _Avoid_: result, performance
 
 **RPE**:
-How hard a set was, or is meant to be: 5 to 10 in half-points, where 10 leaves no rep in reserve
-and each point below it leaves one more.
+How hard a set was, or the most a set is meant to take: 5 to 10 in half-points, where 10 leaves no
+rep in reserve and each point below it leaves one more. Prescribed, it is a ceiling, not an aim: a
+range such as 7–8 is prescribed as its top.
 _Avoid_: intensity, difficulty, exertion
 
 **Reps in reserve**:
@@ -234,9 +235,15 @@ _Avoid_: circuit, pairing
 
 **Progression rule**:
 How an entry's prescription advances from what was logged: none, linear, double, linear in
-duration, or linear in distance at the same pace. It advances or holds; it never makes the
-prescription easier, and never makes it faster.
+duration, or linear in distance at the same pace. It advances once the prescription is cleared, or
+holds; it never makes the prescription easier, and never makes it faster.
 _Avoid_: program, scheme
+
+**Cleared**:
+What a session does to a prescription when every working set reached its targets without going
+more than half a point past its RPE. A set nobody rated, or a prescription with no RPE, is judged on
+its targets alone. A set short of its targets, or ground out past its RPE, holds the prescription.
+_Avoid_: clean, hit, success
 
 **Prescription**:
 What an exercise in a plan asks for on every working set: one set of targets, shared by all of

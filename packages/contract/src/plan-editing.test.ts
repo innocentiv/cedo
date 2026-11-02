@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import { NO_PROGRESSION, describeProgression } from './progression.ts'
+import { NO_PROGRESSION } from './progression.ts'
+import { describeProgression } from './progression-words.ts'
 import { formatWeight } from './units.ts'
 import {
   canAddDay,

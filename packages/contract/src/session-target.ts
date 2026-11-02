@@ -1,7 +1,11 @@
 import { z } from 'zod'
-import { LoadLimit } from './load.ts'
+import { formatEffort } from './effort.ts'
+import type { TrackingMode } from './exercise.ts'
+import { LOAD_LIMIT_WORDS, LoadLimit } from './load.ts'
 import { LoggedEffort } from './log.ts'
-import { SetTarget } from './progression.ts'
+import { Hold, SetTarget } from './progression.ts'
+import { formatReserve, formatWithReserve, reserveOf } from './rpe.ts'
+import type { WeightUnit } from './units.ts'
 
 /**
  * What one entry of a session asks for, and what was done last time — `GET /sessions/:id/targets`,
@@ -23,6 +27,8 @@ export const EntryTarget = z.object({
   target: SetTarget,
   /** Whether the rule moved it — the logger says so beside the prescription. */
   changed: z.boolean(),
+  /** Why the rule held it, if something did (#45) — the logger says so when it was the effort. */
+  held: Hold.nullable(),
   /**
    * Where the athlete's equipment stopped its weight (#36): their heaviest, under a heavier plan,
    * or their lightest, over a lighter one. Null otherwise — and while what they load is unknown.
@@ -35,3 +41,21 @@ export const EntryTarget = z.object({
   last: z.array(LoggedEffort).nullable(),
 })
 export type EntryTarget = z.output<typeof EntryTarget>
+
+/**
+ * What the logger says beside an entry's target: moved by the rule, beside what the plan says; held
+ * for effort (#45), with the reserve a set left — the one hold whose cause is nowhere else on the
+ * screen, since last time's sets, beside it, show a missed rep but not a ground-out one; or as
+ * prescribed. Where the athlete's equipment stopped it (#36) is said after the target.
+ */
+export function targetLine(asked: EntryTarget, tracking: TrackingMode, unit: WeightUnit): string {
+  const limit = asked.limit === null ? '' : ` · ${LOAD_LIMIT_WORDS[asked.limit]}`
+  const target = `${formatWithReserve(asked.target, tracking, unit)}${limit}`
+  if (asked.changed) {
+    return `Progressed to ${target} · the plan says ${formatEffort(asked.prescribed, tracking, unit)}`
+  }
+  if (asked.held?.reason === 'effort') {
+    return `Held at ${target} · a recent set left ${formatReserve(reserveOf(asked.held.rpe))}`
+  }
+  return `Prescribed ${target}`
+}

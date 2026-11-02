@@ -66,14 +66,35 @@ export async function loadEntries(
  * another's suggestions, even when they share the workout.
  */
 async function loadLogs(caller: Caller, entryIds: string[], before: Date | null) {
-  /**
-   * The depth cap is applied in SQL, per entry, via a window function.
-   *
-   * Truncating to `HISTORY_DEPTH` in JavaScript instead reads every log for every entry first: a
-   * 48-entry plan with two years behind it fetches tens of thousands of rows to use the newest ten
-   * sessions of each. The cap has to be where the rows are selected.
-   */
-  const ranked = db
+  const ranked = rankedLogs(caller, entryIds, before)
+  return await db
+    .select({
+      entryId: ranked.entryId,
+      sessionId: ranked.sessionId,
+      setIndex: ranked.setIndex,
+      isWarmup: ranked.isWarmup,
+      weightG: ranked.weightG,
+      reps: ranked.reps,
+      durationS: ranked.durationS,
+      distanceMm: ranked.distanceMm,
+      rpe: ranked.rpe,
+      startedAt: ranked.startedAt,
+    })
+    .from(ranked)
+    .where(sql`${ranked.rank} <= ${HISTORY_DEPTH}`)
+    .orderBy(desc(ranked.startedAt), asc(ranked.setIndex))
+}
+
+/**
+ * The caller's logs against the entries, each ranked by its session's recency within its entry —
+ * so the depth cap is applied in SQL, per entry, via a window function.
+ *
+ * Truncating to `HISTORY_DEPTH` in JavaScript instead reads every log for every entry first: a
+ * 48-entry plan with two years behind it fetches tens of thousands of rows to use the newest ten
+ * sessions of each. The cap has to be where the rows are selected.
+ */
+function rankedLogs(caller: Caller, entryIds: string[], before: Date | null) {
+  return db
     .select({
       entryId: setLogs.entryId,
       sessionId: setLogs.sessionId,
@@ -83,6 +104,7 @@ async function loadLogs(caller: Caller, entryIds: string[], before: Date | null)
       reps: setLogs.reps,
       durationS: setLogs.durationS,
       distanceMm: setLogs.distanceMm,
+      rpe: setLogs.rpe,
       startedAt: workoutSessions.startedAt,
       rank: sql<number>`dense_rank() over (partition by ${setLogs.entryId} order by ${workoutSessions.startedAt} desc)`.as(
         'rank',
@@ -98,20 +120,4 @@ async function loadLogs(caller: Caller, entryIds: string[], before: Date | null)
       ),
     )
     .as('ranked')
-
-  return await db
-    .select({
-      entryId: ranked.entryId,
-      sessionId: ranked.sessionId,
-      setIndex: ranked.setIndex,
-      isWarmup: ranked.isWarmup,
-      weightG: ranked.weightG,
-      reps: ranked.reps,
-      durationS: ranked.durationS,
-      distanceMm: ranked.distanceMm,
-      startedAt: ranked.startedAt,
-    })
-    .from(ranked)
-    .where(sql`${ranked.rank} <= ${HISTORY_DEPTH}`)
-    .orderBy(desc(ranked.startedAt), asc(ranked.setIndex))
 }

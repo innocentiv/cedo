@@ -1,5 +1,5 @@
 import { type Load, type LoadLimit, loadable, steppedOn } from './load.ts'
-import { type ProgressionInput, type SetTarget, nextTarget } from './progression.ts'
+import { type Hold, type ProgressionInput, type SetTarget, progress } from './progression.ts'
 
 /**
  * A prescription as an athlete can load it (#36): its weight the heaviest their equipment loads
@@ -30,21 +30,25 @@ export function nextLoadableTarget(
   readonly shown: SetTarget
   readonly target: SetTarget
   readonly limit: LoadLimit | null
+  /** Why the rule held, as it told it — see `progress`. */
+  readonly held: Hold | null
 } {
   const asked = loadableTarget(load, input.target)
   const shown = asked.target
-  const next = nextTarget({ ...input, target: shown })
+  const { target: next, held } = progress({ ...input, target: shown })
   // Its weight held, it is where the prescription as shown stopped — 25 kg asked of dumbbells
   // topping out at 24 is shown as 24, and is still the heaviest — though its reps may have climbed.
-  if (next.weightG === shown.weightG) return { shown, target: next, limit: asked.limit }
+  if (next.weightG === shown.weightG) return { shown, target: next, limit: asked.limit, held }
   if (load === null || next.weightG === null || shown.weightG === null) {
-    return { shown, ...loadableTarget(load, next) }
+    return { shown, ...loadableTarget(load, next), held }
   }
   const up = steppedOn(load, shown.weightG, 1)
   // Nowhere up to go: the heaviest already.
-  if (up === shown.weightG) return { shown, target: { ...next, weightG: up }, limit: 'heaviest' }
+  if (up === shown.weightG) {
+    return { shown, target: { ...next, weightG: up }, limit: 'heaviest', held }
+  }
   const below = loadable(load, next.weightG)
   return below.weightG >= up
-    ? { shown, target: { ...next, weightG: below.weightG }, limit: below.limit }
-    : { shown, target: { ...next, weightG: up }, limit: null }
+    ? { shown, target: { ...next, weightG: below.weightG }, limit: below.limit, held }
+    : { shown, target: { ...next, weightG: up }, limit: null, held }
 }

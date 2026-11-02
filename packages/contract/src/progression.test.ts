@@ -3,19 +3,25 @@ import {
   type Progression,
   type SessionAttempts,
   type SetTarget,
-  describeProgression,
   nextTarget,
+  progress,
 } from './progression.ts'
+import { describeProgression } from './progression-words.ts'
 import { MAX_DURATION_S, MAX_WEIGHT_G } from './measurement.ts'
 import { formatWeight, kgToG, mToMm } from './units.ts'
 
-/** `sets(12, 12, 10)` at 60kg -> three attempts. */
+/** `sets(60)(12, 12, 10)` -> three attempts at 60 kg; `sets(60, 10)(…)`, each rated RPE 10. */
 const sets =
-  (weightKg: number) =>
+  (weightKg: number, rpe: number | null = null) =>
   (...reps: number[]): SessionAttempts =>
-    reps.map((r) => ({ weightG: kgToG(weightKg), reps: r }))
+    reps.map((r) => ({ weightG: kgToG(weightKg), reps: r, rpe }))
 
 const at60 = sets(60)
+/** Working sets at 60 kg, each `[reps, rpe]`. */
+const rated = (...efforts: (readonly [number, number | null])[]): SessionAttempts =>
+  efforts.map(([reps, rpe]) => ({ weightG: kgToG(60), reps, rpe }))
+/** Working sets at 60 kg, every one rated `rpe`. */
+const all = (rpe: number | null, ...reps: number[]): SessionAttempts => sets(60, rpe)(...reps)
 const target = (reps: number | null, weightKg: number | null): SetTarget => ({
   reps,
   weightG: weightKg === null ? null : kgToG(weightKg),
@@ -163,6 +169,163 @@ describe('nextTarget — linear progression', () => {
     // Most recent first: a miss in the most recent session blocks it.
     expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [missed, clean] })).toEqual(t)
     expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [clean, missed] })).toEqual(t)
+  })
+})
+
+/**
+ * A prescribed RPE is a ceiling (#45): reps ground out past it are not the reps the plan asked for.
+ * A set rated more than half a point over it holds; an unrated set, or an unprescribed RPE, is
+ * judged on its reps and weight alone. See docs/adr/0012-progression-rules.md.
+ */
+describe('nextTarget — a prescribed RPE is a ceiling', () => {
+  const at = (rpe: number | null, t: SetTarget): SetTarget => ({ ...t, rpe })
+  const double = (t: SetTarget, ...sessions: SessionAttempts[]) =>
+    nextTarget({ rule: DOUBLE, target: t, workingSets: 3, sessions })
+  const linear = (t: SetTarget, ...sessions: SessionAttempts[]) =>
+    nextTarget({ rule: LINEAR, target: t, workingSets: 3, sessions })
+
+  // The truth table's effort rows. See docs/adr/0012-progression-rules.md.
+  test('the top of the range ground out past the RPE holds', () => {
+    expect(double(at(8, target(12, 60)), all(10, 12, 12, 12))).toEqual(at(8, target(12, 60)))
+  })
+
+  test('the top of the range within half a point of the RPE adds weight', () => {
+    expect(double(at(8, target(12, 60)), all(8.5, 12, 12, 12))).toEqual(at(8, target(8, 62.5)))
+    expect(double(at(8, target(12, 60)), all(8, 12, 12, 12))).toEqual(at(8, target(8, 62.5)))
+  })
+
+  test('a whole point past the RPE holds — one rep fewer in reserve than prescribed', () => {
+    expect(double(at(8, target(12, 60)), all(9, 12, 12, 12))).toEqual(at(8, target(12, 60)))
+  })
+
+  test('a half-point RPE is cleared by the whole reserve a person can log above it', () => {
+    expect(double(at(7.5, target(12, 60)), all(8, 12, 12, 12))).toEqual(at(7.5, target(8, 62.5)))
+    expect(double(at(7.5, target(12, 60)), all(8.5, 12, 12, 12))).toEqual(at(7.5, target(12, 60)))
+  })
+
+  test('a rep climb ground out past the RPE holds too', () => {
+    expect(double(at(8, target(10, 60)), all(10, 10, 10, 10))).toEqual(at(8, target(10, 60)))
+    expect(double(at(8, target(10, 60)), all(8, 10, 10, 10))).toEqual(at(8, target(11, 60)))
+  })
+
+  test('the hardest working set decides', () => {
+    expect(double(at(8, target(12, 60)), rated([12, 7], [12, 8], [12, 9]))).toEqual(
+      at(8, target(12, 60)),
+    )
+  })
+
+  test('an unrated set is judged on its reps and weight alone', () => {
+    expect(double(at(8, target(12, 60)), all(null, 12, 12, 12))).toEqual(at(8, target(8, 62.5)))
+    expect(double(at(8, target(12, 60)), rated([12, null], [12, 8], [12, null]))).toEqual(
+      at(8, target(8, 62.5)),
+    )
+    expect(double(at(8, target(12, 60)), rated([12, null], [12, 10], [12, null]))).toEqual(
+      at(8, target(12, 60)),
+    )
+  })
+
+  test('with no RPE prescribed, a rated set is judged on its reps and weight alone', () => {
+    expect(double(target(12, 60), all(10, 12, 12, 12))).toEqual(target(8, 62.5))
+  })
+
+  test('far under the RPE still advances one step, never faster', () => {
+    expect(double(at(8, target(12, 60)), all(6, 12, 12, 12))).toEqual(at(8, target(8, 62.5)))
+  })
+
+  test('a set past those prescribed is not judged, nor is a warm-up', () => {
+    const session: SessionAttempts = [
+      { weightG: kgToG(40), reps: 5, rpe: 10, isWarmup: true },
+      ...all(8, 12, 12, 12),
+      { weightG: kgToG(60), reps: 12, rpe: 10 },
+    ]
+    expect(double(at(8, target(12, 60)), session)).toEqual(at(8, target(8, 62.5)))
+  })
+
+  test('linear holds a clean session ground out past the RPE', () => {
+    expect(linear(at(8, target(5, 100)), sets(100, 10)(5, 5, 5))).toEqual(at(8, target(5, 100)))
+    expect(linear(at(8, target(5, 100)), sets(100, 8)(5, 5, 5))).toEqual(at(8, target(5, 102.5)))
+  })
+
+  test('linear waits out a session ground out past the RPE, however long the run', () => {
+    const rule: Progression = { kind: 'linear', incrementG: kgToG(2.5), afterSuccesses: 2 }
+    const t = at(8, target(5, 100))
+    const within = sets(100, 8)(5, 5, 5)
+    const ground = sets(100, 10)(5, 5, 5)
+    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [within, ground] })).toEqual(t)
+  })
+})
+
+/**
+ * Why a rule held (#45): short of the targets, or ground out past the RPE — so neither the athlete
+ * nor the AI reads a hold for effort as a stall. None when it advanced, or had nothing to judge.
+ */
+describe('progress — why a prescription held', () => {
+  const top = { ...target(12, 60), rpe: 8 }
+  const why = (rule: Progression, t: SetTarget, ...sessions: SessionAttempts[]) =>
+    progress({ rule, target: t, workingSets: 3, sessions }).held
+
+  test('it gives the target nextTarget gives', () => {
+    expect(
+      progress({ rule: DOUBLE, target: top, workingSets: 3, sessions: [all(8, 12, 12, 12)] }),
+    ).toEqual({ target: { ...target(8, 62.5), rpe: 8 }, held: null })
+  })
+
+  test('short of the targets', () => {
+    expect(why(DOUBLE, top, all(8, 12, 12, 10))).toEqual({ reason: 'targets' })
+    expect(why(DOUBLE, top, all(8, 12, 12))).toEqual({ reason: 'targets' })
+  })
+
+  test('ground out past the RPE, with the hardest set as rated', () => {
+    expect(why(DOUBLE, top, rated([12, 7], [12, 10], [12, 9]))).toEqual({
+      reason: 'effort',
+      rpe: 10,
+    })
+  })
+
+  test('short of the targets outranks the effort', () => {
+    expect(why(DOUBLE, top, all(10, 12, 12, 10))).toEqual({ reason: 'targets' })
+  })
+
+  test('a session of nothing but warm-ups is short of the targets', () => {
+    const warmups: SessionAttempts = [{ weightG: kgToG(40), reps: 5, isWarmup: true }]
+    expect(why(DOUBLE, top, warmups)).toEqual({ reason: 'targets' })
+  })
+
+  test('none when it advanced, had nothing to judge, or could not move', () => {
+    expect(why(DOUBLE, top, all(8, 12, 12, 12))).toBeNull()
+    expect(why(DOUBLE, top)).toBeNull()
+    expect(why({ kind: 'none' }, top, all(10, 12, 12, 10))).toBeNull()
+    // Bodyweight at the top of its range: cleared, but there is no weight to add.
+    expect(why(DOUBLE, { ...top, weightG: null }, all(8, 12, 12, 12))).toBeNull()
+  })
+
+  test("none at a target's ceiling: it was cleared, and stopped only by the limit", () => {
+    const t: SetTarget = { ...target(5, null), weightG: MAX_WEIGHT_G - 1000 }
+    const session: SessionAttempts = [{ reps: 5, weightG: t.weightG }]
+    expect(progress({ rule: LINEAR, target: t, workingSets: 1, sessions: [session] })).toEqual({
+      target: t,
+      held: null,
+    })
+  })
+
+  test('over a run, the newest session that broke it — none while only waiting for more', () => {
+    const rule: Progression = { kind: 'linear', incrementG: kgToG(2.5), afterSuccesses: 2 }
+    const t = { ...target(5, 100), rpe: 8 }
+    const at100 = (rpe: number, ...reps: number[]): SessionAttempts =>
+      reps.map((r) => ({ weightG: kgToG(100), reps: r, rpe }))
+    expect(why(rule, t, at100(8, 5, 5, 5), at100(10, 5, 5, 5))).toEqual({
+      reason: 'effort',
+      rpe: 10,
+    })
+    expect(why(rule, t, at100(10, 5, 5, 4), at100(10, 5, 5, 5))).toEqual({ reason: 'targets' })
+    expect(why(rule, t, at100(8, 5, 5, 5))).toBeNull()
+  })
+
+  test('a hold or a run is only ever short of its targets', () => {
+    const rule: Progression = { kind: 'linear_duration', incrementS: 15, afterSuccesses: 1 }
+    expect(
+      progress({ rule, target: held(60), workingSets: 1, sessions: [[{ durationS: 45 }]] }).held,
+    ).toEqual({ reason: 'targets' })
   })
 })
 

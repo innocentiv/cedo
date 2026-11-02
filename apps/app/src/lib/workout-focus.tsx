@@ -1,5 +1,4 @@
 import {
-  LOAD_LIMIT_WORDS,
   type EntryTarget,
   type Exercise,
   NO_TARGET,
@@ -8,11 +7,11 @@ import {
   type WeightUnit,
   formatEffort,
   formatSets,
-  formatWithReserve,
   markedSets,
   nextSet,
   nextSetWords,
   prescriptionOf,
+  targetLine,
 } from '@cedo/contract'
 import { ConfirmButton, FocusLogger, Stack, Text } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
@@ -73,8 +72,6 @@ function Focus({
   const words = nextSetWords(entrySets, next, true)
   const target = next?.target ?? asked?.target ?? prescriptionOf(entry)?.target ?? NO_TARGET
   const load = useLoads()(exercise)
-  // Where the athlete's equipment stopped it (#36): their heaviest, or their lightest.
-  const limit = asked?.limit == null ? '' : ` · ${LOAD_LIMIT_WORDS[asked.limit]}`
   const { tracking } = exercise
   return (
     <FocusLogger
@@ -89,13 +86,7 @@ function Focus({
       selected={selected}
       onSelect={onSelect}
       next={{ target, isWarmup: next?.isWarmup ?? false, title: words.title, action: words.action }}
-      progressed={
-        asked === undefined
-          ? null
-          : asked.changed
-            ? `Progressed to ${formatWithReserve(asked.target, tracking, unit)}${limit} · the plan says ${formatEffort(asked.prescribed, tracking, unit)}`
-            : `Prescribed ${formatWithReserve(asked.target, tracking, unit)}${limit}`
-      }
+      progressed={asked === undefined ? null : targetLine(asked, tracking, unit)}
       last={asked?.last == null ? null : `Last time ${formatSets(asked.last, tracking, unit)}`}
       busy={sets.record.busy}
       load={load}

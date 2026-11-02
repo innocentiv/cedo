@@ -12,7 +12,9 @@ const plan = (weightG: number | null): SetTarget => ({
   distanceMm: null,
 })
 const linear = { kind: 'linear' as const, incrementG: 2500, afterSuccesses: 1 }
-const sessionAt = (weightG: number) => [Array.from({ length: 3 }, () => ({ weightG, reps: 8 }))]
+const sessionAt = (weightG: number, rpe: number | null = null) => [
+  Array.from({ length: 3 }, () => ({ weightG, reps: 8, rpe })),
+]
 
 describe('a prescription as it can be loaded', () => {
   test('22.5 kg on 2 kg dumbbells is 22; no weight, or no load known, is left alone', () => {
@@ -40,6 +42,23 @@ describe('progression, against what can be loaded', () => {
       null,
     )
     expect(next.target.weightG).toBe(22_500)
+    expect(next.held).toEqual({ reason: 'targets' })
+  })
+
+  test('why it held is told as the rule told it (#45)', () => {
+    const ground = sessionAt(22_000, 10)
+    const next = nextLoadableTarget(
+      { rule: linear, target: { ...plan(22_500), rpe: 8 }, workingSets: 3, sessions: ground },
+      dumbbells,
+    )
+    expect(next.target.weightG).toBe(22_000)
+    expect(next.held).toEqual({ reason: 'effort', rpe: 10 })
+    expect(
+      nextLoadableTarget(
+        { rule: linear, target: plan(22_500), workingSets: 3, sessions: sessionAt(22_000) },
+        dumbbells,
+      ).held,
+    ).toBeNull()
   })
 
   test('at the heaviest dumbbell, progression stops there and says so', () => {

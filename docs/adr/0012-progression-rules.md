@@ -102,11 +102,59 @@ set from a test or training zones, not lowered by a fixed number of seconds per 
 is a judgement for the user or the AI, through `workout_save_plan`, and the guarantee stays whole: a
 rule never makes a prescription easier, and never makes it faster.
 
+### A prescribed RPE is a ceiling
+
+**Amended 2026-11-02 (#45).** A set could prescribe an RPE and a log could record one, but the rules
+never read it: `3 × 8–12 @ RPE 8` advanced on `12, 12, 12 @ RPE 10` exactly as on `12, 12, 12 @ RPE
+7`. Autoregulated double progression — what both programming sources in use here prescribe (Helms,
+*Muscle & Strength Pyramid*, ch. 4) — adds load when the top of the range is reached *at the
+prescribed effort*. Reps reached by grinding to failure are a different signal, and the answer to it
+is to hold. The case behind it: an athlete logging every set at RPE 10 was too exhausted to finish
+sessions, and their new plan's RPE 7–8 was being undone by a rule that rewarded the grind.
+
+So a prescribed RPE is a **ceiling**, not an aim, and a range is prescribed as its top. A session
+**clears** a rep goal only when, besides its reps and weight, **no prescribed working set was rated
+more than half a point past the RPE** — the hardest set decides. Given `3 × 8–12 @ 60 kg, RPE 8`:
+
+| Logged | Next | Why |
+| --- | --- | --- |
+| `12, 12, 12 @ 10` | hold `12 × 60 kg` | every rep there, ground out past the RPE |
+| `12, 12, 12 @ 9` | hold `12 × 60 kg` | one rep fewer in reserve than prescribed |
+| `12, 12, 12 @ 8.5` | `8 × 62.5 kg` | within half a point |
+| `12, 12, 12 @ 6` | `8 × 62.5 kg` | well under it — still one step, never faster |
+| `12, 12, 12 @ 7, 8, 9` | hold `12 × 60 kg` | the hardest working set decides |
+| `12, 12, 12`, not rated | `8 × 62.5 kg` | judged on reps and weight alone |
+| `10, 10, 10 @ 10` at a target of 10 | hold `10 × 60 kg` | the rep climb is held too |
+
+It applies wherever reps are judged — `linear` and both steps of `double` — and nowhere else: a hold
+or a run has no reps to leave in reserve, and is never rated (#24). Warm-ups and sets past those
+prescribed are not judged, as before.
+
+**Half a point**, because a person logs whole reps in reserve. Against a whole RPE, one rep fewer in
+reserve than prescribed holds — the steady one-rep overshoot the case above was rewriting a plan to
+stop. Against a half (7.5, written by a coach or an AI) the whole reserve just above it clears;
+with no allowance, a person could clear a 7.5 only by logging a full rep easier than asked.
+Rejected: **one point**, which waves through that one-rep overshoot every session.
+
+**An unrated set passes, though an unrecorded pace does not.** The asymmetry is deliberate. A time
+is a measurement, and a prescribed pace is defined by it. RPE is a rating the app never requires:
+held against it, progression would freeze for anyone who logs without rating, and change under
+every log already written. Rejected: treating an unrated set as past its ceiling.
+
+**A hold says why.** `progress()` answers the next prescription with a `Hold` — short of its
+`targets`, or past its RPE (`effort`, with the hardest set's rating) — and none when it advanced or
+had nothing to hold it for. Short of the targets outranks effort; over a run of `afterSuccesses`
+sessions the newest that broke it gives the reason, and a run merely too short has none.
+`workout_progression` and the logger say it, so a lift held for effort is not read as a stall — by
+the athlete, or by an AI about to deload it. `nextTarget()` stays: it is `progress()` without the
+reason.
+
 ## Consequences
 
 - A session **clears** a rep goal only when every prescribed set reached it at no less than the
-  target weight. A partially logged session cannot earn a promotion — otherwise logging one set of
-  an intended three would advance the weight.
+  target weight, none rated more than half a point past a prescribed RPE. A partially logged
+  session cannot earn a promotion — otherwise logging one set of an intended three would advance
+  the weight.
 - Adding a rule kind means extending the union and `nextTarget`, with **no migration**.
 - At a target's ceiling (`MAX_WEIGHT_G`, `MAX_DURATION_S`, …) every rule holds: a suggestion past
   it would fail the API's own response schema, and with it the plan's whole progression and the

@@ -46,6 +46,8 @@ export interface LoggedSet extends Effort {
   readonly entryId: string | null
   readonly sessionId: string
   readonly isWarmup: boolean
+  /** Judged against a prescribed RPE, its ceiling (#45). */
+  readonly rpe: number | null
 }
 
 /**
@@ -101,6 +103,7 @@ export function targetsFrom(
     prescribed: s.current,
     target: s.suggested,
     changed: s.changed,
+    held: s.held,
     limit,
     last: lastByExercise.get(s.exerciseId) ?? null,
   }))
@@ -139,6 +142,7 @@ function suggestForEntry(
     current,
     suggested: next.target,
     changed: !sameTarget(next.shown, next.target),
+    held: next.held,
     sessionsConsidered: sessions.length,
   }
   return { suggestion, limit: next.limit }
@@ -163,6 +167,7 @@ function toSessions(rows: readonly LoggedSet[]): SessionAttempts[] {
       reps: row.reps,
       durationS: row.durationS,
       distanceMm: row.distanceMm,
+      rpe: row.rpe,
       isWarmup: row.isWarmup,
     })
     bySession.set(row.sessionId, list)

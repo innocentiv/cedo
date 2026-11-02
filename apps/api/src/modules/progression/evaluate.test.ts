@@ -50,6 +50,7 @@ const logged = (
   reps,
   durationS: null,
   distanceMm: null,
+  rpe: null,
   isWarmup: false,
   ...more,
 })
@@ -90,6 +91,18 @@ describe('suggesting the next prescription', () => {
       [],
     )
     expect(suggestion?.current).toMatchObject({ weightG: 60_000, reps: 8 })
+  })
+
+  /** A logged RPE reaches the rule (#45), and the suggestion says what held it. */
+  test('a session ground out past the prescribed RPE holds, for effort', () => {
+    const plan = threeWorkingAt60.map((s) => ({ ...s, targetRpe: 8 }))
+    const ground = [1, 2, 3].map(() => logged('monday', 60_000, 8, { rpe: 10 }))
+    const [suggestion] = suggestFor([entry(LINEAR)], plan, ground)
+    expect(suggestion?.changed).toBe(false)
+    expect(suggestion?.held).toEqual({ reason: 'effort', rpe: 10 })
+
+    const [missed] = suggestFor([entry(LINEAR)], plan, [logged('monday', 60_000, 8)])
+    expect(missed?.held).toEqual({ reason: 'targets' })
   })
 
   /** The loader sends sessions newest first; the evaluator must keep them in that order. */

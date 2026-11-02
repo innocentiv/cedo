@@ -2468,6 +2468,62 @@ test(
 )
 
 /**
+ * A prescribed RPE is a ceiling (#45): every rep done, but ground out with none left in reserve
+ * against two prescribed, holds the target — and the logger says why, since last time's sets show
+ * the reps were all there.
+ */
+test(
+  'a session ground out past its RPE holds the next one, and the logger says why',
+  async () => {
+    await withApp('held-for-effort', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('he'))
+      const mine = await page.client()
+      const [bench] = (await mine.exercises.list({ q: 'Bench', limit: 1 })).items
+      if (bench === undefined) throw new Error('The seeded library has no bench press')
+      const plan = await mine.workouts.create({ name: 'Strength', notes: null })
+      const five = { targetReps: 5, targetWeightG: 60_000, targetRpe: 8 }
+      await mine.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [
+            {
+              name: 'Heavy',
+              entries: [
+                {
+                  exerciseId: bench.id,
+                  progression: { kind: 'linear', incrementG: 2500, afterSuccesses: 1 },
+                  sets: [five, five, five],
+                },
+              ],
+            },
+          ],
+        }),
+      )
+
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await app.workouts.startDay(0)
+      const first = app.session.entry(0)
+      expect(await first.target()).toBe('Prescribed 5 × 60 kg · 2 in reserve')
+      for (let set = 0; set < 3; set += 1) {
+        await first.reserve('0')
+        await first.log()
+      }
+      await app.session.finish()
+
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await app.workouts.startDay(0)
+      const next = app.session.entry(0)
+      expect(await next.value('weight')).toBe('60')
+      expect(await next.target()).toBe('Held at 5 × 60 kg · 2 in reserve · a recent set left 0')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * The workout's own moves (#24): once an entry has all it asked, the set just logged offers one
  * more; a swap mid-plan takes the focus, logged with no entry, and rests the default two minutes,
  * there being no entry to say otherwise. When the day is done, and which entry "+ set" goes to, are

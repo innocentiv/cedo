@@ -119,18 +119,30 @@ export function suggestionLines(
       const basis = `${s.sessionsConsidered} session${s.sessionsConsidered === 1 ? '' : 's'} of history`
       return s.changed
         ? `${s.exerciseName}: ${from} -> ${to}  (${s.rule.kind}, from ${basis})`
-        : `${s.exerciseName}: hold at ${from}  (${s.rule.kind}, from ${basis})`
+        : `${s.exerciseName}: hold at ${from}${heldFor(s)}  (${s.rule.kind}, from ${basis})`
     })
     .join('\n')
 }
 
+/** A target with its RPE — the ceiling a set is judged against (#45). */
 function describeTarget(
   target: ProgressionSuggestion['current'],
   tracking: TrackingMode,
   unit: WeightUnit,
 ): string {
   const effort = formatEffort(target, tracking, unit)
-  return effort === '—' ? 'no target set' : effort
+  return effort === '—' ? 'no target set' : `${effort}${atRpe(target.rpe)}`
+}
+
+/**
+ * Why it held (#45): ` — held for effort: a working set at RPE 10, past RPE 8`, so the AI does not
+ * read a lift done harder than prescribed as a stall — or ` — held: short of the targets`. Nothing
+ * when nothing held it: no history yet, or a run of clean sessions still too short.
+ */
+function heldFor({ held, current }: ProgressionSuggestion): string {
+  if (held === null) return ''
+  if (held.reason === 'targets') return ' — held: short of the targets'
+  return ` — held for effort: a working set at RPE ${held.rpe}, past RPE ${current.rpe ?? '—'}`
 }
 
 /**

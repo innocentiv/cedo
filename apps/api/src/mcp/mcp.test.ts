@@ -12,6 +12,7 @@ import {
   mcpAddress,
   type TrackingMode,
   Workout,
+  WorkoutSession,
   PlanSave,
   ageLine,
   ageThisYear,
@@ -753,6 +754,90 @@ describe('a past set corrected', () => {
     })
     expect(body.result?.isError).toBe(true)
     expect(textOf(body)).toContain('No such session')
+  })
+})
+
+/**
+ * A prescribed RPE is a ceiling (#45). The AI is told why a rule held — or it reads a hold for
+ * effort as a stall, and deloads a lift that only needed to be done at the effort prescribed.
+ */
+describe('workout_progression says why it held', () => {
+  const post = async (path: string, body: unknown, method = 'POST') => {
+    const res = await alice.wire(path, { method, body: JSON.stringify(body) })
+    if (res.status >= 300) throw new Error(`${method} ${path}: ${String(res.status)}`)
+    return res.body
+  }
+
+  /** A bench planned at 60 kg for three sets of eight at RPE 8, trained once at `rpe`. */
+  async function trainedAt(rpe: number | null, done: readonly number[] = [8, 8, 8]) {
+    const bench = expectContract(
+      Exercise,
+      await post('/exercises', {
+        name: 'Bench',
+        muscles: [{ muscle: 'pectoralis_major', loadPct: 100 }],
+      }),
+    )
+    const workout = expectContract(Workout, await post('/workouts', { name: 'Push' }))
+    const set = { targetReps: 8, targetWeightG: 60_000, targetRpe: 8 }
+    const plan = expectContract(
+      Workout,
+      await post(
+        `/workouts/${workout.id}/plan`,
+        {
+          days: [
+            {
+              name: 'A',
+              entries: [
+                {
+                  exerciseId: bench.id,
+                  sets: [set, set, set],
+                  progression: { kind: 'linear', incrementG: 2500, afterSuccesses: 1 },
+                },
+              ],
+            },
+          ],
+        },
+        'PUT',
+      ),
+    )
+    const dayId = plan.days[0]?.id ?? ''
+    const entryId = plan.days[0]?.entries[0]?.id ?? ''
+    const session = expectContract(
+      WorkoutSession,
+      await post('/sessions', { workoutId: workout.id, dayId }),
+    )
+    for (const reps of done) {
+      await post(`/sessions/${session.id}/logs`, {
+        exerciseId: bench.id,
+        entryId,
+        weightG: 60_000,
+        reps,
+        rpe,
+      })
+    }
+    await post(`/sessions/${session.id}`, { endedAt: new Date().toISOString() }, 'PATCH')
+    const result = await callTool(await mintPat(alice), 'workout_progression', {
+      workoutId: workout.id,
+    })
+    return textOf(result.body)
+  }
+
+  test('a session ground out past the RPE holds, for effort', async () => {
+    expect(await trainedAt(10)).toBe(
+      'Bench: hold at 8 × 60 kg @ RPE 8 — held for effort: a working set at RPE 10, past RPE 8  (linear, from 1 session of history)',
+    )
+  })
+
+  test('a session short of its reps holds, and says so', async () => {
+    expect(await trainedAt(8, [8, 8, 6])).toBe(
+      'Bench: hold at 8 × 60 kg @ RPE 8 — held: short of the targets  (linear, from 1 session of history)',
+    )
+  })
+
+  test('a session within it advances, with its ceiling', async () => {
+    expect(await trainedAt(8)).toBe(
+      'Bench: 8 × 60 kg @ RPE 8 -> 8 × 62.5 kg @ RPE 8  (linear, from 1 session of history)',
+    )
   })
 })
 

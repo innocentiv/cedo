@@ -19,7 +19,7 @@ const post = async (path: string, body: unknown, method = 'POST') => {
 }
 
 /** A dumbbell press planned at `weightG` for three sets of eight, linear by 2.5 kg. */
-async function planned(weightG: number) {
+async function planned(weightG: number, targetRpe: number | null = null) {
   const press = expectContract(
     Exercise,
     await post('/exercises', {
@@ -29,7 +29,7 @@ async function planned(weightG: number) {
     }),
   )
   const workout = expectContract(Workout, await post('/workouts', { name: 'Push' }))
-  const set = { targetReps: 8, targetWeightG: weightG }
+  const set = { targetReps: 8, targetWeightG: weightG, targetRpe }
   const plan = expectContract(
     Workout,
     await post(
@@ -65,8 +65,8 @@ const start = async (p: Plan) =>
     await post('/sessions', { workoutId: p.workoutId, dayId: p.dayId }),
   ).id
 
-/** A session of three sets of eight at `weightG`, finished. */
-async function trained(p: Plan, weightG: number): Promise<void> {
+/** A session of three sets of eight at `weightG`, each rated `rpe`, finished. */
+async function trained(p: Plan, weightG: number, rpe: number | null = null): Promise<void> {
   const id = await start(p)
   for (let i = 0; i < 3; i += 1) {
     await post(`/sessions/${id}/logs`, {
@@ -74,6 +74,7 @@ async function trained(p: Plan, weightG: number): Promise<void> {
       entryId: p.entryId,
       weightG,
       reps: 8,
+      rpe,
     })
   }
   await post(`/sessions/${id}`, { endedAt: new Date().toISOString() }, 'PATCH')
@@ -132,5 +133,25 @@ describe("targets in the athlete's weights", () => {
     expect(target?.target.weightG).toBe(22_500)
     expect(target?.changed).toBe(false)
     expect(target?.limit).toBeNull()
+  })
+})
+
+/** A prescribed RPE is a ceiling (#45): the logger is told when a set ground out past it held. */
+describe('a prescribed RPE, as the logger is told it', () => {
+  test('a session ground out past it holds, and says why', async () => {
+    const p = await planned(60_000, 8)
+    await trained(p, 60_000, 10)
+    const target = await targetOf(p)
+    expect(target?.target.weightG).toBe(60_000)
+    expect(target?.changed).toBe(false)
+    expect(target?.held).toEqual({ reason: 'effort', rpe: 10 })
+  })
+
+  test('a session within it advances, and nothing held it', async () => {
+    const p = await planned(60_000, 8)
+    await trained(p, 60_000, 8)
+    const target = await targetOf(p)
+    expect(target?.target.weightG).toBe(62_500)
+    expect(target?.held).toBeNull()
   })
 })

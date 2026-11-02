@@ -186,6 +186,11 @@ Both judge and answer in weights the athlete can load (#36, `nextLoadableTarget`
 `workout_get` keeps the plan's weights as written, a set the athlete cannot load as written
 followed by `(loads 22 kg)` — or `, the heaviest` — for them, or for `athlete`.
 
+Each target is said with its RPE, a ceiling (#45), and each hold with its reason: `— held: short
+of the targets`, or `— held for effort: a working set at RPE 10, past RPE 8`. The second is not a
+stall, and no reason to deload: the reps were there, done harder than prescribed. `progress()` is
+what gives the reason; see [adr/0012](adr/0012-progression-rules.md).
+
 **Someone else's training** (#11) — `athlete_list` · `session_list` · `session_get` — is read
 through the same tools. A member who shares their training with a group (`GLOSSARY.md`, "Share
 training") is an **athlete** to its editors; `athlete_list` names them, each with the id that
