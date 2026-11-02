@@ -2,7 +2,7 @@ import { type Load, type LoadLimit, loadable, steppedOn } from './load.ts'
 import { type Held, type ProgressionInput, type SetTarget, progress } from './progression.ts'
 
 /** A prescription in a weight an athlete can load, and where their equipment stopped it, if it did. */
-interface Loadable {
+interface LoadableTarget {
   readonly target: SetTarget
   readonly limit: LoadLimit | null
 }
@@ -11,7 +11,7 @@ interface Loadable {
  * A prescription as an athlete can load it (#36): its weight the heaviest their equipment loads
  * that is not above it, and where it stopped, if at an end. Unknown load, or no weight, leaves it.
  */
-export function loadableTarget(load: Load | null, target: SetTarget): Loadable {
+export function loadableTarget(load: Load | null, target: SetTarget): LoadableTarget {
   if (target.weightG === null) return { target, limit: null }
   const { weightG, limit } = loadable(load, target.weightG)
   return { target: { ...target, weightG }, limit }
@@ -25,7 +25,7 @@ export function loadableTarget(load: Load | null, target: SetTarget): Loadable {
 export function nextLoadableTarget(
   input: ProgressionInput,
   load: Load | null,
-): Loadable & {
+): LoadableTarget & {
   /** The prescription as shown — what a session is judged against, and what "moved" is told from. */
   readonly shown: SetTarget
   /** Why the rule held, as it told it — see `progress`. */
@@ -42,7 +42,7 @@ export function nextLoadableTarget(
  * asks, but always one weight up at least: a 1 kg increase on 2 kg dumbbells moves 22 to 24, where
  * stepping down would hold it there for good, and double progression would climb its reps forever.
  */
-function fitted(load: Load | null, asked: Loadable, next: SetTarget): Loadable {
+function fitted(load: Load | null, asked: LoadableTarget, next: SetTarget): LoadableTarget {
   const shown = asked.target
   // Its weight held, it is where the prescription as shown stopped — 25 kg asked of dumbbells
   // topping out at 24 is shown as 24, and is still the heaviest — though its reps may have climbed.
