@@ -249,6 +249,13 @@ The same rights gate `GET /admin/status` and `GET /admin/slow-queries`, which re
 **A tool handler calls one service function and formats the result. It contains no domain logic.**
 That is the same rule as an HTTP route handler, and for the same reason.
 
+What formatting needs to read is not a second service call. A line names an exercise's or a
+workout's owning group — `mine`, `library`, or the group's name (#47) — and the response carries
+only `ownerGroupId`. So the tools that print those lines also call `groupNamesOf(caller)`
+(`format-group.ts`). It reads the caller's own groups, which own everything they can see, and
+decides nothing. The app does the same from the groups it already holds. Putting the name on
+every ownable response instead would add a join to every list, for a word only these lines print.
+
 ### Task-shaped, not endpoint-shaped
 
 Do not mirror the REST surface. `session_log` records a whole session — start, every set, finish —
