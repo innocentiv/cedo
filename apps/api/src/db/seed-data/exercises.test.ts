@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { ExerciseCreate, MUSCLE_SLUGS, TRACKING_MODES } from '@cedo/contract'
+import { ExerciseCreate, MUSCLE_SLUGS, TRACKING_MODES, parseMediaUrl } from '@cedo/contract'
 import { EXERCISE_LIBRARY, exerciseInputOf } from './exercises.ts'
 
 /**
@@ -33,6 +33,20 @@ describe('starter exercise library', () => {
       (e) => e.instructions.trim() === '' || e.description.trim() === '',
     ).map((e) => e.name)
     expect(bare).toEqual([])
+  })
+
+  /**
+   * A video id was checked to exist when it was chosen (YouTube's oEmbed answered for it); this
+   * checks it is still a YouTube video id at all, and that only the entries known to have no video
+   * fall back to a search.
+   */
+  test('every entry names a YouTube video, but the ones none was found for', () => {
+    const notYouTube = EXERCISE_LIBRARY.filter((e) => e.video !== undefined)
+      .filter((e) => parseMediaUrl(e.video ?? '')?.provider !== 'youtube')
+      .map((e) => e.name)
+    expect(notYouTube).toEqual([])
+    const searched = EXERCISE_LIBRARY.filter((e) => e.video === undefined).map((e) => e.name)
+    expect(searched).toEqual(['Incline Dumbbell Y-Raise'])
   })
 
   test('every referenced muscle exists in the hardcoded set', () => {

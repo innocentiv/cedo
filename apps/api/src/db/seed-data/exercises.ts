@@ -26,6 +26,11 @@ export interface SeedExercise {
   readonly description: string
   /** How to do it: setup, then the cues that matter, one line each. */
   readonly instructions: string
+  /**
+   * A YouTube demonstration, as `https://www.youtube.com/watch?v=<id>` — checked to exist when it
+   * was chosen. Left out, the entry links a YouTube search for its name instead (see seed.ts).
+   */
+  readonly video?: string
   readonly muscles: readonly (readonly [MuscleSlug, number])[]
 }
 
@@ -51,6 +56,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   // ---- squat pattern ----
   {
     name: 'Barbell Back Squat',
+    video: 'https://www.youtube.com/watch?v=1oed-UmAxFs',
     equipment: ['barbell', 'rack'],
     description:
       'Bar on the upper back, squat to depth and drive up. The reference lower-body lift for quads, glutes and adductors.',
@@ -71,6 +77,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Front Squat',
+    video: 'https://www.youtube.com/watch?v=1g0sh_6K7AU',
     equipment: ['barbell', 'rack'],
     description:
       'Bar racked on the front delts. More upright than a back squat, so more quad and trunk, and usually deeper.',
@@ -88,6 +95,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Hack Squat',
+    video: 'https://www.youtube.com/watch?v=VY8ko6ecfso',
     equipment: ['hack_squat'],
     description:
       'Machine squat with the back supported, so the quads can be pushed hard without the trunk limiting the set. Hardest at the bottom.',
@@ -104,6 +112,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Smith Machine Squat',
+    video: 'https://www.youtube.com/watch?v=8TEK4DPVVPs',
     equipment: ['smith_machine'],
     description:
       'Squat on a fixed bar path. Feet forward shifts load to the glutes, under the bar to the quads. A stand-in for a hack squat.',
@@ -121,6 +130,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Bulgarian Split Squat',
+    video: 'https://www.youtube.com/watch?v=iwV9rTHKrOg',
     equipment: ['dumbbells', 'flat_bench'],
     isUnilateral: true,
     description:
@@ -139,6 +149,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dumbbell Lunge',
+    video: 'https://www.youtube.com/watch?v=_qSuiZ62vqI',
     equipment: ['dumbbells'],
     isUnilateral: true,
     description:
@@ -158,6 +169,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Leg Press',
+    video: 'https://www.youtube.com/watch?v=K4_6lWell1E',
     equipment: ['leg_press'],
     description:
       'Machine squat pattern with the trunk supported. Low feet bias the quads, high feet the glutes, wide feet the adductors.',
@@ -175,6 +187,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Goblet Squat',
+    video: 'https://www.youtube.com/watch?v=Xjo_fY9Hl9w',
     equipment: ['dumbbells'],
     description:
       'Weight held at the chest. Self-correcting technique, so the best squat to learn on; outgrown once the dumbbell gets awkward to hold.',
@@ -192,6 +205,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Leg Extension',
+    video: 'https://www.youtube.com/watch?v=gI0cn4DMFFI',
     equipment: ['leg_extension'],
     description:
       'Isolated knee extension. With the seat reclined it is one of the few exercises that loads the rectus femoris at length.',
@@ -204,6 +218,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Sissy Squat',
+    video: 'https://www.youtube.com/watch?v=r7ezSWy69Hc',
     equipment: [],
     tracking: 'bodyweight_reps',
     description:
@@ -220,6 +235,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Reverse Nordic',
+    video: 'https://www.youtube.com/watch?v=TOe2ZzzkuOA',
     equipment: [],
     tracking: 'bodyweight_reps',
     description:
@@ -238,6 +254,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   // ---- hinge pattern ----
   {
     name: 'Conventional Deadlift',
+    video: 'https://www.youtube.com/watch?v=uSdwYWtj8fA',
     equipment: ['barbell'],
     description:
       'Pull from the floor with a neutral spine. Loads the whole posterior chain; mostly a strength lift, costly to recover from.',
@@ -259,6 +276,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Romanian Deadlift',
+    video: 'https://www.youtube.com/watch?v=_oyxCn2iSjU',
     equipment: ['barbell'],
     description:
       'Hinge from the top with soft knees. Loads the hamstrings and glutes hardest in the stretch.',
@@ -277,6 +295,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dumbbell Romanian Deadlift',
+    video: 'https://www.youtube.com/watch?v=gW-7wKSAhEY',
     equipment: ['dumbbells'],
     description:
       'A Romanian deadlift with a dumbbell in each hand: the hamstring stretch without a barbell.',
@@ -294,6 +313,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Stiff-Leg Deadlift',
+    video: 'https://www.youtube.com/watch?v=hURqtvoZi3c',
     equipment: ['barbell'],
     description:
       'Hinge with the knees nearly straight, each rep from the floor or a dead stop. More hamstring stretch than a Romanian deadlift; heavy, so not a lift to take to failure.',
@@ -311,6 +331,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Good Morning',
+    video: 'https://www.youtube.com/watch?v=Yape6k1xU1I',
     equipment: ['barbell', 'rack'],
     description:
       'Hinge with the bar on the back. Hamstrings and spinal erectors in the stretch; a strength accessory for the squat and deadlift.',
@@ -327,6 +348,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Hip Thrust',
+    video: 'https://www.youtube.com/watch?v=S_uZP4UH6J0',
     equipment: ['barbell', 'flat_bench'],
     description:
       'Shoulders on a bench, drive the hips to lockout. Loads the glutes hardest at the top, so it complements squats and hinges.',
@@ -344,6 +366,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Back Extension',
+    video: 'https://www.youtube.com/watch?v=xyV2rF8ismg',
     equipment: ['back_extension_bench'],
     tracking: 'bodyweight_reps',
     description:
@@ -362,6 +385,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Seated Leg Curl',
+    video: 'https://www.youtube.com/watch?v=ELOCsoDSmrg',
     equipment: ['seated_leg_curl'],
     description:
       'Knee flexion with the hip bent, which stretches the hamstrings further than a lying curl. The first-choice hamstring isolation.',
@@ -377,6 +401,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Lying Leg Curl',
+    video: 'https://www.youtube.com/watch?v=5Uvvd6NsCyU',
     equipment: ['lying_leg_curl'],
     description:
       'Isolated knee flexion lying face down. A seated curl stretches the hamstrings more; use this when that is unavailable.',
@@ -392,6 +417,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Nordic Ham Curl',
+    video: 'https://www.youtube.com/watch?v=TyKAicsT7Dg',
     equipment: [],
     tracking: 'bodyweight_reps',
     description:
@@ -410,6 +436,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Kettlebell Swing',
+    video: 'https://www.youtube.com/watch?v=OoIzSrXeqjY',
     equipment: ['kettlebells'],
     description:
       'Ballistic hinge for power and conditioning. Power from the hips, not a front raise.',
@@ -429,6 +456,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   // ---- horizontal push ----
   {
     name: 'Barbell Bench Press',
+    video: 'https://www.youtube.com/watch?v=GcT-1zLjaKk',
     equipment: ['barbell', 'rack', 'flat_bench'],
     description:
       'Flat bench press. The main horizontal press for chest, front delts and triceps, and the strength benchmark for the upper body.',
@@ -446,6 +474,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Smith Machine Bench Press',
+    video: 'https://www.youtube.com/watch?v=AfcBc_nSHIc',
     equipment: ['smith_machine', 'flat_bench'],
     description: 'Bench press on a fixed path: easier to push close to failure without a spotter.',
     instructions: steps(
@@ -461,6 +490,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Flat Dumbbell Press',
+    video: 'https://www.youtube.com/watch?v=Y_7aHqXeCfQ',
     equipment: ['dumbbells', 'flat_bench'],
     description:
       'Bench press with dumbbells. A deeper stretch on the chest than a barbell, and each side works on its own.',
@@ -477,6 +507,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Machine Chest Press',
+    video: 'https://www.youtube.com/watch?v=xUm0BiZCWlQ',
     equipment: ['chest_press'],
     description:
       'Horizontal press with the path fixed and the trunk supported. Safe to push to failure, so a staple of high-effort programs.',
@@ -493,6 +524,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Incline Dumbbell Press',
+    video: 'https://www.youtube.com/watch?v=wY4iYfQptu8',
     equipment: ['dumbbells', 'incline_bench'],
     description:
       'Around 30 degrees. More upper chest and front delt than flat pressing; most programs include an incline press.',
@@ -509,6 +541,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Incline Barbell Bench Press',
+    video: 'https://www.youtube.com/watch?v=vbc9E9_Clb4',
     equipment: ['barbell', 'rack', 'incline_bench'],
     description:
       'Bench press on an incline. Upper chest and front delts, with a higher touch point and a more vertical path.',
@@ -525,6 +558,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Close-Grip Bench Press',
+    video: 'https://www.youtube.com/watch?v=nEF0bv2FW94',
     equipment: ['barbell', 'rack', 'flat_bench'],
     description:
       'Bench press with a narrower grip. More triceps and upper chest; a strength accessory that carries over to the bench.',
@@ -541,6 +575,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Push-Up',
+    video: 'https://www.youtube.com/watch?v=7oRwqK6sfdk',
     equipment: [],
     tracking: 'bodyweight_reps',
     description:
@@ -559,6 +594,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dip',
+    video: 'https://www.youtube.com/watch?v=U7HeutDqS_w',
     equipment: ['parallel_bars'],
     tracking: 'bodyweight_reps',
     description:
@@ -576,6 +612,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Cable Fly',
+    video: 'https://www.youtube.com/watch?v=7Sb0HtOfCaI',
     equipment: ['cable_crossover'],
     description:
       'Isolated chest adduction with tension through the full range. Pulley height picks the region: low for upper chest, high for lower.',
@@ -591,6 +628,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Pec Deck',
+    video: 'https://www.youtube.com/watch?v=-DZXcuPi4vk',
     equipment: ['pec_deck'],
     description:
       'Machine fly. Chest isolation that stays loaded in the stretch and is safe to take to failure.',
@@ -606,6 +644,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dumbbell Fly',
+    video: 'https://www.youtube.com/watch?v=QENKPHhQVi4',
     equipment: ['dumbbells', 'flat_bench'],
     description:
       'Fly with dumbbells: heavy in the stretch, nearly nothing at the top. Work the bottom half.',
@@ -623,6 +662,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   // ---- vertical push ----
   {
     name: 'Overhead Press',
+    video: 'https://www.youtube.com/watch?v=5QSuBRkZPoo',
     equipment: ['barbell', 'rack'],
     description:
       'Strict barbell press from the shoulders, standing or seated. Front delts and triceps, and an upper-body strength benchmark.',
@@ -642,6 +682,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Seated Dumbbell Shoulder Press',
+    video: 'https://www.youtube.com/watch?v=8kwDkC8JhdY',
     equipment: ['dumbbells', 'incline_bench'],
     description:
       'Shoulder press with dumbbells on an upright bench. Front and side delts; standing works too and adds trunk.',
@@ -658,6 +699,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Standing Dumbbell Shoulder Press',
+    video: 'https://www.youtube.com/watch?v=e_f5oodNEcI',
     equipment: ['dumbbells'],
     description:
       'Shoulder press with dumbbells, standing: the same delts as seated, more trunk, and no bench needed.',
@@ -675,6 +717,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Machine Shoulder Press',
+    video: 'https://www.youtube.com/watch?v=Anu8s_nkNpM',
     equipment: ['shoulder_press'],
     description:
       'Vertical press on a fixed path. Front and side delts, safe to take close to failure.',
@@ -691,6 +734,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dumbbell Lateral Raise',
+    video: 'https://www.youtube.com/watch?v=U3Atcn3wFjY',
     equipment: ['dumbbells'],
     description:
       'The basic side-delt isolation; side delts need at least one. Light weight, no swing. Easiest at the bottom.',
@@ -707,6 +751,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Cable Lateral Raise',
+    video: 'https://www.youtube.com/watch?v=nMCQuV6HE3A',
     equipment: ['low_pulley'],
     isUnilateral: true,
     description:
@@ -740,6 +785,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Cable Upright Row',
+    video: 'https://www.youtube.com/watch?v=XoI1t4DqBRY',
     equipment: ['low_pulley'],
     description: 'Side delts and upper traps together. Lead with the elbows.',
     instructions: steps(
@@ -758,6 +804,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   // ---- vertical pull ----
   {
     name: 'Pull-Up',
+    video: 'https://www.youtube.com/watch?v=B3DM8jhWFzA',
     equipment: ['pull_up_bar'],
     tracking: 'bodyweight_reps',
     description:
@@ -777,6 +824,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Assisted Pull-Up',
+    video: 'https://www.youtube.com/watch?v=4wDx0ZCCgk0',
     equipment: ['assisted_pull_up'],
     tracking: 'bodyweight_reps',
     description:
@@ -796,6 +844,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Chin-Up',
+    video: 'https://www.youtube.com/watch?v=dYDJpuDiJGc',
     equipment: ['pull_up_bar'],
     tracking: 'bodyweight_reps',
     description:
@@ -814,6 +863,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Lat Pulldown',
+    video: 'https://www.youtube.com/watch?v=GL3h256d6JM',
     equipment: ['high_pulley'],
     description:
       'Scalable vertical pull. Grip changes the bias: underhand for more biceps, a narrow neutral handle for more lats. Hardest at the bottom, the short end, so lengthened partials suit its last set.',
@@ -831,6 +881,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Cable Lat Pullover',
+    video: 'https://www.youtube.com/watch?v=n3O1jkQyXC4',
     equipment: ['high_pulley'],
     description:
       'Straight-arm pulldown. Isolates the lats without the biceps, with tension through the full range.',
@@ -847,6 +898,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dumbbell Pullover',
+    video: 'https://www.youtube.com/watch?v=uQigJHNgYt0',
     equipment: ['dumbbells', 'flat_bench'],
     description:
       'Lying pullover with one dumbbell. Lats and chest, loaded only in the stretched bottom half.',
@@ -864,6 +916,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Cable Lat Pull-In',
+    video: 'https://www.youtube.com/watch?v=vtUsS1ZispY',
     equipment: ['adjustable_pulley'],
     isUnilateral: true,
     description:
@@ -883,6 +936,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   // ---- horizontal pull ----
   {
     name: 'Barbell Row',
+    video: 'https://www.youtube.com/watch?v=Nr6Gu67wf40',
     equipment: ['barbell'],
     description:
       'Hinged torso, pull to the upper abs. Mid back and lats. Pulling each rep from the floor makes it a Pendlay row.',
@@ -902,6 +956,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Seated Cable Row',
+    video: 'https://www.youtube.com/watch?v=xjlz8lRXOOI',
     equipment: ['low_pulley'],
     description:
       'Chest tall, pull to the abdomen without rocking. Elbows tucked for lats, flared for upper back. Hardest at the short end, so lengthened partials suit its last set.',
@@ -919,6 +974,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Single-Arm Dumbbell Row',
+    video: 'https://www.youtube.com/watch?v=Llp307FAKz0',
     equipment: ['dumbbells', 'flat_bench'],
     isUnilateral: true,
     description:
@@ -937,6 +993,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Chest-Supported Dumbbell Row',
+    video: 'https://www.youtube.com/watch?v=Nx0TzjgsI-0',
     equipment: ['dumbbells', 'incline_bench'],
     description:
       'Row lying chest-down on an incline bench. No lower-back fatigue, so the upper back can be taken to failure. Hardest at the short end, so lengthened partials suit its last set.',
@@ -955,6 +1012,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Face Pull',
+    video: 'https://www.youtube.com/watch?v=SdyH7cnJnkg',
     equipment: ['high_pulley'],
     description:
       'Rope pull to the face with high elbows. Rear delts, mid traps and rotator cuff together; a reverse fly isolates the rear delts better.',
@@ -972,6 +1030,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Reverse Pec Deck',
+    video: 'https://www.youtube.com/watch?v=Y7ZKBP5bMwg',
     equipment: ['pec_deck'],
     description:
       'Rear-delt fly on the pec deck. The cleanest rear-delt isolation, which grows best with direct work.',
@@ -988,6 +1047,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Reverse Cable Fly',
+    video: 'https://www.youtube.com/watch?v=IaPphp40p64',
     equipment: ['cable_crossover'],
     description: 'Rear-delt fly between two cables, crossed in front for a long stretch.',
     instructions: steps(
@@ -1003,6 +1063,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Reverse Dumbbell Fly',
+    video: 'https://www.youtube.com/watch?v=unjx98CZqbQ',
     equipment: ['dumbbells', 'incline_bench'],
     description:
       'Rear-delt fly lying chest-down on an incline bench: rear delts with nothing but dumbbells.',
@@ -1019,6 +1080,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Barbell Shrug',
+    video: 'https://www.youtube.com/watch?v=r2wisVX3ayc',
     equipment: ['barbell'],
     description:
       'Upper traps, which need direct work for full development. Pause at the top and stretch at the bottom.',
@@ -1035,6 +1097,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dumbbell Shrug',
+    video: 'https://www.youtube.com/watch?v=BVoAUscFYFo',
     equipment: ['dumbbells'],
     description: 'Upper-trap shrug with dumbbells at the sides: a freer path than a barbell.',
     instructions: steps(
@@ -1050,6 +1113,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Trap Bar Shrug',
+    video: 'https://www.youtube.com/watch?v=IJiEOqZgTz0',
     equipment: ['trap_bar'],
     description: 'Upper-trap shrug with the load at the sides and a heavy bar.',
     instructions: steps(
@@ -1067,6 +1131,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   // ---- arms ----
   {
     name: 'Barbell Curl',
+    video: 'https://www.youtube.com/watch?v=QZEqB6wUPxQ',
     equipment: ['barbell'],
     description: 'Standing curl with a straight bar. The heaviest-loading biceps curl.',
     instructions: steps(
@@ -1082,6 +1147,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'EZ-Bar Curl',
+    video: 'https://www.youtube.com/watch?v=mANRmIqemHY',
     equipment: ['ez_bar'],
     description: 'Standing curl on the angled bar, easier on the wrists than a straight bar.',
     instructions: steps(
@@ -1097,6 +1163,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dumbbell Curl',
+    video: 'https://www.youtube.com/watch?v=d_TfENBv38s',
     equipment: ['dumbbells'],
     description: 'Standing curl with dumbbells, palms turning up as they rise.',
     instructions: steps(
@@ -1112,6 +1179,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Incline Dumbbell Curl',
+    video: 'https://www.youtube.com/watch?v=5uAAU3sUURA',
     equipment: ['dumbbells', 'incline_bench'],
     description:
       'Curl with the arms hanging behind the body, which stretches the biceps at the shoulder. Hardest in the stretch.',
@@ -1128,6 +1196,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Bayesian Cable Curl',
+    video: 'https://www.youtube.com/watch?v=1buGhj5AWbo',
     equipment: ['low_pulley'],
     isUnilateral: true,
     description:
@@ -1145,6 +1214,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dumbbell Preacher Curl',
+    video: 'https://www.youtube.com/watch?v=-2uA7XYHGcc',
     equipment: ['dumbbells', 'incline_bench'],
     isUnilateral: true,
     description:
@@ -1162,6 +1232,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Hammer Curl',
+    video: 'https://www.youtube.com/watch?v=LRr6xK2uRXs',
     equipment: ['dumbbells'],
     description: 'Neutral grip. Biases brachialis and brachioradialis over biceps.',
     instructions: steps(
@@ -1177,6 +1248,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Triceps Pushdown',
+    video: 'https://www.youtube.com/watch?v=Rpv1iD4u7Us',
     equipment: ['high_pulley'],
     description:
       'Elbows pinned, extend to lockout. Triceps with the arms at the sides; also called the pressdown.',
@@ -1189,6 +1261,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Overhead Cable Triceps Extension',
+    video: 'https://www.youtube.com/watch?v=jioCqlKKrJc',
     equipment: ['adjustable_pulley'],
     description:
       'Triceps extension with the arms overhead, which stretches the long head. Intermediates need an overhead variation.',
@@ -1201,6 +1274,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dumbbell Overhead Triceps Extension',
+    video: 'https://www.youtube.com/watch?v=fMOd6RmMlWk',
     equipment: ['dumbbells'],
     description:
       'Overhead triceps extension with one dumbbell. The long-head stretch with no cable.',
@@ -1213,6 +1287,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Skull Crusher',
+    video: 'https://www.youtube.com/watch?v=IB4Wuf7Aqzw',
     equipment: ['ez_bar', 'flat_bench'],
     description: 'Lying triceps extension with an EZ bar. Loads the long head at length.',
     instructions: steps(
@@ -1224,6 +1299,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dumbbell Skull Crusher',
+    video: 'https://www.youtube.com/watch?v=UQuJu-gXQa0',
     equipment: ['dumbbells', 'flat_bench'],
     description:
       'Lying triceps extension with dumbbells, each arm free to find a comfortable path.',
@@ -1236,6 +1312,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Cable Triceps Kickback',
+    video: 'https://www.youtube.com/watch?v=q0LGf0ojb4Y',
     equipment: ['low_pulley'],
     isUnilateral: true,
     description:
@@ -1249,6 +1326,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Reverse Wrist Curl',
+    video: 'https://www.youtube.com/watch?v=YOi0x2yXryA',
     equipment: ['dumbbells'],
     description: 'Direct forearm extensor work. Useful against elbow pain from heavy gripping.',
     instructions: steps(
@@ -1260,6 +1338,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Wrist Curl',
+    video: 'https://www.youtube.com/watch?v=weNYVPk3g1Y',
     equipment: ['dumbbells'],
     description: 'Direct forearm flexor work.',
     instructions: steps(
@@ -1273,6 +1352,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   // ---- hip abduction and glutes ----
   {
     name: 'Cable Hip Abduction',
+    video: 'https://www.youtube.com/watch?v=bGlm-qTnfTI',
     equipment: ['low_pulley'],
     isUnilateral: true,
     description:
@@ -1289,6 +1369,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Machine Hip Abduction',
+    video: 'https://www.youtube.com/watch?v=5O_Y9l__iao',
     equipment: ['hip_abduction'],
     description: 'Seated hip abduction. Glute medius and minimus, both sides at once.',
     instructions: steps(
@@ -1303,6 +1384,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Cable Glute Kickback',
+    video: 'https://www.youtube.com/watch?v=93VKi1D1IB8',
     equipment: ['low_pulley'],
     isUnilateral: true,
     description:
@@ -1322,6 +1404,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   // ---- core ----
   {
     name: 'Plank',
+    video: 'https://www.youtube.com/watch?v=s6coxb732BA',
     equipment: [],
     tracking: 'duration',
     description:
@@ -1340,6 +1423,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Side Plank',
+    video: 'https://www.youtube.com/watch?v=Zu4so2D2atM',
     equipment: [],
     tracking: 'duration',
     isUnilateral: true,
@@ -1357,6 +1441,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Hanging Leg Raise',
+    video: 'https://www.youtube.com/watch?v=Pr1ieGZ5atk',
     equipment: ['pull_up_bar'],
     tracking: 'bodyweight_reps',
     description:
@@ -1374,6 +1459,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Roman Chair Leg Raise',
+    video: 'https://www.youtube.com/watch?v=nBsP27-x7LU',
     equipment: ['parallel_bars'],
     tracking: 'bodyweight_reps',
     description:
@@ -1391,6 +1477,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Reverse Crunch',
+    video: 'https://www.youtube.com/watch?v=JBAIGjLRX40',
     equipment: [],
     tracking: 'bodyweight_reps',
     description:
@@ -1408,6 +1495,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Cable Crunch',
+    video: 'https://www.youtube.com/watch?v=kc0PRn372lo',
     equipment: ['high_pulley'],
     description:
       'Loaded spinal flexion — an upper-ab movement that can be progressed like any lift. Round the trunk down, do not hinge at the hips.',
@@ -1423,6 +1511,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Pallof Press',
+    video: 'https://www.youtube.com/watch?v=Te5VAYXy0wQ',
     equipment: ['adjustable_pulley'],
     isUnilateral: true,
     description: 'Anti-rotation. Resist the pull rather than producing movement.',
@@ -1439,6 +1528,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dead Bug',
+    video: 'https://www.youtube.com/watch?v=GbSC02oU3To',
     equipment: [],
     tracking: 'bodyweight_reps',
     description: 'Opposite arm and leg, lower back flat throughout. Trunk control, not ab growth.',
@@ -1457,6 +1547,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   // ---- neck ----
   {
     name: 'Plate Neck Curl',
+    video: 'https://www.youtube.com/watch?v=o78kjeBJUBQ',
     equipment: ['weight_plates', 'flat_bench'],
     description:
       'Lying face up on a bench, head off the end, a plate held on the forehead: curl the chin to the chest. The neck grows only with direct work.',
@@ -1469,6 +1560,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Plate Neck Extension',
+    video: 'https://www.youtube.com/watch?v=hYqVUHC-GhE',
     equipment: ['weight_plates', 'flat_bench'],
     description:
       'Lying face down on a bench, head off the end, a plate held on the back of the head: raise the head back.',
@@ -1486,6 +1578,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   // ---- lower leg ----
   {
     name: 'Standing Calf Raise',
+    video: 'https://www.youtube.com/watch?v=yYBAQGtpIyM',
     equipment: ['standing_calf_raise'],
     description:
       'Knee straight, which biases the gastrocnemius. The stretch at the bottom matters more than the height at the top; 6–12 reps suit it.',
@@ -1501,6 +1594,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Leg Press Calf Press',
+    video: 'https://www.youtube.com/watch?v=BUSEATYDXXc',
     equipment: ['leg_press'],
     description:
       'Calf raise on the leg press, knees straight: gastrocnemius-biased, with the trunk supported. 6–12 reps suit it.',
@@ -1516,6 +1610,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Seated Calf Raise',
+    video: 'https://www.youtube.com/watch?v=SVmM6a0dHGU',
     equipment: ['seated_calf_raise'],
     description: 'Knee bent, which biases the soleus. 10–20 reps suit it.',
     instructions: steps(
@@ -1530,6 +1625,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Tibialis Raise',
+    video: 'https://www.youtube.com/watch?v=UmHbtN0iFMg',
     equipment: [],
     tracking: 'bodyweight_reps',
     description: 'Dorsiflexion against a wall. Useful for knee and ankle resilience.',
@@ -1544,6 +1640,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   // ---- carries and conditioning ----
   {
     name: "Farmer's Carry",
+    video: 'https://www.youtube.com/watch?v=8OtwXwrJizk',
     equipment: ['dumbbells'],
     tracking: 'distance_duration',
     description:
@@ -1563,6 +1660,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Dead Hang',
+    video: 'https://www.youtube.com/watch?v=5FQJJvUAYx4',
     equipment: ['pull_up_bar'],
     tracking: 'duration',
     description: 'Passive hang. Grip endurance and shoulder decompression.',
@@ -1580,6 +1678,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Rowing Machine',
+    video: 'https://www.youtube.com/watch?v=DyVEhvBNk-E',
     equipment: ['rowing_ergometer'],
     tracking: 'distance_duration',
     description: 'Low-impact conditioning. Legs, then trunk, then arms. Record distance and time.',

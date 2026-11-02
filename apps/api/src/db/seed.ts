@@ -33,13 +33,13 @@ const unusablePasswordHash = async (): Promise<string> => {
 }
 
 /**
- * Deliberately a YouTube SEARCH url rather than a specific video id. Inventing ids would give
- * every user dead links and broken thumbnails; a search always resolves and stays useful. Users
- * and the AI replace these with real videos through the media endpoints.
+ * The entry's own video — an id checked to exist when it was chosen, never invented — or else a
+ * YouTube SEARCH for its name. An invented id would give every user a dead link and a broken
+ * thumbnail; a search always resolves. Users and the AI replace either through the media endpoints.
  */
-function demonstrationSearchUrl(name: string): string {
-  return `https://www.youtube.com/results?search_query=${encodeURIComponent(`${name} form`)}`
-}
+const demonstrationUrl = (entry: SeedExercise): string =>
+  entry.video ??
+  `https://www.youtube.com/results?search_query=${encodeURIComponent(`${entry.name} form`)}`
 
 export async function seedMuscles(): Promise<void> {
   await db
@@ -135,15 +135,15 @@ const validate = (entry: SeedExercise) => ExerciseCreate.parse(exerciseInputOf(e
 async function attachDemonstration(
   tx: Transaction,
   exercise: { readonly id: string; readonly ownerGroupId: string },
-  name: string,
+  entry: SeedExercise,
   createdBy: string,
 ): Promise<void> {
-  const payload = parseMediaUrl(demonstrationSearchUrl(name))
+  const payload = parseMediaUrl(demonstrationUrl(entry))
   if (payload === null) return
 
   const [row] = await tx
     .insert(media)
-    .values({ kind: 'video_link', title: `${name} — how to`, payload, createdBy })
+    .values({ kind: 'video_link', title: `${entry.name} — how to`, payload, createdBy })
     .returning()
   if (row === undefined) return
 
@@ -211,7 +211,7 @@ async function seedExercise(
       })),
     )
 
-    await attachDemonstration(tx, created, parsed.name, createdBy)
+    await attachDemonstration(tx, created, entry, createdBy)
   })
   return true
 }

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { and, eq } from 'drizzle-orm'
 import { db } from './client.ts'
-import { exercises } from './schema.ts'
+import { exerciseMedia, exercises, media } from './schema.ts'
 import { EXERCISE_LIBRARY } from './seed-data/exercises.ts'
 import { seedLibrary } from './seed.ts'
 import { type TestApi, makeApi } from '../test/harness.ts'
@@ -30,6 +30,24 @@ describe('the library seeded', () => {
     const entry = EXERCISE_LIBRARY.find((e) => e.name === 'Seated Leg Curl')
     expect(entry?.instructions).toBeTruthy()
     expect(row?.instructions).toBe(entry?.instructions)
+  })
+
+  test('links the video an entry names, and a search only for one that names none', async () => {
+    await seedLibrary(h.groupId, h.systemUserId)
+    const linked = async (name: string) =>
+      await db
+        .select({ payload: media.payload })
+        .from(exercises)
+        .innerJoin(exerciseMedia, eq(exerciseMedia.exerciseId, exercises.id))
+        .innerJoin(media, eq(media.id, exerciseMedia.mediaId))
+        .where(and(eq(exercises.ownerGroupId, h.groupId), eq(exercises.name, name)))
+
+    expect(await linked('Smith Machine Squat')).toMatchObject([
+      { payload: { provider: 'youtube', externalId: '8TEK4DPVVPs' } },
+    ])
+    expect(await linked('Incline Dumbbell Y-Raise')).toMatchObject([
+      { payload: { provider: 'url', externalId: null } },
+    ])
   })
 })
 

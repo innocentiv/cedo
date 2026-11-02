@@ -145,9 +145,12 @@ function, `exerciseInputOf`. `seed-data/exercises.test.ts` runs the same checks 
 plus coverage assertions: names unique, every tracking mode used, every muscle trained by at least
 one exercise, and every entry has both a description and instructions.
 
-Seeded media are YouTube **search** URLs, not specific video ids. Inventing ids would give every
-user dead links and broken thumbnails; a search always resolves. Users and the AI replace them with
-real videos through the media endpoints.
+Each library entry is seeded with one demonstration: the YouTube video its `video` names, or, for
+an entry that names none, a YouTube **search** for its name. Never an invented id — that would give
+every user a dead link and a broken thumbnail. An id goes into the seed only once YouTube's oEmbed
+endpoint has answered for it (`https://www.youtube.com/oembed?format=json&url=<watch url>`); a
+search always resolves. Like the text, a video added here reaches new installations only. Users and
+the AI replace either through the media endpoints.
 
 ### The performance seed
 
