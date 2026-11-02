@@ -70,7 +70,7 @@
       }
     },
     {
-      "files": ["**/app.ts"],
+      "files": ["**/app.ts", "**/mcp/tools/index.ts"],
       "rules": {
         "import/max-dependencies": "off"
       }
@@ -87,7 +87,6 @@
         "**/modules/workout/service.ts",
         "**/modules/exercise/service.ts",
         "**/modules/session/index.ts",
-        "**/mcp/tools/index.ts",
         "**/mcp/tools/library.ts",
         "**/mcp/tools/training.ts"
       ],
