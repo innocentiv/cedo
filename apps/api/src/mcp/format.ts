@@ -42,9 +42,13 @@ export const json = (value: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }],
 })
 
+/** A workout's flags, its line's and its outline's alike: `[mine]`, `[library, read-only]` (#47). */
+const flagsOf = (workout: WorkoutSummary, groupNameOf: GroupNameOf): string =>
+  `[${ownership(workout, groupNameOf).join(', ')}]`
+
 export const workoutLine = (workout: WorkoutSummary, groupNameOf: GroupNameOf): string =>
   `${workout.name} | ${workout.dayCount} day${workout.dayCount === 1 ? '' : 's'}` +
-  ` | [${ownership(workout, groupNameOf).join(', ')}] | ${workout.id}`
+  ` | ${flagsOf(workout, groupNameOf)} | ${workout.id}`
 
 /**
  * Every effort below goes through the contract's `formatEffort`, so the AI reads a set exactly as
@@ -79,7 +83,7 @@ export function workoutDetail(
   held: AthleteEquipment,
   groupNameOf: GroupNameOf,
 ): string {
-  const header = `${workout.name}  (${workout.id})  [${ownership(workout, groupNameOf).join(', ')}]`
+  const header = `${workout.name}  (${workout.id})  ${flagsOf(workout, groupNameOf)}`
   const notes = workout.notes === null ? [] : [`notes: ${workout.notes}`]
 
   const days = workout.days.map((day) => {

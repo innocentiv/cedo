@@ -11,7 +11,7 @@ import {
 import type { Caller } from '../../plugins/auth.ts'
 import { own, ownOrCoached } from '../../modules/coaching/training.ts'
 import { trainingReview } from '../../modules/review/service.ts'
-import { planFor, savePlanAndRead } from '../../modules/workout/plan-for.ts'
+import { type PlanRead, planFor, savePlanAndRead } from '../../modules/workout/plan-for.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
 import {
@@ -35,6 +35,9 @@ const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: fals
  * See docs/07-mcp.md.
  */
 export function registerTrainingTools(server: McpServer, caller: Caller): void {
+  const outline = async ({ workout, held }: PlanRead) =>
+    workoutDetail(workout, caller.weightUnit, held, await groupNamesOf(caller))
+
   server.registerTool(
     'training_review',
     {
@@ -95,8 +98,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       annotations: READ,
     },
     async ({ workoutId, athlete }) => {
-      const { workout, held } = await planFor(await ownOrCoached(caller, athlete), workoutId)
-      return text(workoutDetail(workout, caller.weightUnit, held, await groupNamesOf(caller)))
+      return text(await outline(await planFor(await ownOrCoached(caller, athlete), workoutId)))
     },
   )
 
@@ -152,10 +154,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       annotations: WRITE,
     },
     async ({ workoutId, ...plan }) => {
-      const { workout, held } = await savePlanAndRead(caller, workoutId, plan)
-      return text(
-        `Saved.\n\n${workoutDetail(workout, caller.weightUnit, held, await groupNamesOf(caller))}`,
-      )
+      return text(`Saved.\n\n${await outline(await savePlanAndRead(caller, workoutId, plan))}`)
     },
   )
 
