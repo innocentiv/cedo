@@ -3,11 +3,12 @@ import {
   type AthleteEquipment,
   ExerciseCreate,
   MUSCLE_SLUGS,
+  type MuscleSlug,
   TRACKING_MODES,
   isDoable,
   parseMediaUrl,
 } from '@cedo/contract'
-import { EXERCISE_LIBRARY, exerciseInputOf } from './exercises.ts'
+import { EXERCISE_LIBRARY, type SeedExercise, exerciseInputOf } from './exercises.ts'
 
 /**
  * The library is data, and data rots silently. These run without a database so a bad entry fails
@@ -70,9 +71,7 @@ describe('starter exercise library', () => {
   })
 
   test('the library covers every muscle at least once', () => {
-    const covered = new Set(EXERCISE_LIBRARY.flatMap((e) => e.muscles.map(([m]) => m)))
-    const uncovered = MUSCLE_SLUGS.filter((m) => !covered.has(m))
-    expect(uncovered).toEqual([])
+    expect(uncoveredBy(EXERCISE_LIBRARY)).toEqual([])
   })
 
   /**
@@ -88,6 +87,8 @@ describe('starter exercise library', () => {
           'dumbbells',
           'flat_bench',
           'barbell',
+          // A barbell comes with plates, though the list keeps them apart: without them, this gym
+          // trains no neck muscle — both neck exercises are loaded with a plate (#46 review).
           'weight_plates',
           'rack',
           'high_pulley',
@@ -97,8 +98,12 @@ describe('starter exercise library', () => {
         ] as const
       ).map((slug) => ({ slug, weights: null })),
     }
-    const doable = EXERCISE_LIBRARY.filter((e) => isDoable(e.equipment, homeGym))
-    const covered = new Set(doable.flatMap((e) => e.muscles.map(([m]) => m)))
-    expect(MUSCLE_SLUGS.filter((m) => !covered.has(m))).toEqual([])
+    expect(uncoveredBy(EXERCISE_LIBRARY.filter((e) => isDoable(e.equipment, homeGym)))).toEqual([])
   })
 })
+
+/** The muscles none of `entries` trains. */
+function uncoveredBy(entries: readonly SeedExercise[]): MuscleSlug[] {
+  const covered = new Set(entries.flatMap((e) => e.muscles.map(([m]) => m)))
+  return MUSCLE_SLUGS.filter((m) => !covered.has(m))
+}
