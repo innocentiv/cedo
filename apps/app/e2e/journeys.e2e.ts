@@ -2225,7 +2225,9 @@ test(
       await page.goto('/exercises')
       const exercise = await app.library.find(spare)
       await exercise.delete()
-      const listed = await app.library.listText()
+      // Their own: the whole library is more than the list's first page, and these sort past it.
+      await app.library.scope('mine')
+      const listed = await app.library.shownText()
       expect(listed).toContain(used)
       expect(listed).not.toContain(spare)
     })
