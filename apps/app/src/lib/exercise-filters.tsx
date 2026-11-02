@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { MuscleSlug } from '@cedo/contract'
 import { FilterRow, MuscleFilter } from '../ui/index.ts'
 import { type DoableFilter, EquipmentFilter, useDoableFilter } from './doable-filter.tsx'
-import { ALL, type ScopeChoice, ScopeFilter } from './scope-filter.tsx'
+import { ALL, type ScopeChoice, ScopePicker } from './scope-picker.tsx'
 
 export interface ExerciseFilters {
   readonly scope: ScopeChoice
@@ -55,7 +55,7 @@ export function ExerciseFilters({
       }
       testID={`${testID}-filters`}
     >
-      <ScopeFilter value={scope} onChange={filters.setScope} testID={`${testID}-scope`} />
+      <ScopePicker value={scope} onChange={filters.setScope} testID={`${testID}-scope`} />
       <MuscleFilter value={muscle} onChange={filters.setMuscle} testID={`${testID}-muscle`} />
       <EquipmentFilter filter={doable} testID={`${testID}-showing`} />
     </FilterRow>

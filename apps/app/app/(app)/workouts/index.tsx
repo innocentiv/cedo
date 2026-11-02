@@ -13,7 +13,7 @@ import {
 } from '../../../src/ui/index.ts'
 import { useCreateWorkout, useWorkouts } from '../../../src/api/queries.ts'
 import { useGroupName } from '../../../src/lib/group-name.ts'
-import { ALL, type ScopeChoice, ScopeFilter } from '../../../src/lib/scope-filter.tsx'
+import { ALL, type ScopeChoice, ScopePicker } from '../../../src/lib/scope-picker.tsx'
 import { ShowMore } from '../../../src/lib/show-more.tsx'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 
@@ -46,7 +46,7 @@ export default function WorkoutList(): React.JSX.Element {
         }
         testID="workout-filters"
       >
-        <ScopeFilter value={scope} onChange={setScope} testID="workout-scope" />
+        <ScopePicker value={scope} onChange={setScope} testID="workout-scope" />
       </FilterRow>
 
       <Loaded query={workouts} testID="workouts">

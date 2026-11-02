@@ -15,7 +15,7 @@ export const ALL: ScopeChoice = { scope: 'all' }
  * shared group of yours by name, under Your groups, when you belong to any. One choice at a time,
  * as the contract's scope is one; choosing closes the sheet.
  */
-export function ScopeFilter({
+export function ScopePicker({
   value,
   onChange,
   testID,
