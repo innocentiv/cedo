@@ -1,14 +1,17 @@
 import { describe, expect, test } from 'bun:test'
 import {
   type Progression,
+  type ProgressionInput,
   type SessionAttempts,
   type SetTarget,
-  nextTarget,
   progress,
 } from './progression.ts'
 import { describeProgression } from './progression-words.ts'
 import { MAX_DURATION_S, MAX_WEIGHT_G } from './measurement.ts'
 import { formatWeight, kgToG, mToMm } from './units.ts'
+
+/** The next prescription alone: most of these tables are about where it goes, not why. */
+const nextTarget = (input: ProgressionInput): SetTarget => progress(input).target
 
 /** `sets(60)(12, 12, 10)` -> three attempts at 60 kg; `sets(60, 10)(…)`, each rated RPE 10. */
 const sets =
@@ -264,7 +267,7 @@ describe('progress — why a prescription held', () => {
   const why = (rule: Progression, t: SetTarget, ...sessions: SessionAttempts[]) =>
     progress({ rule, target: t, workingSets: 3, sessions }).held
 
-  test('it gives the target nextTarget gives', () => {
+  test('it gives the next prescription, with no reason when it advanced', () => {
     expect(
       progress({ rule: DOUBLE, target: top, workingSets: 3, sessions: [all(8, 12, 12, 12)] }),
     ).toEqual({ target: { ...target(8, 62.5), rpe: 8 }, held: null })

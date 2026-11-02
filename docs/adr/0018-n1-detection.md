@@ -52,7 +52,7 @@ regardless of what indexes exist — so a small-seed latency budget proves nothi
 
 ## Rejected
 
-- **A `mitata` micro-benchmark suite.** Statistically rigorous, but it would measure `nextTarget()`
+- **A `mitata` micro-benchmark suite.** Statistically rigorous, but it would measure `progress()`
   and Zod parsing, which will never be this application's bottleneck. It answers a question we do
   not have.
 - **Latency budgets in the normal test suite only.** Cheap and always-on, but with small seeds it

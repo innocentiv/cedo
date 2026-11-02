@@ -16,7 +16,7 @@ assumed.
 Five rule kinds, stored as a Zod discriminated union in a JSONB column on `workout_entries`:
 `none`, `linear`, `double`, `linear_duration`, and `linear_distance` (added for #14, below).
 
-**`nextTarget()` is a pure function in `packages/contract`.** One implementation, called only by the
+**`progress()` is a pure function in `packages/contract`.** One implementation, called only by the
 API's progression service, whose answers both the `workout_progression` MCP tool and the logger's
 pre-fill render. They cannot compute differently; they differ only in which sessions they read —
 every one so far, or those before the session being logged — so they agree whenever none is in
@@ -62,8 +62,8 @@ Real sessions ramp up to a working weight. Without a flag, a lifter who logs `10
 before `3 × 8 @ 60kg` has the _warm-ups_ evaluated as their working sets — which never clear the
 target, so **they would never progress**.
 
-Both `workout_sets` and `set_logs` carry `is_warmup`. `nextTarget` drops warm-ups before doing
-anything else, and a session consisting only of warm-ups is not a session. An entry must prescribe
+Both `workout_sets` and `set_logs` carry `is_warmup`. `progress` drops warm-ups before doing
+anything else, and a session consisting only of warm-ups is short of its targets. An entry must prescribe
 at least one working set, enforced in the contract.
 
 ### `linear_duration` for time under load
@@ -146,8 +146,8 @@ every log already written. Rejected: treating an unrated set as past its ceiling
 had nothing to hold it for. Short of the targets outranks effort; over a run of `afterSuccesses`
 sessions the newest that broke it gives the reason, and a run merely too short has none.
 `workout_progression` and the logger say it, so a lift held for effort is not read as a stall — by
-the athlete, or by an AI about to deload it. `nextTarget()` stays: it is `progress()` without the
-reason.
+the athlete, or by an AI about to deload it. `progress()` replaced `nextTarget()`, which answered
+the prescription alone.
 
 ## Consequences
 
@@ -155,11 +155,11 @@ reason.
   target weight, none rated more than half a point past a prescribed RPE. A partially logged
   session cannot earn a promotion — otherwise logging one set of an intended three would advance
   the weight.
-- Adding a rule kind means extending the union and `nextTarget`, with **no migration**.
+- Adding a rule kind means extending the union and `progress`, with **no migration**.
 - At a target's ceiling (`MAX_WEIGHT_G`, `MAX_DURATION_S`, …) every rule holds: a suggestion past
   it would fail the API's own response schema, and with it the plan's whole progression and the
   logger's pre-fill.
-- Because the rule is read back from JSONB, `nextTarget` guards its switch with a `never` check that
+- Because the rule is read back from JSONB, `progress` guards its switch with a `never` check that
   throws on an unknown kind, rather than silently returning the target unchanged.
 - The truth table above is encoded verbatim in `packages/contract/src/progression.test.ts`. If the
   semantics are ever revisited, that file is the specification to change first.

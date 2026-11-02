@@ -20,7 +20,7 @@ import { groupBy } from '../../lib/keyset.ts'
 
 /**
  * Progression's evaluation, apart from its loading: rows in, suggestions out, no database. The
- * rules' maths is `nextTarget` in the contract and tested there; what is tested HERE is the wiring
+ * rules' maths is `progress` in the contract and tested there; what is tested HERE is the wiring
  * around it — which sets count, what the prescription is, which sessions are read and in what
  * order, and when a suggestion is a change. See docs/adr/0012-progression-rules.md.
  */

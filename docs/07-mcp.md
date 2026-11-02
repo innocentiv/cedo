@@ -178,7 +178,7 @@ The review, not the formatter, chooses which muscles are worth saying — the tw
 every declined muscle (`GLOSSARY.md`), and a count of the rest — because only the review knows what
 the comparison is for (`review/muscle-work.ts`).
 
-`workout_progression` returns what `nextTarget()` proposes over every session so far — the same pure
+`workout_progression` returns what `progress()` proposes over every session so far — the same pure
 function that pre-fills the app's logger (`GET /sessions/:id/targets`), over the sessions before
 the one being logged. So the two agree whenever no session is in progress, and differ during one
 only by the sets it has logged: the AI already counts them, the logger waits for the next session.

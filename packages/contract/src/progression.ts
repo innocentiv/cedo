@@ -15,7 +15,7 @@ import { Rpe } from './rpe.ts'
 
 /**
  * How a set's targets advance over time. Stored as JSONB on `workout_entries`, so adding a rule
- * kind means extending this union and `nextTarget` — never a migration.
+ * kind means extending this union and `progress` — never a migration.
  * See docs/adr/0012-progression-rules.md.
  */
 
@@ -112,7 +112,7 @@ export const Held = z.discriminatedUnion('reason', [
 export type Held = z.output<typeof Held>
 
 /**
- * What `nextTarget` proposes for one workout entry, alongside what it proposes to change from.
+ * What `progress` proposes for one workout entry, alongside what it proposes to change from.
  * Returned by `GET /workouts/:id/progression` and by the `workout_progression` MCP tool — the AI's
  * entry point for "evaluate my progression and set next week's numbers".
  */
@@ -175,9 +175,6 @@ export function progress(input: ProgressionInput): Progressed {
   const next = advance(input)
   return SetTarget.safeParse(next.target).success ? next : unheld(input.target)
 }
-
-/** The next prescription alone — `progress` without the reason. */
-export const nextTarget = (input: ProgressionInput): SetTarget => progress(input).target
 
 /** What `progress` answers: the next prescription, and why it held, if something held it. */
 export interface Progressed {

@@ -10,7 +10,7 @@ import { suggest } from './evaluate.ts'
 
 /**
  * Evaluates every entry in a workout against its logged history: loaded here, evaluated by the
- * pure `suggest` in ./evaluate.ts, whose maths is `nextTarget` from `@cedo/contract`. The
+ * pure `suggest` in ./evaluate.ts, whose maths is `progress` from `@cedo/contract`. The
  * `workout_progression` MCP tool renders this answer. See docs/adr/0012-progression-rules.md.
  *
  * Deliberately batched: one query for the entries, one for their prescribed sets, one for the

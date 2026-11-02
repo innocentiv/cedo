@@ -3,7 +3,7 @@ import { type AthleteEquipment, type Progression, loadOf } from '@cedo/contract'
 import { type EntryToEvaluate, type LoggedSet, type PrescribedSet, suggest } from './evaluate.ts'
 
 /**
- * The wiring around `nextTarget`, without a database: which sets count, what the prescription is,
+ * The wiring around `progress`, without a database: which sets count, what the prescription is,
  * which sessions are read and in what order. The maths itself is tested in the contract.
  */
 

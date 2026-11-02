@@ -18,9 +18,9 @@ z.object({
 Add the kind to `PROGRESSION_KINDS` in the same file. That constant is what the editor renders from,
 so the new rule appears in the UI without touching a screen.
 
-## 2. Teach `nextTarget` about it
+## 2. Teach `progress` about it
 
-`nextTarget` is a pure function, and its switch is exhaustive — `switch-exhaustiveness-check` will
+`progress` is a pure function, and its switch is exhaustive — `switch-exhaustiveness-check` will
 fail the build until the new case is handled. That is deliberate: it is impossible to add a rule and
 forget the maths.
 
@@ -31,7 +31,7 @@ athlete's next target never compute differently (they read different sessions �
 What a session must do to clear a prescription is a judge in `packages/contract/src/clears.ts`, one
 per dimension a rule advances (`judgeReps`, `judgeDuration`, `judgeDistance`), each built on
 `everyWorkingSet` and answering a `Verdict`. A rule that advances a dimension already there reuses
-its judge; a new dimension adds one beside them. A target pushed past its ceiling is held by `nextTarget` itself, so
+its judge; a new dimension adds one beside them. A target pushed past its ceiling is held by `progress` itself, so
 a rule's maths need not check `MAX_*`.
 
 ## 3. Write the truth table first
