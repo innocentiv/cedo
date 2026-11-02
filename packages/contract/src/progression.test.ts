@@ -10,7 +10,7 @@ import { MAX_DURATION_S, MAX_WEIGHT_G } from './measurement.ts'
 import { formatWeight, kgToG, mToMm } from './units.ts'
 
 /** The next prescription alone: most of these tables are about where it goes, not why. */
-const nextTarget = (input: ProgressionInput): SetTarget => progress(input).target
+const targetOf = (input: ProgressionInput): SetTarget => progress(input).target
 
 /** `sets(60)(12, 12, 10)` -> three attempts at 60 kg; `sets(60, 10)(…)`, each rated RPE 10. */
 const sets =
@@ -43,9 +43,9 @@ const held = (seconds: number | null): SetTarget => ({
 const DOUBLE: Progression = { kind: 'double', repRange: [8, 12], incrementG: kgToG(2.5) }
 const LINEAR: Progression = { kind: 'linear', incrementG: kgToG(2.5), afterSuccesses: 1 }
 
-describe('nextTarget — double progression (3 sets of 8-12, +2.5kg)', () => {
+describe('progress — double progression (3 sets of 8-12, +2.5kg)', () => {
   const run = (t: SetTarget, ...sessions: SessionAttempts[]) =>
-    nextTarget({ rule: DOUBLE, target: t, workingSets: 3, sessions })
+    targetOf({ rule: DOUBLE, target: t, workingSets: 3, sessions })
 
   // These four cases are the agreed truth table. See docs/adr/0012-progression-rules.md.
   test('all sets clear the top of the range -> add weight, restart at the bottom', () => {
@@ -127,7 +127,7 @@ describe('nextTarget — double progression (3 sets of 8-12, +2.5kg)', () => {
 
   test('a reversed range is tolerated rather than producing nonsense', () => {
     const reversed: Progression = { kind: 'double', repRange: [12, 8], incrementG: kgToG(2.5) }
-    const result = nextTarget({
+    const result = targetOf({
       rule: reversed,
       target: target(12, 60),
       workingSets: 3,
@@ -137,9 +137,9 @@ describe('nextTarget — double progression (3 sets of 8-12, +2.5kg)', () => {
   })
 })
 
-describe('nextTarget — linear progression', () => {
+describe('progress — linear progression', () => {
   test('a session that clears the prescription adds weight', () => {
-    const result = nextTarget({
+    const result = targetOf({
       rule: LINEAR,
       target: target(5, 100),
       workingSets: 3,
@@ -149,7 +149,7 @@ describe('nextTarget — linear progression', () => {
   })
 
   test('a missed rep holds', () => {
-    const result = nextTarget({
+    const result = targetOf({
       rule: LINEAR,
       target: target(5, 100),
       workingSets: 3,
@@ -164,13 +164,13 @@ describe('nextTarget — linear progression', () => {
     const cleared = sets(100)(5, 5, 5)
     const missed = sets(100)(5, 5, 4)
 
-    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [cleared] })).toEqual(t)
-    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [cleared, cleared] })).toEqual(
+    expect(targetOf({ rule, target: t, workingSets: 3, sessions: [cleared] })).toEqual(t)
+    expect(targetOf({ rule, target: t, workingSets: 3, sessions: [cleared, cleared] })).toEqual(
       target(5, 102.5),
     )
     // Most recent first: a miss in the most recent session blocks it.
-    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [missed, cleared] })).toEqual(t)
-    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [cleared, missed] })).toEqual(t)
+    expect(targetOf({ rule, target: t, workingSets: 3, sessions: [missed, cleared] })).toEqual(t)
+    expect(targetOf({ rule, target: t, workingSets: 3, sessions: [cleared, missed] })).toEqual(t)
   })
 })
 
@@ -179,12 +179,12 @@ describe('nextTarget — linear progression', () => {
  * A set rated more than half a point over it holds; an unrated set, or an unprescribed RPE, is
  * judged on its reps and weight alone. See docs/adr/0012-progression-rules.md.
  */
-describe('nextTarget — a prescribed RPE is a ceiling', () => {
+describe('progress — a prescribed RPE is a ceiling', () => {
   const at = (rpe: number | null, t: SetTarget): SetTarget => ({ ...t, rpe })
   const double = (t: SetTarget, ...sessions: SessionAttempts[]) =>
-    nextTarget({ rule: DOUBLE, target: t, workingSets: 3, sessions })
+    targetOf({ rule: DOUBLE, target: t, workingSets: 3, sessions })
   const linear = (t: SetTarget, ...sessions: SessionAttempts[]) =>
-    nextTarget({ rule: LINEAR, target: t, workingSets: 3, sessions })
+    targetOf({ rule: LINEAR, target: t, workingSets: 3, sessions })
 
   // The truth table's effort rows. See docs/adr/0012-progression-rules.md.
   test('the top of the range ground out past the RPE holds', () => {
@@ -253,7 +253,7 @@ describe('nextTarget — a prescribed RPE is a ceiling', () => {
     const t = at(8, target(5, 100))
     const within = sets(100, 8)(5, 5, 5)
     const ground = sets(100, 10)(5, 5, 5)
-    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [within, ground] })).toEqual(t)
+    expect(targetOf({ rule, target: t, workingSets: 3, sessions: [within, ground] })).toEqual(t)
   })
 })
 
@@ -333,7 +333,7 @@ describe('progress — why a prescription held', () => {
   })
 })
 
-describe('nextTarget — invariants that must hold for every rule', () => {
+describe('progress — invariants that must hold for every rule', () => {
   const rules: Progression[] = [{ kind: 'none' }, LINEAR, DOUBLE]
   const histories: SessionAttempts[][] = [
     [],
@@ -347,7 +347,7 @@ describe('nextTarget — invariants that must hold for every rule', () => {
     const t = target(10, 60)
     for (const rule of rules) {
       for (const sessions of histories) {
-        const next = nextTarget({ rule, target: t, workingSets: 3, sessions })
+        const next = targetOf({ rule, target: t, workingSets: 3, sessions })
 
         if (next.weightG !== null && t.weightG !== null) {
           expect(next.weightG).toBeGreaterThanOrEqual(t.weightG)
@@ -364,13 +364,13 @@ describe('nextTarget — invariants that must hold for every rule', () => {
   test("'none' is always the identity", () => {
     const t = target(10, 60)
     for (const sessions of histories) {
-      expect(nextTarget({ rule: { kind: 'none' }, target: t, workingSets: 3, sessions })).toEqual(t)
+      expect(targetOf({ rule: { kind: 'none' }, target: t, workingSets: 3, sessions })).toEqual(t)
     }
   })
 
   test('weight increases always land on the increment grid', () => {
     const t = target(12, 60)
-    const next = nextTarget({
+    const next = targetOf({
       rule: DOUBLE,
       target: t,
       workingSets: 3,
@@ -380,7 +380,7 @@ describe('nextTarget — invariants that must hold for every rule', () => {
   })
 })
 
-describe('nextTarget — warm-up sets are excluded entirely', () => {
+describe('progress — warm-up sets are excluded entirely', () => {
   const warmup = (weightKg: number, reps: number) => ({
     weightG: kgToG(weightKg),
     reps,
@@ -395,58 +395,58 @@ describe('nextTarget — warm-up sets are excluded entirely', () => {
   test('a ramp logged before the working sets does not block progression', () => {
     const session: SessionAttempts = [warmup(20, 10), warmup(40, 5), ...at60(12, 12, 12)]
     expect(
-      nextTarget({ rule: DOUBLE, target: target(12, 60), workingSets: 3, sessions: [session] }),
+      targetOf({ rule: DOUBLE, target: target(12, 60), workingSets: 3, sessions: [session] }),
     ).toEqual(target(8, 62.5))
   })
 
   test('warm-ups do not count toward the working-set requirement', () => {
     const session: SessionAttempts = [warmup(20, 10), warmup(40, 5), ...at60(12, 12)]
     expect(
-      nextTarget({ rule: DOUBLE, target: target(12, 60), workingSets: 3, sessions: [session] }),
+      targetOf({ rule: DOUBLE, target: target(12, 60), workingSets: 3, sessions: [session] }),
     ).toEqual(target(12, 60))
   })
 
   test('a session of nothing but warm-ups is not a session', () => {
     const session: SessionAttempts = [warmup(20, 10), warmup(40, 5)]
     expect(
-      nextTarget({ rule: LINEAR, target: target(5, 100), workingSets: 1, sessions: [session] }),
+      targetOf({ rule: LINEAR, target: target(5, 100), workingSets: 1, sessions: [session] }),
     ).toEqual(target(5, 100))
   })
 })
 
-describe('nextTarget — linear_duration (planks, dead hangs, carries)', () => {
+describe('progress — linear_duration (planks, dead hangs, carries)', () => {
   const RULE: Progression = { kind: 'linear_duration', incrementS: 5, afterSuccesses: 1 }
   const hold = (...seconds: number[]): SessionAttempts =>
     seconds.map((durationS) => ({ durationS }))
 
   test('holding the target on every set adds time', () => {
     expect(
-      nextTarget({ rule: RULE, target: held(60), workingSets: 3, sessions: [hold(60, 60, 60)] }),
+      targetOf({ rule: RULE, target: held(60), workingSets: 3, sessions: [hold(60, 60, 60)] }),
     ).toEqual(held(65))
   })
 
   test('holding longer than target still advances by exactly one increment', () => {
     expect(
-      nextTarget({ rule: RULE, target: held(60), workingSets: 3, sessions: [hold(90, 90, 90)] }),
+      targetOf({ rule: RULE, target: held(60), workingSets: 3, sessions: [hold(90, 90, 90)] }),
     ).toEqual(held(65))
   })
 
   test('a short hold on any set holds the target', () => {
     expect(
-      nextTarget({ rule: RULE, target: held(60), workingSets: 3, sessions: [hold(60, 60, 45)] }),
+      targetOf({ rule: RULE, target: held(60), workingSets: 3, sessions: [hold(60, 60, 45)] }),
     ).toEqual(held(60))
   })
 
   test('an unrecorded hold blocks advancement', () => {
     const partial: SessionAttempts = [{ durationS: 60 }, { durationS: null }, { durationS: 60 }]
-    expect(
-      nextTarget({ rule: RULE, target: held(60), workingSets: 3, sessions: [partial] }),
-    ).toEqual(held(60))
+    expect(targetOf({ rule: RULE, target: held(60), workingSets: 3, sessions: [partial] })).toEqual(
+      held(60),
+    )
   })
 
   test('no duration target -> unchanged', () => {
     expect(
-      nextTarget({
+      targetOf({
         rule: RULE,
         target: target(10, 60),
         workingSets: 3,
@@ -461,7 +461,7 @@ describe('nextTarget — linear_duration (planks, dead hangs, carries)', () => {
  * so a volume step never hides a pace jump. Going faster is left to the user or the AI — a shorter
  * target time would break advance-or-hold. See docs/adr/0012-progression-rules.md.
  */
-describe('nextTarget — linear_distance (runs, rows)', () => {
+describe('progress — linear_distance (runs, rows)', () => {
   const RULE: Progression = { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 }
   const covered = (metres: number, seconds: number | null): SetTarget => ({
     reps: null,
@@ -473,7 +473,7 @@ describe('nextTarget — linear_distance (runs, rows)', () => {
   const ran = (...efforts: [metres: number, seconds: number | null][]): SessionAttempts =>
     efforts.map(([metres, durationS]) => ({ distanceMm: mToMm(metres), durationS }))
   const next = (t: SetTarget, sessions: SessionAttempts[], workingSets = 1, rule = RULE) =>
-    nextTarget({ rule, target: t, workingSets, sessions })
+    targetOf({ rule, target: t, workingSets, sessions })
 
   test('the distance exactly at the pace adds distance, at the same pace', () => {
     expect(next(covered(5000, 1800), [ran([5000, 1800])])).toEqual(covered(5500, 1980))
@@ -563,11 +563,11 @@ describe('nextTarget — linear_distance (runs, rows)', () => {
  * 500 for the whole plan's progression, and for the logger's pre-fill. At the ceiling, every rule
  * holds instead.
  */
-describe('nextTarget — a target at its ceiling holds', () => {
+describe('progress — a target at its ceiling holds', () => {
   test('a weight that would pass the heaviest target', () => {
     const t: SetTarget = { ...target(5, null), weightG: MAX_WEIGHT_G - 1000 }
     expect(
-      nextTarget({
+      targetOf({
         rule: LINEAR,
         target: t,
         workingSets: 1,
@@ -580,7 +580,7 @@ describe('nextTarget — a target at its ceiling holds', () => {
     const rule: Progression = { kind: 'linear_duration', incrementS: 15, afterSuccesses: 1 }
     const t = held(MAX_DURATION_S - 5)
     expect(
-      nextTarget({ rule, target: t, workingSets: 1, sessions: [[{ durationS: t.durationS }]] }),
+      targetOf({ rule, target: t, workingSets: 1, sessions: [[{ durationS: t.durationS }]] }),
     ).toEqual(t)
   })
 
@@ -588,7 +588,7 @@ describe('nextTarget — a target at its ceiling holds', () => {
     const rule: Progression = { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 }
     const t: SetTarget = { ...held(80_000), distanceMm: mToMm(1000) }
     expect(
-      nextTarget({
+      targetOf({
         rule,
         target: t,
         workingSets: 1,
