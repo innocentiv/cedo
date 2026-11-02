@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { ExerciseCreate, MUSCLE_SLUGS, TRACKING_MODES, parseMediaUrl } from '@cedo/contract'
+import {
+  type AthleteEquipment,
+  ExerciseCreate,
+  MUSCLE_SLUGS,
+  TRACKING_MODES,
+  isDoable,
+  parseMediaUrl,
+} from '@cedo/contract'
 import { EXERCISE_LIBRARY, exerciseInputOf } from './exercises.ts'
 
 /**
@@ -66,5 +73,32 @@ describe('starter exercise library', () => {
     const covered = new Set(EXERCISE_LIBRARY.flatMap((e) => e.muscles.map(([m]) => m)))
     const uncovered = MUSCLE_SLUGS.filter((m) => !covered.has(m))
     expect(uncovered).toEqual([])
+  })
+
+  /**
+   * Covered by the library is not covered for an athlete (#46): a home gym with one cable stack
+   * could do none of the calf raises, all on calf machines. A common setup that trains no muscle at
+   * all is a gap in the library, however many machines cover it.
+   */
+  test('a home gym with one cable stack trains every muscle', () => {
+    const homeGym: AthleteEquipment = {
+      described: true,
+      items: (
+        [
+          'dumbbells',
+          'flat_bench',
+          'barbell',
+          'weight_plates',
+          'rack',
+          'high_pulley',
+          'low_pulley',
+          'leg_extension',
+          'lying_leg_curl',
+        ] as const
+      ).map((slug) => ({ slug, weights: null })),
+    }
+    const doable = EXERCISE_LIBRARY.filter((e) => isDoable(e.equipment, homeGym))
+    const covered = new Set(doable.flatMap((e) => e.muscles.map(([m]) => m)))
+    expect(MUSCLE_SLUGS.filter((m) => !covered.has(m))).toEqual([])
   })
 })

@@ -627,6 +627,23 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     ],
   },
   {
+    name: 'Single-Arm Cable Fly',
+    video: 'https://www.youtube.com/watch?v=FJfDGl1Z_mk',
+    equipment: ['low_pulley'],
+    isUnilateral: true,
+    description:
+      'A cable fly from one low pulley, low to high, which biases the upper chest: the fly for a single cable stack, where a crossover needs two. Weight shown is per side.',
+    instructions: steps(
+      'Pulley low. Stand side-on to it, handle in the far hand, arm long and slightly behind you.',
+      'Elbow slightly bent and fixed, sweep the hand up and across to chin height in front of the chest.',
+      'Return slowly into the stretch. On an adjustable pulley, set it at chest height for mid chest.',
+    ),
+    muscles: [
+      ['pectoralis_major', 85],
+      ['deltoid_anterior', 15],
+    ],
+  },
+  {
     name: 'Pec Deck',
     video: 'https://www.youtube.com/watch?v=-DZXcuPi4vk',
     equipment: ['pec_deck'],
@@ -1054,6 +1071,24 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
       'Pulleys at shoulder height. Take the left cable in the right hand and the right in the left, so the cables cross.',
       'Arms nearly straight, sweep them back and out in a wide arc.',
       'Stop before the shoulder blades squeeze together. Return to the crossed stretch.',
+    ),
+    muscles: [
+      ['deltoid_posterior', 70],
+      ['trapezius_middle', 15],
+      ['rhomboids', 15],
+    ],
+  },
+  {
+    name: 'Single-Arm Reverse Cable Fly',
+    video: 'https://www.youtube.com/watch?v=GDEINoYs10U',
+    equipment: ['high_pulley'],
+    isUnilateral: true,
+    description:
+      'Rear-delt fly from one high pulley, across the body: the reverse fly for a single cable stack. Weight shown is per side.',
+    instructions: steps(
+      'Pulley high, no handle or a single one. Stand facing it and take the cable in the opposite hand, so it crosses in front of you.',
+      'Arm nearly straight, sweep it out and back, a little downwards, until it is in line with the shoulder.',
+      'Keep the torso square, no twisting. Return to the crossed stretch.',
     ),
     muscles: [
       ['deltoid_posterior', 70],
@@ -1621,6 +1656,39 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     muscles: [
       ['soleus', 80],
       ['gastrocnemius', 20],
+    ],
+  },
+  {
+    name: 'Single-Leg Dumbbell Calf Raise',
+    video: 'https://www.youtube.com/watch?v=1D7s-VyLq0Y',
+    equipment: ['dumbbells'],
+    isUnilateral: true,
+    description:
+      'Knee straight, one leg at a time, a dumbbell in the hand on that side: the calf raise for no calf machine. 8–15 reps suit it. Weight shown is per side.',
+    instructions: steps(
+      'Ball of one foot on a step or a stacked plate, the other foot hooked behind it. Free hand on a wall or rack.',
+      'Knee locked, lower into a deep stretch and pause 1–2 s.',
+      'Rise as high as you can, then lower slowly.',
+    ),
+    muscles: [
+      ['gastrocnemius', 75],
+      ['soleus', 25],
+    ],
+  },
+  {
+    name: 'Barbell Standing Calf Raise',
+    video: 'https://www.youtube.com/watch?v=3UWi44yN-wM',
+    equipment: ['barbell', 'rack'],
+    description:
+      'Knee straight, a barbell on the upper back, taken from a rack: the heavy calf raise for no calf machine. 6–12 reps suit it.',
+    instructions: steps(
+      'Unrack the bar onto the upper back. Balls of the feet on a plate or a step, heels free.',
+      'Knees locked, lower into a deep stretch and pause 1–2 s.',
+      'Rise as high as you can without rocking. Set the safety bars just below the bar.',
+    ),
+    muscles: [
+      ['gastrocnemius', 75],
+      ['soleus', 25],
     ],
   },
   {
