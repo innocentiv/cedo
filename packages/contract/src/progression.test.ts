@@ -286,9 +286,11 @@ describe('progress — why a prescription held', () => {
     expect(why(DOUBLE, top, all(10, 12, 12, 10))).toEqual({ reason: 'targets' })
   })
 
-  test('a session of nothing but warm-ups is short of the targets', () => {
+  /** It prescribed working sets and none were done — not "nothing to judge", under either rule. */
+  test('a session of nothing but warm-ups is short of the targets, under either rule', () => {
     const warmups: SessionAttempts = [{ weightG: kgToG(40), reps: 5, isWarmup: true }]
     expect(why(DOUBLE, top, warmups)).toEqual({ reason: 'targets' })
+    expect(why(LINEAR, top, warmups)).toEqual({ reason: 'targets' })
   })
 
   test('none when it advanced, had nothing to judge, or could not move', () => {
