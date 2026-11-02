@@ -96,6 +96,13 @@ const callTool = async (pat: string, name: string, args: unknown = {}) =>
 type RpcBody = z.output<typeof RpcResult>
 const textOf = (body: RpcBody) => body.result?.content?.map((c) => c.text).join('\n') ?? ''
 
+/** A call over HTTP as `user` that must succeed: the setup a tool is then asked about. */
+const post = async (user: TestUser, path: string, body: unknown, method = 'POST') => {
+  const res = await user.wire(path, { method, body: JSON.stringify(body) })
+  if (res.status >= 300) throw new Error(`${method} ${path}: ${String(res.status)}`)
+  return res.body
+}
+
 describe('authentication', () => {
   test('rejects a request with no token', async () => {
     const { status } = await rpc(null, 'initialize', {})
@@ -762,26 +769,21 @@ describe('a past set corrected', () => {
  * effort as a stall, and deloads a lift that only needed to be done at the effort prescribed.
  */
 describe('workout_progression says why it held', () => {
-  const post = async (path: string, body: unknown, method = 'POST') => {
-    const res = await alice.wire(path, { method, body: JSON.stringify(body) })
-    if (res.status >= 300) throw new Error(`${method} ${path}: ${String(res.status)}`)
-    return res.body
-  }
-
   /** A bench planned at 60 kg for three sets of eight at RPE 8, trained once at `rpe`. */
   async function trainedAt(rpe: number | null, done: readonly number[] = [8, 8, 8]) {
     const bench = expectContract(
       Exercise,
-      await post('/exercises', {
+      await post(alice, '/exercises', {
         name: 'Bench',
         muscles: [{ muscle: 'pectoralis_major', loadPct: 100 }],
       }),
     )
-    const workout = expectContract(Workout, await post('/workouts', { name: 'Push' }))
+    const workout = expectContract(Workout, await post(alice, '/workouts', { name: 'Push' }))
     const set = { targetReps: 8, targetWeightG: 60_000, targetRpe: 8 }
     const plan = expectContract(
       Workout,
       await post(
+        alice,
         `/workouts/${workout.id}/plan`,
         {
           days: [
@@ -804,10 +806,10 @@ describe('workout_progression says why it held', () => {
     const entryId = plan.days[0]?.entries[0]?.id ?? ''
     const session = expectContract(
       WorkoutSession,
-      await post('/sessions', { workoutId: workout.id, dayId }),
+      await post(alice, '/sessions', { workoutId: workout.id, dayId }),
     )
     for (const reps of done) {
-      await post(`/sessions/${session.id}/logs`, {
+      await post(alice, `/sessions/${session.id}/logs`, {
         exerciseId: bench.id,
         entryId,
         weightG: 60_000,
@@ -815,7 +817,7 @@ describe('workout_progression says why it held', () => {
         rpe,
       })
     }
-    await post(`/sessions/${session.id}`, { endedAt: new Date().toISOString() }, 'PATCH')
+    await post(alice, `/sessions/${session.id}`, { endedAt: new Date().toISOString() }, 'PATCH')
     const result = await callTool(await mintPat(alice), 'workout_progression', {
       workoutId: workout.id,
     })
@@ -1167,9 +1169,6 @@ describe('coaching', () => {
   let squadId: string
   let liftId: string
 
-  const post = async (user: TestUser, path: string, body: unknown, method = 'POST') =>
-    (await user.wire(path, { method, body: JSON.stringify(body) })).body
-
   beforeEach(async () => {
     athlete = await h.as('athlete')
     squadId = expectContract(GroupMembership, await post(alice, '/groups', { name: 'Squad' })).id
@@ -1322,12 +1321,6 @@ describe('coaching', () => {
 
 /** Athlete notes (#41): read and written over MCP as in the app, and never removed here. */
 describe('athlete notes', () => {
-  const post = async (user: TestUser, path: string, body: unknown, method = 'POST') => {
-    const res = await user.wire(path, { method, body: JSON.stringify(body) })
-    if (res.status >= 300) throw new Error(`${method} ${path}: ${String(res.status)}`)
-    return res.body
-  }
-
   test('are written, read and reworded as your own', async () => {
     const pat = await mintPat(alice)
     const created = await callTool(pat, 'note_create', { text: 'Left shoulder hurts overhead' })
@@ -1388,11 +1381,6 @@ describe('athlete notes', () => {
 })
 
 describe('weigh-ins and the year of birth', () => {
-  const post = async (user: TestUser, path: string, body: unknown, method = 'POST') => {
-    const res = await user.wire(path, { method, body: JSON.stringify(body) })
-    if (res.status >= 300) throw new Error(`${method} ${path}: ${String(res.status)}`)
-    return res.body
-  }
   const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10)
 
   test('are taken, one a day, and listed newest first with the latest before the period', async () => {
