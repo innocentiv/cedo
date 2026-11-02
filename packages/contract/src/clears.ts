@@ -1,4 +1,4 @@
-import type { Hold, SetAttempt, SessionAttempts, SetTarget } from './progression.ts'
+import type { Held, SetAttempt, SessionAttempts, SetTarget } from './progression.ts'
 
 /**
  * Whether a session clears a prescription, one judge per dimension a rule advances — each over the
@@ -122,10 +122,10 @@ export function judgeDistance(
   return covered ? 'cleared' : 'targets'
 }
 
-export const SHORT: Hold = { reason: 'targets' }
+export const SHORT: Held = { reason: 'targets' }
 
 /** A session's verdict as the hold it makes — none when it cleared. */
-export function holdOf(verdict: Verdict, session: SessionAttempts): Hold | null {
+export function holdOf(verdict: Verdict, session: SessionAttempts): Held | null {
   switch (verdict) {
     case 'cleared':
       return null
@@ -147,7 +147,7 @@ export function judgeRun(
   sessions: readonly SessionAttempts[],
   workingSets: number,
   judge: (session: SessionAttempts) => Verdict,
-): 'cleared' | Hold | null {
+): 'cleared' | Held | null {
   for (const session of sessions.slice(0, count)) {
     const sets = working(session)
     const held = sets === null ? SHORT : holdOf(judge(sets), sets.slice(0, workingSets))

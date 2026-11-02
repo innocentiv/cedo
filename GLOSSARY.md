@@ -245,6 +245,12 @@ more than half a point past its RPE. A set nobody rated, or a prescription with 
 its targets alone. A set short of its targets, or ground out past its RPE, holds the prescription.
 _Avoid_: clean, hit, success
 
+**Held**:
+What a session does to a prescription it does not clear, and why: short of its targets, or ground
+out past its RPE. Short of the targets is the reason given when both are true. A prescription held
+for effort is not stalled: the lift is there, done harder than prescribed.
+_Avoid_: stalled, failed. Also not a hold, which is a timed set such as a plank.
+
 **Prescription**:
 What an exercise in a plan asks for on every working set: one set of targets, shared by all of
 them. Progression advances it.

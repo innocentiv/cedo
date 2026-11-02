@@ -3,7 +3,7 @@ import { formatEffort } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
 import { LOAD_LIMIT_WORDS, LoadLimit } from './load.ts'
 import { LoggedEffort } from './log.ts'
-import { Hold, SetTarget } from './progression.ts'
+import { Held, SetTarget } from './progression.ts'
 import { formatReserve, formatWithReserve, reserveOf } from './rpe.ts'
 import type { WeightUnit } from './units.ts'
 
@@ -28,7 +28,7 @@ export const EntryTarget = z.object({
   /** Whether the rule moved it — the logger says so beside the prescription. */
   changed: z.boolean(),
   /** Why the rule held it, if something did (#45) — the logger says so when it was the effort. */
-  held: Hold.nullable(),
+  held: Held.nullable(),
   /**
    * Where the athlete's equipment stopped its weight (#36): their heaviest, under a heavier plan,
    * or their lightest, over a lighter one. Null otherwise — and while what they load is unknown.

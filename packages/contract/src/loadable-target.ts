@@ -1,5 +1,5 @@
 import { type Load, type LoadLimit, loadable, steppedOn } from './load.ts'
-import { type Hold, type ProgressionInput, type SetTarget, progress } from './progression.ts'
+import { type Held, type ProgressionInput, type SetTarget, progress } from './progression.ts'
 
 /**
  * A prescription as an athlete can load it (#36): its weight the heaviest their equipment loads
@@ -31,7 +31,7 @@ export function nextLoadableTarget(
   readonly target: SetTarget
   readonly limit: LoadLimit | null
   /** Why the rule held, as it told it — see `progress`. */
-  readonly held: Hold | null
+  readonly held: Held | null
 } {
   const asked = loadableTarget(load, input.target)
   const shown = asked.target

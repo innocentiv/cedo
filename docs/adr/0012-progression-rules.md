@@ -141,7 +141,7 @@ is a measurement, and a prescribed pace is defined by it. RPE is a rating the ap
 held against it, progression would freeze for anyone who logs without rating, and change under
 every log already written. Rejected: treating an unrated set as past its ceiling.
 
-**A hold says why.** `progress()` answers the next prescription with a `Hold` — short of its
+**A hold says why.** `progress()` answers the next prescription with why it was `Held` — short of its
 `targets`, or past its RPE (`effort`, with the hardest set's rating) — and none when it advanced or
 had nothing to hold it for. Short of the targets outranks effort; over a run of `afterSuccesses`
 sessions the newest that broke it gives the reason, and a run merely too short has none.

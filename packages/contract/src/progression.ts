@@ -100,15 +100,16 @@ export const NO_TARGET: SetTarget = {
 }
 
 /**
- * Why a rule held a prescription (#45): a session short of its `targets`, or one ground out past
- * its RPE (`effort`) — with the hardest working set's RPE, as it was rated. Null when the rule
- * advanced, or had nothing to hold it for: no history, no rule, nothing left to add, or a ceiling.
+ * Why a rule held a prescription (#45) — the glossary's "Held": a session short of its `targets`,
+ * or one ground out past its RPE (`effort`), with the hardest working set's RPE as it was rated.
+ * Null when the rule advanced, or had nothing to hold it for: no history, no rule, nothing left to
+ * add, or a ceiling. Not a timed set, which the glossary also calls a hold.
  */
-export const Hold = z.discriminatedUnion('reason', [
+export const Held = z.discriminatedUnion('reason', [
   z.object({ reason: z.literal('targets') }),
   z.object({ reason: z.literal('effort'), rpe: Rpe }),
 ])
-export type Hold = z.output<typeof Hold>
+export type Held = z.output<typeof Held>
 
 /**
  * What `nextTarget` proposes for one workout entry, alongside what it proposes to change from.
@@ -127,7 +128,7 @@ export const ProgressionSuggestion = z.object({
   /** False when the rule held rather than advanced. */
   changed: z.boolean(),
   /** Why it held, when something held it — so a hold for effort is not read as a stall. */
-  held: Hold.nullable(),
+  held: Held.nullable(),
   /** How many past sessions were considered. Zero means there is no history to judge from. */
   sessionsConsidered: z.int().nonnegative(),
 })
@@ -181,7 +182,7 @@ export const nextTarget = (input: ProgressionInput): SetTarget => progress(input
 /** What `progress` answers: the next prescription, and why it held, if something held it. */
 export interface Progressed {
   readonly target: SetTarget
-  readonly held: Hold | null
+  readonly held: Held | null
 }
 
 /** A prescription nothing held: advanced, or with nothing to hold it for. */
