@@ -60,6 +60,7 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
 - **Edit existing files with the `Edit` tool, not `sed`/`python` string replacement.** A string
   replacement that does not match is a *silent no-op*; `Edit` errors. This cost roughly ten silent
   failures in one session — several only surfaced later, as an unused import.
+- **`Edit` trims a trailing space off `new_string`**, so end a replacement on a letter, not a space: `'nextTarget — '` → `'progress — '` glued eight test titles to their dash.
 - **Gate on `bun run check`'s own exit code.** `bun run check | tail && git commit` commits a red
   gate: the `&&` sees the pipeline's status, which is `tail`'s. Capture the output to a file and
   test `$?`, or run it unpiped.
