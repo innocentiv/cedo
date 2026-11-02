@@ -32,7 +32,8 @@ const target = (reps: number | null, weightKg: number | null): SetTarget => ({
   distanceMm: null,
 })
 
-const held = (seconds: number | null): SetTarget => ({
+/** A timed prescription: held `seconds` — a plank, a dead hang. */
+const timed = (seconds: number | null): SetTarget => ({
   reps: null,
   weightG: null,
   rpe: null,
@@ -259,7 +260,8 @@ describe('progress — a prescribed RPE is a ceiling', () => {
 
 /**
  * Why a rule held (#45): short of the targets, or ground out past the RPE — so neither the athlete
- * nor the AI reads a hold for effort as a stall. None when it advanced, or had nothing to judge.
+ * nor the AI reads a prescription held for effort as a stall. None when it advanced, or had nothing
+ * to judge.
  */
 describe('progress — why a prescription held', () => {
   const top = { ...target(12, 60), rpe: 8 }
@@ -328,7 +330,7 @@ describe('progress — why a prescription held', () => {
   test('a hold or a run is only ever short of its targets', () => {
     const rule: Progression = { kind: 'linear_duration', incrementS: 15, afterSuccesses: 1 }
     expect(
-      progress({ rule, target: held(60), workingSets: 1, sessions: [[{ durationS: 45 }]] }).held,
+      progress({ rule, target: timed(60), workingSets: 1, sessions: [[{ durationS: 45 }]] }).held,
     ).toEqual({ reason: 'targets' })
   })
 })
@@ -416,32 +418,47 @@ describe('progress — warm-up sets are excluded entirely', () => {
 
 describe('progress — linear_duration (planks, dead hangs, carries)', () => {
   const RULE: Progression = { kind: 'linear_duration', incrementS: 5, afterSuccesses: 1 }
-  const hold = (...seconds: number[]): SessionAttempts =>
+  const timedSets = (...seconds: number[]): SessionAttempts =>
     seconds.map((durationS) => ({ durationS }))
 
   test('holding the target on every set adds time', () => {
     expect(
-      targetOf({ rule: RULE, target: held(60), workingSets: 3, sessions: [hold(60, 60, 60)] }),
-    ).toEqual(held(65))
+      targetOf({
+        rule: RULE,
+        target: timed(60),
+        workingSets: 3,
+        sessions: [timedSets(60, 60, 60)],
+      }),
+    ).toEqual(timed(65))
   })
 
   test('holding longer than target still advances by exactly one increment', () => {
     expect(
-      targetOf({ rule: RULE, target: held(60), workingSets: 3, sessions: [hold(90, 90, 90)] }),
-    ).toEqual(held(65))
+      targetOf({
+        rule: RULE,
+        target: timed(60),
+        workingSets: 3,
+        sessions: [timedSets(90, 90, 90)],
+      }),
+    ).toEqual(timed(65))
   })
 
   test('a short hold on any set holds the target', () => {
     expect(
-      targetOf({ rule: RULE, target: held(60), workingSets: 3, sessions: [hold(60, 60, 45)] }),
-    ).toEqual(held(60))
+      targetOf({
+        rule: RULE,
+        target: timed(60),
+        workingSets: 3,
+        sessions: [timedSets(60, 60, 45)],
+      }),
+    ).toEqual(timed(60))
   })
 
   test('an unrecorded hold blocks advancement', () => {
     const partial: SessionAttempts = [{ durationS: 60 }, { durationS: null }, { durationS: 60 }]
-    expect(targetOf({ rule: RULE, target: held(60), workingSets: 3, sessions: [partial] })).toEqual(
-      held(60),
-    )
+    expect(
+      targetOf({ rule: RULE, target: timed(60), workingSets: 3, sessions: [partial] }),
+    ).toEqual(timed(60))
   })
 
   test('no duration target -> unchanged', () => {
@@ -450,7 +467,7 @@ describe('progress — linear_duration (planks, dead hangs, carries)', () => {
         rule: RULE,
         target: target(10, 60),
         workingSets: 3,
-        sessions: [hold(60, 60, 60)],
+        sessions: [timedSets(60, 60, 60)],
       }),
     ).toEqual(target(10, 60))
   })
@@ -544,7 +561,7 @@ describe('progress — linear_distance (runs, rows)', () => {
   })
 
   test('no distance target, or no history -> unchanged', () => {
-    expect(next(held(60), [ran([5000, 1800])])).toEqual(held(60))
+    expect(next(timed(60), [ran([5000, 1800])])).toEqual(timed(60))
     expect(next(covered(5000, 1800), [])).toEqual(covered(5000, 1800))
   })
 
@@ -578,7 +595,7 @@ describe('progress — a target at its ceiling holds', () => {
 
   test('a hold that would pass the longest target', () => {
     const rule: Progression = { kind: 'linear_duration', incrementS: 15, afterSuccesses: 1 }
-    const t = held(MAX_DURATION_S - 5)
+    const t = timed(MAX_DURATION_S - 5)
     expect(
       targetOf({ rule, target: t, workingSets: 1, sessions: [[{ durationS: t.durationS }]] }),
     ).toEqual(t)
@@ -586,7 +603,7 @@ describe('progress — a target at its ceiling holds', () => {
 
   test('a run whose time, kept at its pace, would pass the longest target', () => {
     const rule: Progression = { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 }
-    const t: SetTarget = { ...held(80_000), distanceMm: mToMm(1000) }
+    const t: SetTarget = { ...timed(80_000), distanceMm: mToMm(1000) }
     expect(
       targetOf({
         rule,

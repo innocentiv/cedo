@@ -44,8 +44,8 @@ export type EntryTarget = z.output<typeof EntryTarget>
 
 /**
  * What the logger says beside an entry's target: moved by the rule, beside what the plan says; held
- * for effort (#45), with the reserve a set left — the one hold whose cause is nowhere else on the
- * screen, since last time's sets, beside it, show a missed rep but not a ground-out one; or as
+ * for effort (#45), with the reserve a set left — the one reason a prescription held that is nowhere
+ * else on the screen, since last time's sets, beside it, show a missed rep but not a ground-out one; or as
  * prescribed. Where the athlete's equipment stopped it (#36) is said after the target.
  */
 export function targetLine(asked: EntryTarget, tracking: TrackingMode, unit: WeightUnit): string {

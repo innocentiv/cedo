@@ -765,8 +765,9 @@ describe('a past set corrected', () => {
 })
 
 /**
- * A prescribed RPE is a ceiling (#45). The AI is told why a rule held — or it reads a hold for
- * effort as a stall, and deloads a lift that only needed to be done at the effort prescribed.
+ * A prescribed RPE is a ceiling (#45). The AI is told why a rule held — or it reads a prescription
+ * held for effort as a stall, and deloads a lift that only needed to be done at the effort
+ * prescribed.
  */
 describe('workout_progression says why it held', () => {
   /** A bench planned at 60 kg for three sets of eight at RPE 8, trained once at `rpe`. */

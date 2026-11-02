@@ -33,7 +33,7 @@ describe('targetLine', () => {
     )
   })
 
-  /** #45: the one hold whose cause is nowhere else on the screen. */
+  /** #45: the one reason a prescription held that is nowhere else on the screen. */
   test('held for effort, with the reserve a set left', () => {
     const held = asked({ held: { reason: 'effort', rpe: 10 } })
     expect(targetLine(held, 'weight_reps', 'kg')).toBe(

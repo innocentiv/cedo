@@ -125,7 +125,7 @@ export const ProgressionSuggestion = z.object({
   suggested: SetTarget,
   /** False when the rule held rather than advanced. */
   changed: z.boolean(),
-  /** Why it held, when something held it — so a hold for effort is not read as a stall. */
+  /** Why it held, when something held it — so a prescription held for effort is not read as a stall. */
   held: Held.nullable(),
   /** How many past sessions were considered. Zero means there is no history to judge from. */
   sessionsConsidered: z.int().nonnegative(),
