@@ -5,7 +5,6 @@ import {
   judgeDuration,
   judgeReps,
   judgeRun,
-  normaliseRange,
   working,
 } from './clears.ts'
 import { TrackingMode } from './exercise.ts'
@@ -269,6 +268,12 @@ function advanceDouble(
 
   // Met the current target: climb one rep.
   return unheld({ ...target, reps: currentReps + 1 })
+}
+
+/** A double rule's rep range, tolerated stored the wrong way round rather than read as nonsense. */
+export function normaliseRange(range: readonly [number, number]): [number, number] {
+  const [a, b] = range
+  return a <= b ? [a, b] : [b, a]
 }
 
 /**

@@ -1,9 +1,11 @@
 import type { Held, SetAttempt, SessionAttempts, SetTarget } from './progression.ts'
 
 /**
- * Whether a session clears a prescription, one judge per dimension a rule advances — each over the
- * WORKING sets alone, in set order. Shared by the rules in progression.ts; not part of the
- * contract's surface. See docs/adr/0012-progression-rules.md.
+ * Judging what was logged against a prescription: whether a session clears it, one judge per
+ * dimension a rule advances, each over the WORKING sets alone, in set order (warm-ups dropped by
+ * `working`); whether a run of sessions does (`judgeRun`); and, when not, why it was held. Shared
+ * by the rules in progression.ts; not part of the contract's surface. See
+ * docs/adr/0012-progression-rules.md.
  */
 
 /** What a session did to a prescription: cleared it, or held it, and why. */
@@ -144,10 +146,4 @@ export function judgeRun(
 export function working(session: SessionAttempts): SessionAttempts | null {
   const sets = session.filter((s) => s.isWarmup !== true)
   return sets.length === 0 ? null : sets
-}
-
-/** Tolerate a range stored the wrong way round rather than producing nonsense. */
-export function normaliseRange(range: readonly [number, number]): [number, number] {
-  const [a, b] = range
-  return a <= b ? [a, b] : [b, a]
 }

@@ -1,5 +1,4 @@
-import { normaliseRange } from './clears.ts'
-import type { Progression } from './progression.ts'
+import { type Progression, normaliseRange } from './progression.ts'
 import { formatDistance, formatDuration } from './units.ts'
 
 /**
