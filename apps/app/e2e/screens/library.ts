@@ -197,10 +197,6 @@ export const library = (page: Page) => {
       await form.load(muscle, '100')
       await form.save()
     },
-    listText: async (): Promise<string> => {
-      await list()
-      return (await page.text('exercise-list')) ?? ''
-    },
     openFirst: async () => {
       await list()
       return await openRow()

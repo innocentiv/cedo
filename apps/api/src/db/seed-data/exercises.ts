@@ -1,4 +1,5 @@
-import type { EquipmentSlug, MuscleSlug, TrackingMode } from '@cedo/contract'
+import type { EquipmentSlug, ExerciseCreate, MuscleSlug, TrackingMode } from '@cedo/contract'
+import type { z } from 'zod'
 
 /**
  * The starter library, owned by the seeded `cedo` group and readable by every user.
@@ -9,10 +10,11 @@ import type { EquipmentSlug, MuscleSlug, TrackingMode } from '@cedo/contract'
  *
  * What it holds is what evidence-based hypertrophy and strength programs ask for — the Big Six
  * patterns, an isolation lift for every muscle that needs one, and the machine and cable
- * variations those programs are written around — and each description says where in the range the
- * exercise is hardest, since loading a muscle at long lengths is what most separates two
- * exercises for the same muscle. A NAME, once shipped, is permanent: the seed finds an entry by it,
- * so renaming one makes a second copy on every installation.
+ * variations those programs are written around. Where two exercises for one muscle differ in where
+ * they are hardest — at long lengths, which grows muscle best, or short — the description says so.
+ * A NAME, once shipped, is permanent: the seed finds an entry by it, so renaming one makes a second
+ * copy on every installation. And the seed only inserts what is missing (see `seedExercise`): an
+ * entry's text changed here reaches new installations, never the library of an existing one.
  */
 export interface SeedExercise {
   readonly name: string
@@ -31,12 +33,12 @@ export interface SeedExercise {
  * An entry as `ExerciseCreate` reads it. One mapping for the seed and the library's own test, so a
  * field added here cannot reach one and not the other — as `instructions` once reached neither.
  */
-export const exerciseInputOf = (entry: SeedExercise) => ({
+export const exerciseInputOf = (entry: SeedExercise): z.input<typeof ExerciseCreate> => ({
   name: entry.name,
   tracking: entry.tracking ?? 'weight_reps',
   description: entry.description,
   instructions: entry.instructions,
-  equipment: entry.equipment,
+  equipment: [...entry.equipment],
   isUnilateral: entry.isUnilateral ?? false,
   muscles: entry.muscles.map(([muscle, loadPct]) => ({ muscle, loadPct })),
 })
@@ -201,6 +203,22 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     muscles: [['quadriceps', 100]],
   },
   {
+    name: 'Sissy Squat',
+    equipment: [],
+    tracking: 'bodyweight_reps',
+    description:
+      'Knees travel far forward as the body leans back: a deep quad stretch, the rectus femoris most, with no machine.',
+    instructions: steps(
+      'Hold something fixed for balance, feet hip width, up on the balls of the feet.',
+      'Push the knees forward and lean back, body straight from knees to head, as low as you can control.',
+      'Drive back up through the quads. Hold a plate at the chest to load it.',
+    ),
+    muscles: [
+      ['quadriceps', 90],
+      ['hip_flexors', 10],
+    ],
+  },
+  {
     name: 'Reverse Nordic',
     equipment: [],
     tracking: 'bodyweight_reps',
@@ -270,6 +288,23 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     muscles: [
       ['hamstrings', 45],
       ['gluteus_maximus', 30],
+      ['erector_spinae', 20],
+      ['forearm_flexors', 5],
+    ],
+  },
+  {
+    name: 'Stiff-Leg Deadlift',
+    equipment: ['barbell'],
+    description:
+      'Hinge with the knees nearly straight, each rep from the floor or a dead stop. More hamstring stretch than a Romanian deadlift; heavy, so not a lift to take to failure.',
+    instructions: steps(
+      'Feet hip width, bar over mid-foot, only a slight bend in the knees.',
+      'Hinge down with a flat back as far as the hamstrings allow — to the floor, or just short of it.',
+      'Stand by driving the hips forward, bar close to the legs. Straps are fine.',
+    ),
+    muscles: [
+      ['hamstrings', 50],
+      ['gluteus_maximus', 25],
       ['erector_spinae', 20],
       ['forearm_flexors', 5],
     ],
@@ -622,6 +657,23 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     ],
   },
   {
+    name: 'Standing Dumbbell Shoulder Press',
+    equipment: ['dumbbells'],
+    description:
+      'Shoulder press with dumbbells, standing: the same delts as seated, more trunk, and no bench needed.',
+    instructions: steps(
+      'Clean the dumbbells to the shoulders, feet hip width, glutes and abs tight.',
+      'Press up and slightly in without leaning back or driving with the knees.',
+      'Lower until the elbows pass 90°.',
+    ),
+    muscles: [
+      ['deltoid_anterior', 45],
+      ['triceps_brachii', 25],
+      ['deltoid_lateral', 20],
+      ['rectus_abdominis', 10],
+    ],
+  },
+  {
     name: 'Machine Shoulder Press',
     equipment: ['shoulder_press'],
     description:
@@ -660,7 +712,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     description:
       'Lateral raise against a cable, which keeps the side delt loaded at the bottom where dumbbells go slack. Weight shown is per side.',
     instructions: steps(
-      'Stand side-on to a low pulley, handle in the far hand, cable crossing in front of the body.',
+      'Stand side-on to a low pulley — or one at wrist height, if it adjusts — handle in the far hand, cable crossing in front of the body.',
       'Start with the hand across the midline for a stretch.',
       'Raise up and slightly forward to shoulder height, then lower under control.',
     ),
@@ -668,6 +720,22 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
       ['deltoid_lateral', 85],
       ['trapezius_upper', 10],
       ['deltoid_anterior', 5],
+    ],
+  },
+  {
+    name: 'Incline Dumbbell Y-Raise',
+    equipment: ['dumbbells', 'incline_bench'],
+    description:
+      'Raise up and out in a Y with the back on a 30-degree incline. Side delts, with the lower traps helping; light weight.',
+    instructions: steps(
+      'Bench at about 30°, back on the pad, dumbbells hanging at the sides.',
+      'Raise the arms up and out in a Y, thumbs up, to about head height.',
+      'Lower under control without swinging.',
+    ),
+    muscles: [
+      ['deltoid_lateral', 65],
+      ['trapezius_lower', 20],
+      ['deltoid_anterior', 15],
     ],
   },
   {
@@ -735,7 +803,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     instructions: steps(
       'Underhand grip about shoulder width.',
       'Start each rep from a full dead hang.',
-      'Pull until the chin clears the bar, elbows driving down toward the hips.',
+      'Drive the elbows down toward the hips until the upper chest reaches the bar, or at least the chin clears the hands.',
     ),
     muscles: [
       ['latissimus_dorsi', 40],
@@ -748,7 +816,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     name: 'Lat Pulldown',
     equipment: ['high_pulley'],
     description:
-      'Scalable vertical pull. Grip changes the bias: underhand for more biceps, a narrow neutral handle for more lats.',
+      'Scalable vertical pull. Grip changes the bias: underhand for more biceps, a narrow neutral handle for more lats. Hardest at the bottom, the short end, so lengthened partials suit its last set.',
     instructions: steps(
       'Thighs locked under the pad. Overhand grip 1–1.5× shoulder width by default.',
       'Let the arms reach fully overhead to stretch the lats before each rep.',
@@ -836,7 +904,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     name: 'Seated Cable Row',
     equipment: ['low_pulley'],
     description:
-      'Chest tall, pull to the abdomen without rocking. Elbows tucked for lats, flared for upper back.',
+      'Chest tall, pull to the abdomen without rocking. Elbows tucked for lats, flared for upper back. Hardest at the short end, so lengthened partials suit its last set.',
     instructions: steps(
       'Feet braced, knees soft, chest tall.',
       'Let the arms reach forward to stretch the back without rounding much.',
@@ -871,7 +939,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     name: 'Chest-Supported Dumbbell Row',
     equipment: ['dumbbells', 'incline_bench'],
     description:
-      'Row lying chest-down on an incline bench. No lower-back fatigue, so the upper back can be taken to failure.',
+      'Row lying chest-down on an incline bench. No lower-back fatigue, so the upper back can be taken to failure. Hardest at the short end, so lengthened partials suit its last set.',
     instructions: steps(
       'Incline bench at about 30–45°, chest on the pad, dumbbells hanging.',
       'Row with the elbows about 45° from the body.',
@@ -891,7 +959,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     description:
       'Rope pull to the face with high elbows. Rear delts, mid traps and rotator cuff together; a reverse fly isolates the rear delts better.',
     instructions: steps(
-      'Rope on a pulley at about head height.',
+      'Rope on a high pulley, at or a little above head height.',
       'Pull the rope toward the forehead, elbows high and back, hands apart.',
       'Return under control to a stretch.',
     ),
@@ -1261,7 +1329,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     instructions: steps(
       'Forearms under the shoulders, body straight from heels to head.',
       'Brace the abs and squeeze the glutes; do not let the hips sag.',
-      'Progress by adding time.',
+      'Start with 10–15 s holds. Once several 30 s holds or one past 60 s are easy, make it harder rather than longer: elbows forward under the eyes, pelvis tucked under, everything squeezed. 30 s of that is a lot.',
     ),
     muscles: [
       ['transverse_abdominis', 40],
@@ -1294,7 +1362,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     description:
       'Raise the legs without swinging. A lower-ab movement; pair it with a loaded crunch. Bent knees make it easier.',
     instructions: steps(
-      'Hang from the bar, shoulders engaged.',
+      'Hang from the bar, arms straight and shoulders engaged; the elbows stay straight throughout.',
       'Raise the legs without swinging, and curl the pelvis up at the top so the abs, not just the hip flexors, do the work.',
       'Lower under control. Bend the knees to make it easier.',
     ),

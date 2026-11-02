@@ -66,7 +66,8 @@ test(
       expect(await form.equipmentSummary()).toBe('Needs all of what is chosen.')
       await form.save()
 
-      expect(await app.library.listText()).toContain('Cable Face Pull')
+      await app.library.scope('mine')
+      await page.until(app.library.shownText, (text) => text.includes('Cable Face Pull'))
       const detail = await app.library.find('Cable Face Pull')
       expect(await detail.equipment()).toBe('High pulley')
 
@@ -1438,7 +1439,8 @@ test(
       await form.attachVideo('https://www.youtube.com/watch?v=rep-etition')
       await form.save()
 
-      expect(await app.library.listText()).toContain('Face Pull With Video')
+      await app.library.scope('mine')
+      await page.until(app.library.shownText, (text) => text.includes('Face Pull With Video'))
     })
   },
   E2E_TIMEOUT_MS,
@@ -2226,9 +2228,9 @@ test(
       const exercise = await app.library.find(spare)
       await exercise.delete()
       // Their own: the whole library is more than the list's first page, and these sort past it.
+      // Waited for, since the unfiltered list is on screen until the chip's filter lands.
       await app.library.scope('mine')
-      const listed = await app.library.shownText()
-      expect(listed).toContain(used)
+      const listed = await page.until(app.library.shownText, (text) => text.includes(used))
       expect(listed).not.toContain(spare)
     })
   },

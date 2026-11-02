@@ -134,11 +134,16 @@ crashes — which matters when the person reading the logs is a stranger self-ho
   An entry already there whose equipment is undescribed takes the seed's (#33), on every boot: how
   an installation made before equipment was a list gets its library described. A curator's own
   description stands — but one set back to undescribed is described again at the next boot.
+  Nothing else of an existing entry is touched: a release that rewrites an entry's description or
+  instructions reaches new installations only. An existing library takes the new text from its
+  curator (`exercise_update`, see `docs/07-mcp.md`). And a name, once shipped, never changes — the
+  seed would not find the renamed entry, and would add it a second time.
 
 Every library entry is validated against `ExerciseCreate` before it is written, so a typo fails the
-seed rather than producing a silently wrong library. `seed-data/exercises.test.ts` runs the same
-checks with no database, plus coverage assertions: names unique, every tracking mode used, every
-muscle trained by at least one exercise.
+seed rather than producing a silently wrong library. Seed and test build that input with one
+function, `exerciseInputOf`. `seed-data/exercises.test.ts` runs the same checks with no database,
+plus coverage assertions: names unique, every tracking mode used, every muscle trained by at least
+one exercise, and every entry has both a description and instructions.
 
 Seeded media are YouTube **search** URLs, not specific video ids. Inventing ids would give every
 user dead links and broken thumbnails; a search always resolves. Users and the AI replace them with
