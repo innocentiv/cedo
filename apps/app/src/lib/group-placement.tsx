@@ -1,13 +1,11 @@
 import { useState } from 'react'
-import { DEFAULT_GROUP_SLUG, type GroupMembership } from '@cedo/contract'
+import { type GroupMembership, sayGroup } from '@cedo/contract'
 import { Button, ConfirmButton, FormError, Loaded, Stack, Text } from '../ui/index.ts'
 import { useGroups } from '../api/queries.ts'
 import { useSubmit } from './use-submit.ts'
 
-const nameOf = (group: GroupMembership): string => {
-  if (group.kind === 'personal') return 'your personal group'
-  return group.slug === DEFAULT_GROUP_SLUG ? 'the starter library' : group.name
-}
+const nameOf = (group: GroupMembership): string =>
+  sayGroup(group, { personal: 'your personal group', library: 'the starter library' })
 
 /**
  * Which group something is in, and — when you edit it — a transfer to another the server says you

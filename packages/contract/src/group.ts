@@ -29,6 +29,20 @@ export const Group = z.object({
 export type Group = z.output<typeof Group>
 
 /**
+ * Which group owns something, in the words of wherever it is said (#47): the caller's personal
+ * group, the starter library, or any other group by its name. The one place the three are told
+ * apart, so the app and the AI name an owning group alike. Only ever given a group the caller
+ * belongs to, so a personal group is always their own.
+ */
+export function sayGroup(
+  group: Pick<Group, 'kind' | 'slug' | 'name'>,
+  words: { readonly personal: string; readonly library: string },
+): string {
+  if (group.kind === 'personal') return words.personal
+  return group.slug === DEFAULT_GROUP_SLUG ? words.library : group.name
+}
+
+/**
  * A group as seen by the current user, carrying their own role in it, and what they may do with it
  * — said by the server, as `canEdit` is for what they own, so a client offers only what will be
  * accepted and holds none of the rules.
