@@ -103,6 +103,18 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
   },
 })
 
+/** Opens a list filter's sheet and chooses one of its options, which closes it (#52). */
+export const choose = async (page: Page, filter: string, option: string): Promise<void> => {
+  await page.waitFor(filter)
+  await page.click(`[data-testid="${filter}"]`)
+  await page.waitFor(`${filter}-sheet`)
+  await page.click(`[data-testid="${filter}-${option}"]`)
+  await page.until(
+    async () => await page.shown(`${filter}-sheet`),
+    (shown) => !shown,
+  )
+}
+
 /** The names of the rows a list holds, in order — the library's, or the picker's (#52). */
 export const rowNames = async (page: Page, list: string): Promise<string[]> => {
   const names = await page.evaluate(
@@ -265,24 +277,41 @@ export const library = (page: Page) => {
       await page.waitFor('exercise-list')
       return await page.shown('equipment-prompt')
     },
-    /** What the library offers (#35): only what you can do, or everything. */
+    /** What the library offers (#35): only what you can do, or everything — chosen in its sheet. */
     showing: async (showing: 'doable' | 'all'): Promise<void> => {
       await list()
-      await page.click(`[data-testid="exercise-showing-${showing}"]`)
+      await choose(page, 'exercise-showing', showing)
     },
-    /** Filters the list by scope. */
+    /** Narrows the list to a scope, chosen in its sheet (#52). */
     scope: async (scope: OwnableScope): Promise<void> => {
       await page.goto('/exercises')
-      await page.waitFor('exercise-scope')
-      await page.click(`[data-testid="exercise-scope-${scope}"]`)
+      await choose(page, 'exercise-scope', scope)
     },
     emptyShown: async (): Promise<void> => {
       await page.waitFor('exercises-empty')
     },
-    /** The scope chips' row height, in CSS pixels. */
-    scopeHeight: async (): Promise<unknown> =>
+    /**
+     * Narrows the list as it stands, in one filter's sheet: a scope (`mine`, `library`,
+     * `group-<id>`), a muscle by slug, or what is shown (`all`, `doable`).
+     */
+    narrow: async (filter: 'scope' | 'muscle' | 'showing', option: string): Promise<void> => {
+      await choose(page, `exercise-${filter}`, option)
+    },
+    /** What a filter says it is set to: "All Groups", "Squad", "Quads". */
+    filterValue: async (filter: 'scope' | 'muscle' | 'showing'): Promise<string> =>
+      (await page.text(`exercise-${filter}-value`)) ?? '',
+    /** Puts every filter back with the ×, which is there only while one narrows the list. */
+    clearFilters: async (): Promise<void> => {
+      await page.click('[data-testid="exercise-filters-clear"]')
+      await page.until(
+        async () => await page.shown('exercise-filters-clear'),
+        (shown) => !shown,
+      )
+    },
+    /** The filters' row height, in CSS pixels. */
+    filtersHeight: async (): Promise<unknown> =>
       await page.evaluate(
-        `document.querySelector('[data-testid="exercise-scope"]').getBoundingClientRect().height`,
+        `document.querySelector('[data-testid="exercise-filters"]').getBoundingClientRect().height`,
       ),
   }
 }

@@ -1,14 +1,11 @@
 import { useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import type { MuscleSlug, OwnableScope } from '@cedo/contract'
 import {
   Card,
-  Chips,
   Columns,
   Empty,
   Input,
   Loaded,
-  MuscleFilter,
   NavButton,
   Screen,
   Stack,
@@ -18,14 +15,9 @@ import {
 import { useExercises } from '../../../src/api/queries.ts'
 import { ExerciseDetailView } from '../../../src/lib/exercise-detail.tsx'
 import { ExerciseListRow } from '../../../src/lib/exercise-media.tsx'
-import { DoableChips, EquipmentPrompt, useDoableFilter } from '../../../src/lib/doable-filter.tsx'
+import { EquipmentPrompt } from '../../../src/lib/doable-filter.tsx'
+import { ExerciseFilters, useExerciseFilters } from '../../../src/lib/exercise-filters.tsx'
 import { ShowMore } from '../../../src/lib/show-more.tsx'
-
-const SCOPES: readonly { value: OwnableScope; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'mine', label: 'Mine' },
-  { value: 'favourites', label: 'Pinned' },
-]
 
 /**
  * The exercise library (#27): searched, scoped, narrowed to a muscle. On a desktop the exercise
@@ -36,24 +28,19 @@ const SCOPES: readonly { value: OwnableScope; label: string }[] = [
 export default function ExerciseList(): React.JSX.Element {
   const router = useRouter()
   const desk = useLayout() === 'tablet'
-  const [scope, setScope] = useState<OwnableScope>('all')
   const [search, setSearch] = useState('')
-  const [muscle, setMuscle] = useState<MuscleSlug | null>(null)
+  const filters = useExerciseFilters()
   // In the address (`?open=`), so a reload or a link keeps it open (#29).
   const open = useLocalSearchParams<{ open?: string }>().open ?? null
   const setOpen = (id: string | null) => {
     router.setParams({ open: id ?? undefined })
   }
 
-  const doable = useDoableFilter()
-  const query = {
-    scope,
+  const exercises = useExercises({
     limit: 50,
-    ...doable.query,
+    ...filters.query,
     ...(search.trim() === '' ? {} : { q: search.trim() }),
-    ...(muscle === null ? {} : { muscle }),
-  }
-  const exercises = useExercises(query)
+  })
 
   const list = (
     <Stack gap="lg">
@@ -64,13 +51,9 @@ export default function ExerciseList(): React.JSX.Element {
           placeholder="Search"
           testID="exercise-search"
         />
-        <Stack direction="row" align="center" gap="sm" wrap>
-          <Chips options={SCOPES} value={scope} onChange={setScope} testID="exercise-scope" />
-          <MuscleFilter value={muscle} onChange={setMuscle} testID="exercise-muscle" />
-        </Stack>
-        <DoableChips filter={doable} testID="exercise-showing" />
+        <ExerciseFilters filters={filters} testID="exercise" />
       </Stack>
-      {doable.described === false ? <EquipmentPrompt /> : null}
+      {filters.doable.described === false ? <EquipmentPrompt /> : null}
 
       <Loaded query={exercises} testID="exercises">
         {(data) =>

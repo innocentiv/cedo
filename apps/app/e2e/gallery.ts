@@ -460,6 +460,26 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
 
   await show(page, '/exercises', 'exercises-screen')
   await snap('08-exercises')
+  // Each filter's own sheet (#52): a few choices in a list, thirty-four muscles in a grid.
+  for (const [filter, name] of [
+    ['exercise-scope', '08c-filter-groups'],
+    ['exercise-muscle', '08d-filter-muscles'],
+    ['exercise-showing', '08e-filter-equipment'],
+  ] as const) {
+    // oxlint-disable-next-line no-await-in-loop -- one sheet open at a time.
+    await page.click(`[data-testid="${filter}"]`)
+    // oxlint-disable-next-line no-await-in-loop -- one sheet open at a time.
+    await page.waitFor(`${filter}-sheet`)
+    // oxlint-disable-next-line no-await-in-loop -- one sheet open at a time.
+    await snap(name)
+    // oxlint-disable-next-line no-await-in-loop -- one sheet open at a time.
+    await page.click(`[data-testid="${filter}-sheet-close"]`)
+    // oxlint-disable-next-line no-await-in-loop -- gone before the next is opened, or clicked past.
+    await page.until(
+      async () => await page.shown(`${filter}-sheet`),
+      (shown) => !shown,
+    )
+  }
   // On a desktop, an exercise opens beside the list (#29).
   if (await page.shown('exercise-pane')) {
     // By name, "Tempo Goblet Squat" is on the library's second page (#52).

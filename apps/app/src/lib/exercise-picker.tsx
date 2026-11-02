@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import type { Exercise, MuscleSlug } from '@cedo/contract'
+import type { Exercise } from '@cedo/contract'
 import { useExercises, useRecentExercises } from '../api/queries.ts'
 import { ExerciseListRow } from './exercise-media.tsx'
-import { DoableChips, useDoableFilter } from './doable-filter.tsx'
+import { ExerciseFilters, useExerciseFilters } from './exercise-filters.tsx'
 import { ShowMore } from './show-more.tsx'
-import { Button, Empty, Input, Loaded, MuscleFilter, Screen, Stack, Text } from '../ui/index.ts'
+import { Button, Empty, Input, Loaded, Screen, Stack, Text } from '../ui/index.ts'
 
 export interface ExercisePickerProps {
   /** The whole exercises, in the order picked — callers need their names and tracking modes. */
@@ -29,17 +29,15 @@ export function ExercisePicker({
   already,
 }: ExercisePickerProps): React.JSX.Element {
   const [search, setSearch] = useState('')
-  const [muscle, setMuscle] = useState<MuscleSlug | null>(null)
   const [chosen, setChosen] = useState<readonly Exercise[]>([])
+  const filters = useExerciseFilters()
   const trimmed = search.trim()
-  const narrowed = trimmed !== '' || muscle !== null
-  const doable = useDoableFilter()
+  // Searched, or narrowed to a group or a muscle: what was logged lately is not what was asked for.
+  const narrowed = trimmed !== '' || filters.scope.scope !== 'all' || filters.muscle !== null
   const exercises = useExercises({
-    scope: 'all',
     limit: 50,
-    ...doable.query,
+    ...filters.query,
     ...(trimmed === '' ? {} : { q: trimmed }),
-    ...(muscle === null ? {} : { muscle }),
   })
   const recent = useRecentExercises()
 
@@ -89,19 +87,14 @@ export function ExercisePicker({
         </Stack>
       }
     >
-      <Stack direction="row" gap="sm" align="center">
-        <Stack grow>
-          <Input
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search"
-            autoFocus
-            testID="picker-search"
-          />
-        </Stack>
-        <MuscleFilter value={muscle} onChange={setMuscle} testID="picker-muscle" />
-      </Stack>
-      <DoableChips filter={doable} testID="picker-showing" />
+      <Input
+        value={search}
+        onChangeText={setSearch}
+        placeholder="Search"
+        autoFocus
+        testID="picker-search"
+      />
+      <ExerciseFilters filters={filters} testID="picker" />
       {narrowed || recent.data === undefined || recent.data.length === 0 ? null : (
         <Stack gap="xs" testID="picker-recent">
           <Text variant="label" tone="muted">

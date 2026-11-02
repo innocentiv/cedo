@@ -1456,6 +1456,46 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/**
+ * One filter language (#52): each filter a trigger saying its value, choosing in a sheet of its own
+ * — one of your groups by name, a muscle from its region — and one × putting them all back.
+ */
+test(
+  'the library narrows to one of your groups, or a muscle, and the × puts it back',
+  async () => {
+    await withApp('library-filters', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('flt'))
+      const mine = await page.client()
+      const squad = await mine.groups.create({ name: 'Squad' })
+      const [calf] = (await mine.exercises.list({ q: 'Barbell Standing Calf Raise' })).items
+      if (calf === undefined) throw new Error('No calf raise in the library')
+      await mine.exercises.duplicate(calf.id, { toGroupId: squad.id })
+
+      await app.nav.tab('exercises')
+      expect(await app.library.filterValue('scope')).toBe('All Groups')
+      expect(await app.library.filterValue('muscle')).toBe('All Muscles')
+
+      await app.library.narrow('scope', `group-${squad.id}`)
+      expect(await app.library.filterValue('scope')).toBe('Squad')
+      expect(await page.until(app.library.names, (names) => names.length === 1)).toEqual([
+        'Barbell Standing Calf Raise',
+      ])
+
+      await app.library.clearFilters()
+      expect(await app.library.filterValue('scope')).toBe('All Groups')
+      await app.library.narrow('muscle', 'gluteus_medius')
+      expect(await app.library.filterValue('muscle')).not.toBe('All Muscles')
+      const narrowed = await page.until(app.library.names, (names) => !names.includes(calf.name))
+      expect(narrowed.length).toBeGreaterThan(0)
+
+      await app.library.clearFilters()
+      expect(await app.library.filterValue('muscle')).toBe('All Muscles')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
 /** Workouts a page at a time too (#52): a fifty-first plan was in no list at all. */
 test(
   'every workout is reached a page at a time',
@@ -1582,7 +1622,7 @@ test(
 )
 
 test(
-  'an empty list still leaves its filter chips one row tall',
+  'an empty list still leaves its filters one row tall',
   async () => {
     await withApp('empty-list-chips', async (page) => {
       const app = screens(page)
@@ -1594,9 +1634,10 @@ test(
 
       /**
        * Regression: `Chips` was a horizontal ScrollView, which carries no intrinsic height. With an
-       * empty list under it there was space going spare, so three chips took the whole screen.
+       * empty list under it there was space going spare, so three chips took the whole screen. The
+       * filters' row scrolls sideways again (#52), so it is held to its own height.
        */
-      const height = await app.library.scopeHeight()
+      const height = await app.library.filtersHeight()
       expect(typeof height).toBe('number')
       expect(height as number).toBeLessThan(80)
     })

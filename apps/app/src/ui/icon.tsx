@@ -26,22 +26,40 @@ const GLYPHS = {
   plus: ['M12 5v14', 'M5 12h14'],
   minus: ['M5 12h14'],
   check: ['M20 6L9 17l-5-5'],
+  // The list filters' (#52), after Lucide's (ISC): who owns it, what it works, what it needs.
+  group: [
+    'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2',
+    'M9 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8z',
+    'M22 21v-2a4 4 0 0 0-3-3.87',
+    'M16 3.13a4 4 0 0 1 0 7.75',
+  ],
+  muscle: [
+    'M12.409 13.017A5 5 0 0 1 22 15c0 3.866-4 7-9 7-4.077 0-8.153-.82-10.371-2.462-.426-.316-.631-.832-.62-1.362C2.118 12.723 2.627 2 10 2a3 3 0 0 1 3 3 2 2 0 0 1-2 2c-1.105 0-1.64-.444-2-1',
+    'M15 14a5 5 0 0 0-7.584 2',
+    'M9.964 6.825C8.019 7.977 9.5 13 8 15',
+  ],
+  equipment: ['M6 12h12', 'M6 7v10', 'M3 9v6', 'M18 7v10', 'M21 9v6'],
 } as const
 
 export type IconName = keyof typeof GLYPHS | 'more' | 'play'
 
 const TINT = { default: color.text, muted: color.textMuted, onAccent: color.accentText } as const
 
+/** A glyph's size: a control's, or `small` beside a line of caption text — a list filter's (#52). */
+const SIZE = { regular: ICON_SIZE, small: 16 } as const
+
 export function Icon({
   name,
   tone = 'default',
+  size = 'regular',
 }: {
   readonly name: IconName
   readonly tone?: keyof typeof TINT
+  readonly size?: keyof typeof SIZE
 }): React.JSX.Element {
   const tint = TINT[tone]
   return (
-    <Svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill="none">
+    <Svg width={SIZE[size]} height={SIZE[size]} viewBox="0 0 24 24" fill="none">
       {name === 'more' ? (
         [5, 12, 19].map((cx) => <Circle key={cx} cx={cx} cy={12} r={1.75} fill={tint} />)
       ) : name === 'play' ? (

@@ -1,17 +1,14 @@
 import { useState } from 'react'
 import { MUSCLES, MUSCLE_REGIONS, MUSCLE_REGION_LABELS, type MuscleSlug } from '@cedo/contract'
-import { Button } from './button.tsx'
-import { Chips } from './chips.tsx'
+import { FilterTrigger, OptionGrid, OptionRow, OptionSection } from './filters.tsx'
 import { Sheet } from './sheet.tsx'
-import { Stack } from './stack.tsx'
-import { Text } from './text.tsx'
-
-const ANY = 'any'
+import { useLayout } from './use-layout.ts'
 
 /**
- * Narrowing a list of exercises to those loading one muscle (#27): one button saying which — or Any
- * muscle — that opens the muscles grouped by region, upper body, core, lower body, as a lifter
- * thinks of them rather than one wall of thirty-four.
+ * Narrowing a list of exercises to those loading one muscle (#27, #52): All Muscles, or the one
+ * chosen. Its sheet holds thirty-four, so it lays them out as a lifter thinks of them — upper body,
+ * core, lower body — each a grid of cells of one width: two to a line on a phone, three on a
+ * desktop. Choosing one closes it.
  */
 export function MuscleFilter({
   value,
@@ -23,17 +20,18 @@ export function MuscleFilter({
   readonly testID: string
 }): React.JSX.Element {
   const [open, setOpen] = useState(false)
-  const name = MUSCLES.find((m) => m.slug === value)?.name
-  const choose = (chosen: string) => {
-    onChange(chosen === ANY ? null : (MUSCLES.find((m) => m.slug === chosen)?.slug ?? null))
+  const columns = useLayout() === 'tablet' ? 3 : 2
+  const choose = (muscle: MuscleSlug | null) => {
+    onChange(muscle)
     setOpen(false)
   }
   return (
     <>
-      <Button
-        title={name ?? 'Any muscle'}
-        variant="secondary"
-        size="small"
+      <FilterTrigger
+        icon="muscle"
+        label="Muscle"
+        value={MUSCLES.find((m) => m.slug === value)?.name ?? 'All Muscles'}
+        active={value !== null}
         onPress={() => {
           setOpen(true)
         }}
@@ -44,30 +42,30 @@ export function MuscleFilter({
         onClose={() => {
           setOpen(false)
         }}
-        title="Muscle"
+        title="Muscles"
         testID={`${testID}-sheet`}
       >
-        <Chips
-          options={[{ value: ANY, label: 'Any muscle' }]}
-          value={value ?? ANY}
-          onChange={choose}
+        <OptionRow
+          label="All Muscles"
+          selected={value === null}
+          onPress={() => {
+            choose(null)
+          }}
           testID={`${testID}-any`}
         />
         {MUSCLE_REGIONS.map((region) => (
-          <Stack key={region} gap="sm">
-            <Text variant="label" tone="muted">
-              {MUSCLE_REGION_LABELS[region]}
-            </Text>
-            <Chips
+          <OptionSection key={region} title={MUSCLE_REGION_LABELS[region]}>
+            <OptionGrid
               options={MUSCLES.filter((m) => m.region === region).map((m) => ({
                 value: m.slug,
                 label: m.name,
               }))}
-              value={value ?? ANY}
-              onChange={choose}
-              testID={`${testID}-${region}`}
+              value={value}
+              onChoose={choose}
+              columns={columns}
+              testID={testID}
             />
-          </Stack>
+          </OptionSection>
         ))}
       </Sheet>
     </>

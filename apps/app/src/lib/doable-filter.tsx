@@ -1,12 +1,17 @@
 import { useState } from 'react'
-import { Card, type ChipOption, Chips, NavButton, Stack, Text } from '../ui/index.ts'
+import { Card, FilterTrigger, NavButton, OptionRow, Sheet, Stack, Text } from '../ui/index.ts'
 import { useEquipment } from '../api/equipment-queries.ts'
 
 export type Showing = 'doable' | 'all'
 
-const SHOWING: readonly ChipOption<Showing>[] = [
-  { value: 'doable', label: 'What I can do' },
-  { value: 'all', label: 'Everything' },
+/** What each choice is called, and — in the sheet — what it lists. */
+const SHOWING: readonly { value: Showing; label: string; detail: string }[] = [
+  {
+    value: 'doable',
+    label: 'My Equipment',
+    detail: 'Only what you can do with what you have',
+  },
+  { value: 'all', label: 'Any Equipment', detail: "Also what needs equipment you don't have" },
 ]
 
 export interface DoableFilter {
@@ -34,17 +39,56 @@ export function useDoableFilter(): DoableFilter {
   }
 }
 
-/** The switch between the two, shown once there is something to switch: a described setup. */
-export function DoableChips({
+/**
+ * The switch between the two (#52) — My Equipment, or Any Equipment — shown once there is something
+ * to switch: a described setup. Its sheet holds the two, each saying what it lists.
+ */
+export function EquipmentFilter({
   filter,
   testID,
 }: {
   readonly filter: DoableFilter
   readonly testID: string
 }): React.JSX.Element | null {
+  const [open, setOpen] = useState(false)
   if (filter.described !== true) return null
   return (
-    <Chips options={SHOWING} value={filter.showing} onChange={filter.setShowing} testID={testID} />
+    <>
+      <FilterTrigger
+        icon="equipment"
+        label="Equipment"
+        value={SHOWING.find((s) => s.value === filter.showing)?.label ?? ''}
+        active={filter.showing !== 'doable'}
+        onPress={() => {
+          setOpen(true)
+        }}
+        testID={testID}
+      />
+      <Sheet
+        open={open}
+        onClose={() => {
+          setOpen(false)
+        }}
+        title="Equipment"
+        testID={`${testID}-sheet`}
+      >
+        <Stack gap="xs">
+          {SHOWING.map((choice) => (
+            <OptionRow
+              key={choice.value}
+              label={choice.label}
+              detail={choice.detail}
+              selected={filter.showing === choice.value}
+              onPress={() => {
+                filter.setShowing(choice.value)
+                setOpen(false)
+              }}
+              testID={`${testID}-${choice.value}`}
+            />
+          ))}
+        </Stack>
+      </Sheet>
+    </>
   )
 }
 

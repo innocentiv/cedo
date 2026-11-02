@@ -39,8 +39,11 @@ export function sayGroup(
   words: { readonly personal: string; readonly library: string },
 ): string {
   if (group.kind === 'personal') return words.personal
-  return group.slug === DEFAULT_GROUP_SLUG ? words.library : group.name
+  return isLibrary(group) ? words.library : group.name
 }
+
+/** Whether it is the starter library, which every account belongs to (`DEFAULT_GROUP_SLUG`). */
+export const isLibrary = (group: Pick<Group, 'slug'>): boolean => group.slug === DEFAULT_GROUP_SLUG
 
 /**
  * A group as seen by the current user, carrying their own role in it, and what they may do with it

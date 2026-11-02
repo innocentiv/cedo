@@ -1,10 +1,9 @@
 import { useState } from 'react'
 import { useRouter } from 'expo-router'
-import type { OwnableScope } from '@cedo/contract'
 import {
   Button,
-  Chips,
   Empty,
+  FilterRow,
   Field,
   Input,
   ListRow,
@@ -14,20 +13,15 @@ import {
 } from '../../../src/ui/index.ts'
 import { useCreateWorkout, useWorkouts } from '../../../src/api/queries.ts'
 import { useGroupName } from '../../../src/lib/group-name.ts'
+import { ALL, type ScopeChoice, ScopeFilter } from '../../../src/lib/scope-filter.tsx'
 import { ShowMore } from '../../../src/lib/show-more.tsx'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 
-const SCOPES: readonly { value: OwnableScope; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'mine', label: 'Mine' },
-  { value: 'favourites', label: 'Pinned' },
-]
-
 export default function WorkoutList(): React.JSX.Element {
   const router = useRouter()
-  const [scope, setScope] = useState<OwnableScope>('all')
+  const [scope, setScope] = useState<ScopeChoice>(ALL)
   const [name, setName] = useState('')
-  const workouts = useWorkouts({ scope, limit: 50 })
+  const workouts = useWorkouts({ ...scope, limit: 50 })
   const create = useCreateWorkout()
   const groupNameOf = useGroupName()
   const { submit, busy, error: saveError } = useSubmit()
@@ -42,7 +36,18 @@ export default function WorkoutList(): React.JSX.Element {
 
   return (
     <Screen title="Workouts" testID="workouts-screen">
-      <Chips options={SCOPES} value={scope} onChange={setScope} testID="workout-scope" />
+      <FilterRow
+        onClear={
+          scope.scope === 'all'
+            ? undefined
+            : () => {
+                setScope(ALL)
+              }
+        }
+        testID="workout-filters"
+      >
+        <ScopeFilter value={scope} onChange={setScope} testID="workout-scope" />
+      </FilterRow>
 
       <Loaded query={workouts} testID="workouts">
         {(data) =>
