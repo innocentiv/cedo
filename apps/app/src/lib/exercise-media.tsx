@@ -7,13 +7,15 @@ import {
 } from '@cedo/contract'
 import { apiUrl } from '../api/http.ts'
 import { ExerciseRow, VideoPlayer } from '../ui/index.ts'
+import { useOwnerName } from './owner-name.ts'
 
 /** A path the API answered — an upload's, relative to it — or a URL, made one the app can load. */
 const loadable = (path: string | null): string | null => (path === null ? null : apiUrl(path))
 
 /**
- * An exercise as a list shows it (#27) — the library, the picker: its name, its main muscles, and
- * its video's thumbnail. What the list adds — a tag, a check — is the list's.
+ * An exercise as a list shows it (#27) — the library, the picker: its name, the group that owns it
+ * (#47), its main muscles, and its video's thumbnail. What the list adds — a tag, a check — is the
+ * list's.
  */
 export function ExerciseListRow({
   exercise,
@@ -30,8 +32,11 @@ export function ExerciseListRow({
   readonly onPress: () => void
   readonly testID: string
 }): React.JSX.Element {
-  // Said when the list holds everything, and in a plan, where it is never hidden (#35).
-  const tags = [exercise.doable ? undefined : MISSING_EQUIPMENT, tag].filter((t) => t !== undefined)
+  const owner = useOwnerName()(exercise.ownerGroupId)
+  // Not doable: said when the list holds everything, and in a plan, where it is never hidden (#35).
+  const tags = [owner, exercise.doable ? undefined : MISSING_EQUIPMENT, tag].filter(
+    (t) => t !== undefined,
+  )
   return (
     <ExerciseRow
       name={exercise.name}

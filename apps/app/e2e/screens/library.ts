@@ -217,6 +217,25 @@ export const library = (page: Page) => {
       const row = await page.waitForSelector('[data-testid^="exercise-row-"]')
       await page.click(`[data-testid="${row}"]`)
     },
+    /** Opens the library afresh, searched for `name`. */
+    search: async (name: string): Promise<void> => {
+      await list()
+      await page.fill('exercise-search', name)
+    },
+    /**
+     * What each row named exactly `name` says under it, in list order — `Library · Quads, Glutes`
+     * — the list as it stands, so a journey can wait on it.
+     */
+    captions: async (name: string): Promise<string[]> => {
+      // A row's name by its own test id, and the caption the line after it.
+      const rows = await page.evaluate(
+        `[...document.querySelectorAll('[data-testid="exercise-list"] [data-testid^="exercise-row-"][data-testid$="-name"]')].map((shown) => [shown.innerText.trim(), shown.nextElementSibling?.innerText.trim() ?? ''])`,
+      )
+      return (Array.isArray(rows) ? rows : [])
+        .map((row) => (Array.isArray(row) ? row.map(String) : []))
+        .filter(([shown]) => shown === name)
+        .map(([, caption]) => caption ?? '')
+    },
     /** Whether the list is on screen. */
     listShown: async (): Promise<boolean> => await page.shown('exercise-list'),
     /** The library as it stands, without loading it again: the switch below keeps its choice. */

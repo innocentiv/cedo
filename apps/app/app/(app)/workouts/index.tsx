@@ -13,6 +13,7 @@ import {
   Stack,
 } from '../../../src/ui/index.ts'
 import { useCreateWorkout, useWorkouts } from '../../../src/api/queries.ts'
+import { useOwnerName } from '../../../src/lib/owner-name.ts'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 
 const SCOPES: readonly { value: OwnableScope; label: string }[] = [
@@ -27,6 +28,7 @@ export default function WorkoutList(): React.JSX.Element {
   const [name, setName] = useState('')
   const workouts = useWorkouts({ scope, limit: 50 })
   const create = useCreateWorkout()
+  const ownerOf = useOwnerName()
   const { submit, busy, error: saveError } = useSubmit()
 
   const add = () => {
@@ -51,7 +53,12 @@ export default function WorkoutList(): React.JSX.Element {
                 <ListRow
                   key={workout.id}
                   title={workout.name}
-                  subtitle={`${workout.dayCount} ${workout.dayCount === 1 ? 'day' : 'days'}`}
+                  subtitle={[
+                    `${workout.dayCount} ${workout.dayCount === 1 ? 'day' : 'days'}`,
+                    ownerOf(workout.ownerGroupId),
+                  ]
+                    .filter((part) => part !== undefined)
+                    .join(' · ')}
                   trailing={workout.isFavourite ? '★' : undefined}
                   onPress={() => {
                     router.push(`/workouts/${workout.id}`)

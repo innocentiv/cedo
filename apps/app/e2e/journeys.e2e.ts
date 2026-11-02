@@ -1426,6 +1426,33 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/**
+ * A copy and the library exercise it was copied from share a name, muscles and video: the group
+ * that owns each is what tells their rows apart (#47).
+ */
+test(
+  'a copy of a library exercise and the original say who owns each',
+  async () => {
+    await withApp('owner-captions', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('own'))
+      const squat = 'Barbell Back Squat'
+      const owners = async () =>
+        (await app.library.captions(squat)).map((caption) => caption.split(' · ')[0])
+
+      await app.library.search(squat)
+      expect(await page.until(owners, (now) => now.length === 1)).toEqual(['Library'])
+
+      await (await app.library.find(squat)).duplicate()
+
+      await app.library.search(squat)
+      const both = await page.until(owners, (now) => now.length === 2)
+      expect(both.toSorted((a, b) => (a ?? '').localeCompare(b ?? ''))).toEqual(['Library', 'Mine'])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
 test(
   'a video link can be attached to an exercise',
   async () => {
