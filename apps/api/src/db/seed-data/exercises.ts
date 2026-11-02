@@ -636,7 +636,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     instructions: steps(
       'Pulley low. Stand side-on to it, handle in the far hand, arm long and slightly behind you.',
       'Elbow slightly bent and fixed, sweep the hand up and across to chin height in front of the chest.',
-      'Return slowly into the stretch. On an adjustable pulley, set it at chest height for mid chest.',
+      'Return slowly into the stretch, letting the chest open fully.',
     ),
     muscles: [
       ['pectoralis_major', 85],
@@ -1084,7 +1084,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     equipment: ['high_pulley'],
     isUnilateral: true,
     description:
-      'Rear-delt fly from one high pulley, across the body: the reverse fly for a single cable stack. Weight shown is per side.',
+      'Rear-delt fly from one high pulley, the cable crossed in front of the body for a long stretch: the reverse fly for a single cable stack. Weight shown is per side.',
     instructions: steps(
       'Pulley high, no handle or a single one. Stand facing it and take the cable in the opposite hand, so it crosses in front of you.',
       'Arm nearly straight, sweep it out and back, a little downwards, until it is in line with the shoulder.',
@@ -1664,7 +1664,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     equipment: ['dumbbells'],
     isUnilateral: true,
     description:
-      'Knee straight, one leg at a time, a dumbbell in the hand on that side: the calf raise for no calf machine. 8–15 reps suit it. Weight shown is per side.',
+      'Knee straight, which biases the gastrocnemius, one leg at a time with a dumbbell on that side: the calf raise for no calf machine. 8–15 reps suit it. Weight shown is per side.',
     instructions: steps(
       'Ball of one foot on a step or a stacked plate, the other foot hooked behind it. Free hand on a wall or rack.',
       'Knee locked, lower into a deep stretch and pause 1–2 s.',
@@ -1680,11 +1680,11 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
     video: 'https://www.youtube.com/watch?v=3UWi44yN-wM',
     equipment: ['barbell', 'rack'],
     description:
-      'Knee straight, a barbell on the upper back, taken from a rack: the heavy calf raise for no calf machine. 6–12 reps suit it.',
+      'Knee straight, which biases the gastrocnemius, a barbell on the upper back taken from a rack: the heavy calf raise for no calf machine. 6–12 reps suit it.',
     instructions: steps(
-      'Unrack the bar onto the upper back. Balls of the feet on a plate or a step, heels free.',
+      'Safety bars just below the bar. Unrack it onto the upper back, balls of the feet on a plate or a step.',
       'Knees locked, lower into a deep stretch and pause 1–2 s.',
-      'Rise as high as you can without rocking. Set the safety bars just below the bar.',
+      'Rise as high as you can without rocking, then lower slowly.',
     ),
     muscles: [
       ['gastrocnemius', 75],
