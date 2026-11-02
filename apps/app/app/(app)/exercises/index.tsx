@@ -57,7 +57,7 @@ export default function ExerciseList(): React.JSX.Element {
 
       <Loaded query={exercises} testID="exercises">
         {(data) =>
-          data.pages[0]?.items.length === 0 ? (
+          data.length === 0 ? (
             <Empty
               title="Nothing here yet"
               detail={search === '' ? 'Add one, or copy one from the shared library.' : 'No match.'}
@@ -65,21 +65,19 @@ export default function ExerciseList(): React.JSX.Element {
             />
           ) : (
             <Stack gap="xs" testID="exercise-list">
-              {data.pages
-                .flatMap((page) => page.items)
-                .map((exercise) => (
-                  <ExerciseListRow
-                    key={exercise.id}
-                    exercise={exercise}
-                    tag={exercise.isFavourite ? 'Pinned' : undefined}
-                    current={desk && open === exercise.id}
-                    onPress={() => {
-                      if (desk) setOpen(exercise.id)
-                      else router.push(`/exercises/${exercise.id}`)
-                    }}
-                    testID={`exercise-row-${exercise.id}`}
-                  />
-                ))}
+              {data.map((exercise) => (
+                <ExerciseListRow
+                  key={exercise.id}
+                  exercise={exercise}
+                  tag={exercise.isFavourite ? 'Pinned' : undefined}
+                  current={desk && open === exercise.id}
+                  onPress={() => {
+                    if (desk) setOpen(exercise.id)
+                    else router.push(`/exercises/${exercise.id}`)
+                  }}
+                  testID={`exercise-row-${exercise.id}`}
+                />
+              ))}
               <ShowMore query={exercises} title="Show more exercises" testID="exercises-more" />
             </Stack>
           )

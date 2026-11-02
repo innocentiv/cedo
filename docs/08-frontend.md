@@ -112,7 +112,7 @@ Two constraints found by building it:
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput`. `Input`'s `look` sets a name edited where it reads — a workout's title, a day's heading — with no box |
 | `Card`, `ListRow` | the one row shape every list uses |
 | `Chips` | one choice from a short flat set, all in view — tracking mode, progression kind |
-| `FilterRow`, `FilterTrigger` | how a list is narrowed (#52): every filter one trigger — a glyph for what it narrows, its value, a ▾ — on one line that scrolls sideways when wider than the screen, filled while it narrows the list, with an × putting them all back. Each opens a `Sheet` of its own |
+| `FilterRow`, `FilterSheet`, `FilterTrigger` | how a list is narrowed (#52): every filter one trigger — a glyph for what it narrows, its value, a ▾ — on one line that scrolls sideways when wider than the screen, filled while it narrows the list, with an × putting them all back. `FilterSheet` is a filter whole: its trigger, and the sheet of its own it opens, closed by choosing |
 | `OptionRow`, `OptionGrid`, `OptionSection` | a filter's sheet: a few choices one per line, each with a word if it needs one (`OptionRow`); many in cells of one width, so many to a line (`OptionGrid`); a headed part of either (`OptionSection`) |
 | `Chip` | one choice of a set, on or off — what `Chips`, the muscle and equipment pickers and the equipment checklist are built of |
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |

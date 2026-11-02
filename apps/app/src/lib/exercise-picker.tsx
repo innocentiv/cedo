@@ -33,7 +33,7 @@ export function ExercisePicker({
   const filters = useExerciseFilters()
   const trimmed = search.trim()
   // Searched, or narrowed to a group or a muscle: what was logged lately is not what was asked for.
-  const narrowed = trimmed !== '' || filters.scope.scope !== 'all' || filters.muscle !== null
+  const narrowed = trimmed !== '' || filters.narrowed
   const exercises = useExercises({
     limit: 50,
     ...filters.query,
@@ -105,7 +105,7 @@ export function ExercisePicker({
       )}
       <Loaded query={exercises} testID="picker">
         {(data) =>
-          data.pages[0]?.items.length === 0 ? (
+          data.length === 0 ? (
             <Empty title="No match" testID="picker-empty" />
           ) : (
             <Stack gap="xs" testID="picker-library">
@@ -114,7 +114,7 @@ export function ExercisePicker({
                   All exercises
                 </Text>
               )}
-              {data.pages.flatMap((page) => page.items).map((exercise) => row(exercise, false))}
+              {data.map((exercise) => row(exercise, false))}
               <ShowMore query={exercises} title="Show more exercises" testID="picker-more" />
             </Stack>
           )

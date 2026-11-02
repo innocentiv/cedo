@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Card, FilterTrigger, NavButton, OptionRow, Sheet, Stack, Text } from '../ui/index.ts'
+import { Card, FilterSheet, NavButton, OptionRow, Stack, Text } from '../ui/index.ts'
 import { useEquipment } from '../api/equipment-queries.ts'
 
 export type Showing = 'doable' | 'all'
@@ -50,28 +50,16 @@ export function EquipmentFilter({
   readonly filter: DoableFilter
   readonly testID: string
 }): React.JSX.Element | null {
-  const [open, setOpen] = useState(false)
   if (filter.described !== true) return null
   return (
-    <>
-      <FilterTrigger
-        icon="equipment"
-        label="Equipment"
-        value={SHOWING.find((s) => s.value === filter.showing)?.label ?? ''}
-        active={filter.showing !== 'doable'}
-        onPress={() => {
-          setOpen(true)
-        }}
-        testID={testID}
-      />
-      <Sheet
-        open={open}
-        onClose={() => {
-          setOpen(false)
-        }}
-        title="Equipment"
-        testID={`${testID}-sheet`}
-      >
+    <FilterSheet
+      icon="equipment"
+      label="Equipment"
+      value={SHOWING.find((s) => s.value === filter.showing)?.label ?? ''}
+      active={filter.showing !== 'doable'}
+      testID={testID}
+    >
+      {(choose) => (
         <Stack gap="xs">
           {SHOWING.map((choice) => (
             <OptionRow
@@ -80,15 +68,16 @@ export function EquipmentFilter({
               detail={choice.detail}
               selected={filter.showing === choice.value}
               onPress={() => {
-                filter.setShowing(choice.value)
-                setOpen(false)
+                choose(() => {
+                  filter.setShowing(choice.value)
+                })
               }}
               testID={`${testID}-${choice.value}`}
             />
           ))}
         </Stack>
-      </Sheet>
-    </>
+      )}
+    </FilterSheet>
   )
 }
 

@@ -10,6 +10,8 @@ export interface ExerciseFilters {
   readonly muscle: MuscleSlug | null
   readonly setMuscle: (muscle: MuscleSlug | null) => void
   readonly doable: DoableFilter
+  /** Narrowed to a group or a muscle: fewer exercises than the whole of what can be done. */
+  readonly narrowed: boolean
   /** What the list query adds: the scope, the muscle, and everything or only the doable. */
   readonly query: ScopeChoice & { readonly muscle?: MuscleSlug; readonly showAll?: true }
 }
@@ -28,6 +30,7 @@ export function useExerciseFilters(): ExerciseFilters {
     muscle,
     setMuscle,
     doable,
+    narrowed: scope.scope !== 'all' || muscle !== null,
     query: { ...scope, ...doable.query, ...(muscle === null ? {} : { muscle }) },
   }
 }
@@ -41,11 +44,12 @@ export function ExerciseFilters({
   readonly testID: 'exercise' | 'picker'
 }): React.JSX.Element {
   const { scope, muscle, doable } = filters
-  const narrowed = scope.scope !== 'all' || muscle !== null || doable.showing !== 'doable'
+  // Any Equipment widens the list rather than narrowing it, but is off its default all the same.
+  const offDefault = filters.narrowed || doable.showing !== 'doable'
   return (
     <FilterRow
       onClear={
-        narrowed
+        offDefault
           ? () => {
               filters.setScope(ALL)
               filters.setMuscle(null)

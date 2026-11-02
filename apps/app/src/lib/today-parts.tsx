@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router'
 import {
   type NextDay,
-  type Page,
   type SessionStart,
   type Today,
   type WorkoutSessionSummary,
@@ -12,7 +11,7 @@ import {
   sessionName,
   weekStrip,
 } from '@cedo/contract'
-import type { InfiniteData, UseInfiniteQueryResult } from '@tanstack/react-query'
+import type { UseInfiniteQueryResult } from '@tanstack/react-query'
 import {
   Button,
   Card,
@@ -246,7 +245,7 @@ export function PagedHistory({
   sessionHref,
   testID,
 }: {
-  readonly history: UseInfiniteQueryResult<InfiniteData<Page<WorkoutSessionSummary>>>
+  readonly history: UseInfiniteQueryResult<WorkoutSessionSummary[]>
   readonly sessionHref: (sessionId: string) => string
   readonly testID: string
 }): React.JSX.Element {
@@ -254,7 +253,7 @@ export function PagedHistory({
     <Loaded query={history} testID={testID}>
       {(data) => (
         <History
-          sessions={data.pages.flatMap((page) => page.items)}
+          sessions={data}
           sessionHref={sessionHref}
           older={
             history.hasNextPage

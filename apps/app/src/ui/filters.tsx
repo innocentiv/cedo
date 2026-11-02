@@ -1,8 +1,9 @@
+import { useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
 import { Icon, IconButton, type IconName } from './icon.tsx'
-import { Stack } from './stack.tsx'
+import { Sheet } from './sheet.tsx'
 import { Text } from './text.tsx'
-import { CONTROL_HEIGHT, color, radius, space } from './tokens.ts'
+import { color, radius, space } from './tokens.ts'
 
 /**
  * How a list is narrowed (#52): one look for every filter, wherever a list is filtered. Each is a
@@ -43,6 +44,57 @@ export function FilterRow({
         />
       )}
     </ScrollView>
+  )
+}
+
+/**
+ * One filter whole: its trigger, and the sheet it opens. What is in the sheet is the filter's own —
+ * a list, a grid — given `choose`, which takes the choice and closes it, as choosing any filter's
+ * option does.
+ */
+export function FilterSheet({
+  icon,
+  label,
+  value,
+  active,
+  testID,
+  children,
+}: {
+  readonly icon: IconName
+  /** What it narrows: said aloud before the value, and the sheet's title. */
+  readonly label: string
+  readonly value: string
+  readonly active: boolean
+  readonly testID: string
+  readonly children: (choose: (take: () => void) => void) => React.ReactNode
+}): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <FilterTrigger
+        icon={icon}
+        label={label}
+        value={value}
+        active={active}
+        onPress={() => {
+          setOpen(true)
+        }}
+        testID={testID}
+      />
+      <Sheet
+        open={open}
+        onClose={() => {
+          setOpen(false)
+        }}
+        title={label}
+        testID={`${testID}-sheet`}
+      >
+        {children((take) => {
+          take()
+          setOpen(false)
+        })}
+      </Sheet>
+    </>
   )
 }
 
@@ -92,120 +144,6 @@ export function FilterTrigger({
   )
 }
 
-/** A choice in a sheet of few: one per line, a word on it if it needs one, ticked when chosen. */
-export function OptionRow({
-  label,
-  detail,
-  selected,
-  onPress,
-  testID,
-}: {
-  readonly label: string
-  readonly detail?: string | undefined
-  readonly selected: boolean
-  readonly onPress: () => void
-  readonly testID: string
-}): React.JSX.Element {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      aria-selected={selected}
-      onPress={onPress}
-      testID={testID}
-      style={({ pressed }) => [
-        styles.row,
-        selected ? styles.chosen : null,
-        pressed ? styles.pressed : null,
-      ]}
-    >
-      <Stack grow gap="xs">
-        <Text numberOfLines={1}>{label}</Text>
-        {detail === undefined ? null : (
-          <Text variant="caption" tone="muted">
-            {detail}
-          </Text>
-        )}
-      </Stack>
-      {selected ? <Icon name="check" /> : null}
-    </Pressable>
-  )
-}
-
-/**
- * A choice in a sheet of many — thirty-four muscles: cells of one width, `columns` to a line, so a
- * long list reads as a table rather than a ragged wall of chips.
- */
-export function OptionGrid<T extends string>({
-  options,
-  value,
-  onChoose,
-  columns,
-  testID,
-}: {
-  readonly options: readonly { readonly value: T; readonly label: string }[]
-  readonly value: T | null
-  readonly onChoose: (value: T) => void
-  readonly columns: number
-  readonly testID: string
-}): React.JSX.Element {
-  const lines = Array.from({ length: Math.ceil(options.length / columns) }, (_, i) =>
-    options.slice(i * columns, (i + 1) * columns),
-  )
-  return (
-    <View style={styles.grid}>
-      {lines.map((line) => (
-        <View key={line[0]?.value} style={styles.gridLine}>
-          {line.map((option) => (
-            <Pressable
-              key={option.value}
-              accessibilityRole="button"
-              aria-selected={option.value === value}
-              onPress={() => {
-                onChoose(option.value)
-              }}
-              testID={`${testID}-${option.value}`}
-              style={({ pressed }) => [
-                styles.cell,
-                option.value === value ? styles.chosen : null,
-                pressed ? styles.pressed : null,
-              ]}
-            >
-              <View style={styles.cellLabel}>
-                <Text variant="caption" numberOfLines={1}>
-                  {option.label}
-                </Text>
-              </View>
-              {option.value === value ? <Icon name="check" size="small" /> : null}
-            </Pressable>
-          ))}
-          {/* The last line's empty cells, so its cells keep the width of the rest. */}
-          {Array.from({ length: columns - line.length }, (_, i) => (
-            <View key={`empty-${String(i)}`} style={[styles.cell, styles.empty]} />
-          ))}
-        </View>
-      ))}
-    </View>
-  )
-}
-
-/** A headed part of a sheet: Upper body, Your groups. */
-export function OptionSection({
-  title,
-  children,
-}: {
-  readonly title: string
-  readonly children: React.ReactNode
-}): React.JSX.Element {
-  return (
-    <Stack gap="sm">
-      <Text variant="label" tone="muted">
-        {title}
-      </Text>
-      {children}
-    </Stack>
-  )
-}
-
 /** A trigger's value is cut short past this, so one long group name cannot take the line. */
 const VALUE_MAX_WIDTH = 160
 
@@ -226,30 +164,4 @@ const styles = StyleSheet.create({
   active: { borderColor: color.accent, backgroundColor: color.accent },
   value: { maxWidth: VALUE_MAX_WIDTH },
   pressed: { opacity: 0.6 },
-  row: {
-    minHeight: CONTROL_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    borderRadius: radius.md,
-  },
-  chosen: { backgroundColor: color.surfaceRaised },
-  grid: { gap: space.sm },
-  gridLine: { flexDirection: 'row', gap: space.sm },
-  cell: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.xs,
-    minHeight: CONTROL_HEIGHT,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    borderColor: color.border,
-  },
-  cellLabel: { flex: 1 },
-  // A cell's box, unseen: the same padding and border, so the line's cells keep one width.
-  empty: { borderColor: 'transparent' },
 })
