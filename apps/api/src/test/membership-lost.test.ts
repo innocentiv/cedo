@@ -406,6 +406,7 @@ const TOOLS: Record<string, Case> = {
         tool(w, 'exercise_search'),
         tool(w, 'exercise_search', { q: SENTINEL }),
         tool(w, 'exercise_search', { scope: 'favourites' }),
+        tool(w, 'exercise_search', { scope: 'group', groupId: w.crewId }),
       ]),
   },
   exercise_get: {
@@ -440,7 +441,15 @@ const TOOLS: Record<string, Case> = {
         tool(w, 'training_review', { weeks: 4, athlete: bob.userId }),
       ]),
   },
-  workout_list: { named: true, read: async (w) => await tool(w, 'workout_list') },
+  workout_list: {
+    named: true,
+    read: async (w) =>
+      await all([
+        tool(w, 'workout_list'),
+        tool(w, 'workout_list', { scope: 'group', groupId: w.crewId }),
+      ]),
+  },
+  group_list: { named: true, read: async (w) => await tool(w, 'group_list') },
   workout_get: {
     named: true,
     read: async (w) =>
