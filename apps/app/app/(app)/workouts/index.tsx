@@ -13,7 +13,7 @@ import {
   Stack,
 } from '../../../src/ui/index.ts'
 import { useCreateWorkout, useWorkouts } from '../../../src/api/queries.ts'
-import { useOwnerName } from '../../../src/lib/owner-name.ts'
+import { useGroupName } from '../../../src/lib/group-name.ts'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 
 const SCOPES: readonly { value: OwnableScope; label: string }[] = [
@@ -28,7 +28,7 @@ export default function WorkoutList(): React.JSX.Element {
   const [name, setName] = useState('')
   const workouts = useWorkouts({ scope, limit: 50 })
   const create = useCreateWorkout()
-  const ownerOf = useOwnerName()
+  const groupNameOf = useGroupName()
   const { submit, busy, error: saveError } = useSubmit()
 
   const add = () => {
@@ -55,7 +55,7 @@ export default function WorkoutList(): React.JSX.Element {
                   title={workout.name}
                   subtitle={[
                     `${workout.dayCount} ${workout.dayCount === 1 ? 'day' : 'days'}`,
-                    ownerOf(workout.ownerGroupId),
+                    groupNameOf(workout.ownerGroupId),
                   ]
                     .filter((part) => part !== undefined)
                     .join(' · ')}

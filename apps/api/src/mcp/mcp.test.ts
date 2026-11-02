@@ -321,7 +321,7 @@ describe('every line names its owning group', () => {
     expect(line).toContain('| [library, read-only] |')
 
     const detail = textOf((await callTool(pat, 'exercise_get', { exerciseId: idOf(line) })).body)
-    expect(detail).toContain('owner: library')
+    expect(detail).toContain('owning group: library')
     expect(detail).toContain('editable: no')
     expect(detail).not.toContain('another group')
   })
@@ -336,8 +336,8 @@ describe('every line names its owning group', () => {
     await callTool(pat, 'workout_duplicate', { workoutId: plan.id, toGroupId: theirs.id })
 
     const lines = textOf((await callTool(pat, 'workout_list')).body).split('\n')
-    const owners = lines.map((line) => line.split(' | ')[2] ?? line)
-    expect(owners.toSorted((a, b) => a.localeCompare(b))).toEqual(['[mine]', '[Squad]'])
+    const owningGroups = lines.map((line) => line.split(' | ')[2] ?? line)
+    expect(owningGroups.toSorted((a, b) => a.localeCompare(b))).toEqual(['[mine]', '[Squad]'])
 
     const head = textOf((await callTool(pat, 'workout_get', { workoutId: plan.id })).body)
     expect(head.split('\n')[0]).toBe(`Push  (${plan.id})  [mine]`)

@@ -7,7 +7,7 @@ import {
 } from '@cedo/contract'
 import { apiUrl } from '../api/http.ts'
 import { ExerciseRow, VideoPlayer } from '../ui/index.ts'
-import { useOwnerName } from './owner-name.ts'
+import { useGroupName } from './group-name.ts'
 
 /** A path the API answered — an upload's, relative to it — or a URL, made one the app can load. */
 const loadable = (path: string | null): string | null => (path === null ? null : apiUrl(path))
@@ -32,9 +32,9 @@ export function ExerciseListRow({
   readonly onPress: () => void
   readonly testID: string
 }): React.JSX.Element {
-  const owner = useOwnerName()(exercise.ownerGroupId)
+  const owningGroup = useGroupName()(exercise.ownerGroupId)
   // Not doable: said when the list holds everything, and in a plan, where it is never hidden (#35).
-  const tags = [owner, exercise.doable ? undefined : MISSING_EQUIPMENT, tag].filter(
+  const tags = [owningGroup, exercise.doable ? undefined : MISSING_EQUIPMENT, tag].filter(
     (t) => t !== undefined,
   )
   return (

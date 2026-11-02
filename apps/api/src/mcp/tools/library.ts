@@ -15,7 +15,7 @@ import * as ExerciseService from '../../modules/exercise/service.ts'
 import * as MediaService from '../../modules/media/service.ts'
 import { libraryAudit, sharedGroupId } from '../../modules/review/curation.ts'
 import { text } from '../format.ts'
-import { ownersOf } from '../format-owner.ts'
+import { groupNamesOf } from '../format-group.ts'
 import { exerciseDetail, exerciseLine } from '../format-library.ts'
 
 const READ = { readOnlyHint: true, openWorldHint: false } as const
@@ -32,7 +32,7 @@ const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: fals
  * inconsistently. Read before writing. See docs/07-mcp.md.
  */
 export function registerLibraryTools(server: McpServer, caller: Caller): void {
-  const detail = async (exercise: Exercise) => exerciseDetail(exercise, await ownersOf(caller))
+  const detail = async (exercise: Exercise) => exerciseDetail(exercise, await groupNamesOf(caller))
 
   server.registerTool(
     'muscle_list',
@@ -83,9 +83,9 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
     async ({ athlete, ...query }) => {
       const page = await ExerciseService.list(await ownOrCoached(caller, athlete), query)
       if (page.items.length === 0) return text('No exercises matched.')
-      const ownerOf = await ownersOf(caller)
+      const groupNameOf = await groupNamesOf(caller)
       return text(
-        page.items.map((e) => exerciseLine(e, ownerOf)).join('\n') +
+        page.items.map((e) => exerciseLine(e, groupNameOf)).join('\n') +
           (page.nextCursor === null ? '' : '\n\n(more results exist; narrow the search)'),
       )
     },

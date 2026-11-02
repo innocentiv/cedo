@@ -6,7 +6,7 @@ import {
   ownedLines,
   sayEquipment,
 } from '@cedo/contract'
-import { type OwnerOf, ownership } from './format-owner.ts'
+import { type GroupNameOf, ownership } from './format-group.ts'
 
 /** An exercise as the library tools print it, compact and by slug — see `format.ts`. */
 
@@ -28,9 +28,9 @@ const equipment = ({ equipment: items }: Exercise): string =>
  * One line per exercise: enough to decide, not enough to bloat context. Its flags lead with the
  * owning group (#47), so a copy never reads like the exercise it was copied from.
  */
-export function exerciseLine(exercise: Exercise, ownerOf: OwnerOf): string {
+export function exerciseLine(exercise: Exercise, groupNameOf: GroupNameOf): string {
   const flags = [
-    ...ownership(exercise, ownerOf),
+    ...ownership(exercise, groupNameOf),
     exercise.tracking === 'weight_reps' ? null : exercise.tracking,
     exercise.isUnilateral ? 'unilateral' : null,
     exercise.doable ? null : MISSING_EQUIPMENT,
@@ -45,7 +45,7 @@ export function exerciseLine(exercise: Exercise, ownerOf: OwnerOf): string {
   ].join(' | ')
 }
 
-export function exerciseDetail(exercise: Exercise, ownerOf: OwnerOf): string {
+export function exerciseDetail(exercise: Exercise, groupNameOf: GroupNameOf): string {
   return [
     `${exercise.name}  (${exercise.id})`,
     `tracking: ${exercise.tracking}${exercise.isUnilateral ? ', unilateral' : ''}`,
@@ -56,7 +56,7 @@ export function exerciseDetail(exercise: Exercise, ownerOf: OwnerOf): string {
     exercise.media.length === 0
       ? 'media: none'
       : `media:\n${exercise.media.map((m) => `  - ${m.kind}: ${m.url}`).join('\n')}`,
-    `owner: ${ownerOf(exercise.ownerGroupId)}`,
+    `owning group: ${groupNameOf(exercise.ownerGroupId)}`,
     `editable: ${exercise.canEdit ? 'yes' : 'no'}`,
   ]
     .filter((line) => line !== null)

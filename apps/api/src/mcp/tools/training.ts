@@ -22,7 +22,7 @@ import {
   workoutDetail,
   workoutLine,
 } from '../format.ts'
-import { ownersOf } from '../format-owner.ts'
+import { groupNamesOf } from '../format-group.ts'
 
 const READ = { readOnlyHint: true, openWorldHint: false } as const
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const
@@ -74,11 +74,11 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ scope, q, limit }) => {
       const page = await WorkoutService.list(caller, { scope, q, limit })
-      const ownerOf = await ownersOf(caller)
+      const groupNameOf = await groupNamesOf(caller)
       return text(
         page.items.length === 0
           ? 'No workouts yet.'
-          : page.items.map((w) => workoutLine(w, ownerOf)).join('\n'),
+          : page.items.map((w) => workoutLine(w, groupNameOf)).join('\n'),
       )
     },
   )
@@ -96,7 +96,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ workoutId, athlete }) => {
       const { workout, held } = await planFor(await ownOrCoached(caller, athlete), workoutId)
-      return text(workoutDetail(workout, caller.weightUnit, held, await ownersOf(caller)))
+      return text(workoutDetail(workout, caller.weightUnit, held, await groupNamesOf(caller)))
     },
   )
 
@@ -154,7 +154,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     async ({ workoutId, ...plan }) => {
       const { workout, held } = await savePlanAndRead(caller, workoutId, plan)
       return text(
-        `Saved.\n\n${workoutDetail(workout, caller.weightUnit, held, await ownersOf(caller))}`,
+        `Saved.\n\n${workoutDetail(workout, caller.weightUnit, held, await groupNamesOf(caller))}`,
       )
     },
   )

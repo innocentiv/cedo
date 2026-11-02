@@ -6,7 +6,7 @@ import { useGroups } from '../api/queries.ts'
  * the group's name — so a copy never reads like what it was copied from. Named from the groups the
  * reader belongs to, which own everything they can see; nothing while those are loading.
  */
-export function useOwnerName(): (ownerGroupId: string) => string | undefined {
+export function useGroupName(): (ownerGroupId: string) => string | undefined {
   const groups = useGroups().data ?? []
   return (ownerGroupId) => {
     const owner = groups.find((group) => group.id === ownerGroupId)

@@ -1437,16 +1437,16 @@ test(
       const app = screens(page)
       await app.auth.register(unique('own'))
       const squat = 'Barbell Back Squat'
-      const owners = async () =>
+      const owningGroups = async () =>
         (await app.library.captions(squat)).map((caption) => caption.split(' · ')[0])
 
       await app.library.search(squat)
-      expect(await page.until(owners, (now) => now.length === 1)).toEqual(['Library'])
+      expect(await page.until(owningGroups, (now) => now.length === 1)).toEqual(['Library'])
 
       await (await app.library.find(squat)).duplicate()
 
       await app.library.search(squat)
-      const both = await page.until(owners, (now) => now.length === 2)
+      const both = await page.until(owningGroups, (now) => now.length === 2)
       expect(both.toSorted((a, b) => (a ?? '').localeCompare(b ?? ''))).toEqual(['Library', 'Mine'])
     })
   },
