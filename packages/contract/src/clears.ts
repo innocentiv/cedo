@@ -6,11 +6,11 @@ import type { Held, SetAttempt, SessionAttempts, SetTarget } from './progression
  * contract's surface. See docs/adr/0012-progression-rules.md.
  */
 
-/**
- * What a session did to a prescription: cleared it, or held it — short of its `targets`, or ground
- * out past its RPE (`effort`).
- */
-export type Verdict = 'cleared' | 'targets' | 'effort'
+/** What a session did to a prescription: cleared it, or held it, and why. */
+export type Verdict = 'cleared' | Held
+
+/** Held short of the targets — the reason with nothing to add to it. */
+export const SHORT_OF_TARGETS: Held = { reason: 'targets' }
 
 /**
  * How far past a prescribed RPE a set may be rated and still count (#45). Half a point: a person
@@ -48,8 +48,8 @@ const withinEffort = (
 }
 
 /**
- * The RPE of the hardest rated set of `sets` — the prescribed working sets of a session judged
- * `effort`, so at least one is rated past the RPE.
+ * The RPE of the hardest rated set of `sets` — the prescribed working sets of a session held for
+ * effort, so at least one is rated past the RPE.
  */
 const hardestRpe = (sets: SessionAttempts): number =>
   Math.max(...sets.map((attempt) => attempt.rpe ?? 0))
@@ -67,7 +67,7 @@ export function judgeReps(
   target: SetTarget,
   workingSets: number,
 ): Verdict {
-  if (repGoal === null) return 'targets'
+  if (repGoal === null) return SHORT_OF_TARGETS
   const reached = everyWorkingSet(session, workingSets, (attempt) => {
     const reps = attempt.reps ?? null
     if (reps === null || reps < repGoal) return false
@@ -77,8 +77,9 @@ export function judgeReps(
     if (target.weightG < 0) return (weight ?? 0) >= target.weightG
     return weight !== null && weight >= target.weightG
   })
-  if (!reached) return 'targets'
-  return withinEffort(session, target, workingSets) ? 'cleared' : 'effort'
+  if (!reached) return SHORT_OF_TARGETS
+  if (withinEffort(session, target, workingSets)) return 'cleared'
+  return { reason: 'effort', rpe: hardestRpe(session.slice(0, workingSets)) }
 }
 
 /**
@@ -91,12 +92,12 @@ export function judgeDuration(
   workingSets: number,
 ): Verdict {
   const { durationS: goal } = target
-  if (goal === null) return 'targets'
+  if (goal === null) return SHORT_OF_TARGETS
   const held = everyWorkingSet(session, workingSets, (attempt) => {
     const time = attempt.durationS ?? null
     return time !== null && time >= goal
   })
-  return held ? 'cleared' : 'targets'
+  return held ? 'cleared' : SHORT_OF_TARGETS
 }
 
 /**
@@ -111,7 +112,7 @@ export function judgeDistance(
   workingSets: number,
 ): Verdict {
   const { distanceMm: goal, durationS: goalTime } = target
-  if (goal === null) return 'targets'
+  if (goal === null) return SHORT_OF_TARGETS
   const covered = everyWorkingSet(session, workingSets, (attempt) => {
     const distance = attempt.distanceMm ?? null
     if (distance === null || distance < goal) return false
@@ -119,40 +120,22 @@ export function judgeDistance(
     const time = attempt.durationS ?? null
     return time !== null && time * goal <= goalTime * distance
   })
-  return covered ? 'cleared' : 'targets'
-}
-
-/** Held short of the targets — the reason with nothing to add to it. */
-export const SHORT_OF_TARGETS: Held = { reason: 'targets' }
-
-/** A session's verdict as the hold it makes — none when it cleared. */
-export function holdOf(verdict: Verdict, session: SessionAttempts): Held | null {
-  switch (verdict) {
-    case 'cleared':
-      return null
-    case 'targets':
-      return SHORT_OF_TARGETS
-    case 'effort':
-      return { reason: 'effort', rpe: hardestRpe(session) }
-    default:
-      return verdict satisfies never
-  }
+  return covered ? 'cleared' : SHORT_OF_TARGETS
 }
 
 /**
- * The most recent `count` sessions must all clear: `cleared` when they did, else the hold of the
- * newest that did not — or null when none failed, and there are only too few of them yet.
+ * The most recent `count` sessions must all clear: `cleared` when they did, else the verdict of the
+ * newest that did not — or null when none held it, and there are only too few of them yet.
  */
 export function judgeRun(
   count: number,
   sessions: readonly SessionAttempts[],
-  workingSets: number,
   judge: (session: SessionAttempts) => Verdict,
-): 'cleared' | Held | null {
+): Verdict | null {
   for (const session of sessions.slice(0, count)) {
     const sets = working(session)
-    const held = sets === null ? SHORT_OF_TARGETS : holdOf(judge(sets), sets.slice(0, workingSets))
-    if (held !== null) return held
+    const verdict = sets === null ? SHORT_OF_TARGETS : judge(sets)
+    if (verdict !== 'cleared') return verdict
   }
   return sessions.length >= count ? 'cleared' : null
 }

@@ -1,7 +1,6 @@
 import { z } from 'zod'
 import {
   SHORT_OF_TARGETS,
-  holdOf,
   judgeDistance,
   judgeDuration,
   judgeReps,
@@ -209,7 +208,7 @@ function advanceWeight(
   rule: RuleOf<'linear'>,
   { target, workingSets, sessions }: ProgressionInput,
 ): Progressed {
-  const run = judgeRun(rule.afterSuccesses, sessions, workingSets, (s) =>
+  const run = judgeRun(rule.afterSuccesses, sessions, (s) =>
     judgeReps(s, target.reps, target, workingSets),
   )
   if (run !== 'cleared') return { target, held: run }
@@ -221,9 +220,7 @@ function advanceDuration(
   rule: RuleOf<'linear_duration'>,
   { target, workingSets, sessions }: ProgressionInput,
 ): Progressed {
-  const run = judgeRun(rule.afterSuccesses, sessions, workingSets, (s) =>
-    judgeDuration(s, target, workingSets),
-  )
+  const run = judgeRun(rule.afterSuccesses, sessions, (s) => judgeDuration(s, target, workingSets))
   if (run !== 'cleared') return { target, held: run }
   if (target.durationS === null) return unheld(target)
   return unheld({ ...target, durationS: target.durationS + rule.incrementS })
@@ -233,9 +230,7 @@ function advanceDistance(
   rule: RuleOf<'linear_distance'>,
   { target, workingSets, sessions }: ProgressionInput,
 ): Progressed {
-  const run = judgeRun(rule.afterSuccesses, sessions, workingSets, (s) =>
-    judgeDistance(s, target, workingSets),
-  )
+  const run = judgeRun(rule.afterSuccesses, sessions, (s) => judgeDistance(s, target, workingSets))
   if (run !== 'cleared') return { target, held: run }
   if (target.distanceMm === null) return unheld(target)
   const distanceMm = target.distanceMm + rule.incrementMm
@@ -263,8 +258,8 @@ function advanceDouble(
 
   // Every working set asked for the top of the range when at it, else the current target.
   const goal = atTop ? maxReps : currentReps
-  const held = holdOf(judgeReps(last, goal, target, workingSets), last.slice(0, workingSets))
-  if (held !== null) return { target, held }
+  const verdict = judgeReps(last, goal, target, workingSets)
+  if (verdict !== 'cleared') return { target, held: verdict }
 
   // Cleared the top of the range: add weight, restart at the bottom.
   if (atTop) {
