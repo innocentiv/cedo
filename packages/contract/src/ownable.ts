@@ -32,6 +32,17 @@ export const withGroupRule = <
     message: "groupId is required when scope is 'group'",
   })
 
+/**
+ * The scope and its group as a tool takes them (#52): the query's own two fields, said for a reader
+ * of the schema — a model — so it knows a group's scope names one by `groupId`.
+ */
+export const ScopeFields = {
+  scope: OwnableQueryFields.shape.scope.describe(
+    "'mine' is your personal group only; 'group' is the one `groupId` names (group_list)",
+  ),
+  groupId: OwnableQueryFields.shape.groupId.describe("With scope 'group': which group"),
+}
+
 export const OwnableQuery = withGroupRule(OwnableQueryFields)
 export type OwnableQuery = z.output<typeof OwnableQuery>
 

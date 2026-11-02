@@ -3,7 +3,7 @@ import { z } from 'zod'
 import {
   DuplicateInput,
   OfAthlete,
-  OwnableScope,
+  ScopeFields,
   WorkoutCreate,
   PlanSave,
   ReviewQuery,
@@ -70,10 +70,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'Workouts visible to you, as one line each ending with the id, after the group that ' +
         'owns it — mine, library, or a group by name.',
       inputSchema: z.object({
-        scope: OwnableScope.default('all').describe(
-          "'mine' is your personal group only; 'group' is the one `groupId` names (group_list)",
-        ),
-        groupId: z.uuid().optional().describe("With scope 'group': which group"),
+        ...ScopeFields,
         q: z.string().max(100).optional(),
         limit: z.int().min(1).max(100).default(30),
       }),

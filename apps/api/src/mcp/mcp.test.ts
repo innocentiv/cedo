@@ -387,10 +387,14 @@ describe('groups, and a list narrowed to one', () => {
     expect(workouts[0]).toContain('| [Squad] |')
   })
 
-  test('`scope: group` without a groupId is refused, not read as every group', async () => {
-    const { body } = await callTool(await mintPat(alice), 'exercise_search', { scope: 'group' })
-    expect(body.result?.isError).toBe(true)
-    expect(textOf(body)).toContain('groupId')
+  test('`scope: group` without a groupId is refused by both, not read as every group', async () => {
+    const pat = await mintPat(alice)
+    for (const name of ['exercise_search', 'workout_list']) {
+      // oxlint-disable-next-line no-await-in-loop -- one tool, then the other.
+      const { body } = await callTool(pat, name, { scope: 'group' })
+      expect(body.result?.isError).toBe(true)
+      expect(textOf(body)).toContain('groupId')
+    }
   })
 })
 
