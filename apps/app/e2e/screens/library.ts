@@ -1,6 +1,7 @@
-import type { EquipmentSlug, OwnableScope } from '@cedo/contract'
+import type { EquipmentSlug, MuscleSlug, OwnableScope } from '@cedo/contract'
 import type { Page } from '../harness.ts'
 import { closed } from './form.ts'
+import { chooseOption, rowNames } from './lines.ts'
 import { placement } from './placement.ts'
 
 /** The exercise library: its list, an exercise's detail, and the form that creates or edits one. */
@@ -102,26 +103,6 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
     return (await page.text(`${screen}-error`)) ?? ''
   },
 })
-
-/** Opens a list filter's sheet and chooses one of its options, which closes it (#52). */
-export const choose = async (page: Page, filter: string, option: string): Promise<void> => {
-  await page.waitFor(filter)
-  await page.click(`[data-testid="${filter}"]`)
-  await page.waitFor(`${filter}-sheet`)
-  await page.click(`[data-testid="${filter}-${option}"]`)
-  await page.until(
-    async () => await page.shown(`${filter}-sheet`),
-    (shown) => !shown,
-  )
-}
-
-/** The names of the rows a list holds, in order — the library's, or the picker's (#52). */
-export const rowNames = async (page: Page, list: string): Promise<string[]> => {
-  const names = await page.evaluate(
-    `[...document.querySelectorAll('[data-testid="${list}"] [data-testid$="-name"]')].map((e) => e.innerText.trim())`,
-  )
-  return Array.isArray(names) ? names.map(String) : []
-}
 
 /** The exercise detail screen — reached however the journey reached it. */
 export const exercise = (page: Page) => ({
@@ -280,22 +261,23 @@ export const library = (page: Page) => {
     /** What the library offers (#35): only what you can do, or everything — chosen in its sheet. */
     showing: async (showing: 'doable' | 'all'): Promise<void> => {
       await list()
-      await choose(page, 'exercise-showing', showing)
+      await chooseOption(page, 'exercise-showing', showing)
     },
     /** Narrows the list to a scope, chosen in its sheet (#52). */
     scope: async (scope: OwnableScope): Promise<void> => {
       await page.goto('/exercises')
-      await choose(page, 'exercise-scope', scope)
+      await chooseOption(page, 'exercise-scope', scope)
     },
     emptyShown: async (): Promise<void> => {
       await page.waitFor('exercises-empty')
     },
-    /**
-     * Narrows the list as it stands, in one filter's sheet: a scope (`mine`, `library`,
-     * `group-<id>`), a muscle by slug, or what is shown (`all`, `doable`).
-     */
-    narrow: async (filter: 'scope' | 'muscle' | 'showing', option: string): Promise<void> => {
-      await choose(page, `exercise-${filter}`, option)
+    /** Narrows the list as it stands to one of your groups, chosen in the Show sheet by its id. */
+    narrowToGroup: async (groupId: string): Promise<void> => {
+      await chooseOption(page, 'exercise-scope', `group-${groupId}`)
+    },
+    /** Narrows the list as it stands to one muscle, chosen in the Muscles sheet. */
+    narrowToMuscle: async (muscle: MuscleSlug): Promise<void> => {
+      await chooseOption(page, 'exercise-muscle', muscle)
     },
     /** What a filter says it is set to: "All Groups", "Squad", "Quads". */
     filterValue: async (filter: 'scope' | 'muscle' | 'showing'): Promise<string> =>

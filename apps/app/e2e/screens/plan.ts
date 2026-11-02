@@ -1,6 +1,6 @@
 import type { OwnableScope } from '@cedo/contract'
 import type { Page } from '../harness.ts'
-import { choose } from './library.ts'
+import { chooseOption } from './lines.ts'
 import { picker } from './picker.ts'
 import { placement } from './placement.ts'
 import { session } from './session.ts'
@@ -140,7 +140,7 @@ export const workouts = (page: Page) => {
     /** The plans listed under a scope — `favourites` is shown as Pinned. */
     listed: async (scope: OwnableScope): Promise<string[]> => {
       await page.goto('/workouts')
-      await choose(page, 'workout-scope', scope)
+      await chooseOption(page, 'workout-scope', scope)
       return await workouts(page).showing()
     },
     /**

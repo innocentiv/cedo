@@ -1,5 +1,5 @@
 import type { Page } from '../harness.ts'
-import { rowNames } from './library.ts'
+import { rowNames } from './lines.ts'
 
 /**
  * The exercise picker, wherever it is opened from — a plan's day, a session (#27): what was logged

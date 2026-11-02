@@ -1476,7 +1476,7 @@ test(
       expect(await app.library.filterValue('scope')).toBe('All Groups')
       expect(await app.library.filterValue('muscle')).toBe('All Muscles')
 
-      await app.library.narrow('scope', `group-${squad.id}`)
+      await app.library.narrowToGroup(squad.id)
       expect(await app.library.filterValue('scope')).toBe('Squad')
       expect(await page.until(app.library.names, (names) => names.length === 1)).toEqual([
         'Barbell Standing Calf Raise',
@@ -1484,7 +1484,7 @@ test(
 
       await app.library.clearFilters()
       expect(await app.library.filterValue('scope')).toBe('All Groups')
-      await app.library.narrow('muscle', 'gluteus_medius')
+      await app.library.narrowToMuscle('gluteus_medius')
       expect(await app.library.filterValue('muscle')).not.toBe('All Muscles')
       const narrowed = await page.until(app.library.names, (names) => !names.includes(calf.name))
       expect(narrowed.length).toBeGreaterThan(0)
