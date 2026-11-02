@@ -32,10 +32,10 @@ import type {
   Today,
   TrainingReview,
   WorkoutSessionSummary,
-  WorkoutSummary,
 } from '@cedo/contract'
 import { mcpAddress } from '@cedo/contract'
 import { api, apiRoot } from './http.ts'
+import { paged } from './paged.ts'
 import { keys } from './query-client.ts'
 import { useWriteTo } from './write-to.ts'
 
@@ -47,19 +47,13 @@ import { useWriteTo } from './write-to.ts'
  * `READS` in the contract. See docs/08-frontend.md.
  */
 
-/**
- * The library a page at a time (#52): the next asked for only when shown more, so a library longer
- * than one page is never cut off at it.
- */
-export function useExercises(query: Partial<ExerciseQuery>) {
-  return useInfiniteQuery({
-    queryKey: keys.exerciseList(query),
-    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
-      await api.exercises.list({ ...query, cursor: pageParam }),
-    initialPageParam: undefined,
-    getNextPageParam: (last: Page<Exercise>) => last.nextCursor ?? undefined,
-  })
-}
+export const useExercises = (query: Partial<ExerciseQuery>) =>
+  useInfiniteQuery(
+    paged(
+      keys.exerciseList(query),
+      async (cursor) => await api.exercises.list({ ...query, cursor }),
+    ),
+  )
 
 export function useExercise(id: string): UseQueryResult<Exercise> {
   return useQuery({
@@ -85,12 +79,10 @@ export function useRecentExercises(): UseQueryResult<Exercise[]> {
   })
 }
 
-export function useWorkouts(query: Partial<WorkoutQuery>): UseQueryResult<Page<WorkoutSummary>> {
-  return useQuery({
-    queryKey: keys.workoutList(query),
-    queryFn: async () => await api.workouts.list(query),
-  })
-}
+export const useWorkouts = (query: Partial<WorkoutQuery>) =>
+  useInfiniteQuery(
+    paged(keys.workoutList(query), async (cursor) => await api.workouts.list({ ...query, cursor })),
+  )
 
 export function useWorkout(id: string): UseQueryResult<Workout> {
   return useQuery({
@@ -135,11 +127,10 @@ export function useFinishedSessions(
   enabled = true,
 ) {
   return useInfiniteQuery({
-    queryKey: key({ inProgress: false, pages: true }),
-    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
-      await list({ inProgress: false, limit: 20, cursor: pageParam }),
-    initialPageParam: undefined,
-    getNextPageParam: (last: Page<WorkoutSessionSummary>) => last.nextCursor ?? undefined,
+    ...paged(
+      key({ inProgress: false, pages: true }),
+      async (cursor) => await list({ inProgress: false, limit: 20, cursor }),
+    ),
     enabled,
   })
 }

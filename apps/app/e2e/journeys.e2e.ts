@@ -1456,6 +1456,29 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/** Workouts a page at a time too (#52): a fifty-first plan was in no list at all. */
+test(
+  'every workout is reached a page at a time',
+  async () => {
+    await withApp('workout-pages', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('wpg'))
+      const mine = await page.client()
+      // Named so they list in this order, the last on the second page.
+      for (const n of Array.from({ length: 51 }, (_, i) => i)) {
+        // oxlint-disable-next-line no-await-in-loop -- fixtures, one after another.
+        await mine.workouts.create({ name: `Plan ${String(n).padStart(2, '0')}`, notes: null })
+      }
+
+      await app.nav.tab('workouts')
+      expect(await app.workouts.showing()).not.toContain('Plan 50')
+      await app.workouts.more()
+      await page.until(app.workouts.showing, (names) => names.includes('Plan 50'))
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
 /**
  * A copy and the library exercise it was copied from share a name, muscles and video: the group
  * that owns each is what tells their rows apart (#47).

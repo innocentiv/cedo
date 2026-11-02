@@ -14,6 +14,7 @@ import {
 } from '../../../src/ui/index.ts'
 import { useCreateWorkout, useWorkouts } from '../../../src/api/queries.ts'
 import { useGroupName } from '../../../src/lib/group-name.ts'
+import { ShowMore } from '../../../src/lib/show-more.tsx'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 
 const SCOPES: readonly { value: OwnableScope; label: string }[] = [
@@ -45,27 +46,30 @@ export default function WorkoutList(): React.JSX.Element {
 
       <Loaded query={workouts} testID="workouts">
         {(data) =>
-          data.items.length === 0 ? (
+          data.pages[0]?.items.length === 0 ? (
             <Empty title="No plans yet" detail="Name one below to start." testID="workouts-empty" />
           ) : (
             <Stack gap="sm" testID="workout-list">
-              {data.items.map((workout) => (
-                <ListRow
-                  key={workout.id}
-                  title={workout.name}
-                  subtitle={[
-                    `${workout.dayCount} ${workout.dayCount === 1 ? 'day' : 'days'}`,
-                    groupNameOf(workout.ownerGroupId),
-                  ]
-                    .filter((part) => part !== undefined)
-                    .join(' · ')}
-                  trailing={workout.isFavourite ? '★' : undefined}
-                  onPress={() => {
-                    router.push(`/workouts/${workout.id}`)
-                  }}
-                  testID={`workout-row-${workout.id}`}
-                />
-              ))}
+              {data.pages
+                .flatMap((page) => page.items)
+                .map((workout) => (
+                  <ListRow
+                    key={workout.id}
+                    title={workout.name}
+                    subtitle={[
+                      `${workout.dayCount} ${workout.dayCount === 1 ? 'day' : 'days'}`,
+                      groupNameOf(workout.ownerGroupId),
+                    ]
+                      .filter((part) => part !== undefined)
+                      .join(' · ')}
+                    trailing={workout.isFavourite ? '★' : undefined}
+                    onPress={() => {
+                      router.push(`/workouts/${workout.id}`)
+                    }}
+                    testID={`workout-row-${workout.id}`}
+                  />
+                ))}
+              <ShowMore query={workouts} title="Show more workouts" testID="workouts-more" />
             </Stack>
           )
         }

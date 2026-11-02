@@ -132,6 +132,10 @@ export const workouts = (page: Page) => {
       await page.waitFor('workout-delete')
       return await page.text('workout-delete-error')
     },
+    /** Asks for the next page of plans (#52). */
+    more: async (): Promise<void> => {
+      await page.click('[data-testid="workouts-more"]')
+    },
     /** The plans listed under a scope — `favourites` is shown as Pinned. */
     listed: async (scope: OwnableScope): Promise<string[]> => {
       await page.goto('/workouts')
