@@ -12,7 +12,7 @@ import {
   muscles,
   users,
 } from './schema.ts'
-import { EXERCISE_LIBRARY, type SeedExercise } from './seed-data/exercises.ts'
+import { EXERCISE_LIBRARY, type SeedExercise, exerciseInputOf } from './seed-data/exercises.ts'
 
 /**
  * Idempotent. Runs after migrations, and is safe to re-run — a self-hosted instance restarts for
@@ -129,16 +129,7 @@ async function createSystemAccount(): Promise<{ userId: string; groupId: string 
  * Validating against the contract means a typo in the library fails the seed rather than producing
  * a silently wrong exercise — muscle loads must sum to 100 and each muscle may appear only once.
  */
-function validate(entry: SeedExercise) {
-  return ExerciseCreate.parse({
-    name: entry.name,
-    tracking: entry.tracking ?? 'weight_reps',
-    description: entry.description,
-    equipment: entry.equipment,
-    isUnilateral: entry.isUnilateral ?? false,
-    muscles: entry.muscles.map(([muscle, loadPct]) => ({ muscle, loadPct })),
-  })
-}
+const validate = (entry: SeedExercise) => ExerciseCreate.parse(exerciseInputOf(entry))
 
 /** A library entry stays useful without its demonstration link, so this is best-effort. */
 async function attachDemonstration(

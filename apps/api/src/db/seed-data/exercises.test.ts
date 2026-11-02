@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { ExerciseCreate, MUSCLE_SLUGS, TRACKING_MODES } from '@cedo/contract'
-import { EXERCISE_LIBRARY } from './exercises.ts'
+import { EXERCISE_LIBRARY, exerciseInputOf } from './exercises.ts'
 
 /**
  * The library is data, and data rots silently. These run without a database so a bad entry fails
@@ -13,14 +13,7 @@ describe('starter exercise library', () => {
 
   test('every entry satisfies the contract, including the sum-to-100 invariant', () => {
     const failures = EXERCISE_LIBRARY.flatMap((entry) => {
-      const result = ExerciseCreate.safeParse({
-        name: entry.name,
-        tracking: entry.tracking ?? 'weight_reps',
-        description: entry.description,
-        equipment: entry.equipment,
-        isUnilateral: entry.isUnilateral ?? false,
-        muscles: entry.muscles.map(([muscle, loadPct]) => ({ muscle, loadPct })),
-      })
+      const result = ExerciseCreate.safeParse(exerciseInputOf(entry))
       return result.success
         ? []
         : [`${entry.name}: ${result.error.issues.map((i) => i.message).join('; ')}`]
@@ -32,6 +25,14 @@ describe('starter exercise library', () => {
     const names = EXERCISE_LIBRARY.map((e) => e.name)
     const duplicates = names.filter((n, i) => names.indexOf(n) !== i)
     expect(duplicates).toEqual([])
+  })
+
+  /** The library audit reports an exercise without instructions; the library should not have one. */
+  test('every entry says how to do it, and what it is', () => {
+    const bare = EXERCISE_LIBRARY.filter(
+      (e) => e.instructions.trim() === '' || e.description.trim() === '',
+    ).map((e) => e.name)
+    expect(bare).toEqual([])
   })
 
   test('every referenced muscle exists in the hardcoded set', () => {

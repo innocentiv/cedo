@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, test } from 'bun:test'
 import { and, eq } from 'drizzle-orm'
 import { db } from './client.ts'
 import { exercises } from './schema.ts'
+import { EXERCISE_LIBRARY } from './seed-data/exercises.ts'
 import { seedLibrary } from './seed.ts'
 import { type TestApi, makeApi } from '../test/harness.ts'
 
@@ -18,6 +19,19 @@ const libraryEquipment = async (name: string) => {
     .where(and(eq(exercises.ownerGroupId, h.groupId), eq(exercises.name, name)))
   return row?.equipment
 }
+
+describe('the library seeded', () => {
+  test('carries each entry its instructions, not only its description', async () => {
+    await seedLibrary(h.groupId, h.systemUserId)
+    const [row] = await db
+      .select({ instructions: exercises.instructions })
+      .from(exercises)
+      .where(and(eq(exercises.ownerGroupId, h.groupId), eq(exercises.name, 'Seated Leg Curl')))
+    const entry = EXERCISE_LIBRARY.find((e) => e.name === 'Seated Leg Curl')
+    expect(entry?.instructions).toBeTruthy()
+    expect(row?.instructions).toBe(entry?.instructions)
+  })
+})
 
 /**
  * An installation from before equipment was a list (#33): its migration left every exercise
