@@ -77,7 +77,7 @@ Three objectives today, and a fourth planned; every tool exists to serve one of 
 Reviewing and creating exercises from reliable sources, with correct muscle attribution.
 
 `library_audit` · `exercise_search` · `exercise_get` · `exercise_create` · `exercise_update` ·
-`exercise_duplicate` · `media_add_link` · `muscle_list`
+`exercise_duplicate` · `media_add_link` · `muscle_list` · `group_list`
 
 **The guardrail matters more than the capability.** The expensive failure is not a missing tool, it
 is creating "Barbell Bench Press" beside an existing "Bench Press", or attributing muscles
@@ -99,6 +99,11 @@ athlete's gym; `equipment_set` is only ever your own.
 an exercise they cannot do is marked "Missing equipment" there, in `exercise_get` and in
 `workout_get`'s outline — never left out of a plan. `exercise_search` and `workout_get` take
 `athlete` too: a coach's AI planning for someone searches, and reads the plan, by what THEY have.
+
+Every exercise and workout line names its owning group: `mine`, `library`, or the group's name
+(#47). `group_list` (`mcp/tools/groups.ts`) lists the caller's groups that way, with their role and
+the id the tools that take one want: `exercise_search` and `workout_list` with `scope: 'group'`,
+`exercise_duplicate`'s `toGroupId`, `library_audit`'s `groupId` (#52).
 
 Writing to the shared library requires **curator** rights (below). Anything else lands in the
 caller's own group — and `exercise_duplicate` is how an AI adapts a library exercise for someone

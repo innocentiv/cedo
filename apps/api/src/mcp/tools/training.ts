@@ -3,6 +3,7 @@ import { z } from 'zod'
 import {
   DuplicateInput,
   OfAthlete,
+  OwnableScope,
   WorkoutCreate,
   PlanSave,
   ReviewQuery,
@@ -69,14 +70,17 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'Workouts visible to you, as one line each ending with the id, after the group that ' +
         'owns it — mine, library, or a group by name.',
       inputSchema: z.object({
-        scope: z.enum(['all', 'mine', 'favourites']).default('all'),
+        scope: OwnableScope.default('all').describe(
+          "'mine' is your personal group only; 'group' is the one `groupId` names (group_list)",
+        ),
+        groupId: z.uuid().optional().describe("With scope 'group': which group"),
         q: z.string().max(100).optional(),
         limit: z.int().min(1).max(100).default(30),
       }),
       annotations: READ,
     },
-    async ({ scope, q, limit }) => {
-      const page = await WorkoutService.list(caller, { scope, q, limit })
+    async ({ scope, groupId, q, limit }) => {
+      const page = await WorkoutService.list(caller, { scope, groupId, q, limit })
       const groupNameOf = await groupNamesOf(caller)
       return text(
         page.items.length === 0

@@ -8,6 +8,7 @@ import {
   MUSCLES,
   MuscleSlug,
   OfAthlete,
+  OwnableScope,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import { ownOrCoached } from '../../modules/coaching/training.ts'
@@ -67,10 +68,10 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
         .object({
           q: z.string().max(100).optional().describe('Substring of the name'),
           muscle: MuscleSlug.optional().describe('Only exercises loading this muscle'),
-          scope: z
-            .enum(['all', 'mine', 'favourites'])
-            .default('all')
-            .describe("'mine' is your personal group only"),
+          scope: OwnableScope.default('all').describe(
+            "'mine' is your personal group only; 'group' is the one `groupId` names (group_list)",
+          ),
+          groupId: z.uuid().optional().describe("With scope 'group': which group"),
           limit: z.int().min(1).max(100).default(30),
           showAll: z
             .boolean()

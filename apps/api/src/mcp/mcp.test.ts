@@ -345,6 +345,56 @@ describe('every line names its owning group', () => {
 })
 
 /**
+ * Group ids, for the tools that take one (#52): `exercise_duplicate`'s `toGroupId`, `library_audit`'s
+ * `groupId`, and a search narrowed to one group. Named as every line names an owning group.
+ */
+describe('groups, and a list narrowed to one', () => {
+  const squadOf = async (user: TestUser) =>
+    expectContract(GroupMembership, await post(user, '/groups', { name: 'Squad' }))
+
+  test('group_list names each of your groups, your role in it, and its id', async () => {
+    const theirs = await squadOf(alice)
+    const lines = textOf((await callTool(await mintPat(alice), 'group_list')).body).split('\n')
+    expect(lines.toSorted((a, b) => a.localeCompare(b))).toEqual([
+      `library | reader | ${h.groupId}`,
+      `mine | editor | ${alice.personalGroupId}`,
+      `Squad | editor | ${theirs.id}`,
+    ])
+  })
+
+  test('exercise_search and workout_list with `scope: group` list that group’s alone', async () => {
+    await seedLibrary(h.groupId, h.systemUserId)
+    const theirs = await squadOf(alice)
+    const pat = await mintPat(alice)
+    const squat = expectContract(
+      page(Exercise),
+      (await alice.wire('/exercises?q=Barbell%20Back%20Squat&limit=1')).body,
+    ).items[0]
+    await callTool(pat, 'exercise_duplicate', { exerciseId: squat?.id, toGroupId: theirs.id })
+    const plan = expectContract(
+      Workout,
+      await post(alice, '/workouts', { name: 'Push', notes: null }),
+    )
+    await callTool(pat, 'workout_duplicate', { workoutId: plan.id, toGroupId: theirs.id })
+    const inSquad = { scope: 'group', groupId: theirs.id }
+
+    const exercises = textOf((await callTool(pat, 'exercise_search', inSquad)).body).split('\n')
+    expect(exercises.map((line) => line.split(' | ')[0])).toEqual(['Barbell Back Squat'])
+    expect(exercises[0]).toContain('[Squad')
+
+    const workouts = textOf((await callTool(pat, 'workout_list', inSquad)).body).split('\n')
+    expect(workouts).toHaveLength(1)
+    expect(workouts[0]).toContain('| [Squad] |')
+  })
+
+  test('`scope: group` without a groupId is refused, not read as every group', async () => {
+    const { body } = await callTool(await mintPat(alice), 'exercise_search', { scope: 'group' })
+    expect(body.result?.isError).toBe(true)
+    expect(textOf(body)).toContain('groupId')
+  })
+})
+
+/**
  * The library is read-only to all but curators; a copy is how an AI adapts one of its exercises for
  * someone — never by asking for curator rights. The same service as POST /exercises/:id/duplicate.
  */
