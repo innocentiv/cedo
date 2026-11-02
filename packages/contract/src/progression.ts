@@ -10,6 +10,7 @@ import {
 import { TrackingMode } from './exercise.ts'
 import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 import { Rpe } from './rpe.ts'
+import { normaliseRange, unhandledKind } from './stored-rule.ts'
 
 /**
  * How a set's targets advance over time. Stored as JSONB on `workout_entries`, so adding a rule
@@ -268,19 +269,4 @@ function advanceDouble(
 
   // Met the current target: climb one rep.
   return unheld({ ...target, reps: currentReps + 1 })
-}
-
-/** A double rule's rep range, tolerated stored the wrong way round rather than read as nonsense. */
-export function normaliseRange(range: readonly [number, number]): [number, number] {
-  const [a, b] = range
-  return a <= b ? [a, b] : [b, a]
-}
-
-/**
- * Guards a union that arrives from outside the type system — `progression` is stored as JSONB, so
- * an unknown kind really is reachable if a row is edited by hand or written by an older version.
- * Shared by every switch over a rule's kind, here and in progression-words.ts.
- */
-export function unhandledKind(value: never): never {
-  throw new Error(`Unhandled progression kind: ${JSON.stringify(value)}`)
 }

@@ -1,4 +1,5 @@
-import { type Progression, normaliseRange, unhandledKind } from './progression.ts'
+import type { Progression } from './progression.ts'
+import { normaliseRange, unhandledKind } from './stored-rule.ts'
 import { formatDistance, formatDuration } from './units.ts'
 
 /**
