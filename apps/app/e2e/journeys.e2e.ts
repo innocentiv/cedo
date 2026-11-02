@@ -2408,11 +2408,12 @@ test(
 )
 
 /**
- * Progression, automatic: a clean session moves the next one's target, the logger starts from it
- * and says so, beside what was done last time — and the plan itself is left as written.
+ * Progression, automatic: a session that clears its prescription moves the next one's target, the
+ * logger starts from it and says so, beside what was done last time — and the plan itself is left
+ * as written.
  */
 test(
-  'a clean session pre-fills the next one with the advanced target, and shows last time',
+  'a cleared session pre-fills the next one with the advanced target, and shows last time',
   async () => {
     await withApp('prefill-next-target', async (page) => {
       const app = screens(page)

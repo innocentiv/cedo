@@ -137,7 +137,7 @@ function describeTarget(
 /**
  * Why it held (#45): ` — held for effort: a working set at RPE 10, past RPE 8`, so the AI does not
  * read a lift done harder than prescribed as a stall — or ` — held: short of the targets`. Nothing
- * when nothing held it: no history yet, or a run of clean sessions still too short.
+ * when nothing held it: no history yet, or a run of cleared sessions still too short.
  */
 function heldFor({ held, current }: ProgressionSuggestion): string {
   if (held === null) return ''

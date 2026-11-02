@@ -136,7 +136,7 @@ describe('nextTarget — double progression (3 sets of 8-12, +2.5kg)', () => {
 })
 
 describe('nextTarget — linear progression', () => {
-  test('a clean session adds weight', () => {
+  test('a session that clears the prescription adds weight', () => {
     const result = nextTarget({
       rule: LINEAR,
       target: target(5, 100),
@@ -156,19 +156,19 @@ describe('nextTarget — linear progression', () => {
     expect(result).toEqual(target(5, 100))
   })
 
-  test('afterSuccesses=2 requires two consecutive clean sessions', () => {
+  test('afterSuccesses=2 requires two consecutive sessions that clear it', () => {
     const rule: Progression = { kind: 'linear', incrementG: kgToG(2.5), afterSuccesses: 2 }
     const t = target(5, 100)
-    const clean = sets(100)(5, 5, 5)
+    const cleared = sets(100)(5, 5, 5)
     const missed = sets(100)(5, 5, 4)
 
-    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [clean] })).toEqual(t)
-    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [clean, clean] })).toEqual(
+    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [cleared] })).toEqual(t)
+    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [cleared, cleared] })).toEqual(
       target(5, 102.5),
     )
     // Most recent first: a miss in the most recent session blocks it.
-    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [missed, clean] })).toEqual(t)
-    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [clean, missed] })).toEqual(t)
+    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [missed, cleared] })).toEqual(t)
+    expect(nextTarget({ rule, target: t, workingSets: 3, sessions: [cleared, missed] })).toEqual(t)
   })
 })
 
@@ -241,7 +241,7 @@ describe('nextTarget — a prescribed RPE is a ceiling', () => {
     expect(double(at(8, target(12, 60)), session)).toEqual(at(8, target(8, 62.5)))
   })
 
-  test('linear holds a clean session ground out past the RPE', () => {
+  test('linear holds a session that met its reps but was ground out past the RPE', () => {
     expect(linear(at(8, target(5, 100)), sets(100, 10)(5, 5, 5))).toEqual(at(8, target(5, 100)))
     expect(linear(at(8, target(5, 100)), sets(100, 8)(5, 5, 5))).toEqual(at(8, target(5, 102.5)))
   })
@@ -521,14 +521,14 @@ describe('nextTarget — linear_distance (runs, rows)', () => {
     expect(next(t, [ran([500, 104], [500, 105], [500, 103])], 4, step)).toEqual(t)
   })
 
-  test('afterSuccesses=2 requires two consecutive clean sessions', () => {
+  test('afterSuccesses=2 requires two consecutive sessions that clear it', () => {
     const rule: Progression = { ...RULE, afterSuccesses: 2 }
     const t = covered(5000, 1800)
-    const clean = ran([5000, 1800])
+    const cleared = ran([5000, 1800])
     const missed = ran([4000, 1800])
-    expect(next(t, [clean], 1, rule)).toEqual(t)
-    expect(next(t, [clean, missed], 1, rule)).toEqual(t)
-    expect(next(t, [clean, clean], 1, rule)).toEqual(covered(5500, 1980))
+    expect(next(t, [cleared], 1, rule)).toEqual(t)
+    expect(next(t, [cleared, missed], 1, rule)).toEqual(t)
+    expect(next(t, [cleared, cleared], 1, rule)).toEqual(covered(5500, 1980))
   })
 
   test('warm-ups are excluded', () => {
@@ -600,10 +600,10 @@ describe('describeProgression', () => {
 
   test.each<[Progression, string]>([
     [LINEAR, 'Linear, +2.5 kg'],
-    [{ ...LINEAR, afterSuccesses: 2 }, 'Linear, +2.5 kg after 2 clean sessions'],
+    [{ ...LINEAR, afterSuccesses: 2 }, 'Linear, +2.5 kg after 2 cleared sessions'],
     [
       { kind: 'linear_duration', incrementS: 15, afterSuccesses: 3 },
-      'Linear, +0:15 after 3 clean sessions',
+      'Linear, +0:15 after 3 cleared sessions',
     ],
     [
       { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 },
@@ -611,7 +611,7 @@ describe('describeProgression', () => {
     ],
     [
       { kind: 'linear_distance', incrementMm: 1_000_000, afterSuccesses: 2 },
-      'Distance, +1 km at the same pace after 2 clean sessions',
+      'Distance, +1 km at the same pace after 2 cleared sessions',
     ],
   ])('%o reads %p', (rule, said) => {
     expect(describeProgression(rule, kg)).toBe(said)

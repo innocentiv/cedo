@@ -912,7 +912,7 @@ describe("a session's targets", () => {
     expect(target?.last).toBeNull()
   })
 
-  test('after a clean session, the next asks for more — and says what was done', async () => {
+  test('after a session that clears it, the next asks for more — and says what was done', async () => {
     const workout = await aPlannedWorkout(alice, await anExercise(alice))
     await aSession(alice, workout, [8, 8, 8])
     const next = await aSession(alice, workout, [], false)
@@ -973,7 +973,7 @@ describe("a session's targets", () => {
   })
 
   /** Without a rule nothing carries it forward, however well it went — but last time still shows. */
-  test('an entry with no rule asks for its prescription after a clean session', async () => {
+  test('an entry with no rule asks for its prescription after a session that clears it', async () => {
     const workout = await aPlannedWorkout(alice, await anExercise(alice))
     const entry = workout.days[0]?.entries[0]
     if (entry === undefined) throw new Error('the workout has no entry')

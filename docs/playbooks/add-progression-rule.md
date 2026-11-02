@@ -28,10 +28,10 @@ This one function is called by the API's progression service, whose answers the
 `workout_progression` MCP tool and the logger's pre-fill both render, so an AI's advice and the
 athlete's next target never compute differently (they read different sessions — see ADR-0012).
 
-What a session must do to count as clean is a predicate in `packages/contract/src/clears.ts`, one
-per dimension a rule advances (`clearsReps`, `clearsDuration`, `clearsDistance`), each built on
-`everyWorkingSet`. A rule that advances a dimension already there reuses its predicate; a new
-dimension adds one beside them. A target pushed past its ceiling is held by `nextTarget` itself, so
+What a session must do to clear a prescription is a judge in `packages/contract/src/clears.ts`, one
+per dimension a rule advances (`judgeReps`, `judgeDuration`, `judgeDistance`), each built on
+`everyWorkingSet` and answering a `Verdict`. A rule that advances a dimension already there reuses
+its judge; a new dimension adds one beside them. A target pushed past its ceiling is held by `nextTarget` itself, so
 a rule's maths need not check `MAX_*`.
 
 ## 3. Write the truth table first

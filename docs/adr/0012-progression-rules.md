@@ -77,8 +77,8 @@ not by adding weight. `linear_duration` adds seconds on the same advance-or-hold
 them was taken to mean going _faster_, a decreasing target that contradicts advance-or-hold. They now
 have one that advances the other way: **further, at the prescribed pace.**
 
-A session is clean when every prescribed working set covered at least the target distance and, when
-a time is prescribed, at no less than its pace. After `afterSuccesses` clean sessions the distance
+A session clears it when every prescribed working set covered at least the target distance and, when
+a time is prescribed, at no less than its pace. After `afterSuccesses` such sessions the distance
 rises by `incrementMm`, and a prescribed time rises in proportion, to whole seconds rounded **up** —
 so a volume step never hides a pace jump, nor asks for a hair more pace. Given `5 km in 30:00,
 +500 m`:
@@ -98,7 +98,7 @@ And given `5 km, +500 m` with no time prescribed: `5 km` logged, with or without
 
 Rejected: a rule that shortens the time — the same distance, faster. Endurance work is
 conventionally built by adding volume first and changing intensity deliberately; a pace target is
-set from a test or training zones, not lowered by a fixed number of seconds per clean session. That
+set from a test or training zones, not lowered by a fixed number of seconds per cleared session. That
 is a judgement for the user or the AI, through `workout_save_plan`, and the guarantee stays whole: a
 rule never makes a prescription easier, and never makes it faster.
 

@@ -28,6 +28,9 @@ export function describeProgression(
   }
 }
 
-/** How many clean sessions a rule waits for, said only when it waits for more than one. */
+/**
+ * How many sessions in a row must clear a prescription before the rule advances it, said only when
+ * it waits for more than one.
+ */
 const streak = (afterSuccesses: number): string =>
-  afterSuccesses === 1 ? '' : ` after ${afterSuccesses} clean sessions`
+  afterSuccesses === 1 ? '' : ` after ${afterSuccesses} cleared sessions`
