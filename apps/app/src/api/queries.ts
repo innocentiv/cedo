@@ -47,10 +47,17 @@ import { useWriteTo } from './write-to.ts'
  * `READS` in the contract. See docs/08-frontend.md.
  */
 
-export function useExercises(query: Partial<ExerciseQuery>): UseQueryResult<Page<Exercise>> {
-  return useQuery({
+/**
+ * The library a page at a time (#52): the next asked for only when shown more, so a library longer
+ * than one page is never cut off at it.
+ */
+export function useExercises(query: Partial<ExerciseQuery>) {
+  return useInfiniteQuery({
     queryKey: keys.exerciseList(query),
-    queryFn: async () => await api.exercises.list(query),
+    queryFn: async ({ pageParam }: { pageParam: string | undefined }) =>
+      await api.exercises.list({ ...query, cursor: pageParam }),
+    initialPageParam: undefined,
+    getNextPageParam: (last: Page<Exercise>) => last.nextCursor ?? undefined,
   })
 }
 

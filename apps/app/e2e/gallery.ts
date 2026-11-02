@@ -462,6 +462,9 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await snap('08-exercises')
   // On a desktop, an exercise opens beside the list (#29).
   if (await page.shown('exercise-pane')) {
+    // By name, "Tempo Goblet Squat" is on the library's second page (#52).
+    await page.click('[data-testid="exercises-more"]')
+    await page.waitFor(`exercise-row-${world.customId}`)
     await page.click(`[data-testid="exercise-row-${world.customId}"]`)
     await page.waitFor('exercise-detail-pane')
     await snap('08b-exercises-pane')

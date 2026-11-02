@@ -1,4 +1,5 @@
 import type { Page } from '../harness.ts'
+import { rowNames } from './library.ts'
 
 /**
  * The exercise picker, wherever it is opened from — a plan's day, a session (#27): what was logged
@@ -32,6 +33,12 @@ export const picker = (page: Page) => {
       }
       await add()
       return ids
+    },
+    /** The library's rows by name, below what was logged lately — the list as it stands. */
+    names: async (): Promise<string[]> => await rowNames(page, 'picker-library'),
+    /** Asks for the library's next page (#52). */
+    more: async (): Promise<void> => {
+      await page.click('[data-testid="picker-more"]')
     },
     /** What it leads with, by name — before anything is searched. */
     recent: async (): Promise<string[]> => {

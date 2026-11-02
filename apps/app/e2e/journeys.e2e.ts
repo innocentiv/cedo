@@ -1427,6 +1427,36 @@ test(
 )
 
 /**
+ * The library is longer than one page (#52): the Exercises tab and the picker both stopped at the
+ * first, and "Wrist Curl" — last by name — could be found only by searching for it.
+ */
+test(
+  'the whole library is reached a page at a time, in the tab and in the picker',
+  async () => {
+    await withApp('library-pages', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('pgs'))
+      const last = 'Wrist Curl'
+
+      // Nothing described yet, so everything is doable: the whole library is listed.
+      await app.nav.tab('exercises')
+      const first = await page.until(app.library.names, (names) => names.length > 0)
+      expect(first).not.toContain(last)
+      await app.library.more()
+      await page.until(app.library.names, (names) => names.includes(last))
+      expect(await app.library.moreShown()).toBe(false)
+
+      await app.planEditor.create('Bench')
+      await app.planEditor.addTo(0)
+      expect(await page.until(app.picker.names, (names) => names.length > 0)).not.toContain(last)
+      await app.picker.more()
+      await page.until(app.picker.names, (names) => names.includes(last))
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * A copy and the library exercise it was copied from share a name, muscles and video: the group
  * that owns each is what tells their rows apart (#47).
  */

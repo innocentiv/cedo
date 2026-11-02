@@ -3,6 +3,7 @@ import type { Exercise, MuscleSlug } from '@cedo/contract'
 import { useExercises, useRecentExercises } from '../api/queries.ts'
 import { ExerciseListRow } from './exercise-media.tsx'
 import { DoableChips, useDoableFilter } from './doable-filter.tsx'
+import { ShowMore } from './show-more.tsx'
 import { Button, Empty, Input, Loaded, MuscleFilter, Screen, Stack, Text } from '../ui/index.ts'
 
 export interface ExercisePickerProps {
@@ -111,7 +112,7 @@ export function ExercisePicker({
       )}
       <Loaded query={exercises} testID="picker">
         {(data) =>
-          data.items.length === 0 ? (
+          data.pages[0]?.items.length === 0 ? (
             <Empty title="No match" testID="picker-empty" />
           ) : (
             <Stack gap="xs" testID="picker-library">
@@ -120,7 +121,8 @@ export function ExercisePicker({
                   All exercises
                 </Text>
               )}
-              {data.items.map((exercise) => row(exercise, false))}
+              {data.pages.flatMap((page) => page.items).map((exercise) => row(exercise, false))}
+              <ShowMore query={exercises} title="Show more exercises" testID="picker-more" />
             </Stack>
           )
         }

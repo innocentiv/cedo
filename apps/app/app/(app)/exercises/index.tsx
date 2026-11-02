@@ -19,6 +19,7 @@ import { useExercises } from '../../../src/api/queries.ts'
 import { ExerciseDetailView } from '../../../src/lib/exercise-detail.tsx'
 import { ExerciseListRow } from '../../../src/lib/exercise-media.tsx'
 import { DoableChips, EquipmentPrompt, useDoableFilter } from '../../../src/lib/doable-filter.tsx'
+import { ShowMore } from '../../../src/lib/show-more.tsx'
 
 const SCOPES: readonly { value: OwnableScope; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -73,7 +74,7 @@ export default function ExerciseList(): React.JSX.Element {
 
       <Loaded query={exercises} testID="exercises">
         {(data) =>
-          data.items.length === 0 ? (
+          data.pages[0]?.items.length === 0 ? (
             <Empty
               title="Nothing here yet"
               detail={search === '' ? 'Add one, or copy one from the shared library.' : 'No match.'}
@@ -81,24 +82,22 @@ export default function ExerciseList(): React.JSX.Element {
             />
           ) : (
             <Stack gap="xs" testID="exercise-list">
-              {data.items.map((exercise) => (
-                <ExerciseListRow
-                  key={exercise.id}
-                  exercise={exercise}
-                  tag={exercise.isFavourite ? 'Pinned' : undefined}
-                  current={desk && open === exercise.id}
-                  onPress={() => {
-                    if (desk) setOpen(exercise.id)
-                    else router.push(`/exercises/${exercise.id}`)
-                  }}
-                  testID={`exercise-row-${exercise.id}`}
-                />
-              ))}
-              {data.nextCursor === null ? null : (
-                <Text variant="caption" tone="faint" align="center">
-                  {`Showing the first ${data.items.length}. Narrow the search to see more.`}
-                </Text>
-              )}
+              {data.pages
+                .flatMap((page) => page.items)
+                .map((exercise) => (
+                  <ExerciseListRow
+                    key={exercise.id}
+                    exercise={exercise}
+                    tag={exercise.isFavourite ? 'Pinned' : undefined}
+                    current={desk && open === exercise.id}
+                    onPress={() => {
+                      if (desk) setOpen(exercise.id)
+                      else router.push(`/exercises/${exercise.id}`)
+                    }}
+                    testID={`exercise-row-${exercise.id}`}
+                  />
+                ))}
+              <ShowMore query={exercises} title="Show more exercises" testID="exercises-more" />
             </Stack>
           )
         }

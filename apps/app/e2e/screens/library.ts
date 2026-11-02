@@ -103,6 +103,14 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
   },
 })
 
+/** The names of the rows a list holds, in order — the library's, or the picker's (#52). */
+export const rowNames = async (page: Page, list: string): Promise<string[]> => {
+  const names = await page.evaluate(
+    `[...document.querySelectorAll('[data-testid="${list}"] [data-testid$="-name"]')].map((e) => e.innerText.trim())`,
+  )
+  return Array.isArray(names) ? names.map(String) : []
+}
+
 /** The exercise detail screen — reached however the journey reached it. */
 export const exercise = (page: Page) => ({
   /** Which group it is in, and transferring it to another. */
@@ -236,6 +244,14 @@ export const library = (page: Page) => {
         .filter(([shown]) => shown === name)
         .map(([, caption]) => caption ?? '')
     },
+    /** The rows' names as listed, the list as it stands. */
+    names: async (): Promise<string[]> => await rowNames(page, 'exercise-list'),
+    /** Asks for the next page (#52). */
+    more: async (): Promise<void> => {
+      await page.click('[data-testid="exercises-more"]')
+    },
+    /** Whether it offers another page. */
+    moreShown: async (): Promise<boolean> => await page.shown('exercises-more'),
     /** Whether the list is on screen. */
     listShown: async (): Promise<boolean> => await page.shown('exercise-list'),
     /** The library as it stands, without loading it again: the switch below keeps its choice. */
