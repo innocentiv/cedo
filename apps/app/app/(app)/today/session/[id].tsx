@@ -2,7 +2,7 @@ import { useLocalSearchParams } from 'expo-router'
 import { useGoBack } from '../../../../src/lib/use-go-back.ts'
 import { Button, ErrorNotice, Screen, SessionHeader, Spinner } from '../../../../src/ui/index.ts'
 import { ExercisePicker } from '../../../../src/lib/exercise-picker.tsx'
-import { WorkoutBody } from '../../../../src/lib/workout.tsx'
+import { sessionColumns } from '../../../../src/lib/workout.tsx'
 import { useWorkout } from '../../../../src/lib/workout-state.ts'
 import { HowTo, WorkoutMenu } from '../../../../src/lib/workout-sheets.tsx'
 
@@ -33,7 +33,6 @@ export default function LiveSession(): React.JSX.Element {
 
   return (
     <Screen
-      wide
       testID="session-screen"
       header={
         <SessionHeader
@@ -50,8 +49,8 @@ export default function LiveSession(): React.JSX.Element {
           <Button title="Done" variant="secondary" onPress={goBack} testID="leave-session" />
         ) : undefined
       }
+      columns={sessionColumns(w)}
     >
-      <WorkoutBody w={w} />
       <WorkoutMenu
         open={w.menu.open}
         onClose={w.menu.hide}

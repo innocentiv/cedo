@@ -12,28 +12,18 @@ import {
   progressOf,
 } from '@cedo/contract'
 import type { PendingLog } from '../api/pending.ts'
-import { AddRow, Columns, FocusLogger, Stack, UpNext } from '../ui/index.ts'
+import { AddRow, FocusLogger, Stack, UpNext } from '../ui/index.ts'
 import { JustDone, type RestShown, ShownSet } from './shown-set.tsx'
 import { useLoads } from './use-loads.ts'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
 /**
- * A session with no plan behind it (#24): what was just done and the exercise in focus, then the
- * others, Add exercise, and every set — side by side on a desktop. Nothing was prescribed, so there
- * is always a next set until the athlete moves on. What shows is the contract's `workoutView`.
+ * A session with no plan behind it (#24): what was just done and the exercise in focus
+ * (`AdHocMain`), then the others, Add exercise, and every set (`AdHocSide`) — the screen's two
+ * columns, side by side on a desktop. Nothing was prescribed, so there is always a next set until
+ * the athlete moves on. What shows is the contract's `workoutView`.
  */
-export function AdHocDay({
-  exercises,
-  full,
-  sets,
-  rest,
-  view,
-  onChoose,
-  onReopen,
-  record,
-  onAdd,
-  onHowTo,
-}: {
+export interface AdHocDayProps {
   /** What the session has logged, then anything picked since — `exercisesInSession`. */
   readonly exercises: readonly SessionExercise[]
   /** The exercises picked this open, whole: how to do them can be shown. */
@@ -47,51 +37,64 @@ export function AdHocDay({
   readonly record: React.ReactNode
   readonly onAdd: () => void
   readonly onHowTo: (exercise: Exercise) => void
-}): React.JSX.Element {
-  const { focus, shown, current } = view
+}
 
+/** What was just done, and the exercise in focus — one more set from the last. */
+export function AdHocMain({
+  full,
+  sets,
+  rest,
+  view,
+  onReopen,
+  onHowTo,
+}: AdHocDayProps): React.JSX.Element {
+  const { focus, shown } = view
   return (
-    <Columns
-      testID="session-adhoc"
-      main={
-        <>
-          <JustDone rest={rest}>
-            {shown === null ? null : (
-              <ShownSet log={shown.log} exercise={shown.exercise} sets={sets} />
-            )}
-          </JustDone>
-          {focus.kind === 'added' ? (
-            <AdHocFocus
-              exercise={focus.exercise}
-              marks={focus.sets}
-              whole={full.find((e) => e.id === focus.exercise.id)}
-              sets={sets}
-              selected={focus.selected}
-              onSelect={(key) => {
-                onReopen({ entryId: null, exerciseId: focus.exercise.id, key })
-              }}
-              onHowTo={onHowTo}
-            />
-          ) : null}
-        </>
-      }
-      side={
-        <>
-          <Stack gap="xs">
-            <AddedExercises
-              exercises={exercises}
-              sets={sets}
-              current={current.addedToday}
-              onChoose={(id) => {
-                onChoose({ added: id })
-              }}
-            />
-            <AddRow title="Add exercise" onPress={onAdd} testID="adhoc-add-exercise" />
-          </Stack>
-          {record}
-        </>
-      }
-    />
+    <>
+      <JustDone rest={rest}>
+        {shown === null ? null : <ShownSet log={shown.log} exercise={shown.exercise} sets={sets} />}
+      </JustDone>
+      {focus.kind === 'added' ? (
+        <AdHocFocus
+          exercise={focus.exercise}
+          marks={focus.sets}
+          whole={full.find((e) => e.id === focus.exercise.id)}
+          sets={sets}
+          selected={focus.selected}
+          onSelect={(key) => {
+            onReopen({ entryId: null, exerciseId: focus.exercise.id, key })
+          }}
+          onHowTo={onHowTo}
+        />
+      ) : null}
+    </>
+  )
+}
+
+/** The session's exercises, Add exercise, and every set it holds. */
+export function AdHocSide({
+  exercises,
+  sets,
+  view,
+  onChoose,
+  record,
+  onAdd,
+}: AdHocDayProps): React.JSX.Element {
+  return (
+    <>
+      <Stack gap="xs">
+        <AddedExercises
+          exercises={exercises}
+          sets={sets}
+          current={view.current.addedToday}
+          onChoose={(id) => {
+            onChoose({ added: id })
+          }}
+        />
+        <AddRow title="Add exercise" onPress={onAdd} testID="adhoc-add-exercise" />
+      </Stack>
+      {record}
+    </>
   )
 }
 

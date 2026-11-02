@@ -1,6 +1,6 @@
 import { useLocalSearchParams } from 'expo-router'
 import { openedSessionName } from '@cedo/contract'
-import { Columns, Loaded, Screen, SessionHeader } from '../../../../../src/ui/index.ts'
+import { Loaded, Screen, SessionHeader } from '../../../../../src/ui/index.ts'
 import { useAthleteSession } from '../../../../../src/api/athlete-queries.ts'
 import { athleteExercise } from '../../../../../src/lib/addresses.ts'
 import { SetsByExercise } from '../../../../../src/lib/session-parts.tsx'
@@ -24,7 +24,6 @@ export default function AthleteSession(): React.JSX.Element {
     <Loaded query={useAthleteSession(id, sessionId)} testID="athlete-session">
       {(data) => (
         <Screen
-          wide
           testID="athlete-session-screen"
           header={
             <SessionHeader
@@ -35,17 +34,16 @@ export default function AthleteSession(): React.JSX.Element {
               testID="athlete-session-header"
             />
           }
-        >
-          <Columns
-            main={
+          columns={{
+            main: (
               <>
                 {data.endedAt === null ? null : <FinishedSummary session={data} />}
                 <ReadNotes notes={data.notes} />
               </>
-            }
-            side={<SetsByExercise logs={data.logs} historyHref={athleteExercise(id)} />}
-          />
-        </Screen>
+            ),
+            side: <SetsByExercise logs={data.logs} historyHref={athleteExercise(id)} />,
+          }}
+        />
       )}
     </Loaded>
   )

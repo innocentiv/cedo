@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
 import { type SessionStart, startOfWeek } from '@cedo/contract'
-import { Columns, FormError, Loaded, Screen } from '../../../src/ui/index.ts'
+import { FormError, Loaded, Screen } from '../../../src/ui/index.ts'
 import { useHistory, useStartSession, useToday } from '../../../src/api/queries.ts'
 import { Now, PagedHistory } from '../../../src/lib/today-parts.tsx'
 import { ownSession } from '../../../src/lib/addresses.ts'
@@ -29,16 +29,20 @@ export default function Today(): React.JSX.Element {
   }
 
   return (
-    <Screen title="Today" wide testID="today-screen">
-      <FormError message={error} testID="today-error" />
-      <Columns
-        main={
-          <Loaded query={today} testID="today-now">
-            {(now) => <Now today={now} weekStart={weekStart} onStart={begin} busy={busy} />}
-          </Loaded>
-        }
-        side={<PagedHistory history={history} sessionHref={ownSession} testID="today" />}
-      />
-    </Screen>
+    <Screen
+      title="Today"
+      testID="today-screen"
+      columns={{
+        main: (
+          <>
+            <FormError message={error} testID="today-error" />
+            <Loaded query={today} testID="today-now">
+              {(now) => <Now today={now} weekStart={weekStart} onStart={begin} busy={busy} />}
+            </Loaded>
+          </>
+        ),
+        side: <PagedHistory history={history} sessionHref={ownSession} testID="today" />,
+      }}
+    />
   )
 }

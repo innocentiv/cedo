@@ -22,6 +22,8 @@ const planEntry = (page: Page, day: number, index: number) => {
     await page.waitFor(id)
   }
   return {
+    /** Taps its line, opening its settings: in a sheet on a phone, the pane on a desktop. */
+    open,
     /** Its line in the outline, as it reads: the exercise, what it prescribes, how it progresses. */
     text: async (): Promise<string> =>
       (await page.text(`plan-line-${String(day)}-${String(index)}`)) ?? '',

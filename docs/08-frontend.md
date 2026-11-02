@@ -126,7 +126,8 @@ Two constraints found by building it:
 | `Sheet` | something looked at without leaving where you are — a session's menu, how to do an exercise. From the bottom on a phone, in the middle on a desktop |
 | `Icon`, `IconButton` | a secondary action as a glyph alone — back, menu, close, undo, how to — named aloud by its label |
 | `Screen` `onBack` | a way back beside the title, on a screen reached from another with no other way out |
-| `Columns` | a screen's main part and what it sits within: one column on a phone, side by side on a desktop — the side the narrow one, or the main when it is a list leading to the side |
+| `Screen` `columns` | a screen whose whole body is two columns — `{ main, side, narrow?, chosen? }`: on a desktop side by side under the title, each its own scroll, so a pane stays beside whatever the other is scrolled to (#50); on a phone the main then the side in one scroll. `chosen` is what the side shows when it is one thing chosen — another opens at the side's top. `children` still render: the sheets the screen opens |
+| `Columns` | two columns that are a part of a page, not the whole of it — a review, with more above and below it: one column on a phone, side by side on a desktop, both in the page's one scroll. The side the narrow one, or the main when it is a list leading to the side. A screen whose body is the two columns uses `Screen` `columns` instead |
 | `Thumbnail` | a picture of a movement: a video's thumbnail, an uploaded image |
 | `color`, `space`, `radius`, `type`, `font`, `CONTENT_MAX_WIDTH`, `WIDE_CONTENT_MAX_WIDTH`, `CONTROL_HEIGHT`, `LOG_CONTROL_HEIGHT`, `ROW_HEIGHT`, `ICON_SIZE` | the only source of visual values |
 | `useAppFonts()` | the bundled faces `font` names, loaded beside the app at its root — never waited for |
@@ -288,7 +289,7 @@ duration, sets and personal bests; tapping one opens its summary, its sets by ex
 notes, which stay editable. The screen reads `GET /today` — the session in progress, the current
 workout and its next day, the week — rather than joining reads to decide them.
 
-As built (#25), on a phone top to bottom, on a desktop in two `Columns`:
+As built (#25), on a phone top to bottom, on a desktop in two columns (`Screen` `columns`):
 
 - **What to do now** — one card. The next day: its workout, its name large, its exercises, and
   Start {day}, yellow; Another day opens the workout. With a session in progress, the card is that
@@ -317,7 +318,7 @@ reader's time zone. Weeks and lines are the contract's `week.ts`.
 ### Editing a workout
 
 The workout's page is its outline: days, and each entry one line — "Barbell Back Squat · 5 × 5 ·
-100 kg · +2.5 kg a session". Tapping a line opens the entry's settings in a sheet, or a panel beside
+100 kg · +2.5 kg a session". Tapping a line opens the entry's settings in a sheet, or a pane beside
 the outline on a wide screen. Each change is saved as it is made, and there is no edit mode: see
 `docs/adr/0022-plans-edited-in-place.md`. Days and entries reorder, entries move between days, and a
 workout is renamed and its notes edited where they are shown.
@@ -331,9 +332,12 @@ As built (#26):
   at the foot of a day, Add day at the foot of the plan. An unavailable exercise's line says so,
   with the bin.
 - **An entry's settings** — its fields (`EntryEditor`), then where it is in the plan: chips to move
-  it to another day, ↑ ↓ within its day, the bin. In a sheet on a phone; on a desktop, a panel
-  beside the outline (`Columns`), which waits with a line until an entry is chosen. Kept open by
-  the entry's key, so it follows the entry as it moves and closes once it is gone.
+  it to another day, ↑ ↓ within its day, the bin. In a sheet on a phone; on a desktop, a pane
+  beside the outline (`Screen` `columns`), which waits with a line until an entry is chosen. Kept
+  open by the entry's key, so it follows the entry as it moves and closes once it is gone. The
+  outline and the pane scroll each on their own (#50): an entry on the fifth day opens beside it,
+  not at the top of a page scrolled past them, and another chosen opens at the pane's top. The
+  head scrolls with the outline, so a long note takes no height from the pane.
 - **Removing** a day or an entry is asked twice (`RemoveButton`, `ConfirmButton`'s rule as a
   glyph): it is saved at once, its id with it, and cannot be taken back. A plan keeps one day
   (`canRemoveDay`).
@@ -420,12 +424,26 @@ and `training_review` both say; the tab looks back 4, 8 or 12 weeks.
 
 Two panes where reading side by side helps: a workout's outline beside the entry being edited, the
 exercise list beside the exercise, Today's next session and week beside the history — and the
-session: what was just done and the exercise in focus, beside the day and its sets (`Columns`). One
-column 700 points wide made the Log button the loudest thing on a desk, which it is not there. A
+session: what was just done and the exercise in focus, beside the day and its sets (`Screen`
+`columns`). One column 700 points wide made the Log button the loudest thing on a desk, which it is
+not there. A
 session left open is the same yellow band as on a phone, at the foot of the sidebar — a line with a
 yellow dot was tried and read as too little; a sheet opens in the middle of the screen, not from
 its bottom edge. The sidebar carries the product's name and the
 account.
+
+**Each column its own scroll (#50).** The page does not scroll on a desktop screen of two columns:
+the title stays above them, the footer below, and each column scrolls between — so a pane stays
+beside whatever the list or the outline is scrolled to. In one page scroll the pane sat at the top
+of the page: choose an entry on the fifth day of a plan and its settings opened several screens
+above, out of sight. `position: sticky` was the other way: web-only, outside React Native's types,
+and its height worked out by hand around the title and the footer; two scrolls take theirs from the
+layout, and hold on native. The wheel scrolls the column under the pointer, and each keeps its
+scrollbar — on Windows mid-page, but the only cue that a pane scrolls on its own. A screen asks for
+this with `Screen` `columns`, never with a `Columns` and a scroll switched off: one switch, so the
+two cannot disagree. `Columns` that are a part of a page — a review, the period above it and
+bodyweight below on Progress, and inside an athlete's pane — stay in the page's one scroll. A
+window dragged across the tablet width loses its scroll position, as it changes layout.
 
 As built (#29): the exercise chosen from the library opens in a pane beside the list
 (`ExerciseDetailView`, a screen of its own on a phone, a pane on a desktop — its title and Edit at
@@ -480,8 +498,8 @@ never writes it. As built (#30):
 - **A plan out of the reader's sight is "Plan unavailable"**, never "Without a plan" (`sessionName`):
   the athlete's own plan, read by their coach; a group's, after leaving it.
 - **On a desktop**, the athletes beside the one open, in the address (`/athletes?open=<id>`), as an
-  exercise in the library — the list the narrow column here (`Columns` `narrow="main"`), since each
-  row opens a whole training beside it.
+  exercise in the library — the list the narrow column here (`Screen` `columns`, `narrow: 'main'`),
+  since each row opens a whole training beside it.
 - **Their reads are of `athlete` in `READS`**: they write it, on their own device, so nothing the
   coach does awaits it — their own sets least of all. Renaming an exercise, or a group change,
   still refreshes it behind.
@@ -763,7 +781,8 @@ assertion.
 route renders. It seeds an athlete three weeks into a block — a four-day plan, dated history, a
 session half done with rest running, an exercise with a video, a coach's club — and photographs
 every screen and the states inside them (the picker open, a set mid-rest) at a phone's width and a
-laptop's, each down to its end, a frame per viewport. `.artifacts/gallery/index.html` lays mobile
+laptop's, each down to its end, a frame per viewport — every scroller on screen scrolled together,
+so a desktop's two columns read side by side as they are laid out. `.artifacts/gallery/index.html` lays mobile
 and desktop side by side. `--only <state>` and `--layout mobile|desktop` narrow it. An empty
 account cut at the fold hid every problem in `docs/ux/2026-10-ui-review.md`; this is what found them.
 

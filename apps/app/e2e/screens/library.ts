@@ -218,6 +218,22 @@ export const library = (page: Page) => {
       const row = await page.waitForSelector('[data-testid^="exercise-row-"]')
       await page.click(`[data-testid="${row}"]`)
     },
+    /**
+     * Opens the library afresh and chooses the last exercise on its first page — far down the list,
+     * so reaching it scrolls (#50). Returns its name.
+     */
+    chooseLast: async (): Promise<string> => {
+      await list()
+      await page.waitForSelector('[data-testid^="exercise-row-"]')
+      const last = String(
+        await page.evaluate(
+          `[...document.querySelectorAll('[data-testid="exercise-list"] [data-testid^="exercise-row-"]')].map((row) => row.dataset.testid).filter((id) => /^exercise-row-[0-9a-f-]{36}$/.test(id)).at(-1)`,
+        ),
+      )
+      const name = (await page.text(`${last}-name`)) ?? ''
+      await page.click(`[data-testid="${last}"]`)
+      return name
+    },
     /** Opens the library afresh, searched for `name`. */
     search: async (name: string): Promise<void> => {
       await list()

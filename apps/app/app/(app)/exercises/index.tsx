@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useLocalSearchParams, useRouter } from 'expo-router'
 import {
   Card,
-  Columns,
   Empty,
   Input,
   Loaded,
@@ -99,30 +98,33 @@ export default function ExerciseList(): React.JSX.Element {
           testID="new-exercise"
         />
       }
+      // Beside the list, each its own scroll: the exercise chosen low in it opens in view (#50).
+      columns={
+        desk
+          ? {
+              main: list,
+              side: (
+                <Card testID="exercise-pane">
+                  {open === null ? (
+                    <Text tone="muted">Choose an exercise to see it here.</Text>
+                  ) : (
+                    <ExerciseDetailView
+                      key={open}
+                      id={open}
+                      pane
+                      onGone={() => {
+                        setOpen(null)
+                      }}
+                    />
+                  )}
+                </Card>
+              ),
+              chosen: open,
+            }
+          : undefined
+      }
     >
-      {desk ? (
-        <Columns
-          main={list}
-          side={
-            <Card testID="exercise-pane">
-              {open === null ? (
-                <Text tone="muted">Choose an exercise to see it here.</Text>
-              ) : (
-                <ExerciseDetailView
-                  key={open}
-                  id={open}
-                  pane
-                  onGone={() => {
-                    setOpen(null)
-                  }}
-                />
-              )}
-            </Card>
-          }
-        />
-      ) : (
-        list
-      )}
+      {desk ? null : list}
     </Screen>
   )
 }

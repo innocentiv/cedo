@@ -1,14 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router'
-import {
-  Card,
-  Columns,
-  Empty,
-  ListRow,
-  Loaded,
-  Screen,
-  Text,
-  useLayout,
-} from '../../../src/ui/index.ts'
+import { Card, Empty, ListRow, Loaded, Screen, Text, useLayout } from '../../../src/ui/index.ts'
 import { useAthletes } from '../../../src/api/athlete-queries.ts'
 import { AthleteView } from '../../../src/lib/athlete.tsx'
 
@@ -53,24 +44,31 @@ export default function Athletes(): React.JSX.Element {
   )
 
   return (
-    <Screen title="Athletes" wide testID="athletes-screen">
-      {desk ? (
-        <Columns
-          narrow="main"
-          main={list}
-          side={
-            <Card testID="athlete-pane-card">
-              {open === null ? (
-                <Text tone="muted">Choose an athlete to read their training here.</Text>
-              ) : (
-                <AthleteView key={open} id={open} pane />
-              )}
-            </Card>
-          }
-        />
-      ) : (
-        list
-      )}
+    <Screen
+      title="Athletes"
+      wide
+      testID="athletes-screen"
+      // Beside the list, each its own scroll (#50): their whole training is long.
+      columns={
+        desk
+          ? {
+              narrow: 'main',
+              main: list,
+              side: (
+                <Card testID="athlete-pane-card">
+                  {open === null ? (
+                    <Text tone="muted">Choose an athlete to read their training here.</Text>
+                  ) : (
+                    <AthleteView key={open} id={open} pane />
+                  )}
+                </Card>
+              ),
+              chosen: open,
+            }
+          : undefined
+      }
+    >
+      {desk ? null : list}
     </Screen>
   )
 }

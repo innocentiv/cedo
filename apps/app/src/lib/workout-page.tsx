@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { Workout } from '@cedo/contract'
-import { Card, Columns, Screen, Sheet, Stack, Text, useLayout } from '../ui/index.ts'
+import { Card, Screen, Sheet, Stack, Text, useLayout } from '../ui/index.ts'
 import { EntrySettings } from './entry-settings.tsx'
 import { ExercisePicker } from './exercise-picker.tsx'
 import { entryAt, withEntriesAdded } from './plan-draft.ts'
@@ -11,7 +11,7 @@ import { Outline } from './workout-outline.tsx'
 
 /**
  * A workout's page (#26): its outline, edited in place and saved as each change is made — no edit
- * mode, no Save (ADR-0022). An entry's settings open in a sheet, or in a panel beside the outline on
+ * mode, no Save (ADR-0022). An entry's settings open in a sheet, or in a pane beside the outline on
  * a desktop. See docs/08-frontend.md, "Editing a workout".
  */
 export function WorkoutBody({
@@ -75,12 +75,8 @@ export function WorkoutBody({
     </>
   )
 
-  return (
-    <Screen
-      wide
-      testID="workout-detail-screen"
-      footer={workout.canEdit ? undefined : <CopyFooter workoutId={workout.id} />}
-    >
+  const page = (
+    <Stack gap="lg">
       <WorkoutHead
         // Read again with another name or notes — saved elsewhere — its fields start from those.
         key={`${workout.name}\n${workout.notes ?? ''}`}
@@ -88,25 +84,29 @@ export function WorkoutBody({
         status={workout.canEdit ? editor.status : null}
         onBack={goBack}
       />
-      {desk && workout.canEdit ? (
-        <Columns
-          main={outline}
-          side={
-            <Card testID="entry-panel">
-              {settings === null ? (
-                <Text tone="muted">Choose an exercise to change what it asks.</Text>
-              ) : (
-                <Stack gap="lg">
-                  <Text variant="heading">{exercise?.name}</Text>
-                  {settings}
-                </Stack>
-              )}
-            </Card>
-          }
-        />
-      ) : (
-        <Stack gap="xxl">{outline}</Stack>
-      )}
+      <Stack gap="xxl">{outline}</Stack>
+    </Stack>
+  )
+  const beside = desk && workout.canEdit
+
+  return (
+    <Screen
+      wide
+      testID="workout-detail-screen"
+      footer={workout.canEdit ? undefined : <CopyFooter workoutId={workout.id} />}
+      // On a desktop the entry's pane beside the outline, each its own scroll: an entry on the last
+      // day opens beside it, not at the top of the page (#50). The head scrolls with the outline.
+      columns={
+        beside
+          ? {
+              main: page,
+              side: <EntryPane name={exercise?.name}>{settings}</EntryPane>,
+              chosen: selected,
+            }
+          : undefined
+      }
+    >
+      {beside ? null : page}
       {desk ? null : (
         <Sheet
           open={settings !== null}
@@ -120,5 +120,28 @@ export function WorkoutBody({
         </Sheet>
       )}
     </Screen>
+  )
+}
+
+/** The entry chosen, beside the outline on a desktop: its settings, or a line until there is one. */
+function EntryPane({
+  name,
+  children,
+}: {
+  readonly name: string | undefined
+  /** Its settings, or `null` while nothing is chosen. */
+  readonly children: React.ReactNode
+}): React.JSX.Element {
+  return (
+    <Card testID="entry-panel">
+      {children === null ? (
+        <Text tone="muted">Choose an exercise to change what it asks.</Text>
+      ) : (
+        <Stack gap="lg">
+          <Text variant="heading">{name}</Text>
+          {children}
+        </Stack>
+      )}
+    </Card>
   )
 }

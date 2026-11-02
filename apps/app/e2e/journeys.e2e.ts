@@ -626,6 +626,51 @@ test(
   E2E_TIMEOUT_MS,
 )
 
+/**
+ * On a desktop a pane stays beside what it was chosen from (#50): an entry on the last day of a
+ * five-day plan opens its settings in view, not at the top of a page scrolled down past them — and
+ * the exercise last on the library's first page opens in view beside the list, likewise.
+ */
+test(
+  'on a desktop a pane opens in view beside an entry far down a plan, or an exercise far down the library',
+  async () => {
+    await withApp(
+      'desktop-pane-in-view',
+      async (page) => {
+        const app = screens(page)
+        await app.auth.register(unique('pane'))
+        const mine = await page.client()
+        const lifts = (await mine.exercises.list({ limit: 50 })).items
+          .filter((exercise) => exercise.tracking === 'weight_reps')
+          .slice(0, 6)
+        const plan = await mine.workouts.create({ name: 'Five days', notes: null })
+        await mine.workouts.replacePlan(
+          plan.id,
+          WorkoutPlanInput.parse({
+            days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'].map((name) => ({
+              name,
+              entries: lifts.map((lift) => ({
+                exerciseId: lift.id,
+                sets: [{ targetReps: 8, targetWeightG: 60_000 }],
+              })),
+            })),
+          }),
+        )
+
+        await app.planEditor.open(plan.id)
+        await app.planEditor.entry(4, lifts.length - 1).open()
+        expect(await app.desk.paneInView('entry')).toBe(true)
+
+        const last = await app.library.chooseLast()
+        expect(await app.desk.pane()).toContain(last)
+        expect(await app.desk.paneInView('exercise')).toBe(true)
+      },
+      { layout: 'desktop' },
+    )
+  },
+  E2E_TIMEOUT_MS,
+)
+
 /** A new exercise starts from its muscles (#27): chosen, their loads split evenly to total 100. */
 test(
   "a new exercise's muscles start as an even split, valid as they stand",
