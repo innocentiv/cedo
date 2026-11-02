@@ -143,7 +143,9 @@ Every library entry is validated against `ExerciseCreate` before it is written, 
 seed rather than producing a silently wrong library. Seed and test build that input with one
 function, `exerciseInputOf`. `seed-data/exercises.test.ts` runs the same checks with no database,
 plus coverage assertions: names unique, every tracking mode used, every muscle trained by at least
-one exercise, and every entry has both a description and instructions.
+one exercise, every entry has both a description and instructions, and every muscle trained by an
+exercise a home gym with one cable stack can do (#46) — covered by a calf machine is not covered
+for someone without one.
 
 Each library entry is seeded with one demonstration: the YouTube video its `video` names, or, for
 an entry that names none, a YouTube **search** for its name. Never an invented id — that would give
