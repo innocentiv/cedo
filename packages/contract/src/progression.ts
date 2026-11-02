@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import {
-  SHORT,
+  SHORT_OF_TARGETS,
   holdOf,
   judgeDistance,
   judgeDuration,
@@ -255,7 +255,7 @@ function advanceDouble(
   const latest = sessions[0]
   if (latest === undefined) return unheld(target)
   const last = working(latest)
-  if (last === null) return { target, held: SHORT }
+  if (last === null) return { target, held: SHORT_OF_TARGETS }
 
   const [minReps, maxReps] = normaliseRange(rule.repRange)
   const currentReps = target.reps ?? minReps

@@ -122,7 +122,8 @@ export function judgeDistance(
   return covered ? 'cleared' : 'targets'
 }
 
-export const SHORT: Held = { reason: 'targets' }
+/** Held short of the targets — the reason with nothing to add to it. */
+export const SHORT_OF_TARGETS: Held = { reason: 'targets' }
 
 /** A session's verdict as the hold it makes — none when it cleared. */
 export function holdOf(verdict: Verdict, session: SessionAttempts): Held | null {
@@ -130,7 +131,7 @@ export function holdOf(verdict: Verdict, session: SessionAttempts): Held | null 
     case 'cleared':
       return null
     case 'targets':
-      return SHORT
+      return SHORT_OF_TARGETS
     case 'effort':
       return { reason: 'effort', rpe: hardestRpe(session) }
     default:
@@ -150,7 +151,7 @@ export function judgeRun(
 ): 'cleared' | Held | null {
   for (const session of sessions.slice(0, count)) {
     const sets = working(session)
-    const held = sets === null ? SHORT : holdOf(judge(sets), sets.slice(0, workingSets))
+    const held = sets === null ? SHORT_OF_TARGETS : holdOf(judge(sets), sets.slice(0, workingSets))
     if (held !== null) return held
   }
   return sessions.length >= count ? 'cleared' : null
