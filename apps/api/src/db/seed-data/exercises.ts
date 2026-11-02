@@ -1677,7 +1677,7 @@ export const EXERCISE_LIBRARY: readonly SeedExercise[] = [
   },
   {
     name: 'Barbell Standing Calf Raise',
-    video: 'https://www.youtube.com/watch?v=3UWi44yN-wM',
+    video: 'https://www.youtube.com/watch?v=_ZXeEvfrZtQ',
     equipment: ['barbell', 'rack'],
     description:
       'Knee straight, which biases the gastrocnemius, a barbell on the upper back taken from a rack: the heavy calf raise for no calf machine. 6–12 reps suit it.',
