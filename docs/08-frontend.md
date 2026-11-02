@@ -111,12 +111,14 @@ Two constraints found by building it:
 | `ProgressTrend` | an exercise's progress: a bar per session from the contract's `trendOf` — the estimated max of a weight lift, the top set otherwise — and the server's stall as a badge |
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput`. `Input`'s `look` sets a name edited where it reads — a workout's title, a day's heading — with no box |
 | `Card`, `ListRow` | the one row shape every list uses |
-| `Chips` | one choice from a short flat set — list scopes, tracking mode, progression kind |
+| `Chips` | one choice from a short flat set, all in view — tracking mode, progression kind |
+| `FilterRow`, `FilterTrigger` | how a list is narrowed (#52): every filter one trigger — a glyph for what it narrows, its value, a ▾ — on one line that scrolls sideways when wider than the screen, filled while it narrows the list, with an × putting them all back. Each opens a `Sheet` of its own |
+| `OptionRow`, `OptionGrid`, `OptionSection` | a filter's sheet: a few choices one per line, each with a word if it needs one (`OptionRow`); many in cells of one width, so many to a line (`OptionGrid`); a headed part of either (`OptionSection`) |
 | `Chip` | one choice of a set, on or off — what `Chips`, the muscle and equipment pickers and the equipment checklist are built of |
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |
 | `Loaded` | failed / not-yet / here, around any query. A screen never writes that ternary |
 | `ErrorBoundary` | the last line of defence |
-| `ExerciseRow`, `MuscleFilter` | an exercise in a list — picture, name, main muscles — and narrowing a list to one muscle, by region |
+| `ExerciseRow`, `MuscleFilter` | an exercise in a list — picture, name, main muscles — and narrowing a list to one muscle, chosen from a grid by region |
 | `VideoPlayer` | an exercise's video, played in place once tapped, never fetched before |
 | `SidebarName`, `SidebarAccount` | a desktop sidebar's head — the product's name — and foot — who is signed in |
 | `Meter` | how much against the most — a muscle's sets — chalk, or red where it declined |
@@ -361,8 +363,15 @@ As built (#27):
   uploaded image), or a quiet slot with its initial holding the place, so every name starts on one
   edge — its name, and its three most loaded muscles (`mainMuscles`). A tag says anything else
   short: Pinned, In this day.
-- **The muscle filter** (`MuscleFilter`) is one button — Any muscle, or the one chosen — opening the
-  muscles grouped as Upper body, Core and Lower body (`MUSCLE_REGION_LABELS`).
+- **The filters** (#52) are the same three in the library and the picker (`ExerciseFilters`): whose
+  — All Groups, Mine, Library, Pinned, then each shared group of yours by name (`ScopePicker`, the
+  contract's scope with its group) — what it works (`MuscleFilter`: All Muscles, or one chosen from
+  Upper body, Core and Lower body, `MUSCLE_REGION_LABELS`, in a grid two to a line on a phone and
+  three on a desktop), and what it needs (`EquipmentFilter`: My Equipment or Any Equipment). The
+  Workouts tab has the first. Each is a `FilterTrigger` opening a sheet laid out for what it holds;
+  the × clears them, never the search.
+- **A list longer than a page** — the library, the picker, the Workouts tab, History — ends in a
+  button asking for the next (`ShowMore`, `api/paged.ts`), never a dead end.
 - **The picker** leads with the five exercises logged most lately (`GET /exercises/recent`: the
   person's own logs, latest first, of exercises they can still see), then All exercises; searched or
   filtered, only the matches. A tap chooses, with a check; Add N adds them together, in the order
@@ -435,7 +444,7 @@ replaces the whole list. The Settings row says whether it is described yet (`equ
 
 **Doable** (#35): until you have said what you have, the library and the picker offer everything
 and the library asks you to say (`EquipmentPrompt`); after, they offer what you can do, with a
-switch to everything (`useDoableFilter`, `DoableChips`) — the filter is the server's. An exercise you cannot do
+switch to everything (`useDoableFilter`, `EquipmentFilter`) — the filter is the server's. An exercise you cannot do
 says "Missing equipment" on its row, in a plan's outline, and on its page; a plan keeps it.
 
 ### The coach's view

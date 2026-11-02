@@ -318,7 +318,7 @@ Every tool carries `readOnlyHint` so a client can gate writes.
 
 1. If it needs data the API cannot already produce, add a **service** function first — never put the
    logic in the tool.
-2. Register it in `mcp/tools/library.ts`, `equipment.ts`, `training.ts`, `session.ts`,
+2. Register it in `mcp/tools/library.ts`, `groups.ts`, `equipment.ts`, `training.ts`, `session.ts`,
    `coaching.ts`, `athlete-file.ts` or `diagnostics.ts` with a contract schema,
    an annotation, and a description written for a model: say when to use it, and what NOT to do. A
    new file must also be wired into `mcp/tools/index.ts`, or its tools never load.
