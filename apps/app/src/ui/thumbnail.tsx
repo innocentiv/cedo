@@ -1,5 +1,6 @@
 import { Image, StyleSheet } from 'react-native'
 import { ROW_THUMB_WIDTH, color, radius } from './tokens.ts'
+import { useLayout } from './use-layout.ts'
 
 /**
  * A picture of a movement — a video's thumbnail, an uploaded image — at the width it is given, in
@@ -18,12 +19,13 @@ export function Thumbnail({
   readonly size?: 'full' | 'row'
   readonly testID?: string | undefined
 }): React.JSX.Element {
+  const rowWidth = ROW_THUMB_WIDTH[useLayout()]
   return (
     <Image
       source={{ uri }}
       accessibilityLabel={label}
       resizeMode="cover"
-      style={[styles.image, size === 'row' ? styles.row : null]}
+      style={[styles.image, size === 'row' ? [styles.row, { width: rowWidth }] : null]}
       testID={testID}
     />
   )
@@ -36,5 +38,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     backgroundColor: color.surfaceRaised,
   },
-  row: { width: ROW_THUMB_WIDTH, borderRadius: radius.sm },
+  row: { borderRadius: radius.sm },
 })

@@ -107,8 +107,12 @@ export const ROW_HEIGHT = 56
 /** A glyph (`icon.tsx`): drawn on a 24-point grid, shown at that size. */
 export const ICON_SIZE = 24
 
-/** An exercise's picture in a row of a list (#27): small, at the 16:9 a video is. */
-export const ROW_THUMB_WIDTH = 64
+/**
+ * An exercise's picture in a row of a list (#27), at the 16:9 a video is: big enough to tell one
+ * movement from another (#52) — at 64 a YouTube frame with its title burned in was a smudge — and
+ * bigger on a desktop, where the row has the room. A video's thumbnail is 480 wide: sharp at both.
+ */
+export const ROW_THUMB_WIDTH = { phone: 96, tablet: 160 } as const
 
 /** A `Meter`'s bar: a line, read at a glance beside the number it draws. */
 export const METER_HEIGHT = 4

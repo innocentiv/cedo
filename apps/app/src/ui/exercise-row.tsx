@@ -4,6 +4,7 @@ import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 import { Thumbnail } from './thumbnail.tsx'
 import { ROW_HEIGHT, ROW_THUMB_WIDTH, color, radius, space } from './tokens.ts'
+import { useLayout } from './use-layout.ts'
 
 /**
  * An exercise in a list (#27): its picture — its video's thumbnail, or a quiet slot with its
@@ -32,6 +33,7 @@ export function ExerciseRow({
   readonly onPress: () => void
   readonly testID: string
 }): React.JSX.Element {
+  const layout = useLayout()
   return (
     <Pressable
       accessibilityRole="button"
@@ -45,7 +47,7 @@ export function ExerciseRow({
       ]}
     >
       {thumbnail === null ? (
-        <View style={styles.slot}>
+        <View style={[styles.slot, { width: ROW_THUMB_WIDTH[layout] }]}>
           <Text variant="label" tone="faint">
             {name.charAt(0).toUpperCase()}
           </Text>
@@ -85,7 +87,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
   },
   slot: {
-    width: ROW_THUMB_WIDTH,
     aspectRatio: 16 / 9,
     borderRadius: radius.sm,
     backgroundColor: color.surface,
