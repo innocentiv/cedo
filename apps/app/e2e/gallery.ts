@@ -371,8 +371,16 @@ async function startToday(page: Page, world: World): Promise<string> {
 const shots: { state: string; layout: string; frames: string[] }[] = []
 
 /**
- * The state as it stands, top to bottom: a frame per viewport of the page's scroller — the tallest
- * scrollable element, which on web is the screen's ScrollView, not the window.
+ * Every scroller on screen, as a script: each element that scrolls up and down, and is the one seen
+ * at its own middle — not a screen a stack keeps mounted behind the one shown. On web a screen's
+ * ScrollView, not the window; on a desktop screen of two columns, one each (#50).
+ */
+const SCROLLERS = `[...document.querySelectorAll('*')].filter((e) => { if (e.scrollHeight <= e.clientHeight + 4 || !getComputedStyle(e).overflowY.match(/auto|scroll/)) return false; const r = e.getBoundingClientRect(); return e.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)) })`
+
+/**
+ * The state as it stands, top to bottom: a frame per viewport of its scrollers, all scrolled
+ * together — two columns side by side read as they are laid out, each a viewport further down in
+ * the next frame, a shorter one stopping at its end — as many as the tallest needs.
  */
 async function photograph(page: Page, layout: string, state: string): Promise<void> {
   if (only !== undefined && !state.includes(only)) return
@@ -386,26 +394,26 @@ async function photograph(page: Page, layout: string, state: string): Promise<vo
     10_000,
   )
   await Bun.sleep(400)
-  const pick = `(() => { const all = [...document.querySelectorAll('*')].filter((e) => e.scrollHeight > e.clientHeight + 4 && getComputedStyle(e).overflowY.match(/auto|scroll/)); return all.sort((a, b) => b.scrollHeight - a.scrollHeight)[0] ?? null })()`
-  const height = (await page.evaluate(
-    `(() => { const s = ${pick}; return s ? [s.scrollHeight, s.clientHeight] : [0, 0] })()`,
-  )) as [number, number]
-  const [scrollHeight, clientHeight] = height
-  const count =
-    clientHeight === 0
-      ? 1
-      : Math.min(MAX_FRAMES, Math.ceil((scrollHeight - 40) / Math.max(clientHeight - 120, 1)))
+  // Each scroller's frames: one per viewport of it, less a strip kept from the frame before.
+  const needed = await page.evaluate(
+    `Math.max(1, ...${SCROLLERS}.map((s) => Math.ceil((s.scrollHeight - 40) / Math.max(s.clientHeight - 120, 1))))`,
+  )
+  const count = Math.min(MAX_FRAMES, typeof needed === 'number' ? needed : 1)
+  // Marked now, and found by the mark after: a scroller scrolled no longer passes the middle test
+  // the same way once a sheet or a sticky part is over its middle.
+  await page.evaluate(`${SCROLLERS}.forEach((s) => s.setAttribute('data-gallery-scroller', ''))`)
+  const marked = `[...document.querySelectorAll('[data-gallery-scroller]')]`
   const frames: string[] = []
   for (let i = 0; i < count; i += 1) {
-    await page.evaluate(
-      `(() => { const s = ${pick}; if (s) s.scrollTop = ${i} * (s.clientHeight - 120) })()`,
-    )
+    await page.evaluate(`${marked}.forEach((s) => { s.scrollTop = ${i} * (s.clientHeight - 120) })`)
     await Bun.sleep(150)
     const name = `${layout}/${state}${count > 1 ? `-${i + 1}` : ''}`
     await page.screenshot(`gallery/${name}`)
     frames.push(`${name}.png`)
   }
-  await page.evaluate(`(() => { const s = ${pick}; if (s) s.scrollTop = 0 })()`)
+  await page.evaluate(
+    `${marked}.forEach((s) => { s.scrollTop = 0; s.removeAttribute('data-gallery-scroller') })`,
+  )
   shots.push({ state, layout, frames })
   console.log(`  ${layout} ${state}: ${frames.length} frame${frames.length === 1 ? '' : 's'}`)
 }
