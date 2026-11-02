@@ -197,7 +197,7 @@ function advance(input: ProgressionInput): Progressed {
     case 'double':
       return advanceDouble(rule, input)
     default:
-      return unreachable(rule)
+      return unhandledKind(rule)
   }
 }
 
@@ -279,7 +279,8 @@ export function normaliseRange(range: readonly [number, number]): [number, numbe
 /**
  * Guards a union that arrives from outside the type system — `progression` is stored as JSONB, so
  * an unknown kind really is reachable if a row is edited by hand or written by an older version.
+ * Shared by every switch over a rule's kind, here and in progression-words.ts.
  */
-function unreachable(value: never): never {
+export function unhandledKind(value: never): never {
   throw new Error(`Unhandled progression kind: ${JSON.stringify(value)}`)
 }

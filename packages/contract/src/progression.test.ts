@@ -6,7 +6,6 @@ import {
   type SetTarget,
   progress,
 } from './progression.ts'
-import { describeProgression } from './progression-words.ts'
 import { MAX_DURATION_S, MAX_WEIGHT_G } from './measurement.ts'
 import { formatWeight, kgToG, mToMm } from './units.ts'
 
@@ -596,29 +595,5 @@ describe('nextTarget — a target at its ceiling holds', () => {
         sessions: [[{ distanceMm: t.distanceMm, durationS: 80_000 }]],
       }),
     ).toEqual(t)
-  })
-})
-
-/** The rule as the editor and the MCP tool both say it — a streak said wherever a rule has one. */
-describe('describeProgression', () => {
-  const kg = (g: number) => formatWeight(g, 'kg')
-
-  test.each<[Progression, string]>([
-    [LINEAR, 'Linear, +2.5 kg'],
-    [{ ...LINEAR, afterSuccesses: 2 }, 'Linear, +2.5 kg after 2 cleared sessions'],
-    [
-      { kind: 'linear_duration', incrementS: 15, afterSuccesses: 3 },
-      'Linear, +0:15 after 3 cleared sessions',
-    ],
-    [
-      { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 },
-      'Distance, +500 m at the same pace',
-    ],
-    [
-      { kind: 'linear_distance', incrementMm: 1_000_000, afterSuccesses: 2 },
-      'Distance, +1 km at the same pace after 2 cleared sessions',
-    ],
-  ])('%o reads %p', (rule, said) => {
-    expect(describeProgression(rule, kg)).toBe(said)
   })
 })

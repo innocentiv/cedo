@@ -1,4 +1,4 @@
-import { type Progression, normaliseRange } from './progression.ts'
+import { type Progression, normaliseRange, unhandledKind } from './progression.ts'
 import { formatDistance, formatDuration } from './units.ts'
 
 /**
@@ -23,7 +23,7 @@ export function describeProgression(
       return `Double ${min}–${max}, +${formatIncrement(rule.incrementG)}`
     }
     default:
-      throw new Error(`Unhandled progression kind: ${JSON.stringify(rule satisfies never)}`)
+      return unhandledKind(rule)
   }
 }
 
