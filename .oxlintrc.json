@@ -79,15 +79,16 @@
       "files": ["**/mcp/tools/**"],
       "rules": {
         "max-lines-per-function": "off",
-        "max-lines": "off",
-        "import/max-dependencies": "off"
+        "max-lines": "off"
       }
     },
     {
       "files": [
         "**/modules/workout/service.ts",
         "**/modules/exercise/service.ts",
-        "**/modules/session/index.ts"
+        "**/modules/session/index.ts",
+        "**/mcp/tools/library.ts",
+        "**/mcp/tools/training.ts"
       ],
       "rules": {
         "import/max-dependencies": "off"
