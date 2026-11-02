@@ -281,6 +281,70 @@ describe('library curation', () => {
 })
 
 /**
+ * Which group owns each line (#47). A curator edits the library and their own group alike, so
+ * `read-only` cannot tell a copy from the library exercise it was copied from: the owning group can.
+ */
+describe('every line names its owning group', () => {
+  const squad = async (user: TestUser) =>
+    expectContract(GroupMembership, await post(user, '/groups', { name: 'Squad' }))
+  /** The id a line ends with. */
+  const idOf = (line: string) => {
+    const id = /\| ([0-9a-f-]{36})$/u.exec(line)?.[1]
+    if (id === undefined) throw new Error(`No id ending: ${line}`)
+    return id
+  }
+
+  test('a curator tells the library exercise from their copies of it', async () => {
+    await seedLibrary(h.groupId, h.systemUserId)
+    await h.curator(alice)
+    const pat = await mintPat(alice)
+    const theirs = await squad(alice)
+    const search = async () =>
+      textOf((await callTool(pat, 'exercise_search', { q: 'Barbell Back Squat' })).body)
+    const original = idOf(await search())
+    await callTool(pat, 'exercise_duplicate', { exerciseId: original })
+    await callTool(pat, 'exercise_duplicate', { exerciseId: original, toGroupId: theirs.id })
+
+    const flags = (await search())
+      .split('\n')
+      .map((line) => /\| \[([^\]]*)\] \|/u.exec(line)?.[1] ?? line)
+      .toSorted((a, b) => a.localeCompare(b))
+    expect(flags).toEqual(['library', 'mine', 'Squad'])
+  })
+
+  test('a reader is told who owns what they cannot edit, by name', async () => {
+    await seedLibrary(h.groupId, h.systemUserId)
+    const pat = await mintPat(alice)
+    const line = textOf(
+      (await callTool(pat, 'exercise_search', { q: 'Barbell Back Squat', limit: 1 })).body,
+    )
+    expect(line).toContain('| [library, read-only] |')
+
+    const detail = textOf((await callTool(pat, 'exercise_get', { exerciseId: idOf(line) })).body)
+    expect(detail).toContain('owner: library')
+    expect(detail).toContain('editable: no')
+    expect(detail).not.toContain('another group')
+  })
+
+  test('workouts too, in their lines and at the head of a plan', async () => {
+    const pat = await mintPat(alice)
+    const theirs = await squad(alice)
+    const plan = expectContract(
+      Workout,
+      await post(alice, '/workouts', { name: 'Push', notes: null }),
+    )
+    await callTool(pat, 'workout_duplicate', { workoutId: plan.id, toGroupId: theirs.id })
+
+    const lines = textOf((await callTool(pat, 'workout_list')).body).split('\n')
+    const owners = lines.map((line) => line.split(' | ')[2] ?? line)
+    expect(owners.toSorted((a, b) => a.localeCompare(b))).toEqual(['[mine]', '[Squad]'])
+
+    const head = textOf((await callTool(pat, 'workout_get', { workoutId: plan.id })).body)
+    expect(head.split('\n')[0]).toBe(`Push  (${plan.id})  [mine]`)
+  })
+})
+
+/**
  * The library is read-only to all but curators; a copy is how an AI adapts one of its exercises for
  * someone — never by asking for curator rights. The same service as POST /exercises/:id/duplicate.
  */

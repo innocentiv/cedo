@@ -2,6 +2,7 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import {
   DuplicateInput,
+  type Exercise,
   ExerciseCreateRequest,
   ExerciseUpdate,
   MUSCLES,
@@ -14,6 +15,7 @@ import * as ExerciseService from '../../modules/exercise/service.ts'
 import * as MediaService from '../../modules/media/service.ts'
 import { libraryAudit, sharedGroupId } from '../../modules/review/curation.ts'
 import { text } from '../format.ts'
+import { ownersOf } from '../format-owner.ts'
 import { exerciseDetail, exerciseLine } from '../format-library.ts'
 
 const READ = { readOnlyHint: true, openWorldHint: false } as const
@@ -30,6 +32,8 @@ const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: fals
  * inconsistently. Read before writing. See docs/07-mcp.md.
  */
 export function registerLibraryTools(server: McpServer, caller: Caller): void {
+  const detail = async (exercise: Exercise) => exerciseDetail(exercise, await ownersOf(caller))
+
   server.registerTool(
     'muscle_list',
     {
@@ -53,7 +57,9 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
       title: 'Search exercises',
       description:
         'Find exercises visible to you. ALWAYS run this before creating one — a near-duplicate ' +
-        'is the most common way a library degrades. One line per exercise, ending with its id. ' +
+        'is the most common way a library degrades. One line per exercise, ending with its id; ' +
+        'its flags start with the group that owns it — mine, library, or a group by name. A ' +
+        'copy and the exercise it was copied from are two exercises, each with its own history. ' +
         'Only what your equipment lets you do (equipment_get) — or, with `athlete`, what theirs ' +
         'does, to plan for their gym — unless `showAll`: search with it before creating, so an ' +
         'exercise you cannot do is not made again.',
@@ -77,8 +83,9 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
     async ({ athlete, ...query }) => {
       const page = await ExerciseService.list(await ownOrCoached(caller, athlete), query)
       if (page.items.length === 0) return text('No exercises matched.')
+      const ownerOf = await ownersOf(caller)
       return text(
-        page.items.map((e) => exerciseLine(e)).join('\n') +
+        page.items.map((e) => exerciseLine(e, ownerOf)).join('\n') +
           (page.nextCursor === null ? '' : '\n\n(more results exist; narrow the search)'),
       )
     },
@@ -92,7 +99,7 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
       inputSchema: z.object({ exerciseId: z.uuid() }),
       annotations: READ,
     },
-    async ({ exerciseId }) => text(exerciseDetail(await ExerciseService.get(caller, exerciseId))),
+    async ({ exerciseId }) => text(await detail(await ExerciseService.get(caller, exerciseId))),
   )
 
   server.registerTool(
@@ -107,7 +114,7 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
       annotations: WRITE,
     },
     async (input) =>
-      text(`Created.\n\n${exerciseDetail(await ExerciseService.create(caller, input))}`),
+      text(`Created.\n\n${await detail(await ExerciseService.create(caller, input))}`),
   )
 
   server.registerTool(
@@ -121,9 +128,7 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
       annotations: WRITE,
     },
     async ({ exerciseId, ...patch }) =>
-      text(
-        `Updated.\n\n${exerciseDetail(await ExerciseService.update(caller, exerciseId, patch))}`,
-      ),
+      text(`Updated.\n\n${await detail(await ExerciseService.update(caller, exerciseId, patch))}`),
   )
 
   server.registerTool(
@@ -140,7 +145,7 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
     },
     async ({ exerciseId, toGroupId }) =>
       text(
-        `Duplicated.\n\n${exerciseDetail(await ExerciseService.duplicate(caller, exerciseId, toGroupId))}`,
+        `Duplicated.\n\n${await detail(await ExerciseService.duplicate(caller, exerciseId, toGroupId))}`,
       ),
   )
 

@@ -15,8 +15,6 @@ describe('sayGroup', () => {
   })
 
   test('any other group is said by its name', () => {
-    expect(sayGroup({ kind: 'shared', slug: 'coaching', name: 'Coaching' }, words)).toBe(
-      'Coaching',
-    )
+    expect(sayGroup({ kind: 'shared', slug: 'coaching', name: 'Coaching' }, words)).toBe('Coaching')
   })
 })

@@ -22,6 +22,7 @@ import {
   workoutDetail,
   workoutLine,
 } from '../format.ts'
+import { ownersOf } from '../format-owner.ts'
 
 const READ = { readOnlyHint: true, openWorldHint: false } as const
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const
@@ -61,7 +62,9 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     'workout_list',
     {
       title: 'List workouts',
-      description: 'Workouts visible to you, as one line each ending with the id.',
+      description:
+        'Workouts visible to you, as one line each ending with the id, after the group that ' +
+        'owns it — mine, library, or a group by name.',
       inputSchema: z.object({
         scope: z.enum(['all', 'mine', 'favourites']).default('all'),
         q: z.string().max(100).optional(),
@@ -71,10 +74,11 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ scope, q, limit }) => {
       const page = await WorkoutService.list(caller, { scope, q, limit })
+      const ownerOf = await ownersOf(caller)
       return text(
         page.items.length === 0
           ? 'No workouts yet.'
-          : page.items.map((w) => workoutLine(w)).join('\n'),
+          : page.items.map((w) => workoutLine(w, ownerOf)).join('\n'),
       )
     },
   )
@@ -92,7 +96,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ workoutId, athlete }) => {
       const { workout, held } = await planFor(await ownOrCoached(caller, athlete), workoutId)
-      return text(workoutDetail(workout, caller.weightUnit, held))
+      return text(workoutDetail(workout, caller.weightUnit, held, await ownersOf(caller)))
     },
   )
 
@@ -149,7 +153,9 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ workoutId, ...plan }) => {
       const { workout, held } = await savePlanAndRead(caller, workoutId, plan)
-      return text(`Saved.\n\n${workoutDetail(workout, caller.weightUnit, held)}`)
+      return text(
+        `Saved.\n\n${workoutDetail(workout, caller.weightUnit, held, await ownersOf(caller))}`,
+      )
     },
   )
 

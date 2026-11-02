@@ -25,6 +25,7 @@ import {
 } from '@cedo/contract'
 import { DRIFT_RPE, DRIFT_SESSIONS, FALLING_SESSIONS } from '../modules/review/service.ts'
 import { aboutLine } from './format-file.ts'
+import { type OwnerOf, ownership } from './format-owner.ts'
 
 /**
  * Tool output is TEXT the model reads, and its size is the real cost of an MCP tool — not the
@@ -41,9 +42,9 @@ export const json = (value: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }],
 })
 
-export const workoutLine = (workout: WorkoutSummary): string =>
+export const workoutLine = (workout: WorkoutSummary, ownerOf: OwnerOf): string =>
   `${workout.name} | ${workout.dayCount} day${workout.dayCount === 1 ? '' : 's'}` +
-  `${workout.canEdit ? '' : ' | read-only'} | ${workout.id}`
+  ` | [${ownership(workout, ownerOf).join(', ')}] | ${workout.id}`
 
 /**
  * Every effort below goes through the contract's `formatEffort`, so the AI reads a set exactly as
@@ -76,8 +77,9 @@ export function workoutDetail(
   unit: WeightUnit,
   /** What the athlete it is read for has: a weight they cannot load as written says so (#36). */
   held: AthleteEquipment,
+  ownerOf: OwnerOf,
 ): string {
-  const header = `${workout.name}  (${workout.id})${workout.canEdit ? '' : '  [read-only]'}`
+  const header = `${workout.name}  (${workout.id})  [${ownership(workout, ownerOf).join(', ')}]`
   const notes = workout.notes === null ? [] : [`notes: ${workout.notes}`]
 
   const days = workout.days.map((day) => {

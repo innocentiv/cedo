@@ -6,6 +6,7 @@ import {
   ownedLines,
   sayEquipment,
 } from '@cedo/contract'
+import { type OwnerOf, ownership } from './format-owner.ts'
 
 /** An exercise as the library tools print it, compact and by slug — see `format.ts`. */
 
@@ -23,12 +24,15 @@ const equipment = ({ equipment: items }: Exercise): string =>
     listed: (slugs) => slugs.join(' + '),
   })
 
-/** One line per exercise: enough to decide, not enough to bloat context. */
-export function exerciseLine(exercise: Exercise): string {
+/**
+ * One line per exercise: enough to decide, not enough to bloat context. Its flags lead with the
+ * owning group (#47), so a copy never reads like the exercise it was copied from.
+ */
+export function exerciseLine(exercise: Exercise, ownerOf: OwnerOf): string {
   const flags = [
+    ...ownership(exercise, ownerOf),
     exercise.tracking === 'weight_reps' ? null : exercise.tracking,
     exercise.isUnilateral ? 'unilateral' : null,
-    exercise.canEdit ? null : 'read-only',
     exercise.doable ? null : MISSING_EQUIPMENT,
   ].filter(Boolean)
 
@@ -36,14 +40,12 @@ export function exerciseLine(exercise: Exercise): string {
     exercise.name,
     equipment(exercise),
     muscles(exercise),
-    flags.length > 0 ? `[${flags.join(', ')}]` : '',
+    `[${flags.join(', ')}]`,
     exercise.id,
-  ]
-    .filter((part) => part !== '')
-    .join(' | ')
+  ].join(' | ')
 }
 
-export function exerciseDetail(exercise: Exercise): string {
+export function exerciseDetail(exercise: Exercise, ownerOf: OwnerOf): string {
   return [
     `${exercise.name}  (${exercise.id})`,
     `tracking: ${exercise.tracking}${exercise.isUnilateral ? ', unilateral' : ''}`,
@@ -54,7 +56,8 @@ export function exerciseDetail(exercise: Exercise): string {
     exercise.media.length === 0
       ? 'media: none'
       : `media:\n${exercise.media.map((m) => `  - ${m.kind}: ${m.url}`).join('\n')}`,
-    `editable: ${exercise.canEdit ? 'yes' : 'no (owned by another group)'}`,
+    `owner: ${ownerOf(exercise.ownerGroupId)}`,
+    `editable: ${exercise.canEdit ? 'yes' : 'no'}`,
   ]
     .filter((line) => line !== null)
     .join('\n')
