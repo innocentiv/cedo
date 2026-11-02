@@ -2518,7 +2518,9 @@ test(
       await app.workouts.startDay(0)
       const next = app.session.entry(0)
       expect(await next.value('weight')).toBe('60')
-      expect(await next.target()).toBe('Held at 5 × 60 kg · 2 in reserve · a recent set left 0')
+      expect(await next.target()).toBe(
+        'Held at 5 × 60 kg · 2 in reserve · a recent set left 0 in reserve',
+      )
     })
   },
   E2E_TIMEOUT_MS,

@@ -55,7 +55,8 @@ export function targetLine(asked: EntryTarget, tracking: TrackingMode, unit: Wei
     return `Progressed to ${target} · the plan says ${formatEffort(asked.prescribed, tracking, unit)}`
   }
   if (asked.held?.reason === 'effort') {
-    return `Held at ${target} · a recent set left ${formatReserve(reserveOf(asked.held.rpe))}`
+    // "a recent set", not "last time": with a streak to clear, an older session can be the one.
+    return `Held at ${target} · a recent set left ${formatReserve(reserveOf(asked.held.rpe))} in reserve`
   }
   return `Prescribed ${target}`
 }
