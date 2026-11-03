@@ -105,6 +105,10 @@ Every exercise and workout line names its owning group: `mine`, `library`, or th
 the id the tools that take one want: `exercise_search` and `workout_list` with `scope: 'group'`,
 `exercise_duplicate`'s `toGroupId`, `library_audit`'s `groupId` (#52).
 
+An exercise's tracking mode is fixed when it is created (ADR-0026): `exercise_update` refuses a
+new one, saying to duplicate the exercise to track the movement differently — plans and logs that
+use it, some in groups the caller cannot see, were made in its mode.
+
 Writing to the shared library requires **curator** rights (below). Anything else lands in the
 caller's own group — and `exercise_duplicate` is how an AI adapts a library exercise for someone
 without them: a copy in a group they edit, as `workout_duplicate` is for a shared workout.
@@ -112,8 +116,8 @@ without them: a copy in a group they edit, as `workout_duplicate` is for a share
 ### 2. Reviewing someone's training
 
 `training_review` · `workout_list` · `workout_get` · `workout_get_editable` · `workout_create` ·
-`workout_save_plan` · `workout_duplicate` · `workout_progression` · `exercise_history` ·
-`session_log` · `session_fix_set` · `note_list` · `note_create` · `note_update` · `weigh_in_list` ·
+`workout_save_plan` · `workout_duplicate` · `workout_progression` · `target_set` ·
+`exercise_history` · `session_log` · `session_fix_set` · `note_list` · `note_create` · `note_update` · `weigh_in_list` ·
 `weigh_in_create` · `athlete_profile_set`
 
 `note_list`, `note_create` and `note_update` (`mcp/tools/athlete-file.ts`) are **athlete notes** (#41,
@@ -135,7 +139,11 @@ weights stays yours to choose in the app.
 `session_log` and `session_fix_set` record training as it was done (`mcp/tools/session.ts`): a
 whole session the AI is told about, and a set already logged corrected (#31) — "80, not 100, on
 Monday" — named by the `[id]` `session_get` prints beside each of your own sets. Removing a set
-or a session is not among them: see "Nothing can be deleted".
+or a session is not among them: see "Nothing can be deleted". Each changes what progression has
+judged: a session logged takes a **step** (`GLOSSARY.md`) for each entry it trained, as finishing
+one does — and, logged with an earlier date than a later one, or with a set corrected, takes every
+step of those entries again from that session onward (ADR-0026).
+Reps in reserve are sent whole, none to five; a half is refused.
 
 `training_review` is the entry point, and it is a **read model, not new domain rules** — pure
 aggregation over data the API already exposes. It exists because the alternative is the model paging
@@ -151,14 +159,15 @@ so the AI reads progress across rep counts without doing the arithmetic.
 
 Beside the stall it says the two **deload** triggers (`GLOSSARY.md`), judged over the same latest
 sessions (`review/deload.ts`): a weight lift **falling** — its best estimated max down in each of its
-latest two sessions or more — and **effort drift** — the latest top set rated at least one RPE harder
-in each of the latest two sessions than on average before them. Each session must cross the line on
-its own, so one hard set or one bad day says nothing: self-rated RPE is off by about one.
+latest two sessions or more — and **effort drift** — the latest top set leaving at least one rep
+fewer in reserve in each of the latest two sessions than on average before them. Each session must
+cross the line on its own, so one hard set or one bad day says nothing: a reserve a person rates is
+off by about one.
 
 The two read different things, so one cause is never said twice. Falling is estimated from what was
-**lifted**, the reserve left out: counted, the same set rated half a point harder each time would
-read as a fall made of rating noise. That is drift's to say, and drift needs RPE said both before and
-since. A heavier set is harder by its load and is not compared, so drift goes quiet the session the
+**lifted**, the reserve left out: counted, the same set rated a rep fewer in reserve each time would
+read as a fall made of rating noise. That is drift's to say, and drift needs the reserve said both
+before and since. A heavier set is harder by its load and is not compared, so drift goes quiet the session the
 load goes up. A bodyweight lift has no estimated max, so it can drift but cannot fall. Each section
 appears only when it has something to say:
 
@@ -166,9 +175,12 @@ appears only when it has something to say:
 Falling (estimated max from what was lifted, down 2+ sessions running):
   Bench Press: down in each of the latest 3 sessions, 77 kg → 66.5 kg
 
-Effort drift (RPE up 1+ at the same set, in each of the latest 2 sessions):
-  Row at 8 × 50 kg: average RPE 7 → 8.5
+Effort drift (1+ rep fewer in reserve at the same set, in each of the latest 2 sessions):
+  Row at 8 × 50 kg: average 3 → 1.5 in reserve
 ```
+
+A reserve is rated whole, but an average of them need not be: `1.5` is an average, not a rating
+(ADR-0027).
 
 The review only says them. Deloading is the AI's to do, by saving a lighter plan — the progression
 rule never lowers a weight by itself (ADR-0012).
@@ -183,18 +195,40 @@ The review, not the formatter, chooses which muscles are worth saying — the tw
 every declined muscle (`GLOSSARY.md`), and a count of the rest — because only the review knows what
 the comparison is for (`review/muscle-work.ts`).
 
-`workout_progression` returns what `progress()` proposes over every session so far — the same pure
-function that pre-fills the app's logger (`GET /sessions/:id/targets`), over the sessions before
-the one being logged. So the two agree whenever no session is in progress, and differ during one
-only by the sets it has logged: the AI already counts them, the logger waits for the next session.
-Both judge and answer in weights the athlete can load (#36, `nextLoadableTarget`), and
-`workout_get` keeps the plan's weights as written, a set the athlete cannot load as written
-followed by `(loads 22 kg)` — or `, the heaviest` — for them, or for `athlete`.
+**Progression is read, not proposed.** A plan's entry says where each follower starts — its
+**prescription** — and each follower has their own **target**: their latest **step** on that entry, if
+it was taken against the prescription and rule as they stand, and the prescription otherwise
+(`GLOSSARY.md`, ADR-0026). A step is written when a session is finished, once per entry it trained
+under a rule. `workout_progression` reads the caller's targets and their latest steps; the app's
+logger reads the same target (`GET /sessions/:id/targets`), so the AI and the logger cannot ask for
+different numbers. A session in progress moves nothing until it is finished. Both answer in weights
+the athlete can load (#36, ADR-0024): a step keeps the target as the rule asked it, and reading it
+snaps it to the caller's equipment as it is that day. `workout_get` keeps the plan's weights as
+written, a set the athlete cannot load as written followed by `(loads 22 kg)` — or `, the heaviest`
+— for them, or for `athlete`.
 
-Each target is said with its RPE, a ceiling (#45), and each hold with its reason: `— held: short
-of the targets`, or `— held for effort: a working set at RPE 10, past RPE 8`. The second is not a
-stall, and no reason to deload: the reps were there, done harder than prescribed. `progress()` is
-what gives the reason; see [adr/0012](adr/0012-progression-rules.md).
+Each step is said with why: advanced, from what to what, or held — `held: set 3 did 7 of 10`, short
+of the target, or `held for effort: set 3 left 0 in reserve, asked 2`, a set ground out past its own
+reserve. Each working set is judged against the reserve it asks, so a plan whose last set may go to
+failure asks 0 of that set and holds nothing for it. A hold for effort is not a stall, and no reason
+to deload: the reps were there, done harder than asked. The rules' maths is `progress()`'s; see
+[adr/0012](adr/0012-progression-rules.md) for the truth tables — its effort table as amended, each
+set against its own reserve ([adr/0026](adr/0026-targets-and-steps.md)) and whole
+([adr/0027](adr/0027-reps-in-reserve-whole-everywhere.md)) — and 0026 for what they are applied to.
+
+**A plan edit restarts its followers' targets — reversibly.** Editing what an entry's prescription
+asks, or its rule, writes nothing to anyone's steps: a step taken against something else simply
+stops counting, so every follower's target is the new prescription — until it is put back, so long
+as nobody has trained against the change. The number of working sets, warm-ups, rest, cue,
+superset and order are not part of what a step is compared against. Re-aligning a plan with where
+its follower got to — when a new phase of training starts, after a deload, say — is the AI's to do, by saving the targets
+it read as the new prescriptions through `workout_save_plan`. Nothing does it automatically.
+
+`target_set` sets the caller's own target on one entry by hand, as a step: only what the entry's
+rule moves (under double, reps inside its range and weight; under linear, the weight; under a
+duration rule, seconds; under distance, distance and time at the same pace). Changing anything else
+is a plan edit. A manual entry has no target to set — its numbers are the plan's. Reading or setting
+an athlete's targets as their coach is not offered.
 
 **Someone else's training** (#11) — `athlete_list` · `session_list` · `session_get` — is read
 through the same tools. A member who shares their training with a group (`GLOSSARY.md`, "Share
@@ -299,6 +333,34 @@ one a number is in.
 from the same definition the database and the UI use. A closed set is a real `z.enum`, which is how
 the model learns that `quadriceps` is valid and `quads` is not — a `z.string().refine()` would
 validate identically and advertise nothing.
+
+### A plan teaches its own model
+
+An AI wrote "2–3 ramp sets first" in a cue and planned no warm-up sets, and ramped its effort per set
+in a way progression then misjudged: the tools had told it nothing about either. So the plan's model
+is said where the AI meets it, three ways (ADR-0026, ADR-0027):
+
+- **Every field of the plan schema carries a description**, and a test fails on one that does not.
+  They say what a warm-up set is — its own reps and weight, pre-filled in the logger, never judged,
+  its weight following the working target in proportion (or as written, when the working sets have
+  no positive weight); what each rule does and what its
+  parameters mean; that the plan holds the prescription, where each follower starts, and never
+  their target; and that reps in reserve is a floor each working set may ask for itself. And they
+  say to write cues and notes in reps in reserve, never RPE.
+- **Every state the contract refuses is refused with what to do instead**: under double, reps
+  outside the range, or a range whose `from` is not below its `to`; under a rule, working sets that
+  differ in what the rule moves or judges (reps in reserve may differ); an exercise's tracking mode
+  changed (duplicate it instead); a rule that does not fit the
+  exercise's tracking mode — weight or bodyweight and reps take manual, linear or double, duration
+  manual or linear in seconds, distance and duration manual or distance; a half rep in reserve.
+- **`workout_get` prints everything a rule depends on**: each rule in full (`double 8–12, +2.5 kg`,
+  `linear +2.5 kg after 2 cleared sessions`), each set's reps in reserve, and the caller's target
+  beside the prescription it started from. Read for an `athlete`, it prints no target: a coach
+  reading an athlete's targets is not offered.
+
+**How hard a set was is reps in reserve, everywhere.** Tools take it whole, none to five, and every line they
+print says it the same way: `8 × 55 kg · 2 in reserve`. RPE is how the column stores it, and no tool
+reads or writes it — the AI and the athlete read the same number by the same name.
 
 ### Nothing can be deleted
 

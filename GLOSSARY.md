@@ -103,7 +103,9 @@ _Avoid_: clone, fork
 
 **Tracking mode**:
 What an exercise measures: weight and reps, bodyweight reps (with optional added weight, or
-assistance), a duration, or a distance over a duration.
+assistance), a duration, or a distance over a duration. It decides which progression rules fit the
+exercise, and is fixed once the exercise exists: a movement tracked another way is another
+exercise.
 _Avoid_: exercise type, measurement type
 
 **Assistance**:
@@ -117,19 +119,18 @@ One measured quantity: weight, reps, duration or distance. A tracking mode is a 
 _Avoid_: measure, metric
 
 **Effort**:
-The dimensions one set carries — prescribed as a target, or done as a log.
+The dimensions one set carries — prescribed, asked of a person as their target, or done as a log.
+Not how hard it was: that is its reps in reserve.
 _Avoid_: result, performance
 
-**RPE**:
-How hard a set was, or the most a set is meant to take: 5 to 10 in half-points, where 10 leaves no
-rep in reserve and each point below it leaves one more. Prescribed, it is a ceiling, not an aim: a
-range such as 7–8 is prescribed as its top.
-_Avoid_: intensity, difficulty, exertion
-
 **Reps in reserve**:
-How many more reps a set could have had — how RPE is asked of a person: none to five, whole. A half
-written by a coach or an AI is still a reserve, and reads as one.
-_Avoid_: reps left in the tank, RIR (in what a person reads)
+How many more reps a set could have had, or the fewest a working set is meant to leave: none to
+five, whole, and nothing between. Prescribed, it is a floor, not an aim: a range such as 1–2 is
+prescribed as its bottom, and a set that left fewer than asked was ground out past it. Each working
+set may ask its own, so how hard the sets are taken can ramp across them. The one rating of how hard
+a set was — for a person and an AI alike.
+_Avoid_: RPE (the same measure, written as ten minus it — never read or written), reps left in the
+tank, RIR (in what a person reads), intensity, difficulty, exertion
 
 **Working sets per muscle**:
 The work a muscle got: every working set counted toward it by that muscle's share of the
@@ -164,7 +165,7 @@ is not a fall, and a set rated harder is effort drift, not a fall.
 _Avoid_: regressing, declining (a declined muscle is about sets, not strength)
 
 **Effort drift**:
-The same set — the same weight and reps — rated at least one RPE harder in each of the latest two
+The same set — the same weight and reps — left at least one rep fewer in reserve in each of the latest two
 sessions than it was before them. One hard set, or one hard day, is not drift.
 _Avoid_: fatigue (drift is what was rated, not what was felt)
 
@@ -191,15 +192,15 @@ _Avoid_: gear, tools, gym setup
 
 **Weight step**:
 The smallest change in load an athlete's equipment allows: their dumbbells go up 2 kg at a time,
-their plates 2.5 kg a pair. Not the progression rule's increment, which is how much a plan adds
+their plates 2.5 kg a pair. Not the progression rule's increment, which is how much a target adds
 when it advances.
 _Avoid_: increment (that is the progression rule's), plate step
 
 **Loadable weight**:
 A weight an athlete's equipment can put on an exercise: the lightest of the item holding its load,
-then a weight step at a time, up to the heaviest. A plan's weight is shown as the heaviest loadable
-weight not above it — or the lightest, under it — and a set is judged against that. When a plan
-moves up, it moves up a loadable weight at least.
+then a weight step at a time, up to the heaviest. A target's weight is shown as the heaviest
+loadable weight not above it — or the lightest, under it — and a set is judged against that. When a
+target moves up, it moves up from the weight shown, by a loadable weight at least.
 _Avoid_: available weight, real weight, snapped weight
 
 **Doable**:
@@ -234,35 +235,63 @@ Entries of one day performed alternating, marked by a shared letter.
 _Avoid_: circuit, pairing
 
 **Progression rule**:
-How an entry's prescription advances from what was logged: none, linear, double, linear in
-duration, or linear in distance at the same pace. It advances once the prescription is cleared, or
-holds; it never makes the prescription easier, and never makes it faster.
+How a person's target on an entry moves from what they logged: none, linear, double, linear in
+duration, or linear in distance at the same pace. Each finished session advances the target once
+enough sessions running have cleared it, or holds it; it never makes the target easier, and never
+makes it faster. Which rules an
+entry may have follows from its exercise's tracking mode.
 _Avoid_: program, scheme
 
+**Manual**:
+An entry with no progression rule. Nothing moves its numbers but an edit to the plan, and each of its
+working sets may ask for different ones — a top set and its back-offs, a pyramid.
+_Avoid_: custom, free, none (in what a person reads)
+
 **Cleared**:
-What a session does to a prescription when every working set reached its targets without going
-more than half a point past its RPE. A set nobody rated, or a prescription with no RPE, is judged on
-its targets alone. A set short of its targets, or ground out past its RPE, holds the prescription.
+What a session does to a target when every working set reached it and left at least the reps in
+reserve that set asked. A set nobody rated, or one that asked no reserve, is judged on its dimensions
+alone. A set short of the target, or ground out past its reserve, holds it.
 _Avoid_: clean, hit, success
 
 **Held**:
-What a session does to a prescription it does not clear, and why: short of its targets, or ground
-out past its RPE. Short of the targets is the reason given when both are true. A prescription held
-for effort is not stalled: the lift is there, done harder than prescribed.
+What a session does to a target it does not clear, and why: short of the target, or ground out past
+its reserve. Short of the target is the reason given when both are true. A target held for effort is not
+stalled: the lift is there, done harder than asked.
 _Avoid_: stalled, failed. Also not a hold, which is a timed set such as a plank.
 
 **Prescription**:
-What an exercise in a plan asks for on every working set: one set of targets, shared by all of
-them. Progression advances it.
-_Avoid_: target set, template
+What the author of a plan set an entry's working sets to ask for. Under a progression rule, the
+dimensions the rule moves or judges are shared by every working set, and only the reps in reserve
+may differ from set to set; a manual entry asks each working set for its own. It is where each follower's target
+starts. Changing what it asks, or its rule, starts every follower's target again from it — until it
+is changed back, so long as nobody has trained against the change. How many working sets there are,
+and the warm-ups, are not part of what it asks.
+_Avoid_: target (that is a person's, and moves), target set, template
+
+**Target**:
+What an entry asks of one person in their next session: their latest step, if it was taken against
+the prescription and rule as they stand, and the prescription otherwise. It moves only by the
+entry's progression rule, one step per finished session, or when set by hand — and differs from the
+prescription only in what the rule moves. Two people following one plan each have their own; a
+manual entry has none.
+_Avoid_: prescription (that is the author's, and stays), goal, next weight
+
+**Step**:
+What one finished session did to a person's target on an entry — advanced it, from what to what, or
+held it, and why — or the person setting it by hand. Each step is taken against the prescription and
+rule of its day, and counts only while they stand. Any change to a finished session takes its steps
+again, and every session's step after it; a step set by hand stays where it stands.
+_Avoid_: event, change, history entry
 
 **Working set**:
 A set that counts: it carries the prescription, and progression judges it.
 _Avoid_: main set, real set
 
 **Warm-up set**:
-A lighter ramp-up set before the working sets. It is not judged by progression, and counts toward
-neither working sets per muscle nor weight lifted.
+A lighter ramp-up set before the working sets, prescribed on its own line. It is not judged by
+progression, and counts toward neither working sets per muscle nor weight lifted. Its weight follows
+the working target in proportion — what it asks next session is worked out each time, never kept —
+so changing it restarts no target; with no positive working weight to follow, it asks what it says.
 _Avoid_: ramp set, prep set
 
 ## Training

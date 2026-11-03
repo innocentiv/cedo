@@ -27,8 +27,10 @@ is designed to prevent.
    logging against its workouts. Lint, `raw-sql.test.ts` and `test/membership-lost.test.ts` enforce
    it. See `docs/adr/0019-visible-relations.md`.
 6. **All measurements are stored as integers in base units** (`weight_g`, `distance_mm`,
-   `duration_s`). Conversion happens only in `packages/contract/src/units.ts`. RPE is a rating,
-   not a measurement, so it is `numeric(3,1)` — see `docs/adr/0020-rpe-is-numeric.md`.
+   `duration_s`). Conversion happens only in `packages/contract/src/units.ts`. Reps in reserve is
+   a rating, not a measurement: whole, stored as RPE in `numeric(3,1)`, and said as reps in reserve
+   everywhere — see `docs/adr/0020-rpe-is-numeric.md` and
+   `docs/adr/0027-reps-in-reserve-whole-everywhere.md`.
 7. **All behaviour is tested on the backend.** UI code stays trivially thin and holds no domain
    logic. The one exception is state only the app owns — who is signed in on this device, and the
    app shell it keeps for opening offline, and when a set logged without a signal is sent again,

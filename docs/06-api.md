@@ -13,7 +13,9 @@ src/
   lib/                error, password, token, keyset (cursors, LIKE escaping), media, storage/
   modules/<name>/     index.ts (routes) + service.ts (logic) + tests beside them. Not every
                       module has both halves: ownable/ is the lifecycle exercise/ and workout/
-                      configure; progression/ is reached through the workout routes and MCP;
+                      configure; progression/ is reached through the workout routes (its
+                      reads, and PUT …/entries/:entryId/target) and MCP, and takes steps
+                      when session/ finishes or corrects a session;
                       review/ through MCP, admin/ and coaching/'s GET /review; admin/ is routes onto
                       review/diagnostics.ts. A module grows write*.ts, lifecycle.ts and its pure
                       parts beside these as it needs them.
@@ -148,7 +150,8 @@ are strict.
 
 **Inputs may carry ids, and a save keeps what they name.** A replace is a replace of the plan's
 *content*, not of its identity. Logged history hangs off day and entry ids — a session names its
-day, progression reads the logs of an entry — through `ON DELETE SET NULL`, so the first version,
+day, a set its entry — through `ON DELETE SET NULL`, and each person's progression steps are deleted
+with their entry (see `docs/03-domain-model.md`, "Targets and steps"), so the first version,
 which deleted and re-inserted everything, severed all history on every save: renaming a day reset
 every progression to zero sessions. Now `planInputFrom(workout)` (in the contract) produces the
 round-trip shape with ids; days and entries sent back with their id are updated in place, and only

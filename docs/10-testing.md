@@ -53,7 +53,8 @@ boundary is a test, not a convention.
 ## T2 — API integration
 
 One `*.test.ts` next to each `service.ts` (a service whose only entry point is another module's
-route — `progression`, reached through `GET /workouts/:id/progression` — is tested there), driven
+route — `progression`, reached through the workout routes and through finishing or correcting a
+session — is tested there), driven
 through `treaty(app)` so requests traverse the real
 Elysia lifecycle: validation, the auth macro, the error handler. No socket, no port.
 

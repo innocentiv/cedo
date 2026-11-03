@@ -15,11 +15,13 @@ than an afterthought — see `docs/10-testing.md`.
 1. **Exercises** describe a movement: what it is, how to perform it, media showing it, and which
    muscles it loads and by how much.
 2. **Workouts** arrange exercises into days. Within a day, entries run in order; entries sharing a
-   superset group are performed alternating. Each entry prescribes sets with target reps and weight,
-   and optionally a progression rule.
+   superset group are performed alternating. Each entry prescribes its sets — reps, weight and reps
+   in reserve — and either a progression rule, or none (manual: nothing moves the plan's numbers but
+   an edit to the plan).
 3. **Sessions** are executions. You start a session from a workout day (or from nothing, ad hoc) and
    log what you actually lifted, set by set.
-4. **Progression** compares prescribed against actual and proposes the next targets.
+4. **Progression** judges each finished session against your target and moves it — or holds it, and
+   says why. The plan's prescription is where your target starts; your target is where you are.
 
 ## Sharing
 
@@ -40,7 +42,8 @@ user, under exactly the same permissions — no elevated path — for three jobs
 1. **Curating the exercise library** from reliable sources: audit it, search before creating,
    create and correct exercises with consistent muscle attribution, duplicate one to adapt it.
 2. **Reviewing someone's training and adjusting it**: adherence, work per muscle, stalled lifts,
-   then the plan itself — read, rewrite, duplicate, log a session, see what progression proposes.
+   then the plan itself — read, rewrite, duplicate, log a session, read each target and why it
+   moved or held, set one by hand.
 3. **Diagnosing a running instance** that belongs to someone else, where there is no shell.
    Curator-only.
 
@@ -54,7 +57,8 @@ them without being asked:
 
 - **An analytics dashboard.** The exercise screen will show one trend — for a weight lift, each
   session's estimated max; for other tracking modes, the top set — and whether the exercise has
-  stalled (#5). Charts beyond that, across exercises or muscles, are not planned.
+  stalled (#5). A per-exercise history of sessions and progression steps is planned as its own
+  issue (ADR-0026); charts across exercises or muscles are not.
 - **Periodization** — weeks, blocks, mesocycles, a calendar. A plan is a flat list of days.
   Periodization gives a small edge in strength and none in muscle growth (Moesgaard et al., Sports
   Med 2022); training consistently matters more. A deload is the AI saving a lighter plan, prompted

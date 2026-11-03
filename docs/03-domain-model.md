@@ -1,6 +1,6 @@
 # Domain model
 
-18 tables. Every shareable entity carries the same six `ownable()` columns, so access control is
+22 tables. Every shareable entity carries the same six `ownable()` columns, so access control is
 written once and inherited by anything added later.
 
 ## Shape
@@ -19,6 +19,7 @@ groups ──< group_members >── users
            └──< workout_favourites >── users
 
 users ──< workout_sessions ──< set_logs >── exercises
+users ──< progression_steps >── workout_entries       (a person's target on an entry)
 ```
 
 `exercises` and `workouts` hang off `groups` through `owner_group_id`. `workout_sessions` hangs off
@@ -131,7 +132,7 @@ relation**, and the join kind is the one decision left, depending on whether the
 
 The first is `GET /sessions` (your session, someone else's workout name), `SetLog.exercise` (your
 log, the name and tracking mode of an exercise you may have lost) and `WorkoutEntry.exercise`.
-The second is `progression`, `stalled` and `dayBalance` — advice about a movement you cannot read is
+The second is `progression`, a person's target, `stalled` and `dayBalance` — advice about a movement you cannot read is
 not advice.
 
 The trap that used to sit beside this — a correlated subquery (`(select name from workouts where id =
@@ -169,15 +170,20 @@ extends that union with no change to `payload`'s column — but `kind` is the Po
 
 ### Exercises — and how they are measured
 
-`tracking` declares the tracking mode, which tells the UI which inputs to render and tells a
-progression rule which dimension to advance:
+`tracking` declares the tracking mode, which tells the UI which inputs to render and decides which
+progression rules an entry of the exercise may have — one function in the contract, asked by the
+plan save, the editor and MCP alike ([adr/0026](adr/0026-targets-and-steps.md)):
 
-| Mode | Example | Notes |
-| --- | --- | --- |
-| `weight_reps` | back squat | the default |
-| `bodyweight_reps` | pull-up, push-up | a logged `weight_g` means weight **added** to bodyweight |
-| `duration` | plank, dead hang | progresses via `linear_duration` |
-| `distance_duration` | rowing, farmer's carry | progresses via `linear_distance`, at the prescribed pace; going faster is set deliberately — see [adr/0012](adr/0012-progression-rules.md) |
+| Mode | Example | Rules | Notes |
+| --- | --- | --- | --- |
+| `weight_reps` | back squat | none, `linear`, `double` | the default |
+| `bodyweight_reps` | pull-up, push-up | none, `linear`, `double` | a logged `weight_g` means weight **added** to bodyweight |
+| `duration` | plank, dead hang | none, `linear_duration` | |
+| `distance_duration` | rowing, farmer's carry | none, `linear_distance` | further at the prescribed pace; going faster is set deliberately — see [adr/0012](adr/0012-progression-rules.md) |
+
+**The tracking mode is fixed when the exercise is created.** The update refuses it: plans and logs
+measured one way would be left measured another, and refusing only while unused would need to see
+plans in groups the caller cannot. To track a movement differently, duplicate it.
 
 ### Equipment — a hardcoded list of capabilities
 
@@ -215,9 +221,61 @@ performed alone. A tag rather than a fourth nesting level, so reordering is one 
 `workout_sets.is_warmup` marks ramp-up sets. **An entry must prescribe at least one working set**,
 enforced in the contract. Without the flag, a lifter who logs a warm-up ramp would have those sets
 evaluated as their working sets and would never progress — see
-[adr/0012](adr/0012-progression-rules.md).
+[adr/0012](adr/0012-progression-rules.md). A warm-up is prescribed on its own line, reps and weight;
+what it asks next session is its weight scaled by the working target, worked out on read and never
+stored — or its own weight, when the working prescription has no positive weight to follow
+([adr/0026](adr/0026-targets-and-steps.md)).
 
-`workout_entries.progression` is JSONB validated by the `Progression` union.
+`workout_entries.progression` is JSONB validated by the `Progression` union. Its sets are the
+entry's **prescription**, and the contract holds it to its rule
+([adr/0026](adr/0026-targets-and-steps.md)):
+
+- **Under a rule**, what the rule moves or judges (reps and weight under `linear` and `double`;
+  seconds; distance and time) is the same on every working set, and only `target_rpe` — reps in
+  reserve — may differ from set to set; each set is judged against its own. Under `double`, the reps
+  lie inside `repRange`, and `from < to`.
+- **Manual** (`kind: 'none'`) asks each working set for its own numbers.
+- A rule that does not fit the exercise's tracking mode is refused.
+
+### Targets and steps
+
+```
+progression_steps(id, user_id, entry_id, session_id?, taken_at, kind, from, target, held, streak,
+                  against)
+```
+
+A person's **target** on an entry is their latest step, if that step was taken `against` the
+prescription and rule as they stand; otherwise it is the prescription. Steps are per person, so two
+people following one plan progress apart; a manual entry has none.
+
+A **step** is written when a session is finished, or written finished by `session_log` — one for
+each entry it trained under a rule: `from` and `target` (equal when it held), why it held, the
+streak toward `afterSuccesses`, and `against`, the prescription's dimensions the rule moves or judges,
+each working set's reserve, and the rule with its settings. `kind` is `session`, or `by_hand` when
+the person set the target themselves (`PUT /workouts/:id/entries/:entryId/target`, MCP's
+`target_set`), which obeys the same limit: a target differs from its prescription only in what the
+rule moves. `taken_at` is the judged session's `started_at`, or the moment of a `by_hand` step, so
+steps order as training did, not as rows were written.
+
+Steps are personal, as sessions are — `user_id`, never an owning group — and a person reads only
+their own. A target is advice about an entry, so it is read through the visible entries (INNER
+JOIN): an entry out of reach has no target to show. `entry_id` and `session_id` are `ON DELETE
+CASCADE`: an entry removed from a plan takes its steps with it (its logs stay, by exercise), and a
+deleted session's steps go before the steps after it are taken again.
+
+**Nothing resets a target by writing.** An edited prescription or rule leaves every step where it
+is; a step whose `against` no longer matches stops counting, so followers start again from the new
+prescription — and count again if it is put back before anyone trains. The number of working sets,
+the warm-ups, rest, cue, superset and order are not part of `against`.
+
+**Corrections take steps again.** Correcting or removing a set of a finished session, deleting a
+finished session, or logging one afterwards with an earlier date takes every step of the affected
+entries from that session onward again, in the transaction that made the change; a `by_hand` step
+stays where it stands in time and the sessions after it are judged from it.
+
+A step keeps the weight it advanced to — from the weight the person was shown, a loadable weight up
+at least — and reading snaps it again to their equipment as it is now (see "Weights an athlete can
+load").
 
 An entry also tells the athlete two things beyond its numbers: `rest_seconds` (`rest.ts`) — two
 minutes when not said, 0 or null for "straight on", as a superset's earlier exercises are — which
@@ -252,8 +310,8 @@ MCP:
   "bodyweight +20 kg".
 - **Nothing more can be logged against it.** The server refuses the set; the session shows the
   entry's prescription and count, and no inputs.
-- **A plan cannot be saved while it uses one** — rule (1) above. The editor's footer names the entry
-  (`planIssues`, given what the editor can see) and Save waits until it is removed.
+- **A plan cannot be saved while it uses one** — rule (1) above. The plan's save line names the entry
+  (`planIssues`, given what the editor can see), and nothing is sent until it is removed.
 
 ### An athlete's equipment
 
@@ -271,10 +329,11 @@ have nothing. A save locks the person's row first, so two at once take turns.
 
 **Weights an athlete can load** (#36): an exercise's item that holds its load, and the athlete's
 weights for it, make a `Load` (`loadOf`) — or none, when either is unknown, and nothing is snapped.
-A plan keeps its weights; a target is the heaviest loadable weight not above it, capped at the
-heaviest and raised to the lightest (`loadable`), and progression judges a session against that
-(`nextLoadableTarget`), never the plan's number — and moves it up a loadable weight at least, so an
-increase under one step still moves. The grid is counted in the unit the athlete reads (`Load.unit`):
+A plan keeps its weights, and a step keeps the target as the rule asked it; what a person is shown
+is the heaviest loadable weight not above it, capped at the heaviest and raised to the lightest
+(`loadable`), and progression judges a session against what they were shown (`nextLoadableTarget`),
+never the plan's number — and moves it up a loadable weight at least, so an increase under one step
+still moves. A warm-up's scaled weight is snapped the same way. The grid is counted in the unit the athlete reads (`Load.unit`):
 grams are not whole pounds. `EntryTarget.limit` says where it stopped. See
 [adr/0024](adr/0024-targets-follow-the-athletes-equipment.md).
 
@@ -344,18 +403,20 @@ a weak signal may reach the server and lose its answer, so the app sends it agai
 key, and the server answers a stored key with the stored set rather than logging a second (#9).
 Null for a client that does not retry.
 
-`rpe` — and a prescribed set's `target_rpe` — is RPE as `GLOSSARY.md` defines it: 5 to 10 in
-half-points, or null when not said. A rating, not a measurement, so it is `numeric(3,1)` rather
-than an integer in base units, with a check holding the scale for a write that bypasses the
-contract (`db/tables/rpe.ts`, ADR-0020). People are asked it as reps in reserve (`rpe.ts`).
+`rpe` — and a prescribed set's `target_rpe` — stores **reps in reserve** as `GLOSSARY.md` defines
+it, written as ten minus it: 5 to 10, whole, or null when not said. The column is the only place
+the RPE scale survives — the contract converts at the boundary (`rpe.ts`), and everything a person
+or an AI reads or writes says reps in reserve ([adr/0027](adr/0027-reps-in-reserve-whole-everywhere.md)).
+A rating, not a measurement, so it is `numeric(3,1)` rather than an integer in base units, with a
+check holding whole steps for a write that bypasses the contract (`db/tables/rpe.ts`, ADR-0020).
 
 `workout_id`, `day_id` and `entry_id` are nullable so ad-hoc training uses the same tables and feeds
 the same history. `exercise_id` is always set — that is what makes per-exercise history one indexed
 read, and what a progress chart will consume later without a schema change.
 
 They are `ON DELETE SET NULL`, which makes **day and entry identity load-bearing**: saving a plan
-must keep the ids of what it keeps, or the logs are cut loose from the plan and progression starts
-over. A plan save diffs against what is stored — see "Nested resources" in `docs/06-api.md`. Only a
+must keep the ids of what it keeps, or the logs are cut loose from the plan, its steps are deleted
+with the entry, and progression starts over. A plan save diffs against what is stored — see "Nested resources" in `docs/06-api.md`. Only a
 day or entry the plan no longer holds loses its link, and its logs stay in history by exercise.
 
 **The server numbers every set** (`set_index`), within its **series** — the session's sets of one
@@ -375,14 +436,17 @@ had, and a constraint over `(session, exercise, entry, set_index)` made the plan
 number is never rewritten to make room, so either can leave two "set 1"s in that session's history
 of the exercise, and nothing new is ever numbered into one.
 
-**A session is in progress until it is finished, and finishing is final.** `ended_at` is set once,
+**A session is in progress until it is finished, and finishing is final** — and it is finishing that
+takes each trained entry's step, under the same lock. `ended_at` is set once,
 on a session in progress, and never cleared; logging a set and finishing take the session's row
 lock and refuse a finished session, so neither can interleave with a finish. **A past mistake can
-be fixed** (#31): correcting a set (`PATCH …/logs/:logId`, its measures, RPE and warm-up — never its
-exercise or series) and removing one take the same lock but not the refusal, and `DELETE
-/sessions/:id` deletes a session and its sets. Nothing derived from a set is stored — personal
-bests, progression, targets and the review are computed on read — so each follows a fix with no
-migration. Notes stay editable — a journal, not a change to what was logged. And **one session is in progress per
+be fixed** (#31): correcting a set (`PATCH …/logs/:logId`, its measures, reps in reserve and warm-up
+— never its exercise or series) and removing one take the same lock but not the refusal, and `DELETE
+/sessions/:id` deletes a session and its sets. Personal bests and the review are computed on read,
+so they follow a fix with nothing to update. **Steps are the one thing derived from sets that is
+stored** — a target depends on every session since its prescription, more than a read can afford —
+so every write that changes a finished session takes the affected steps again, from that session
+onward, in the transaction that changed it (see "Targets and steps"). Notes stay editable — a journal, not a change to what was logged. And **one session is in progress per
 person**: `start` refuses a second, and a partial unique index on `user_id where ended_at is null`
 holds it for starts that race, which a check alone does not. `session_log` writes a whole session
 already finished, so it is never in progress at all. The session in progress is found by that index
@@ -415,6 +479,7 @@ against a realistic data volume — see [adr/0018](adr/0018-n1-detection.md).
 | `workout_sessions_user_time_idx` on `(user_id, started_at desc nulls first, id desc nulls first)` | the session list, newest first — `id` included because the keyset cursor is a row comparison; `nulls first` because that is what `ORDER BY … DESC` means, and a mismatch turns the walk into a sort |
 | `workout_sessions_workout_idx` | sessions belonging to a workout |
 | `workout_sessions_in_progress_idx` (unique, partial: `ended_at is null`) on `user_id` | one session in progress per person, and finding it |
+| `progression_steps_target_idx` on `(user_id, entry_id, taken_at desc)` | a person's target on an entry — their latest step — for a whole plan in one read; and the steps from a corrected session onward |
 | `sessions_user_idx`, `pats_user_idx` | listing or revoking a user's credentials |
 | `athlete_notes_athlete_idx` | a person's notes — at most 100, so sorted rather than walked in order, which the planner prefers |
 | `weigh_ins_athlete_day_idx` (unique, on `(athlete_id, day)`) | one weigh-in a day, which a second replaces; and a period's, found among everyone's — at most a year's, sorted |
