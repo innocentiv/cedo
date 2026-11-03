@@ -136,37 +136,25 @@ export function Screen({
   )
 }
 
+/**
+ * Capped and centred. A form stretched across 1280px of tablet reads badly — the eye travels the
+ * whole width for a field that needs a fifth of it — and this is the one place to say so, since
+ * every route is a Screen.
+ */
+const centred = { width: '100%', maxWidth: CONTENT_MAX_WIDTH, alignSelf: 'center' } as const
+
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: color.bg },
-  /**
-   * Capped and centred. A form stretched across 1280px of tablet reads badly — the eye travels the
-   * whole width for a field that needs a fifth of it — and this is the one place to say so, since
-   * every route is a Screen.
-   */
-  content: {
-    flexGrow: 1,
-    padding: space.lg,
-    gap: space.lg,
-    width: '100%',
-    maxWidth: CONTENT_MAX_WIDTH,
-    alignSelf: 'center',
-  },
+  content: { ...centred, flexGrow: 1, padding: space.lg, gap: space.lg },
   wide: { maxWidth: WIDE_CONTENT_MAX_WIDTH },
   /**
    * A desktop screen of two columns: the page's width and height, its padding left to each column's
    * own scroll (`ScrollingColumns`) but above the title.
    */
-  split: {
-    flex: 1,
-    width: '100%',
-    maxWidth: WIDE_CONTENT_MAX_WIDTH,
-    alignSelf: 'center',
-  },
+  split: { ...centred, flex: 1, maxWidth: WIDE_CONTENT_MAX_WIDTH },
   heading: { paddingHorizontal: space.lg, paddingTop: space.lg },
   footer: {
-    width: '100%',
-    maxWidth: CONTENT_MAX_WIDTH,
-    alignSelf: 'center',
+    ...centred,
     paddingHorizontal: space.lg,
     paddingTop: space.md,
     borderTopWidth: 1,
