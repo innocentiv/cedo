@@ -1,5 +1,5 @@
 import type { Progression } from './progression.ts'
-import { normaliseRange, unhandledKind } from './stored-rule.ts'
+import { unhandledKind } from './stored-rule.ts'
 import { formatDistance, formatDuration } from './units.ts'
 
 /**
@@ -20,7 +20,7 @@ export function describeProgression(
     case 'linear_distance':
       return `Distance, +${formatDistance(rule.incrementMm)} at the same pace${streak(rule.afterSuccesses)}`
     case 'double': {
-      const [min, max] = normaliseRange(rule.repRange)
+      const [min, max] = rule.repRange
       return `Double ${min}–${max}, +${formatIncrement(rule.incrementG)}`
     }
     default:

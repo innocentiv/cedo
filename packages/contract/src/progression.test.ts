@@ -125,17 +125,6 @@ describe('progress — double progression (3 sets of 8-12, +2.5kg)', () => {
   test('a null rep target starts from the bottom of the range', () => {
     expect(run(target(null, 60), at60(12, 12, 12))).toEqual(target(9, 60))
   })
-
-  test('a reversed range is tolerated rather than producing nonsense', () => {
-    const reversed: Progression = { kind: 'double', repRange: [12, 8], incrementG: kgToG(2.5) }
-    const result = targetOf({
-      rule: reversed,
-      target: target(12, 60),
-      workingSets: 3,
-      sessions: [at60(12, 12, 12)],
-    })
-    expect(result).toEqual(target(8, 62.5))
-  })
 })
 
 describe('progress — linear progression', () => {

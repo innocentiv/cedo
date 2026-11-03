@@ -10,7 +10,7 @@ import {
 import { TrackingMode } from './exercise.ts'
 import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 import { Rpe } from './rpe.ts'
-import { normaliseRange, unhandledKind } from './stored-rule.ts'
+import { unhandledKind } from './stored-rule.ts'
 
 /**
  * How a set's targets advance over time. Stored as JSONB on `workout_entries`, so adding a rule
@@ -260,7 +260,7 @@ function advanceDouble(rule: RuleOf<'double'>, input: ProgressionInput): Progres
   const last = working(latest)
   if (last === null) return { target, held: SHORT_OF_TARGETS }
 
-  const [minReps, maxReps] = normaliseRange(rule.repRange)
+  const [minReps, maxReps] = rule.repRange
   const currentReps = target.reps ?? minReps
   const atTop = currentReps >= maxReps
 

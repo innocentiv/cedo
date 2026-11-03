@@ -127,6 +127,13 @@
       "when": 1793728258234,
       "tag": "0017_reps_in_reserve_whole",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793728838068,
+      "tag": "0018_entries_held_to_their_rule",
+      "breakpoints": true
     }
   ]
 }

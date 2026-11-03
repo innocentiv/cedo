@@ -25,8 +25,6 @@ describe('describeProgression', () => {
       { kind: 'linear_distance', incrementMm: 1_000_000, afterSuccesses: 2 },
       'Distance, +1 km at the same pace after 2 cleared sessions',
     ],
-    // A range stored the wrong way round still reads low to high.
-    [{ kind: 'double', repRange: [12, 8], incrementG: kgToG(2.5) }, 'Double 8–12, +2.5 kg'],
   ])('%o reads %p', (rule, said) => {
     expect(describeProgression(rule, kg)).toBe(said)
   })
