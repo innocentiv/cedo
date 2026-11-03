@@ -1238,21 +1238,19 @@ test('a set past the most a series holds is refused', async () => {
 })
 
 /**
- * RPE, as GLOSSARY.md defines it: 5 to 10 in half-points. A set's effort, logged and prescribed —
- * the half-point is what a person answering "one and a half reps left" means.
+ * Reps in reserve, whole (ADR-0027), stored as RPE 5 to 10. A half means nothing to the person
+ * asked, so it is refused wherever it is sent — logged or prescribed — saying what to send instead.
  */
-describe('RPE in half-points', () => {
-  test('a set logged at RPE 8.5 reads back as 8.5', async () => {
+describe('reps in reserve, whole', () => {
+  test('a set logged at a half is refused, saying what to send instead', async () => {
     const exerciseId = await anExercise(alice)
     const session = expectContract(WorkoutSession, (await startSession(alice)).body)
-    const logged = await alice.wire(`/sessions/${session.id}/logs`, {
+    const res = await alice.wire(`/sessions/${session.id}/logs`, {
       method: 'POST',
       body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, rpe: 8.5 }),
     })
-    expect(expectContract(SetLog, logged.body).rpe).toBe(8.5)
-
-    const read = expectContract(WorkoutSession, (await alice.wire(`/sessions/${session.id}`)).body)
-    expect(read.logs.map((l) => l.rpe)).toEqual([8.5])
+    expect(res.status).toBe(422)
+    expect(JSON.stringify(res.body)).toContain('Reps in reserve are whole, none to five')
   })
 
   /** The column holds the scale too, for a write that never passes the contract: a seed, a fix. */
@@ -1279,7 +1277,7 @@ describe('RPE in half-points', () => {
           (error: unknown) => error,
         )
     const byTheCheck = { cause: { constraint_name: 'set_logs_rpe_ck' } }
-    expect(await refusal(8.25)).toMatchObject(byTheCheck)
+    expect(await refusal(8.5)).toMatchObject(byTheCheck)
     expect(await refusal(4.5)).toMatchObject(byTheCheck)
   })
 
@@ -1311,7 +1309,7 @@ describe('RPE in half-points', () => {
     expect(res.status).toBe(422)
   })
 
-  test.each([4.5, 10.5, 8.25])('a set at RPE %p is refused', async (rpe) => {
+  test.each([4, 11, 8.5])('a set at RPE %p is refused', async (rpe) => {
     const exerciseId = await anExercise(alice)
     const session = expectContract(WorkoutSession, (await startSession(alice)).body)
     const res = await alice.wire(`/sessions/${session.id}/logs`, {
@@ -1321,7 +1319,7 @@ describe('RPE in half-points', () => {
     expect(res.status).toBe(422)
   })
 
-  test("a plan's target RPE of 7.5 is saved and read back", async () => {
+  test("a plan's target at a half is refused", async () => {
     const exerciseId = await anExercise(alice)
     const created = expectContract(
       Workout,
@@ -1341,8 +1339,8 @@ describe('RPE in half-points', () => {
         ],
       }),
     })
-    const plan = expectContract(Workout, saved.body)
-    expect(plan.days[0]?.entries[0]?.sets[0]?.target.rpe).toBe(7.5)
+    expect(saved.status).toBe(422)
+    expect(JSON.stringify(saved.body)).toContain('Reps in reserve are whole, none to five')
   })
 })
 

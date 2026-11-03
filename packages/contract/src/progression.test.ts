@@ -177,8 +177,9 @@ describe('progress — linear progression', () => {
 
 /**
  * A prescribed RPE is a ceiling (#45): reps ground out past it are not the reps the plan asked for.
- * A set rated more than half a point over it holds; an unrated set, or an unprescribed RPE, is
- * judged on its reps and weight alone. See docs/adr/0012-progression-rules.md.
+ * A set rated past it — one rep fewer in reserve than asked — holds; an unrated set, or an
+ * unprescribed RPE, is judged on its reps and weight alone. Whole, both sides (ADR-0027), so there
+ * is no half-point allowance. See docs/adr/0012-progression-rules.md.
  */
 describe('progress — a prescribed RPE is a ceiling', () => {
   const at = (rpe: number | null, t: SetTarget): SetTarget => ({ ...t, rpe })
@@ -192,18 +193,12 @@ describe('progress — a prescribed RPE is a ceiling', () => {
     expect(double(at(8, target(12, 60)), all(10, 12, 12, 12))).toEqual(at(8, target(12, 60)))
   })
 
-  test('the top of the range within half a point of the RPE adds weight', () => {
-    expect(double(at(8, target(12, 60)), all(8.5, 12, 12, 12))).toEqual(at(8, target(8, 62.5)))
+  test('the top of the range at the RPE adds weight', () => {
     expect(double(at(8, target(12, 60)), all(8, 12, 12, 12))).toEqual(at(8, target(8, 62.5)))
   })
 
-  test('a whole point past the RPE holds — one rep fewer in reserve than prescribed', () => {
+  test('one point past the RPE holds — one rep fewer in reserve than prescribed', () => {
     expect(double(at(8, target(12, 60)), all(9, 12, 12, 12))).toEqual(at(8, target(12, 60)))
-  })
-
-  test('a half-point RPE is cleared by the whole reserve a person can log above it', () => {
-    expect(double(at(7.5, target(12, 60)), all(8, 12, 12, 12))).toEqual(at(7.5, target(8, 62.5)))
-    expect(double(at(7.5, target(12, 60)), all(8.5, 12, 12, 12))).toEqual(at(7.5, target(12, 60)))
   })
 
   test('a rep climb ground out past the RPE holds too', () => {

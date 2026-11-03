@@ -46,12 +46,12 @@ describe('falling', () => {
   })
 
   /**
-   * What was lifted, not how it was rated: the same 60 × 5 said half a point harder each time
-   * estimates 76, 75, 74 kg with the reserve counted — a "fall" made of rating noise, and the very
-   * thing effort drift reads, said twice.
+   * What was lifted, not how it was rated: the same 60 × 5 said a point harder each time estimates
+   * 76, 74, 72 kg with the reserve counted — a "fall" made of rating noise, and the very thing
+   * effort drift reads, said twice.
    */
   test('is not the same set rated harder', () => {
-    expect(fallingOf(logged([[[60, 5, 8]], [[60, 5, 7.5]], [[60, 5, 7]]]))).toEqual([])
+    expect(fallingOf(logged([[[60, 5, 9]], [[60, 5, 8]], [[60, 5, 7]]]))).toEqual([])
   })
 
   test('is not a fall that has already turned', () => {
@@ -74,17 +74,20 @@ describe('falling', () => {
 })
 
 describe('effort drift', () => {
-  /** Each session weighs the same: the two-set session before averages 7.25, not two votes of three. */
+  /**
+   * Each session weighs the same: the two-set session before averages 8, and the two sessions 7.5 —
+   * not 7.7, its two sets two votes of three. An average may be a fraction; a rating is whole.
+   */
   test('is RPE up by 1 or more at the same set, in each of the latest two sessions', () => {
     const sets = logged([
       [
-        [60, 5, 8.5],
-        [60, 5, 8.5],
+        [60, 5, 9],
+        [60, 5, 9],
       ],
-      [[60, 5, 8.5]],
+      [[60, 5, 9]],
       [[60, 5, 7]],
       [
-        [60, 5, 7.5],
+        [60, 5, 9],
         [60, 5, 7],
       ],
     ])
@@ -92,8 +95,8 @@ describe('effort drift', () => {
       {
         exercise: bench,
         effort: { weightG: 60_000, reps: 5, durationS: null, distanceMm: null },
-        fromRpe: 7.1,
-        toRpe: 8.5,
+        fromRpe: 7.5,
+        toRpe: 9,
       },
     ])
   })
@@ -143,12 +146,12 @@ describe('in the training review', () => {
   test('a lift falling, and one drifting, are said', async () => {
     const falling = await fixture.anExercise({ name: 'Bench' })
     const drifting = await fixture.anExercise({ name: 'Row' })
-    // Oldest first, as they happened: the bench 66, 63, 60, 57 kg; the row's RPE 7, 7, 8.5, 8.5.
+    // Oldest first, as they happened: the bench 66, 63, 60, 57 kg; the row's RPE 7, 7, 9, 9.
     for (const [benchKg, rowRpe] of [
       [66, 7],
       [63, 7],
-      [60, 8.5],
-      [57, 8.5],
+      [60, 9],
+      [57, 9],
     ] as const) {
       // oxlint-disable-next-line no-await-in-loop -- one session after another, as they happened.
       await fixture.aSession([
@@ -160,7 +163,7 @@ describe('in the training review', () => {
     const review = await fixture.review()
     expect(review.falling.map((f) => [f.exercise.name, f.sessions])).toEqual([['Bench', 3]])
     expect(review.effortDrift.map((d) => [d.exercise.name, d.fromRpe, d.toRpe])).toEqual([
-      ['Row', 7, 8.5],
+      ['Row', 7, 9],
     ])
   })
 })

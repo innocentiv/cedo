@@ -33,8 +33,8 @@ describe('the estimated max of a set', () => {
 
   /** An estimate, not a measurement: said to the nearest half kilogram, never to the gram. */
   test('is rounded to the nearest half kilogram', () => {
-    // 62.5 × (1 + 8.5/30) = 80.21 kg.
-    expect(estimatedMax(set(62_500, 7, 8.5), 'weight_reps')).toBe(80_000)
+    // RPE 9 leaves 1, as if 8: 62.5 × (1 + 8/30) = 79.17 kg.
+    expect(estimatedMax(set(62_500, 7, 9), 'weight_reps')).toBe(79_000)
     // 55 × (1 + 5/30) = 64.17 kg; 62.5 × (1 + 5/30) = 72.92 kg.
     expect(estimatedMax(set(55_000, 5), 'weight_reps')).toBe(64_000)
     expect(estimatedMax(set(62_500, 5), 'weight_reps')).toBe(73_000)

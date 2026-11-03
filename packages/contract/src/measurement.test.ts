@@ -86,7 +86,7 @@ describe('bounds are shared, not redeclared', () => {
       (rpe: number) => LogSetInput.safeParse({ exerciseId: crypto.randomUUID(), reps: 5, rpe }),
     ]
     for (const read of readings) {
-      expect([8.5, 8.25, 4].map((rpe) => read(rpe).success)).toEqual([true, false, false])
+      expect([8, 8.5, 4].map((rpe) => read(rpe).success)).toEqual([true, false, false])
     }
   })
 })

@@ -561,13 +561,13 @@ describe('training review', () => {
     expect(history).toContain('5 × 100 kg')
   })
 
-  /** How hard each set was is half of what it says: the AI reads it, as it logs it, in half-points. */
-  test('history carries each set’s RPE, half-points included', async () => {
+  /** How hard each set was is half of what it says: the AI reads it as it logs it. */
+  test('history carries each set’s RPE', async () => {
     const pat = await mintPat(alice)
     const exerciseId = await createExercise(pat, 'Test Bench', 'pectoralis_major')
     await callTool(pat, 'session_log', {
       sets: [
-        { exerciseId, weightG: 60_000, reps: 5, rpe: 8.5 },
+        { exerciseId, weightG: 60_000, reps: 5, rpe: 9 },
         { exerciseId, weightG: 60_000, reps: 5, rpe: 8 },
         { exerciseId, weightG: 60_000, reps: 5 },
       ],
@@ -575,7 +575,7 @@ describe('training review', () => {
 
     const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
     // "8", not "8.0": a numeric read back as a string, unconverted, would say so.
-    expect(history).toContain('5 × 60 kg @ RPE 8.5, 5 × 60 kg @ RPE 8, 5 × 60 kg')
+    expect(history).toContain('5 × 60 kg @ RPE 9, 5 × 60 kg @ RPE 8, 5 × 60 kg')
     // The session's best estimated max: 5 reps at RPE 8 leave 2, as if 7 — 60 × (1 + 7/30).
     expect(history).toContain('· estimated max 74 kg')
   })
@@ -622,8 +622,8 @@ describe('training review', () => {
     for (const [benchKg, rowRpe] of [
       [66, 7],
       [63, 7],
-      [60, 8.5],
-      [57, 8.5],
+      [60, 9],
+      [57, 9],
     ] as const) {
       // oxlint-disable-next-line no-await-in-loop -- sessions in order: what is under test.
       await callTool(pat, 'session_log', {
@@ -643,7 +643,7 @@ describe('training review', () => {
     expect(review).toContain(
       'Effort drift (RPE up 1+ at the same set, in each of the latest 2 sessions):',
     )
-    expect(review).toContain('Test Row at 8 × 50 kg: average RPE 7 → 8.5')
+    expect(review).toContain('Test Row at 8 × 50 kg: average RPE 7 → 9')
   })
 
   /** Every effort reaches the AI as the app shows it. See `stalled.test.ts` for the history. */
@@ -1026,8 +1026,11 @@ describe('editing a plan', () => {
     expect(after.days[0]?.entries[0]?.cue).toBe('Chest up')
   })
 
-  /** An RPE target written by the AI in half-points, and read back in its outline as written. */
-  test('workout_save_plan takes RPE targets in half-points, and the outline says them', async () => {
+  /**
+   * A half written by the AI is refused, saying what to send instead (ADR-0027); a whole target is
+   * read back in its outline as written.
+   */
+  test('workout_save_plan refuses a half, and the outline says a whole target', async () => {
     const pat = await mintPat(alice)
     const { id: exerciseId } = expectContract(
       Exercise,
@@ -1051,13 +1054,18 @@ describe('editing a plan', () => {
       cue: 'Pause at the chest',
       sets: [{ targetReps: 5, targetRpe }],
     })
-    await callTool(pat, 'workout_save_plan', {
+    const half = await callTool(pat, 'workout_save_plan', {
       workoutId: workout.id,
       days: [{ name: 'Day', entries: [entry(8.5), entry(8)] }],
     })
+    expect(JSON.stringify(half.body)).toContain('Reps in reserve are whole, none to five')
+    await callTool(pat, 'workout_save_plan', {
+      workoutId: workout.id,
+      days: [{ name: 'Day', entries: [entry(9), entry(8)] }],
+    })
 
     const outline = textOf((await callTool(pat, 'workout_get', { workoutId: workout.id })).body)
-    expect(outline).toContain('@ RPE 8.5')
+    expect(outline).toContain('@ RPE 9')
     // Written by the AI for the athlete, and read back as written.
     expect(outline).toContain('cue: Pause at the chest')
     // A whole RPE reads whole: "8.0" would be a numeric read back as a string, unconverted.

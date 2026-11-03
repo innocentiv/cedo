@@ -41,11 +41,6 @@ describe('targetLine', () => {
     )
   })
 
-  test('a half point of reserve reads back as itself', () => {
-    const held = asked({ held: { reason: 'effort', rpe: 9.5 } })
-    expect(targetLine(held, 'weight_reps', 'kg')).toEndWith('a recent set left ½ in reserve')
-  })
-
   test('short of the targets reads as prescribed: last time, beside it, shows the miss', () => {
     const held = asked({ held: { reason: 'targets' } })
     expect(targetLine(held, 'weight_reps', 'kg')).toBe('Prescribed 8 × 60 kg · 2 in reserve')

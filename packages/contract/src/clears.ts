@@ -15,13 +15,6 @@ export type Verdict = 'cleared' | Held
 export const SHORT_OF_TARGETS: Held = { reason: 'targets' }
 
 /**
- * How far past a prescribed RPE a set may be rated and still count (#45). Half a point: a person
- * logs whole reps in reserve, so against a whole RPE one rep fewer in reserve than prescribed holds,
- * and against a half — 7.5, written by a coach or an AI — the whole reserve just above it clears.
- */
-const RPE_ALLOWANCE = 0.5
-
-/**
  * Every prescribed working set met `goal`. A session with fewer sets than prescribed cannot clear
  * it — logging one set of an intended three is not a promotion — and sets past them are not judged.
  */
@@ -33,13 +26,14 @@ const everyWorkingSet = (
   session.length >= workingSets && session.slice(0, workingSets).every((attempt) => goal(attempt))
 
 /**
- * Whether a working set was rated more than the allowance past its OWN prescribed ceiling
- * (ADR-0026): effort ramps across sets, so set 3 may ask what set 1 does not. An unrated set, or a
- * set that asks no RPE, has nothing to go past.
+ * Whether a working set was rated past its OWN prescribed ceiling (ADR-0026): effort ramps across
+ * sets, so set 3 may ask what set 1 does not. Both sides are whole (ADR-0027), so one rep fewer in
+ * reserve than asked is past it, with no allowance. An unrated set, or a set that asks no RPE, has
+ * nothing to go past.
  */
 const pastItsCeiling = (attempt: SetAttempt, ceiling: number | null): boolean => {
   const rpe = attempt.rpe ?? null
-  return ceiling !== null && rpe !== null && rpe > ceiling + RPE_ALLOWANCE
+  return ceiling !== null && rpe !== null && rpe > ceiling
 }
 
 /**

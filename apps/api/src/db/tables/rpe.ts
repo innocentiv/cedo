@@ -3,7 +3,7 @@ import { type AnyPgColumn, numeric } from 'drizzle-orm/pg-core'
 import { RPE_MAX, RPE_MIN, RPE_STEP } from '@cedo/contract'
 
 /**
- * RPE, as GLOSSARY.md defines it — 5 to 10 in half-points — on a prescribed set and on a logged
+ * Reps in reserve, stored as RPE — 5 to 10, whole (ADR-0027) — on a prescribed set and on a logged
  * one: one column shape and one check, so the two cannot drift.
  *
  * A rating, not a measurement, so not an integer in base units (invariant 6 is for measurements):

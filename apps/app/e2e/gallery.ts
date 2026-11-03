@@ -347,7 +347,7 @@ async function startToday(page: Page, world: World): Promise<string> {
       entryId: squat.id,
       weightG: (set.target.weightG ?? 0) + (set.isWarmup ? 0 : 7500),
       reps: set.target.reps,
-      rpe: set.isWarmup ? null : 7.5,
+      rpe: set.isWarmup ? null : 8,
       durationS: null,
       distanceMm: null,
       isWarmup: set.isWarmup,

@@ -72,7 +72,7 @@ function loadsNote(weightG: number | null, load: Load | null, unit: WeightUnit):
   return ` (loads ${formatWeight(can.weightG, unit)}${end})`
 }
 
-/** ` @ RPE 8.5` after a set prescribed or logged at one, and nothing after one without. */
+/** ` @ RPE 8` after a set prescribed or logged at one, and nothing after one without. */
 export const atRpe = (rpe: number | null): string => (rpe === null ? '' : ` @ RPE ${rpe}`)
 
 /** The whole plan as an outline. A 6-day plan is ~60 short lines rather than ~40 KB of JSON. */
@@ -192,7 +192,7 @@ function deloadSections(review: TrainingReview, unit: WeightUnit): string[] {
 
 /**
  * An exercise's recent sessions, one line each, with the session's best estimated max for a weight
- * lift — `2026-10-14: w10 × 20 kg, 8 × 60 kg @ RPE 8.5 · estimated max 74 kg` — and its stall,
+ * lift — `2026-10-14: w10 × 20 kg, 8 × 60 kg @ RPE 9 · estimated max 76 kg` — and its stall,
  * if it has one, last.
  */
 export function historyLines(history: ExerciseHistory, unit: WeightUnit): string {
