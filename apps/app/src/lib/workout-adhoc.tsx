@@ -17,25 +17,21 @@ import { JustDone, type RestShown, ShownSet } from './shown-set.tsx'
 import { useLoads } from './use-loads.ts'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
-/**
+/*
  * A session with no plan behind it (#24): what was just done and the exercise in focus
  * (`AdHocMain`), then the others, Add exercise, and every set (`AdHocSide`) — the screen's two
  * columns, side by side on a desktop. Nothing was prescribed, so there is always a next set until
  * the athlete moves on. What shows is the contract's `workoutView`.
  */
-export interface AdHocDayProps {
-  /** What the session has logged, then anything picked since — `exercisesInSession`. */
-  readonly exercises: readonly SessionExercise[]
+
+/** What the main column of a session with no plan reads. */
+export interface AdHocMainProps {
   /** The exercises picked this open, whole: how to do them can be shown. */
   readonly full: readonly Exercise[]
   readonly sets: WorkoutSets
   readonly rest: RestShown
   readonly view: WorkoutShown
-  readonly onChoose: (chosen: WorkoutChoices['chosen']) => void
   readonly onReopen: (reopened: Reopened) => void
-  /** Every set the session holds, under its exercises. */
-  readonly record: React.ReactNode
-  readonly onAdd: () => void
   readonly onHowTo: (exercise: Exercise) => void
 }
 
@@ -47,7 +43,7 @@ export function AdHocMain({
   view,
   onReopen,
   onHowTo,
-}: AdHocDayProps): React.JSX.Element {
+}: AdHocMainProps): React.JSX.Element {
   const { focus, shown } = view
   return (
     <>
@@ -71,6 +67,18 @@ export function AdHocMain({
   )
 }
 
+/** What the side column of a session with no plan reads. */
+export interface AdHocSideProps {
+  /** What the session has logged, then anything picked since — `exercisesInSession`. */
+  readonly exercises: readonly SessionExercise[]
+  readonly sets: WorkoutSets
+  readonly view: WorkoutShown
+  readonly onChoose: (chosen: WorkoutChoices['chosen']) => void
+  /** Every set the session holds, under its exercises. */
+  readonly record: React.ReactNode
+  readonly onAdd: () => void
+}
+
 /** The session's exercises, Add exercise, and every set it holds. */
 export function AdHocSide({
   exercises,
@@ -79,7 +87,7 @@ export function AdHocSide({
   onChoose,
   record,
   onAdd,
-}: AdHocDayProps): React.JSX.Element {
+}: AdHocSideProps): React.JSX.Element {
   return (
     <>
       <Stack gap="xs">

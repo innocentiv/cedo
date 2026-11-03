@@ -2,8 +2,8 @@ import { type Exercise, restOf } from '@cedo/contract'
 import { type ScreenColumns, Spinner, Text } from '../ui/index.ts'
 import { FinishedMain, FinishedSide } from './finished-session.tsx'
 import { LoggedSets, PlanUnavailable, UnsentSets } from './session-parts.tsx'
-import { AdHocMain, AdHocSide, type AdHocDayProps } from './workout-adhoc.tsx'
-import { PlannedMain, PlannedSide, type PlannedDayProps } from './workout-day.tsx'
+import { AdHocMain, AdHocSide } from './workout-adhoc.tsx'
+import { PlannedMain, PlannedSide } from './workout-day.tsx'
 import type { Workout } from './workout-state.ts'
 
 /**
@@ -56,39 +56,50 @@ export function sessionColumns(w: Workout): ScreenColumns | undefined {
     sets: w.sets.all.length,
   }
   if (day === undefined) {
-    const adHoc: AdHocDayProps = {
-      exercises: w.adHocExercises,
-      full: w.picked,
-      sets: w.sets,
-      rest,
-      view: w.view,
-      onChoose: w.choose,
-      onReopen: w.reopen,
-      record,
-      onAdd: w.startPicking,
-      onHowTo: (exercise) => {
-        showHowTo(exercise, null)
-      },
-    }
-    return columns(<AdHocMain {...adHoc} />, <AdHocSide {...adHoc} />)
+    return columns(
+      <AdHocMain
+        full={w.picked}
+        sets={w.sets}
+        rest={rest}
+        view={w.view}
+        onReopen={w.reopen}
+        onHowTo={(exercise) => {
+          showHowTo(exercise, null)
+        }}
+      />,
+      <AdHocSide
+        exercises={w.adHocExercises}
+        sets={w.sets}
+        view={w.view}
+        onChoose={w.choose}
+        record={record}
+        onAdd={w.startPicking}
+      />,
+    )
   }
   if (w.targets.data === undefined) {
     return columns(<Spinner testID="session-targets-loading" />, null)
   }
-  const planned: PlannedDayProps = {
-    day,
-    sets: w.sets,
-    rest,
-    added: w.adHocExercises,
-    full: w.picked,
-    view: w.view,
-    onChoose: w.choose,
-    onReopen: w.reopen,
-    record,
-    onAdd: w.startPicking,
-    onHowTo: showHowTo,
-    onFinish: w.finish,
-    finishing: w.busy,
-  }
-  return columns(<PlannedMain {...planned} />, <PlannedSide {...planned} />)
+  return columns(
+    <PlannedMain
+      sets={w.sets}
+      rest={rest}
+      full={w.picked}
+      view={w.view}
+      onChoose={w.choose}
+      onReopen={w.reopen}
+      onHowTo={showHowTo}
+      onFinish={w.finish}
+      finishing={w.busy}
+    />,
+    <PlannedSide
+      day={day}
+      sets={w.sets}
+      added={w.adHocExercises}
+      view={w.view}
+      onChoose={w.choose}
+      record={record}
+      onAdd={w.startPicking}
+    />,
+  )
 }

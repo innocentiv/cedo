@@ -16,26 +16,22 @@ import { InFocus } from './workout-focus.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 import { useWeightUnit } from './weight-unit.ts'
 
-/**
+/*
  * A session that follows a plan's day (#24): what was just done and the entry in focus
  * (`PlannedMain`), then the rest of the day, what was added to it, and every set (`PlannedSide`) —
  * the screen's two columns, side by side on a desktop. What shows is the contract's `workoutView`;
  * this renders it, and says what the athlete taps. See docs/08-frontend.md.
  */
-export interface PlannedDayProps {
-  readonly day: SessionDay
+
+/** What the main column of a planned day reads. */
+export interface PlannedMainProps {
   readonly sets: WorkoutSets
   readonly rest: RestShown
-  /** Exercises logged with no entry — swaps — then any added since: `exercisesInSession`. */
-  readonly added: readonly SessionExercise[]
   /** The exercises added this open, whole: how to do them can be shown. */
   readonly full: readonly Exercise[]
   readonly view: WorkoutShown
   readonly onChoose: (chosen: WorkoutChoices['chosen']) => void
   readonly onReopen: (reopened: Reopened) => void
-  /** Every set the session holds, under the day. */
-  readonly record: React.ReactNode
-  readonly onAdd: () => void
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
   readonly onFinish: () => Promise<void>
   readonly finishing: boolean
@@ -52,7 +48,7 @@ export function PlannedMain({
   onHowTo,
   onFinish,
   finishing,
-}: PlannedDayProps): React.JSX.Element {
+}: PlannedMainProps): React.JSX.Element {
   const unit = useWeightUnit()
   const { shown, another } = view
   return (
@@ -87,6 +83,19 @@ export function PlannedMain({
   )
 }
 
+/** What the side column of a planned day reads. */
+export interface PlannedSideProps {
+  readonly day: SessionDay
+  readonly sets: WorkoutSets
+  /** Exercises logged with no entry — swaps — then any added since: `exercisesInSession`. */
+  readonly added: readonly SessionExercise[]
+  readonly view: WorkoutShown
+  readonly onChoose: (chosen: WorkoutChoices['chosen']) => void
+  /** Every set the session holds, under the day. */
+  readonly record: React.ReactNode
+  readonly onAdd: () => void
+}
+
 /** The rest of the day, what was added to it, and every set the session holds. */
 export function PlannedSide({
   day,
@@ -96,7 +105,7 @@ export function PlannedSide({
   onChoose,
   record,
   onAdd,
-}: PlannedDayProps): React.JSX.Element {
+}: PlannedSideProps): React.JSX.Element {
   const unit = useWeightUnit()
   const { current, setsFor } = view
   const add = <AddRow title="Add exercise" onPress={onAdd} testID="session-add-exercise" />
