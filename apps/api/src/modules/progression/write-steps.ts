@@ -72,6 +72,10 @@ export async function retakeSteps(
 /**
  * A target set by hand: a step of its own, dated now, anchoring every session after it. The
  * caller takes the step lock before reading what it is set from (`lockSteps`).
+ *
+ * Dated by `clock_timestamp()`, as it is written — never `now()`, which is when the transaction
+ * BEGAN: a session logged whole in a transaction begun after it, but granted the lock first, would
+ * be dated later and judged without it, and its step would overwrite the target just set.
  */
 export async function writeByHand(
   tx: Transaction,
@@ -87,7 +91,7 @@ export async function writeByHand(
     ...step,
     userId: caller.userId,
     kind: 'by_hand',
-    takenAt: sql`now()`,
+    takenAt: sql`clock_timestamp()`,
     held: null,
     streak: 0,
   })
