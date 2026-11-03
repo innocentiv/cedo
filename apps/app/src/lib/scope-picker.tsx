@@ -17,7 +17,7 @@ interface ScopeOption {
 }
 
 /**
- * A list's scope (#52): All Groups, Mine, Library, Pinned — every account has those — then each
+ * A list's scope (#52): All, Mine, Library, Pinned — every account has those — then each
  * shared group of yours by name, under Your groups, when you belong to any. One choice at a time,
  * as the contract's scope is one; choosing closes the sheet. The trigger reads the chosen option's
  * label, so the two never name one choice differently.
@@ -79,7 +79,7 @@ function optionsOf(groups: readonly GroupMembership[]): {
   const library = groups.find((group) => isLibrary(group))
   return {
     fixed: [
-      { id: 'all', label: 'All Groups', choice: ALL },
+      { id: 'all', label: 'All', choice: ALL },
       { id: 'mine', label: 'Mine', choice: { scope: 'mine' } },
       ...(library === undefined
         ? []

@@ -1,21 +1,22 @@
 import { useState } from 'react'
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native'
+import { Pressable, StyleSheet, View } from 'react-native'
 import { Icon, IconButton, type IconName } from './icon.tsx'
 import { Sheet } from './sheet.tsx'
 import { Text } from './text.tsx'
-import { color, radius, space } from './tokens.ts'
+import { color, radius, space, stroke } from './tokens.ts'
 
 /**
  * How a list is narrowed (#52): one look for every filter, wherever a list is filtered. Each is a
- * trigger saying its value — `All Muscles`, `Mine` — beside the glyph saying what it narrows; each
+ * trigger saying its value — `Muscles`, `Mine` — beside the glyph saying what it narrows; each
  * opens a sheet of its own, laid out for its own options (`OptionRow`, `OptionGrid`).
  */
 
 /**
- * The filters of one list, on one line however long their values: wider than the screen, the line
- * scrolls sideways. Held to its own height — a horizontal ScrollView has none, and once grew to fill
- * the screen over an empty list (see `Chips`). `onClear`, given while any filter is off its default,
- * puts them all back; the search typed beside them is the reader's, and is left alone.
+ * The filters of one list, as one bar of segments — the look of reps in reserve
+ * (`ReserveChips`) — the width of the list: each in view, its value cut short in its own segment,
+ * never the bar cut at the screen's edge, as a line of pills scrolling sideways was. `onClear`,
+ * given while any filter is off its default, puts them all back, beside the bar; the search typed
+ * above them is the reader's, and is left alone.
  */
 export function FilterRow({
   children,
@@ -27,14 +28,10 @@ export function FilterRow({
   readonly testID: string
 }): React.JSX.Element {
   return (
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={styles.line}
-      contentContainerStyle={styles.lineContent}
-      testID={testID}
-    >
-      {children}
+    <View style={styles.line}>
+      <View style={styles.bar} testID={testID}>
+        {children}
+      </View>
       {onClear === undefined ? null : (
         <IconButton
           name="close"
@@ -43,7 +40,7 @@ export function FilterRow({
           testID={`${testID}-clear`}
         />
       )}
-    </ScrollView>
+    </View>
   )
 }
 
@@ -98,7 +95,10 @@ export function FilterSheet({
   )
 }
 
-/** One filter: what it narrows, by glyph; its value, cut short past a width; filled when it narrows. */
+/**
+ * One filter, a segment of its bar: what it narrows, by glyph; its value, cut short to the segment;
+ * filled when it narrows.
+ */
 export function FilterTrigger({
   icon,
   label,
@@ -123,7 +123,7 @@ export function FilterTrigger({
       onPress={onPress}
       testID={testID}
       style={({ pressed }) => [
-        styles.trigger,
+        styles.segment,
         active ? styles.active : null,
         pressed ? styles.pressed : null,
       ]}
@@ -144,24 +144,35 @@ export function FilterTrigger({
   )
 }
 
-/** A trigger's value is cut short past this, so one long group name cannot take the line. */
-const VALUE_MAX_WIDTH = 160
-
 const styles = StyleSheet.create({
-  line: { flexGrow: 0, flexShrink: 0 },
-  lineContent: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  trigger: {
+  line: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  bar: {
+    flex: 1,
+    flexDirection: 'row',
+    borderRadius: radius.md,
+    borderWidth: stroke.hairline,
+    borderColor: color.border,
+    overflow: 'hidden',
+  },
+  /**
+   * Each as wide as what it says, then an equal share of what is left — so a short "All" leaves room
+   * for "My Equipment"; past the bar's width, each value is cut short. Each draws the line before it
+   * — the first's falls under the bar's own edge, clipped, so no segment needs to know it is first.
+   */
+  segment: {
+    flexGrow: 1,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: space.xs,
-    paddingHorizontal: space.md,
+    paddingHorizontal: space.sm,
     paddingVertical: space.sm,
-    borderRadius: radius.pill,
-    borderWidth: 1,
-    borderColor: color.border,
-    backgroundColor: color.surface,
+    marginLeft: -stroke.hairline,
+    borderLeftWidth: stroke.hairline,
+    borderLeftColor: color.border,
   },
-  active: { borderColor: color.accent, backgroundColor: color.accent },
-  value: { maxWidth: VALUE_MAX_WIDTH },
+  active: { backgroundColor: color.accent },
+  value: { flexShrink: 1 },
   pressed: { opacity: 0.6 },
 })

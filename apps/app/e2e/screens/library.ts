@@ -1,5 +1,6 @@
 import type { EquipmentSlug, MuscleSlug, OwnableScope } from '@cedo/contract'
 import type { Page } from '../harness.ts'
+import { inView } from './desk.ts'
 import { closed } from './form.ts'
 import { chooseOption, rowNames } from './lines.ts'
 import { placement } from './placement.ts'
@@ -321,9 +322,21 @@ export const library = (page: Page) => {
     narrowToMuscle: async (muscle: MuscleSlug): Promise<void> => {
       await chooseOption(page, 'exercise-muscle', muscle)
     },
-    /** What a filter says it is set to: "All Groups", "Squad", "Quads". */
+    /** What a filter says it is set to: "All", "Squad", "Quads". */
     filterValue: async (filter: 'scope' | 'muscle' | 'showing'): Promise<string> =>
       (await page.text(`exercise-${filter}-value`)) ?? '',
+    /**
+     * Whether all three filters are in view — whose, what it works, what it needs — none cut at the
+     * window's edge. Waits for the third, shown once the caller has said what they train with.
+     */
+    filtersInView: async (): Promise<boolean> => {
+      await page.waitFor('exercise-showing')
+      // One at a time: the WebView answers one evaluate at once.
+      const scope = await inView(page, 'exercise-scope')
+      const muscle = await inView(page, 'exercise-muscle')
+      const showing = await inView(page, 'exercise-showing')
+      return scope && muscle && showing
+    },
     /** Puts every filter back with the ×, which is there only while one narrows the list. */
     clearFilters: async (): Promise<void> => {
       await page.click('[data-testid="exercise-filters-clear"]')

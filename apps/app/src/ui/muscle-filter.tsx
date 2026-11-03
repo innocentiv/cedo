@@ -23,7 +23,8 @@ export function MuscleFilter({
     <FilterSheet
       icon="muscle"
       label="Muscles"
-      value={MUSCLES.find((m) => m.slug === value)?.name ?? 'All Muscles'}
+      // Unnarrowed, it says only what it narrows: short enough for a third of a phone's width.
+      value={MUSCLES.find((m) => m.slug === value)?.name ?? 'Muscles'}
       active={value !== null}
       testID={testID}
     >

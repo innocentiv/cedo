@@ -1545,8 +1545,8 @@ test(
       await mine.exercises.duplicate(calf.id, { toGroupId: squad.id })
 
       await app.nav.tab('exercises')
-      expect(await app.library.filterValue('scope')).toBe('All Groups')
-      expect(await app.library.filterValue('muscle')).toBe('All Muscles')
+      expect(await app.library.filterValue('scope')).toBe('All')
+      expect(await app.library.filterValue('muscle')).toBe('Muscles')
 
       await app.library.narrowToGroup(squad.id)
       expect(await app.library.filterValue('scope')).toBe('Squad')
@@ -1555,14 +1555,33 @@ test(
       ])
 
       await app.library.clearFilters()
-      expect(await app.library.filterValue('scope')).toBe('All Groups')
+      expect(await app.library.filterValue('scope')).toBe('All')
       await app.library.narrowToMuscle('gluteus_medius')
-      expect(await app.library.filterValue('muscle')).not.toBe('All Muscles')
+      expect(await app.library.filterValue('muscle')).not.toBe('Muscles')
       const narrowed = await page.until(app.library.names, (names) => !names.includes(calf.name))
       expect(narrowed.length).toBeGreaterThan(0)
 
       await app.library.clearFilters()
-      expect(await app.library.filterValue('muscle')).toBe('All Muscles')
+      expect(await app.library.filterValue('muscle')).toBe('Muscles')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * Regression: the filters were pills on one line that scrolled sideways, so on a phone the third —
+ * My Equipment — was cut at the screen's edge. They are one bar of equal segments, each in view.
+ */
+test(
+  "on a phone every filter of the library is in view, none cut at the screen's edge",
+  async () => {
+    await withApp('library-filters-in-view', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('bar'))
+      // Said what they train with, so the third filter — what an exercise needs — is offered.
+      await (await page.client()).equipment.save({ items: [{ slug: 'dumbbells', weights: null }] })
+      await app.library.search('')
+      expect(await app.library.filtersInView()).toBe(true)
     })
   },
   E2E_TIMEOUT_MS,
@@ -1707,7 +1726,7 @@ test(
       /**
        * Regression: `Chips` was a horizontal ScrollView, which carries no intrinsic height. With an
        * empty list under it there was space going spare, so three chips took the whole screen. The
-       * filters' row scrolls sideways again (#52), so it is held to its own height.
+       * filters are one bar now, no scroll at all, and held to their height all the same.
        */
       const height = await app.library.filtersHeight()
       expect(typeof height).toBe('number')

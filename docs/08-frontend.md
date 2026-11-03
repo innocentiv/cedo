@@ -112,7 +112,7 @@ Two constraints found by building it:
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput`. `Input`'s `look` sets a name edited where it reads — a workout's title, a day's heading — with no box |
 | `Card`, `ListRow` | the one row shape every list uses |
 | `Chips` | one choice from a short flat set, all in view — tracking mode, progression kind |
-| `FilterRow`, `FilterSheet`, `FilterTrigger` | how a list is narrowed (#52): every filter one trigger — a glyph for what it narrows, its value, a ▾ — on one line that scrolls sideways when wider than the screen, filled while it narrows the list, with an × putting them all back. `FilterSheet` is a filter whole: its trigger, and the sheet of its own it opens, closed by choosing |
+| `FilterRow`, `FilterSheet`, `FilterTrigger` | how a list is narrowed (#52): every filter one trigger — a glyph for what it narrows, its value cut short to fit, a ▾ — an equal segment of one bar as wide as the list, filled while it narrows the list, with an × beside the bar putting them all back. `FilterSheet` is a filter whole: its trigger, and the sheet of its own it opens, closed by choosing |
 | `OptionRow`, `OptionGrid`, `OptionSection` | a filter's sheet: a few choices one per line, each with a word if it needs one (`OptionRow`); many in cells of one width, so many to a line (`OptionGrid`); a headed part of either (`OptionSection`) |
 | `Chip` | one choice of a set, on or off — what `Chips`, the muscle and equipment pickers and the equipment checklist are built of |
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |
@@ -372,12 +372,14 @@ As built (#27):
   edge — its name, and its three most loaded muscles (`mainMuscles`). A tag says anything else
   short: Pinned, In this day.
 - **The filters** (#52) are the same three in the library and the picker (`ExerciseFilters`): whose
-  — All Groups, Mine, Library, Pinned, then each shared group of yours by name (`ScopePicker`, the
-  contract's scope with its group) — what it works (`MuscleFilter`: All Muscles, or one chosen from
-  Upper body, Core and Lower body, `MUSCLE_REGION_LABELS`, in a grid two to a line on a phone and
-  three on a desktop), and what it needs (`EquipmentFilter`: My Equipment or Any Equipment). The
-  Workouts tab has the first. Each is a `FilterTrigger` opening a sheet laid out for what it holds;
-  the × clears them, never the search.
+  — All, Mine, Library, Pinned, then each shared group of yours by name (`ScopePicker`, the
+  contract's scope with its group) — what it works (`MuscleFilter`: Muscles until one is chosen
+  from Upper body, Core and Lower body, `MUSCLE_REGION_LABELS`, in a grid two to a line on a phone
+  and three on a desktop), and what it needs (`EquipmentFilter`: My Equipment or Any Equipment).
+  The Workouts tab has the first. Each is a `FilterTrigger`, a segment of one bar as wide as the
+  list — the look of reps in reserve — opening a sheet laid out for what it holds; the × beside
+  the bar clears them, never the search. The defaults are short so the three fit a phone's width:
+  as pills on a line scrolling sideways, the third was cut at the screen's edge.
 - **A list longer than a page** — the library, the picker, the Workouts tab, History — ends in a
   button asking for the next (`ShowMore`, `api/paged.ts`), never a dead end.
 - **The picker** leads with the five exercises logged most lately (`GET /exercises/recent`: the
