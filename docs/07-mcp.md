@@ -141,8 +141,8 @@ whole session the AI is told about, and a set already logged corrected (#31) —
 Monday" — named by the `[id]` `session_get` prints beside each of your own sets. Removing a set
 or a session is not among them: see "Nothing can be deleted". Each changes what progression has
 judged: a session logged takes a **step** (`GLOSSARY.md`) for each entry it trained under a rule, as finishing
-one does — and, logged with an earlier date than a later one, or with a set corrected, takes every
-step of those entries again from that session onward (ADR-0026).
+one does — dated now, it is the latest — and a set corrected takes every step of those entries again
+from its session onward (ADR-0026).
 Reps in reserve are sent whole, none to five; a half is refused.
 
 `training_review` is the entry point, and it is a **read model, not new domain rules** — pure

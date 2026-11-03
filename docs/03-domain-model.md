@@ -269,9 +269,10 @@ is; a step whose `against` no longer matches stops counting, so followers start 
 prescription — and count again if it is put back, for each follower who has not trained since. The number of working sets,
 the warm-ups, rest, cue, superset and order are not part of `against`.
 
-**Corrections take steps again.** Correcting or removing a set of a finished session, deleting a
-finished session, or logging one afterwards with an earlier date takes every step of the affected
-entries from that session onward again, in the transaction that made the change; a `by_hand` step
+**Corrections take steps again.** Correcting or removing a set of a finished session, or deleting a
+finished session, takes every step of the affected entries from that session onward again, in the
+transaction that made the change (`writeSessionSets` reads what the session trained BEFORE the
+write, so a removed set's entry is still taken); a `by_hand` step
 stays where it stands in time and the sessions after it are judged from it.
 
 A step keeps the weight it advanced to — from the weight the person was shown, a loadable weight up

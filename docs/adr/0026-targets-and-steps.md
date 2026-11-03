@@ -93,8 +93,10 @@ the plan, unchanged but for its effort table (per set, here; whole, in 0027).
 ### Corrections take steps again
 
 Any change to the finished sessions of an entry — a set corrected or removed (#31), a session
-deleted, a finished session logged afterwards with an earlier date (`session_log`) — takes every
-step from the earliest changed session onward again, in the transaction that made the change. A
+deleted — takes every step from the earliest changed session onward again, in the transaction that
+made the change. A session logged whole (`session_log`) is dated now, so it is the latest, and takes
+its steps as a finish does. Steps are taken under a lock of the person's own, so a correction and a
+finish at once cannot each read the other's state half-written. A
 step set by hand is kept where it stands in time; the sessions after it are judged from it.
 
 ### The streak
