@@ -349,9 +349,15 @@ export const library = (page: Page) => {
         `document.querySelector('[data-testid="exercise-filters"]').getBoundingClientRect().height`,
       ),
     /** Whether the filters' bar is exactly as wide as the search above it: nothing beside it. */
-    filtersFullWidth: async (): Promise<boolean> =>
-      (await page.evaluate(
-        `['exercise-filters', 'exercise-search'].map((id) => document.querySelector('[data-testid="' + id + '"]').getBoundingClientRect().width).reduce((a, b) => a === b)`,
-      )) === true,
+    filtersFullWidth: async (): Promise<boolean> => {
+      const width = async (testId: string): Promise<unknown> =>
+        await page.evaluate(
+          `document.querySelector('[data-testid="${testId}"]').getBoundingClientRect().width`,
+        )
+      // One at a time: the WebView answers one evaluate at once.
+      const bar = await width('exercise-filters')
+      const search = await width('exercise-search')
+      return typeof bar === 'number' && typeof search === 'number' && Math.abs(bar - search) < 1
+    },
   }
 }
