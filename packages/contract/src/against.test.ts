@@ -53,6 +53,21 @@ describe('a step still counts', () => {
     expect(stillCounts(againstOf(DOUBLE, three), againstOf(DOUBLE, three.slice(0, 2)))).toBe(true)
   })
 
+  /** Only what the rule moves or judges (ADR-0026): a timed rule never judges a plank's weight. */
+  test('when the plan changes what its rule neither moves nor judges', () => {
+    const hold: Progression = { kind: 'linear_duration', incrementS: 5, afterSuccesses: 1 }
+    const plank = (weightG: number) => [
+      set({ targetReps: null, targetWeightG: weightG, targetDurationS: 30 }),
+    ]
+    expect(stillCounts(againstOf(hold, plank(10_000)), againstOf(hold, plank(20_000)))).toBe(true)
+    expect(
+      stillCounts(
+        againstOf(hold, plank(10_000)),
+        againstOf(hold, [set({ targetReps: null, targetWeightG: 10_000, targetDurationS: 45 })]),
+      ),
+    ).toBe(false)
+  })
+
   /** Read back from JSONB, a rule's keys may come in any order: the same rule is the same rule. */
   test('whatever order a stored rule keeps its settings in', () => {
     const stored: Progression = { incrementG: 2500, repRange: [8, 12], kind: 'double' }

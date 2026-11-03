@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 import { Progression, type SetTarget } from './progression.ts'
 import { Reserve } from './rpe.ts'
+import { judgedBy } from './rule-issues.ts'
 
 /**
  * What a step was taken against (ADR-0026): the prescription's dimensions — shared by every working
@@ -59,21 +60,28 @@ export const prescriptionIn = (against: Against): SetTarget => ({
 })
 
 /**
- * Whether a step still counts: what it was taken against stands as the plan does now. Not the
- * number of working sets — adding a fourth keeps the target — but the reserve of every set both
- * have. Nothing is written when it stops counting, so putting the plan back restores it.
+ * Whether a step still counts: what it was taken against stands as the plan does now — the rule
+ * and its settings, what the rule moves or judges (`judgedBy`: a timed rule never judges a plank's
+ * weight), and the reserve of every working set both have. Not the number of working sets: adding a
+ * fourth keeps the target. Nothing is written when it stops counting, so putting the plan back
+ * restores it.
  */
 export function stillCounts(taken: Against, now: Against): boolean {
   const shared = Math.min(taken.reserves.length, now.reserves.length)
   return (
     sameRule(taken.rule, now.rule) &&
-    taken.reps === now.reps &&
-    taken.weightG === now.weightG &&
-    taken.durationS === now.durationS &&
-    taken.distanceMm === now.distanceMm &&
+    judgedBy(now.rule.kind).every((field) => taken[DIMENSION[field]] === now[DIMENSION[field]]) &&
     taken.reserves.slice(0, shared).every((reserve, i) => reserve === now.reserves[i])
   )
 }
+
+/** A prescribed set's field, as `Against` keeps it. */
+const DIMENSION = {
+  targetReps: 'reps',
+  targetWeightG: 'weightG',
+  targetDurationS: 'durationS',
+  targetDistanceMm: 'distanceMm',
+} as const
 
 /** One rule, whatever order JSONB kept its settings in: compared as the schema writes it. */
 const sameRule = (a: Progression, b: Progression): boolean =>

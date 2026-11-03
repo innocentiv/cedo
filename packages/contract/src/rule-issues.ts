@@ -29,6 +29,13 @@ const SHARED: Record<
 }
 
 /**
+ * What a rule moves or judges, as a prescription names it: what a step is compared against
+ * (`stillCounts`, ADR-0026). None under no rule.
+ */
+export const judgedBy = (kind: Progression['kind']): readonly SharedField[] =>
+  SHARED[kind]?.fields ?? []
+
+/**
  * What a progression rule refuses of the working sets it moves (ADR-0026) — states nothing can mean,
  * each said with what to do instead, since an AI learns the model from them. Empty when the sets
  * fit the rule. Warm-ups are never held to a rule.
