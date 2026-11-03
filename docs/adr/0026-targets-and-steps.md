@@ -190,6 +190,12 @@ what keeps a sub-step increment moving.
 - **Something derived from logs is stored.** `docs/03-domain-model.md` said nothing derived from a
   set is stored; steps are, and every write that changes a finished session takes them again. That
   is the price of a target that depends on more than the latest session.
+- **Steps taken again are taken as things stand today.** When a correction or a deletion takes a
+  finished session's steps again, each later session is judged against the `against` its own step
+  stored, but advances are snapped to the person's equipment as it is now, not as it was. A session
+  that never had a step (its entry had no rule then) is judged against the entry's rule today. Both
+  are accepted: storing the equipment of every day, or a rule history, buys exactness nobody can
+  see in a correction made days later.
 - The rules' maths is unchanged and still pure in the contract; what changes is its input (the
   person's target, not the plan's prescription) and when it runs.
 - Existing data: steps start empty, so every target is its prescription. An entry the contract now
