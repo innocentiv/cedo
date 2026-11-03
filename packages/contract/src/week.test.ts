@@ -3,6 +3,7 @@ import {
   byWeek,
   counted,
   formatDay,
+  formatLongDay,
   formatMinutes,
   personalBestsLabel,
   personalBestsShort,
@@ -93,6 +94,14 @@ describe('a session by name', () => {
       'Plan unavailable',
     )
     expect(openedSessionName({ workoutId: null, plan: null })).toBe('Without a plan')
+  })
+})
+
+describe('the day, said in full (#61)', () => {
+  test('names the weekday and the month whole, as Today heads its page', () => {
+    expect(formatLongDay(at(23))).toBe('Friday 23 October')
+    expect(formatLongDay(new Date(2026, 10, 3, 23, 30))).toBe('Tuesday 3 November')
+    expect(formatLongDay(new Date(2027, 0, 1, 0, 0))).toBe('Friday 1 January')
   })
 })
 

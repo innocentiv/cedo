@@ -62,6 +62,26 @@ export function weekStrip(weekStart: Date, startedAt: readonly string[], now: Da
 export const formatDay = (at: Date): string =>
   `${WEEKDAYS[at.getDay()] ?? ''} ${String(at.getDate())} ${MONTHS[at.getMonth()] ?? ''}`
 
+const MONTHS_LONG = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+const WEEKDAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+/** `Tuesday 3 November`: the day in full, as Today heads its page (#61). */
+export const formatLongDay = (at: Date): string =>
+  `${WEEKDAYS_LONG[at.getDay()] ?? ''} ${String(at.getDate())} ${MONTHS_LONG[at.getMonth()] ?? ''}`
+
 export interface WeekOf<T> {
   /** `This week`, `Last week`, `Week of 6 Oct`. */
   readonly label: string

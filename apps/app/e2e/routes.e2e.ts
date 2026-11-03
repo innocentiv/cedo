@@ -62,7 +62,11 @@ test(
   async () => {
     await withApp('register', async (page) => {
       await auth(page).register(unique('e2e'))
-      expect(await page.text('today-screen')).toContain('Today')
+      // Headed by the day itself (#61): the tab says Today. Its form, not a date — the page tells
+      // the day by the device's clock, and the test process runs in UTC.
+      expect(await page.text('today-heading')).toMatch(
+        /^(Mon|Tues|Wednes|Thurs|Fri|Satur|Sun)day \d{1,2} [A-Z][a-z]+$/u,
+      )
     })
   },
   E2E_TIMEOUT_MS,

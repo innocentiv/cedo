@@ -1,6 +1,6 @@
 import { useRouter } from 'expo-router'
-import { type SessionStart, startOfWeek } from '@cedo/contract'
-import { FormError, Loaded, Screen } from '../../../src/ui/index.ts'
+import { type SessionStart, formatLongDay, startOfWeek } from '@cedo/contract'
+import { BrandHeading, FormError, Loaded, Screen, useLayout } from '../../../src/ui/index.ts'
 import { useHistory, useStartSession, useToday } from '../../../src/api/queries.ts'
 import { Now, PagedHistory } from '../../../src/lib/today-parts.tsx'
 import { ownSession } from '../../../src/lib/addresses.ts'
@@ -15,7 +15,9 @@ export default function Today(): React.JSX.Element {
   const router = useRouter()
   // The reader's own week — the server cannot know where it starts — asked each render, so an app
   // left open past Sunday midnight moves on to the new one.
-  const weekStart = startOfWeek(new Date()).toISOString()
+  const phone = useLayout() === 'phone'
+  const day = new Date()
+  const weekStart = startOfWeek(day).toISOString()
   const today = useToday(weekStart)
   const history = useHistory()
   const start = useStartSession()
@@ -30,7 +32,9 @@ export default function Today(): React.JSX.Element {
 
   return (
     <Screen
-      title="Today"
+      // The day itself (#61): the tab already says Today. The mark beside it on a phone; a
+      // desktop's is atop the sidebar, beside it already.
+      ownHeading={<BrandHeading text={formatLongDay(day)} mark={phone} testID="today-heading" />}
       testID="today-screen"
       columns={{
         main: (

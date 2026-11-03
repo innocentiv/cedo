@@ -20,9 +20,9 @@ export interface ScreenProps {
    */
   readonly onBack?: (() => void) | undefined
   /**
-   * A heading of the screen's own, in place of its title and Back — a name edited where it is read.
-   * Laid out where a title is: atop the page's scroll on a phone, pinned over both columns on a
-   * desktop.
+   * A heading of the screen's own, in place of its title and Back — a name edited where it is read,
+   * Today's date with the mark beside it. Laid out where a title is: atop the page's scroll on a
+   * phone, pinned over both columns on a desktop.
    */
   readonly ownHeading?: React.ReactNode | undefined
   readonly scroll?: boolean
