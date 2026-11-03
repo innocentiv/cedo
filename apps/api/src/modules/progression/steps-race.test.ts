@@ -107,61 +107,80 @@ async function after<T>(trips: number, run: () => Promise<T>): Promise<T> {
   return await run()
 }
 
-describe("a person's steps, taken one write at a time", () => {
-  test('a correction and a later finish at once leave the steps a run in order would', async () => {
-    await Promise.all(Array.from({ length: 30 }, async () => await db.execute(sql`select 1`)))
-    const wrong: number[] = []
-    for (let round = 0; round < 12; round += 1) {
-      // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
-      const p = await poised()
-      // One set of the earlier session corrected to 7: it held at 8, so the later one's 9 met it,
-      // and asks 9 — not 10, judged from the earlier's step before the correction gives.
-      // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
-      await Promise.all([
-        update(alice.caller, p.later, { endedAt: new Date().toISOString() }),
-        amendLog(alice.caller, p.earlier, p.logs[0] ?? '', { reps: 7 }),
-      ])
-      // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
-      const [suggestion] = expectContract(
-        z.array(ProgressionSuggestion),
-        (await alice.wire(`/workouts/${p.workoutId}/progression`)).body,
-      )
-      if (suggestion?.suggested.reps !== 9) wrong.push(suggestion?.suggested.reps ?? -1)
-    }
-    expect(wrong).toEqual([])
-  })
+/**
+ * Each race runs its rounds in turn, every round set up over HTTP: alone, both take about two
+ * seconds, and under the parallel gate one took 5.4 — past bun's five-second default. A test timed
+ * out leaves its rounds running, and the next test's truncate deadlocked with them.
+ */
+const RACE_TIMEOUT_MS = 30_000
 
-  test('a target set by hand and a session logged whole at once leave the target set', async () => {
-    await Promise.all(Array.from({ length: 30 }, async () => await db.execute(sql`select 1`)))
-    const wrong: number[] = []
-    const { caller } = alice
-    // Three sweeps of the stagger. With the hand's step dated `now()` and no lock, four rounds in
-    // ten went wrong; started together instead, one in fifteen, and 60 rounds let a run in five
-    // through. With the lock, `now()` still failed four runs in six once the window was widened.
-    for (let round = 0; round < 24; round += 1) {
-      // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
-      const p = await planned()
-      const set = { exerciseId: p.exerciseId, entryId: p.entryId, weightG: 55_000, reps: 8 }
-      // Either order leaves 10: set after the 8s, it is the latest word; set before them, the 8s
-      // fall short of it and hold. A session's 9, judged from the plan's 8, is neither.
-      // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
-      await Promise.all([
-        after(
-          round % 8,
-          async () => await setTargetByHand(caller, p.workoutId, p.entryId, { reps: 10 }),
-        ),
-        logWhole(
-          caller,
-          SessionLogInput.parse({ workoutId: p.workoutId, dayId: p.dayId, sets: [set, set, set] }),
-        ),
-      ])
-      // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
-      const [suggestion] = expectContract(
-        z.array(ProgressionSuggestion),
-        (await alice.wire(`/workouts/${p.workoutId}/progression`)).body,
-      )
-      if (suggestion?.suggested.reps !== 10) wrong.push(suggestion?.suggested.reps ?? -1)
-    }
-    expect(wrong).toEqual([])
-  })
+describe("a person's steps, taken one write at a time", () => {
+  test(
+    'a correction and a later finish at once leave the steps a run in order would',
+    async () => {
+      await Promise.all(Array.from({ length: 30 }, async () => await db.execute(sql`select 1`)))
+      const wrong: number[] = []
+      for (let round = 0; round < 12; round += 1) {
+        // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
+        const p = await poised()
+        // One set of the earlier session corrected to 7: it held at 8, so the later one's 9 met it,
+        // and asks 9 — not 10, judged from the earlier's step before the correction gives.
+        // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
+        await Promise.all([
+          update(alice.caller, p.later, { endedAt: new Date().toISOString() }),
+          amendLog(alice.caller, p.earlier, p.logs[0] ?? '', { reps: 7 }),
+        ])
+        // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
+        const [suggestion] = expectContract(
+          z.array(ProgressionSuggestion),
+          (await alice.wire(`/workouts/${p.workoutId}/progression`)).body,
+        )
+        if (suggestion?.suggested.reps !== 9) wrong.push(suggestion?.suggested.reps ?? -1)
+      }
+      expect(wrong).toEqual([])
+    },
+    RACE_TIMEOUT_MS,
+  )
+
+  test(
+    'a target set by hand and a session logged whole at once leave the target set',
+    async () => {
+      await Promise.all(Array.from({ length: 30 }, async () => await db.execute(sql`select 1`)))
+      const wrong: number[] = []
+      const { caller } = alice
+      // Three sweeps of the stagger. With the hand's step dated `now()` and no lock, four rounds in
+      // ten went wrong; started together instead, one in fifteen, and 60 rounds let a run in five
+      // through. With the lock, `now()` still failed four runs in six once the window was widened.
+      for (let round = 0; round < 24; round += 1) {
+        // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
+        const p = await planned()
+        const set = { exerciseId: p.exerciseId, entryId: p.entryId, weightG: 55_000, reps: 8 }
+        // Either order leaves 10: set after the 8s, it is the latest word; set before them, the 8s
+        // fall short of it and hold. A session's 9, judged from the plan's 8, is neither.
+        // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
+        await Promise.all([
+          after(
+            round % 8,
+            async () => await setTargetByHand(caller, p.workoutId, p.entryId, { reps: 10 }),
+          ),
+          logWhole(
+            caller,
+            SessionLogInput.parse({
+              workoutId: p.workoutId,
+              dayId: p.dayId,
+              sets: [set, set, set],
+            }),
+          ),
+        ])
+        // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
+        const [suggestion] = expectContract(
+          z.array(ProgressionSuggestion),
+          (await alice.wire(`/workouts/${p.workoutId}/progression`)).body,
+        )
+        if (suggestion?.suggested.reps !== 10) wrong.push(suggestion?.suggested.reps ?? -1)
+      }
+      expect(wrong).toEqual([])
+    },
+    RACE_TIMEOUT_MS,
+  )
 })
