@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { Held, Progression, SetTarget } from './progression.ts'
-import { describeProgression, heldWords } from './progression-words.ts'
+import { describeProgression, heldWords, ruleSentence } from './progression-words.ts'
 import { formatWeight, kgToG } from './units.ts'
 
 const LINEAR: Progression = { kind: 'linear', incrementG: kgToG(2.5), afterSuccesses: 1 }
@@ -90,5 +90,39 @@ describe('heldWords', () => {
     expect(heldWords(held, 'weight_reps', 'kg')).toBe(
       'held for effort: set 3 left 0 in reserve, asked 2',
     )
+  })
+})
+
+/**
+ * What a rule does, as one plain sentence under the rule in the entry editor (docs/08-frontend.md,
+ * "An entry's settings") — so a person reads what picking it means, not only its name.
+ */
+describe('ruleSentence', () => {
+  const kg = (g: number) => formatWeight(g, 'kg')
+
+  test.each<[Progression, string]>([
+    [{ kind: 'none' }, 'Nothing moves these numbers but an edit to the plan.'],
+    [
+      { kind: 'double', repRange: [8, 12], incrementG: kgToG(5) },
+      'Climb from 8 to 12 reps at the same weight. When every working set reaches 12, add 5 kg and start again at 8.',
+    ],
+    [
+      LINEAR,
+      'Add 2.5 kg when every working set makes its reps, leaving the reps in reserve it asks.',
+    ],
+    [
+      { ...LINEAR, afterSuccesses: 2 },
+      'Add 2.5 kg when every working set makes its reps, leaving the reps in reserve it asks, 2 sessions running.',
+    ],
+    [
+      { kind: 'linear_duration', incrementS: 15, afterSuccesses: 1 },
+      'Add 0:15 when every working set lasts its time.',
+    ],
+    [
+      { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 3 },
+      'Go 500 m further at the same pace when every working set covers its distance in its time, 3 sessions running.',
+    ],
+  ])('%o', (rule, sentence) => {
+    expect(ruleSentence(rule, kg)).toBe(sentence)
   })
 })

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { targetByHand } from './by-hand.ts'
+import { settableByHand, targetByHand } from './by-hand.ts'
 import type { Progression, SetTarget } from './progression.ts'
 
 /**
@@ -69,5 +69,18 @@ describe('a target set by hand', () => {
     expect(targetByHand({ kind: 'none' }, plan, { weightG: 60_000 })).toEqual({
       refused: 'A manual entry has no target: its numbers are the plan’s, so change the plan',
     })
+  })
+})
+
+/** What **Change** offers: only what the rule moves — so nothing else can be typed there. */
+describe('settableByHand', () => {
+  test.each<[Progression, ReturnType<typeof settableByHand>]>([
+    [DOUBLE, ['reps', 'weightG']],
+    [LINEAR, ['weightG']],
+    [{ kind: 'linear_duration', incrementS: 5, afterSuccesses: 1 }, ['durationS']],
+    [{ kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 }, ['distanceMm']],
+    [{ kind: 'none' }, []],
+  ])('%o', (rule, dimensions) => {
+    expect(settableByHand(rule)).toEqual(dimensions)
   })
 })

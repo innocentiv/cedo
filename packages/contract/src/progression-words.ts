@@ -61,3 +61,33 @@ const onlyRepsDiffer = (did: SetTarget, asked: SetTarget): boolean =>
   did.weightG === asked.weightG &&
   did.durationS === asked.durationS &&
   did.distanceMm === asked.distanceMm
+
+/**
+ * What a rule does, as one plain sentence — said under the rule in the entry editor, so picking it
+ * says what it will do (docs/08-frontend.md, "An entry's settings"). Manual says what moves nothing.
+ */
+export function ruleSentence(
+  rule: Progression,
+  formatIncrement: (grams: number) => string,
+): string {
+  switch (rule.kind) {
+    case 'none':
+      return 'Nothing moves these numbers but an edit to the plan.'
+    case 'double': {
+      const [from, to] = rule.repRange
+      return `Climb from ${from} to ${to} reps at the same weight. When every working set reaches ${to}, add ${formatIncrement(rule.incrementG)} and start again at ${from}.`
+    }
+    case 'linear':
+      return `Add ${formatIncrement(rule.incrementG)} when every working set makes its reps, leaving the reps in reserve it asks${running(rule.afterSuccesses)}.`
+    case 'linear_duration':
+      return `Add ${formatDuration(rule.incrementS)} when every working set lasts its time${running(rule.afterSuccesses)}.`
+    case 'linear_distance':
+      return `Go ${formatDistance(rule.incrementMm)} further at the same pace when every working set covers its distance in its time${running(rule.afterSuccesses)}.`
+    default:
+      return unhandledKind(rule)
+  }
+}
+
+/** `, 2 sessions running` — said only when a rule waits for more than one cleared session. */
+const running = (afterSuccesses: number): string =>
+  afterSuccesses === 1 ? '' : `, ${afterSuccesses} sessions running`

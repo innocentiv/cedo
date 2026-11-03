@@ -66,6 +66,10 @@ export function targetByHand(
   return { target: { ...target, durationS: atPace(from, input.distanceMm) } }
 }
 
+/** What a person may set by hand under `rule` — what it moves; nothing on Manual (ADR-0026). */
+export const settableByHand = (rule: Progression): readonly Dimension[] =>
+  movedBy(rule)?.dimensions ?? []
+
 /** What each rule moves, and what to say when something else is set. Null: no rule, no target. */
 function movedBy(
   rule: Progression,
