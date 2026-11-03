@@ -14,7 +14,7 @@
     <!-- Installable: the manifest for Android and desktop, and what iOS reads instead of it.
          Colours from src/ui/tokens.ts. See docs/09-deployment.md, "Installing the app". -->
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#0b0d10" />
+    <meta name="theme-color" content="#1b1c1e" />
     <link rel="icon" type="image/svg+xml" href="/icons/icon.svg" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -32,7 +32,8 @@
       /* These styles disable body scrolling if you are using <ScrollView> */
       body {
         overflow: hidden;
-        background-color: #0b0d10;
+        /* `color.bg`, src/ui/tokens.ts: the floor the app draws on, before it has drawn. */
+        background-color: #1b1c1e;
       }
       /* These styles make the root element full-height */
       #root {
