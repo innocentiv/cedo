@@ -239,6 +239,48 @@ describe('a plan entry is held to its progression rule', () => {
   test('a warm-up is not held to the range', () => {
     expect(issues(double(8, 12), [working(4, { isWarmup: true }), working(8)])).toEqual([])
   })
+
+  /** One target moves for every working set; a top set and its back-offs are Manual's. */
+  test('under a rule, the working sets share what it moves or judges', () => {
+    const linear = { kind: 'linear', incrementG: 2500, afterSuccesses: 1 }
+    const backOff = 'For sets that differ — a top set and its back-offs — use Manual'
+    expect(issues(linear, [working(5), working(5, { targetWeightG: 50_000 })])).toEqual([
+      `Under linear, every working set asks the same reps and weight: set 2 differs from set 1. ${backOff}`,
+    ])
+    // Linear never moves reps, but it judges them: 10, 8, 6 under one weight is not one target.
+    expect(issues(linear, [working(10), working(8)])).toEqual([
+      `Under linear, every working set asks the same reps and weight: set 2 differs from set 1. ${backOff}`,
+    ])
+    const hold = { kind: 'linear_duration', incrementS: 5, afterSuccesses: 1 }
+    expect(issues(hold, [{ targetDurationS: 30 }, { targetDurationS: 45 }])).toEqual([
+      `Under linear duration, every working set asks the same time: set 2 differs from set 1. ${backOff}`,
+    ])
+    const run = { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 }
+    expect(
+      issues(run, [
+        { targetDistanceMm: 5_000_000, targetDurationS: 1800 },
+        { targetDistanceMm: 5_000_000, targetDurationS: 1700 },
+      ]),
+    ).toEqual([
+      `Under distance, every working set asks the same distance and time: set 2 differs from set 1. ${backOff}`,
+    ])
+  })
+
+  test('reps in reserve may differ from set to set, and a manual entry may differ in anything', () => {
+    expect(
+      issues(double(8, 12), [working(8, { targetRpe: 8 }), working(8, { targetRpe: 10 })]),
+    ).toEqual([])
+    expect(issues({ kind: 'none' }, [working(6, { targetWeightG: 90_000 }), working(8)])).toEqual(
+      [],
+    )
+  })
+
+  test('warm-ups may differ from the working sets', () => {
+    const linear = { kind: 'linear', incrementG: 2500, afterSuccesses: 1 }
+    expect(
+      issues(linear, [working(10, { isWarmup: true, targetWeightG: 20_000 }), working(5)]),
+    ).toEqual([])
+  })
 })
 
 describe('error envelope', () => {
