@@ -26,7 +26,8 @@ export function PinButton({
       name={pinned ? 'starred' : 'star'}
       label={pinned ? 'Unpin' : 'Pin'}
       tone={pinned ? 'accent' : 'muted'}
-      disabled={busy}
+      size="small"
+      busy={busy}
       edge={edge}
       onPress={onToggle}
       testID={testID}

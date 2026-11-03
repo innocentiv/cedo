@@ -10,7 +10,7 @@ import { ConfirmButton, ErrorNotice, NavButton, Sheet, Spinner, Stack, Text } fr
 import { DuplicateIntoMyGroup } from './duplicate-into-my-group.tsx'
 import { About, RecentHistory } from './exercise-about.tsx'
 import { ownSession } from './addresses.ts'
-import { GroupPlacement } from './group-placement.tsx'
+import { OwnershipLine, usePinning } from './ownership-line.tsx'
 import { useSubmit } from './use-submit.ts'
 
 /**
@@ -50,12 +50,15 @@ export function ExerciseDetailView({
 }): React.JSX.Element {
   const { data, isPending, error, refetch } = useExercise(id)
   const history = useExerciseHistory(id)
-  const favourite = useFavouriteExercise()
   const transfer = useTransferExercise()
   const duplicate = useDuplicateExercise()
   const remove = useDeleteExercise()
   // One submission each, so a refusal shows beside what was refused, and only that is busy.
-  const pinning = useSubmit()
+  const pinning = usePinning(
+    useFavouriteExercise(),
+    { id, isFavourite: data?.isFavourite ?? false },
+    'toggle-favourite',
+  )
   const deleting = useSubmit()
 
   if (error !== null) {
@@ -86,22 +89,12 @@ export function ExerciseDetailView({
     />
   )
   // Under its name, before anything else: which group it is in, pinning it, moving it.
-  const placement = (
-    <GroupPlacement
+  const ownership = (
+    <OwnershipLine
       ownerGroupId={data.ownerGroupId}
       canEdit={data.canEdit}
       transfer={async (toGroupId) => await transfer.mutateAsync({ id: data.id, toGroupId })}
-      pin={{
-        pinned: data.isFavourite,
-        busy: pinning.busy,
-        error: pinning.error,
-        onToggle: () => {
-          void pinning.submit(async () => {
-            await favourite.mutateAsync({ id: data.id, on: !data.isFavourite })
-          })
-        },
-        testID: 'toggle-favourite',
-      }}
+      pin={pinning}
       testID="exercise-transfer"
     />
   )
@@ -133,7 +126,7 @@ export function ExerciseDetailView({
   if (place === 'sheet') {
     return (
       <Stack gap="lg" testID="exercise-detail-sheet">
-        {placement}
+        {ownership}
         {action}
         {contents}
       </Stack>
@@ -147,7 +140,7 @@ export function ExerciseDetailView({
         </Stack>
         {action}
       </Stack>
-      {placement}
+      {ownership}
       {contents}
     </Stack>
   )

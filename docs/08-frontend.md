@@ -64,7 +64,7 @@ src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
 src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ its unit test), forms,
-                             pickers, group-placement.tsx, duplicate-into-my-group.tsx, and each
+                             pickers, ownership-line.tsx, duplicate-into-my-group.tsx, and each
                              screen's parts: the workout's, Today's, Progress's, a workout's
                              outline, an exercise's (exercise-detail.tsx, exercise-about.tsx,
                              exercise-media.tsx), the desktop sidebar's (sidebar.tsx), an
@@ -124,7 +124,7 @@ Two constraints found by building it:
 | `Meter` | how much against the most — a muscle's sets — chalk, or red where it declined |
 | `RemoveButton` | removing a day or an entry from a plan edited in place: the bin, asked twice |
 | `Sheet` | something looked at without leaving where you are — a session's menu, how to do an exercise. From the bottom on a phone, in the middle on a desktop |
-| `Icon`, `IconButton` | a secondary action as a glyph alone — back, menu, close, undo, how to — named aloud by its label |
+| `Icon`, `IconButton` | a secondary action as a glyph alone — back, menu, close, undo, how to, pin (★), transfer (⇄) — named aloud by its label; `small` beside a line of caption text, its touch area still a full control; `busy`, inert, while what it did is in flight |
 | `Screen` `onBack` | a way back beside the title, on a screen reached from another with no other way out |
 | `Screen` `ownHeading` | a heading of the screen's own in place of its title and Back — a workout's name, edited where it is read — laid out where a title is: pinned over both columns on a desktop |
 | `Screen` `columns` | a screen whose whole body is two columns — `{ main, side, narrow? }`, or `{ main, pane, narrow?, chosen? }`: on a desktop side by side under the title, each its own scroll, so a pane stays beside whatever the other is scrolled to (#50); on a phone the main then the side in one scroll, but never a pane — a phone opens what it holds elsewhere, a screen of its own or a sheet, so a screen does not branch on the layout to leave it out. Either `null`: the main alone. `chosen` is what the pane shows when it is one thing chosen — another opens at the pane's top. `children` still render: the sheets the screen opens |
@@ -170,7 +170,7 @@ unit-tested beside it, like `retry.ts`. Each is dated after the latest stored se
 clock ahead of the device cannot send the focus back to a set already done.
 
 A composite that reads through a query hook is not presentational, so it lives in `src/lib/`
-instead: the exercise picker, and `GroupPlacement` — one quiet line under an exercise's or a
+instead: the exercise picker, and `OwnershipLine` — one quiet line under an exercise's or a
 plan's name, on both detail screens: which group it is in, then its pin and Transfer to group as
 glyphs (★, ⇄), both rarely used, the transfer's choice opening under the line. Where it may go is the server's `canTransferInto`, not a rule
 of its own; a plan the target group could not read is refused by the server, which says why. And
@@ -355,7 +355,7 @@ As built (#26):
   elsewhere, and a failed read is a refusal, so the page is never left Saving. A plan read
   meanwhile is taken only when it is newer and nothing is unsaved; a name and notes read again
   with other values start their fields from those.
-- Under the name, one quiet line (`GroupPlacement`): which group it is in, a star pinning it, ⇄
+- Under the name, one quiet line (`OwnershipLine`): which group it is in, a star pinning it, ⇄
   transferring it — rarely used, so glyphs, not buttons of their own. Delete sits under the
   outline. A reader sees the same outline with nothing to tap but Start and the star, and Copy into
   my group under it.
@@ -545,7 +545,7 @@ unit after it on the same line, smaller and quieter — "102.5 kg" — and the l
 − and + either side. (Centred under it was tried: the number read low, and apart from its unit.)
 
 **A secondary action is a glyph** — back, the menu, close, undo, remove, how to, the arrow back to a
-session — drawn in `icon.tsx`, a hand-drawn set on one grid, and always named aloud (`IconButton`'s
+session, the star pinning something and ⇄ moving it to another group — drawn in `icon.tsx`, a hand-drawn set on one grid, and always named aloud (`IconButton`'s
 `label`). Undo is an arrow turning back, never a circle, which reads as reload; removing something
 from what is being edited is a bin. What cannot be taken back — deleting a workout, revoking a
 token, removing a member — keeps its words and is asked twice (`ConfirmButton`). Its touch area is a

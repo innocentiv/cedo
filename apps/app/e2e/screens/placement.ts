@@ -56,6 +56,14 @@ export const placement = (page: Page, prefix: string, pin: string) => {
       const ys = centres as number[]
       return Math.max(...ys) - Math.min(...ys) < 4
     },
+    /** Whether its glyphs are small — the star a box under 40px tall, not a full 48px control. */
+    quiet: async (): Promise<boolean> => {
+      await owner()
+      const height = await page.evaluate(
+        `document.querySelector('[data-testid="${pin}"]').getBoundingClientRect().height`,
+      )
+      return typeof height === 'number' && height < 40
+    },
     /** Whether Transfer to group is offered at all — once the screen says where it is. */
     canTransfer: async (): Promise<boolean> => {
       await owner()

@@ -2,14 +2,15 @@ import { Pressable, StyleSheet } from 'react-native'
 import Svg, { Circle, Path } from 'react-native-svg'
 import { CONTROL_HEIGHT, ICON_SIZE, LOG_CONTROL_HEIGHT, color, radius, stroke } from './tokens.ts'
 
+/** A star's outline: drawn as `star`, filled as `starred`. */
+const STAR =
+  'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z'
+
 /**
  * The few glyphs the app draws, on a 24-point grid with a 2-point round stroke — one hand, so they
  * read as a set. Drawn here rather than taken from an icon font: a font is a download for a dozen
  * shapes, and one with a missing glyph falls back to whatever the device has.
  */
-const STAR =
-  'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z'
-
 const GLYPHS = {
   back: ['M15 18l-6-6 6-6'],
   close: ['M18 6L6 18', 'M6 6l12 12'],
@@ -99,8 +100,10 @@ export function Icon({
  * A secondary action as a glyph alone — close, undo, remove, back, how to — so it stays out of the way of
  * what the screen is for. Said aloud by its `label`. Its touch area is a full control; `edge` pulls
  * that area out past the content's edge, so the glyph itself lines up with the text beside it.
- * `raised` sits on a disc, for a control used every set: the logger's − and +. `disabled` while
- * what it did is still in flight, so a second tap does not undo the first.
+ * `raised` sits on a disc, for a control used every set: the logger's − and +. `small` beside a
+ * line of caption text — pinning, a transfer — a smaller glyph in a smaller box, its touch area
+ * made whole again around it. `busy` while what it did is still in flight, inert, so a second tap
+ * does not undo the first.
  */
 export function IconButton({
   name,
@@ -108,8 +111,9 @@ export function IconButton({
   onPress,
   edge,
   raised = false,
+  size = 'regular',
   tone = 'muted',
-  disabled = false,
+  busy = false,
   testID,
 }: {
   readonly name: IconName
@@ -117,32 +121,41 @@ export function IconButton({
   readonly onPress: () => void
   readonly edge?: 'start' | 'end' | undefined
   readonly raised?: boolean
+  readonly size?: keyof typeof SIZE
   readonly tone?: keyof typeof TINT
-  readonly disabled?: boolean
+  readonly busy?: boolean
   readonly testID?: string | undefined
 }): React.JSX.Element {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled }}
-      disabled={disabled}
+      accessibilityState={{ disabled: busy, busy }}
+      disabled={busy}
       onPress={onPress}
+      hitSlop={size === 'small' ? SMALL_SLOP : undefined}
       testID={testID}
       style={({ pressed }) => [
         raised ? styles.raised : styles.plain,
-        edge === 'start' ? styles.start : null,
-        edge === 'end' ? styles.end : null,
+        size === 'small' ? styles.small : null,
+        edge === 'start' ? (size === 'small' ? styles.smallStart : styles.start) : null,
+        edge === 'end' ? (size === 'small' ? styles.smallEnd : styles.end) : null,
         pressed ? styles.pressed : null,
       ]}
     >
-      <Icon name={name} tone={raised ? 'default' : tone} />
+      <Icon name={name} tone={raised ? 'default' : tone} size={size} />
     </Pressable>
   )
 }
 
 /** How far a plain glyph sits inside its touch area: what `edge` takes back. */
 const INSET = (CONTROL_HEIGHT - ICON_SIZE) / 2
+
+/** A small glyph's box: its glyph and as much again; the slop makes it a full control to hit. */
+const SMALL_BOX = SIZE.small * 2
+const SMALL_INSET = (SMALL_BOX - SIZE.small) / 2
+const SMALL_REACH = (CONTROL_HEIGHT - SMALL_BOX) / 2
+const SMALL_SLOP = { top: SMALL_REACH, bottom: SMALL_REACH, left: SMALL_REACH, right: SMALL_REACH }
 
 const styles = StyleSheet.create({
   plain: {
@@ -160,7 +173,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  small: { width: SMALL_BOX, height: SMALL_BOX },
   start: { marginLeft: -INSET },
   end: { marginRight: -INSET },
+  smallStart: { marginLeft: -SMALL_INSET },
+  smallEnd: { marginRight: -SMALL_INSET },
   pressed: { opacity: 0.6 },
 })

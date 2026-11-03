@@ -9,7 +9,7 @@ import {
   CopyFooter,
   DeleteWorkout,
   InProgress,
-  WorkoutPlacement,
+  WorkoutOwnership,
   useStartDay,
 } from './workout-actions.tsx'
 import { WorkoutHead, WorkoutTitle } from './workout-head.tsx'
@@ -83,7 +83,7 @@ export function WorkoutBody({
 
   const page = (
     <Stack gap="lg">
-      <WorkoutPlacement workout={workout} />
+      <WorkoutOwnership workout={workout} />
       <WorkoutHead
         // Read again with other notes — saved elsewhere — its field starts from those.
         key={workout.notes ?? ''}

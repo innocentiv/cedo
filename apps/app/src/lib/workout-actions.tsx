@@ -10,7 +10,7 @@ import {
 } from '../api/queries.ts'
 import { Button, Card, ConfirmButton, Stack, Text } from '../ui/index.ts'
 import { DuplicateIntoMyGroup } from './duplicate-into-my-group.tsx'
-import { GroupPlacement } from './group-placement.tsx'
+import { OwnershipLine, usePinning } from './ownership-line.tsx'
 import { useSubmit } from './use-submit.ts'
 
 /**
@@ -79,26 +79,15 @@ export function CopyFooter({ workoutId }: { readonly workoutId: string }): React
  * Under a workout's name (#26): which group it is in, then a star pinning it and a transfer to
  * another group — one quiet line, both rarely used.
  */
-export function WorkoutPlacement({ workout }: { readonly workout: Workout }): React.JSX.Element {
-  const favourite = useFavouriteWorkout()
+export function WorkoutOwnership({ workout }: { readonly workout: Workout }): React.JSX.Element {
   const transfer = useTransferWorkout()
-  const pinning = useSubmit()
+  const pinning = usePinning(useFavouriteWorkout(), workout, 'workout-pin')
   return (
-    <GroupPlacement
+    <OwnershipLine
       ownerGroupId={workout.ownerGroupId}
       canEdit={workout.canEdit}
       transfer={async (toGroupId) => await transfer.mutateAsync({ id: workout.id, toGroupId })}
-      pin={{
-        pinned: workout.isFavourite,
-        busy: pinning.busy,
-        error: pinning.error,
-        onToggle: () => {
-          void pinning.submit(async () => {
-            await favourite.mutateAsync({ id: workout.id, on: !workout.isFavourite })
-          })
-        },
-        testID: 'workout-pin',
-      }}
+      pin={pinning}
       testID="workout-transfer"
     />
   )

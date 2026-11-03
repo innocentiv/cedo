@@ -3,9 +3,9 @@ import { type GroupMembership, sayGroup } from '@cedo/contract'
 import {
   Button,
   ConfirmButton,
+  ErrorNotice,
   FormError,
   IconButton,
-  Loaded,
   PinButton,
   Stack,
   Text,
@@ -27,16 +27,40 @@ export interface Pinning {
 }
 
 /**
+ * Pinning an exercise or a plan, by the favourite mutation of its kind — one submission of its own,
+ * so a refused pin shows on the line, and only the star is busy.
+ */
+export function usePinning(
+  favourite: { readonly mutateAsync: (on: { id: string; on: boolean }) => Promise<unknown> },
+  of: { readonly id: string; readonly isFavourite: boolean },
+  testID: string,
+): Pinning {
+  const { submit, busy, error } = useSubmit()
+  return {
+    pinned: of.isFavourite,
+    busy,
+    error,
+    onToggle: () => {
+      void submit(async () => {
+        await favourite.mutateAsync({ id: of.id, on: !of.isFavourite })
+      })
+    },
+    testID,
+  }
+}
+
+/**
  * One line under an exercise's or a plan's name: which group it is in, then — small, as glyphs, being
  * rarely used — a star pinning it, and a transfer to another group the server says you may transfer
- * into (`canTransferInto`), when you edit it. The transfer opens its choice under the line, asked
- * twice: it can be transferred back, but every transfer has a shared group on one side — your
- * personal group is your only one — and others feel it at once. Out of the starter library it leaves
- * every account; out of a group, the members' plans lose it; into one, everyone in it sees it. A
- * refusal is the server's, shown as it is: a plan goes only where every exercise it uses can be read,
- * and says which cannot.
+ * into (`canTransferInto`), when you edit it. The star is there at once; where it is, and where it
+ * may go, once your groups are read. The transfer opens its choice under the line, asked twice: it
+ * can be transferred back, but every transfer has a shared group on one side — your personal group
+ * is your only one — and others feel it at once. Out of the starter library it leaves every account;
+ * out of a group, the members' plans lose it; into one, everyone in it sees it. A refusal is the
+ * server's, shown as it is: a plan goes only where every exercise it uses can be read, and says
+ * which cannot.
  */
-export function GroupPlacement({
+export function OwnershipLine({
   ownerGroupId,
   canEdit,
   transfer,
@@ -50,40 +74,15 @@ export function GroupPlacement({
   readonly testID: string
 }): React.JSX.Element {
   const groups = useGroups()
-  return (
-    <Loaded query={groups} testID={`${testID}-groups`}>
-      {(mine) => (
-        <Placement
-          owner={mine.find((g) => g.id === ownerGroupId)}
-          targets={canEdit ? mine.filter((g) => g.canTransferInto && g.id !== ownerGroupId) : []}
-          transfer={transfer}
-          pin={pin}
-          testID={testID}
-        />
-      )}
-    </Loaded>
-  )
-}
-
-function Placement({
-  owner,
-  targets,
-  transfer,
-  pin,
-  testID,
-}: {
-  readonly owner: GroupMembership | undefined
-  readonly targets: readonly GroupMembership[]
-  readonly transfer: (toGroupId: string) => Promise<unknown>
-  readonly pin: Pinning
-  readonly testID: string
-}): React.JSX.Element {
+  const mine = groups.data ?? []
+  const owner = mine.find((g) => g.id === ownerGroupId)
+  const targets = canEdit ? mine.filter((g) => g.canTransferInto && g.id !== ownerGroupId) : []
   const { submit, busy, error } = useSubmit()
   const [choosing, setChoosing] = useState(false)
   const movable = targets.length > 0
   return (
     <Stack gap="xs">
-      <Stack direction="row" align="center">
+      <Stack direction="row" align="center" gap="sm">
         <Stack grow>
           {owner === undefined ? null : (
             <Text variant="caption" tone="muted" numberOfLines={1} testID={`${testID}-owner`}>
@@ -103,6 +102,7 @@ function Placement({
           <IconButton
             name="transfer"
             label="Transfer to group"
+            size="small"
             tone={choosing ? 'default' : 'muted'}
             edge="end"
             onPress={() => {
@@ -112,6 +112,15 @@ function Placement({
           />
         ) : null}
       </Stack>
+      {groups.error === null ? null : (
+        <ErrorNotice
+          message={groups.error.message}
+          onRetry={() => {
+            void groups.refetch()
+          }}
+          testID={`${testID}-groups-error`}
+        />
+      )}
       <FormError message={pin.error} testID={`${pin.testID}-error`} />
       {movable && choosing ? (
         <Stack gap="xs" testID={`${testID}-targets`}>
