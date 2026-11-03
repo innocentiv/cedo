@@ -4,6 +4,7 @@ import { TabList, TabSlot, TabTrigger, Tabs } from 'expo-router/ui'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import {
   Button,
+  HOME_INDICATOR_OVERLAP,
   NavItem,
   Screen,
   Spinner,
@@ -102,10 +103,9 @@ export default function AppLayout(): React.JSX.Element {
               ]
             : [
                 styles.bottomBar,
-                // Over the home indicator, as a native tab bar sits (#61): the inset's top part is
-                // room the swipe never reaches. Clear of the indicator still, and a full touch
-                // target above it.
-                { paddingBottom: insets.bottom > 0 ? insets.bottom - space.md : space.xs },
+                // Over the home indicator, as a native tab bar sits (#61). Clear of the indicator
+                // still, and never less than a bar with no inset under it at all.
+                { paddingBottom: Math.max(space.xs, insets.bottom - HOME_INDICATOR_OVERLAP) },
               ],
           // A session has the app to itself: its header stands where the tabs were (#24).
           onWorkout(pathname) ? styles.hidden : null,

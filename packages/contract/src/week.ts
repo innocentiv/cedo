@@ -10,8 +10,24 @@ import { elapsedS } from './session-flow.ts'
 /** Monday, M to S: the strip of a week's days. */
 export const WEEKDAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const
 
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const MONTHS_LONG = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]
+const WEEKDAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+/** `Oct`, `Thu`: each name's first three letters. */
+const MONTHS = MONTHS_LONG.map((month) => month.slice(0, 3))
+const WEEKDAYS = WEEKDAYS_LONG.map((weekday) => weekday.slice(0, 3))
 
 /** The day of the week, Monday 0 to Sunday 6: where it sits on the week's strip. */
 export const dayOfWeek = (at: Date): number => (at.getDay() + 6) % 7
@@ -61,22 +77,6 @@ export function weekStrip(weekStart: Date, startedAt: readonly string[], now: Da
 /** `Thu 23 Oct`: a day as a history row says it. */
 export const formatDay = (at: Date): string =>
   `${WEEKDAYS[at.getDay()] ?? ''} ${String(at.getDate())} ${MONTHS[at.getMonth()] ?? ''}`
-
-const MONTHS_LONG = [
-  'January',
-  'February',
-  'March',
-  'April',
-  'May',
-  'June',
-  'July',
-  'August',
-  'September',
-  'October',
-  'November',
-  'December',
-]
-const WEEKDAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
 /** `Tuesday 3 November`: the day in full, as Today heads its page (#61). */
 export const formatLongDay = (at: Date): string =>

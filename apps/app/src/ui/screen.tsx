@@ -124,6 +124,8 @@ export function Screen({
   // A page that is one scroll runs under the status bar, as a native one does (#61): the room the
   // clock takes is the page's own once it scrolls. At rest the title sits just below the bar.
   const underBar = header === undefined && scroll && !split
+  // Only where something is drawn under the status bar at all: an installed iPhone.
+  const band = underBar && insets.top > 0
 
   return (
     <View
@@ -148,7 +150,7 @@ export function Screen({
           contentContainerStyle={[
             styles.content,
             wide ? styles.wide : null,
-            underBar && insets.top > 0 ? { paddingTop: insets.top + space.sm } : null,
+            band ? { paddingTop: insets.top + space.sm } : null,
           ]}
           keyboardShouldPersistTaps="handled"
           testID="screen-scroll"
@@ -169,9 +171,7 @@ export function Screen({
           {footer}
         </View>
       )}
-      {underBar && insets.top > 0 ? (
-        <View style={[styles.statusBar, { height: insets.top }]} />
-      ) : null}
+      {band ? <View style={[styles.statusBar, { height: insets.top }]} /> : null}
     </View>
   )
 }

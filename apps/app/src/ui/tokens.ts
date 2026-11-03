@@ -8,6 +8,8 @@
  * The look is the gym's own (#24): chalk on a rubber floor, and the colour code of calibrated plates
  * — red 25, blue 20, yellow 15, green 10, white 5 — which every lifter already reads. A plate colour
  * is used ONLY for state, and means ONE thing on every screen; everything else is chalk and grey.
+ * The one exception is the mark (`brand`, #61): a yellow plate that is the product's name, drawn
+ * only where the name is — never as a control, so it is not taken for the next thing to do.
  */
 
 /** The plates, as stamped. Read through `color`'s meanings below, never directly by a primitive. */
@@ -19,9 +21,12 @@ const plate = {
   white: '#ece8e1',
 } as const
 
+/** The rubber floor everything stands on. */
+const floor = '#1b1c1e'
+
 export const color = {
   /** The floor; one step up for what sits on it; one more for what is pressed or raised. */
-  bg: '#1b1c1e',
+  bg: floor,
   surface: '#232427',
   surfaceRaised: '#2c2d31',
   border: '#3a3b40',
@@ -31,7 +36,7 @@ export const color = {
    * Behind the clock and battery, where a page scrolls under the status bar: the floor, most of
    * the way, so what passes beneath shows faintly and the clock stays readable over it (#61).
    */
-  statusBar: 'rgba(27, 28, 30, 0.88)',
+  statusBar: `${floor}e0`,
 
   /** Chalk, and two dustings of it. */
   text: plate.white,
@@ -177,3 +182,9 @@ export const BRAND_MARK_SIZE = { door: 128, heading: 36 } as const
 
 /** The way in — signing in, registering: one narrow column, on a phone and a desktop alike. */
 export const DOOR_MAX_WIDTH = 400
+
+/**
+ * How far the tab bar sits down into the home indicator's inset, as a native one does (#61): the
+ * inset's top part is room the swipe never reaches.
+ */
+export const HOME_INDICATOR_OVERLAP = 12

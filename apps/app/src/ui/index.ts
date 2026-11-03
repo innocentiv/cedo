@@ -3,7 +3,7 @@
  * nowhere else that renders. See docs/08-frontend.md.
  */
 export { Button, type ButtonVariant } from './button.tsx'
-export { BrandHeading, BrandMark, FrontDoor } from './brand.tsx'
+export { BrandHeading, FrontDoor } from './brand.tsx'
 export { Card, ListRow } from './card.tsx'
 export { Columns } from './columns.tsx'
 export { Chip } from './chips.tsx'
@@ -51,6 +51,7 @@ export { Text, type Tone } from './text.tsx'
 export {
   CONTENT_MAX_WIDTH,
   CONTROL_HEIGHT,
+  HOME_INDICATOR_OVERLAP,
   ICON_SIZE,
   LOG_CONTROL_HEIGHT,
   MARK_SIZE,

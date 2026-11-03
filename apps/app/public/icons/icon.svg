@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <!--
     The mark (#61): a yellow plate face on, its steel insert at the hub, and a wedge of shadow across
-    its right side that opens it into the c of cedo. Drawn again for the app by `Mark`
-    (src/ui/mark.tsx), colours from src/ui/tokens.ts (`brand`). Full bleed on the floor, with the
+    its right side that opens it into the c of cedo. Drawn again for the app by `BrandMark`
+    (src/ui/brand.tsx), colours from src/ui/tokens.ts (`brand`). Full bleed on the floor, with the
     plate inside the maskable safe zone (a circle of 40% radius), so one image serves as both the
     plain and the maskable icon. The PNGs beside it are rendered from this file:
       for s in 192 512; do rsvg-convert -w $s -h $s icon.svg -o icon-$s.png; done

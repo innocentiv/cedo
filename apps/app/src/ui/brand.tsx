@@ -56,7 +56,8 @@ const capCentre =
  * A title with the mark beside it — Today's date on a phone, the product's name atop a desktop's
  * sidebar. The mark centres on the capitals of the title's first line, not on its line box, which
  * keeps room below them for descenders: centred on the box, the plate sat high of the letters.
- * `mark` false: the title alone, where the mark is already on the screen — a desktop's sidebar.
+ * `mark` false: the title alone, where the mark is on the screen already — Today on a desktop,
+ * beside the sidebar's.
  */
 export function BrandHeading({
   text,
@@ -102,7 +103,8 @@ export function FrontDoor({
           <Text variant="wordmark" accessibilityRole="header">
             cedo
           </Text>
-          <Text variant="caption" tone="faint" align="center" numberOfLines={1}>
+          {/* One line on a phone; wrapped, never cut, on the narrowest. */}
+          <Text variant="caption" tone="faint" align="center">
             Your workouts, your plans, on your own server.
           </Text>
         </View>

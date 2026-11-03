@@ -599,7 +599,8 @@ never writes it. As built (#30):
 ### The look
 
 The gym's own vernacular, the colour code of calibrated plates — red, blue, yellow, green, white —
-used **only for state, and one meaning each everywhere**:
+used **only for state, and one meaning each everywhere** — save the mark (below), a yellow plate
+drawn only where the product's name is, never as a control:
 
 | Plate | Means, and only means |
 | --- | --- |
@@ -848,7 +849,7 @@ fixed to the bottom follows. Anywhere nothing draws under a status bar the inset
 nothing. It can be seen only on a device — neither a desktop browser nor the e2e WebView is
 standalone — so a change to it is proved on a phone, installed, opened twice (the first opening runs
 the shell it kept). Inside that page the tab bar sits over the home indicator, its padding the inset
-less 12pt, as a native one does.
+less 12pt (`HOME_INDICATOR_OVERLAP`), as a native one does.
 
 The service worker keeps the **app shell**, and nothing else: the one document, and the bundle it
 names. It is authored in TypeScript (`src/pwa/`), and `bun run export` bundles it on its own into

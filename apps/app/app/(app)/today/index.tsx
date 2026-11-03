@@ -13,9 +13,9 @@ import { useSubmit } from '../../../src/lib/use-submit.ts'
  */
 export default function Today(): React.JSX.Element {
   const router = useRouter()
+  const phone = useLayout() === 'phone'
   // The reader's own week — the server cannot know where it starts — asked each render, so an app
   // left open past Sunday midnight moves on to the new one.
-  const phone = useLayout() === 'phone'
   const day = new Date()
   const weekStart = startOfWeek(day).toISOString()
   const today = useToday(weekStart)
