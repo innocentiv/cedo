@@ -1,19 +1,20 @@
 import type { Page } from '../harness.ts'
 
-/** The panes beside a list on a desktop: an entry of a plan's, the library's exercise. */
-const PANES = { entry: 'entry-panel', exercise: 'exercise-pane' } as const
+/**
+ * Whether a pane is in view (#50): its top between the top and the bottom of the window, and its
+ * sides within it — not merely in the page: a pane at the top of a page scrolled down to its last
+ * day is out of sight. Its foot is not asked: a pane taller than the window scrolls on its own. By
+ * where it is drawn, never a click, which scrolls its target into view first.
+ */
+export const paneInView = async (page: Page, testID: string): Promise<boolean> =>
+  (await page.evaluate(
+    `(() => { const r = document.querySelector('[data-testid="${testID}"]')?.getBoundingClientRect(); return r !== undefined && r.height > 0 && r.top >= 0 && r.top < innerHeight && r.left >= 0 && r.right <= innerWidth })()`,
+  )) === true
 
 /** What only a desktop shows (#29): the sidebar's head and foot, and the library's pane. */
 export const desk = (page: Page) => ({
-  /**
-   * Whether a pane's top is on screen, between the top and the bottom of the window — not merely in
-   * the page: a pane at the top of a page scrolled down to its last day is out of sight (#50). By
-   * where it is drawn, never a click, which scrolls its target into view first.
-   */
-  paneInView: async (pane: keyof typeof PANES): Promise<boolean> =>
-    (await page.evaluate(
-      `(() => { const r = document.querySelector('[data-testid="${PANES[pane]}"]')?.getBoundingClientRect(); return r !== undefined && r.height > 0 && r.top >= 0 && r.top < innerHeight })()`,
-    )) === true,
+  /** Whether the library's pane is in view, beside however far down the list is scrolled. */
+  paneInView: async (): Promise<boolean> => await paneInView(page, 'exercise-pane'),
   /** The product's name, at the head of the sidebar. */
   name: async (): Promise<string | null> => await page.text('sidebar-name'),
   /** Who is signed in, at its foot. */

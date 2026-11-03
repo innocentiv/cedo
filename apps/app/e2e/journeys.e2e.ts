@@ -659,11 +659,11 @@ test(
 
         await app.planEditor.open(plan.id)
         await app.planEditor.entry(4, lifts.length - 1).open()
-        expect(await app.desk.paneInView('entry')).toBe(true)
+        expect(await app.planEditor.paneInView()).toBe(true)
 
         const last = await app.library.chooseLast()
         expect(await app.desk.pane()).toContain(last)
-        expect(await app.desk.paneInView('exercise')).toBe(true)
+        expect(await app.desk.paneInView()).toBe(true)
       },
       { layout: 'desktop' },
     )
