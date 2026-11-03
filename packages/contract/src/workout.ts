@@ -5,6 +5,7 @@ import { EntryCue } from './cue.ts'
 import { DEFAULT_REST_S } from './rest.ts'
 import { Rpe } from './rpe.ts'
 import { Progression, SetTarget } from './progression.ts'
+import { ruleIssues } from './rule-issues.ts'
 import { OwnableQuery, ownableFields } from './ownable.ts'
 import { Id, NonEmptyString, OrderIndex, patchOf } from './primitives.ts'
 
@@ -89,6 +90,11 @@ export const WorkoutEntryInput = z
   .refine((e) => e.sets.some((s) => !s.isWarmup), {
     path: ['sets'],
     message: 'An entry must prescribe at least one working set',
+  })
+  .superRefine((e, ctx) => {
+    for (const message of ruleIssues(e.progression, e.sets)) {
+      ctx.addIssue({ code: 'custom', path: ['progression'], message })
+    }
   })
 export type WorkoutEntryInput = z.output<typeof WorkoutEntryInput>
 

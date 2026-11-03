@@ -198,6 +198,49 @@ describe('workout plan input', () => {
   })
 })
 
+/**
+ * What a rule asks of the sets it moves (ADR-0026): states nothing can mean are refused, each
+ * saying what to do instead — an AI learns the model from them.
+ */
+describe('a plan entry is held to its progression rule', () => {
+  const double = (from: number, to: number) => ({
+    kind: 'double',
+    repRange: [from, to],
+    incrementG: 2500,
+  })
+  const working = (targetReps: number, more: Record<string, unknown> = {}) => ({
+    targetReps,
+    targetWeightG: 60_000,
+    ...more,
+  })
+  const issues = (progression: unknown, sets: unknown[]) => {
+    const entry = { exerciseId: crypto.randomUUID(), progression, sets }
+    const parsed = WorkoutPlanInput.safeParse({ days: [{ name: 'D', entries: [entry] }] })
+    return parsed.success ? [] : parsed.error.issues.map((i) => i.message)
+  }
+
+  test('a double range runs from fewer reps to more', () => {
+    expect(issues(double(8, 12), [working(8)])).toEqual([])
+    expect(issues(double(12, 8), [working(8)])).toEqual([
+      'A double range runs from fewer reps to more: 8 to 12, not 12 to 8',
+    ])
+    expect(issues(double(10, 10), [working(10)])).toEqual([
+      'A double range runs from fewer reps to more — for one rep count, use linear',
+    ])
+  })
+
+  test("a double's reps lie inside its range", () => {
+    expect(issues(double(8, 12), [working(12)])).toEqual([])
+    expect(issues(double(8, 12), [working(4)])).toEqual([
+      'Double 8–12 starts at 8 to 12 reps, not 4: set the reps inside the range, or change it',
+    ])
+  })
+
+  test('a warm-up is not held to the range', () => {
+    expect(issues(double(8, 12), [working(4, { isWarmup: true }), working(8)])).toEqual([])
+  })
+})
+
 describe('error envelope', () => {
   test('every error code maps to an HTTP status', () => {
     for (const code of ERROR_CODES) {
