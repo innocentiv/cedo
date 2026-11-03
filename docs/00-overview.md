@@ -59,10 +59,9 @@ them without being asked:
   Periodization gives a small edge in strength and none in muscle growth (Moesgaard et al., Sports
   Med 2022); training consistently matters more. A deload is the AI saving a lighter plan, prompted
   by the review's signals (#6).
-- **Offline logging.** The app needs the server to log a set. A queue of sets written offline is
-  #9, to be designed first: it conflicts with the one-session-in-progress rule, and a write the
-  server refuses would strand the sets queued after it.
-- **A native app.** The app is a web app, installable on a phone's home screen once #8 lands. Native
+- **Working offline.** A set logged without a signal is kept and sent when one returns (#9), but
+  nothing else is: starting a session, editing a plan and reading history need the server.
+- **A native app.** The app is a web app, installable on a phone's home screen. Native
   iOS and Android builds — with the server address entered at runtime, so one build serves every
   instance — are #10.
 - **Meal planning** — recipes, ingredients, shopping lists, meal prep. Will reuse the ownable/
