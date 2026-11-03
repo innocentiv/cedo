@@ -76,7 +76,14 @@ const lift = (
   sets: number,
   reps: number,
   kg: number,
-  extra: { warmups?: number; cue?: string; rest?: number; linear?: number } = {},
+  extra: {
+    warmups?: number
+    cue?: string
+    rest?: number
+    linear?: number
+    /** Reps in reserve ramping by set (ADR-0026) — the editor's rows by set. */
+    reserves?: readonly number[]
+  } = {},
 ) => ({
   exerciseId,
   restSeconds: extra.rest ?? 120,
@@ -95,7 +102,11 @@ const lift = (
       targetWeightG: kgToG(Math.round((kg * (0.4 + 0.2 * i)) / 2.5) * 2.5),
       isWarmup: true,
     })),
-    ...Array.from({ length: sets }, () => ({ targetReps: reps, targetWeightG: kgToG(kg) })),
+    ...Array.from({ length: sets }, (_, i) => ({
+      targetReps: reps,
+      targetWeightG: kgToG(kg),
+      targetReserve: extra.reserves?.[i] ?? null,
+    })),
   ],
 })
 
@@ -168,7 +179,7 @@ async function seed(): Promise<World> {
               rest: 180,
               cue: 'Brace before you unrack. Hips and shoulders rise together.',
             }),
-            lift(at('Romanian Deadlift'), 3, 8, 80),
+            lift(at('Romanian Deadlift'), 3, 8, 80, { reserves: [2, 1, 0] }),
             lift(at('Leg Press'), 3, 12, 160, { rest: 90 }),
             lift(at('Standing Calf Raise'), 4, 12, 60, { rest: 60 }),
             {
@@ -182,7 +193,21 @@ async function seed(): Promise<World> {
         {
           name: 'Upper A',
           entries: [
-            lift(at('Barbell Bench Press'), 4, 6, 85, { warmups: 2, rest: 180 }),
+            // Manual: a top set and its back-offs, written as on paper (ADR-0026).
+            {
+              ...lift(at('Barbell Bench Press'), 3, 8, 75, { warmups: 2, rest: 180 }),
+              progression: { kind: 'none' as const },
+              sets: [
+                { targetReps: 5, targetWeightG: kgToG(35), isWarmup: true },
+                { targetReps: 5, targetWeightG: kgToG(55), isWarmup: true },
+                { targetReps: 5, targetWeightG: kgToG(90), targetReserve: 1 },
+                ...Array.from({ length: 3 }, () => ({
+                  targetReps: 8,
+                  targetWeightG: kgToG(75),
+                  targetReserve: 2,
+                })),
+              ],
+            },
             lift(at('Barbell Row'), 4, 8, 70),
             lift(at('Overhead Press'), 3, 8, 50),
             {
@@ -461,6 +486,20 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await page.click('[data-testid="plan-line-0-0"]')
   await page.waitFor('plan-entry-0-0')
   await snap('06-workout-entry')
+  // A double ramping its reps in reserve by set, then Change open on it (ADR-0026).
+  const entry = async (line: string, state: string) => {
+    if (await page.shown('entry-sheet')) await page.click('[data-testid="entry-sheet-close"]')
+    await page.click(`[data-testid="plan-line-${line}"]`)
+    await page.waitFor(`plan-entry-${line}`)
+    await snap(state)
+  }
+  await entry('0-1', '06b-workout-entry-double')
+  await page.click('[data-testid="plan-entry-0-1-change"]')
+  await page.waitFor('plan-entry-0-1-change-save')
+  await snap('06c-workout-entry-change')
+  await page.click('[data-testid="plan-entry-0-1-change-cancel"]')
+  // Manual: a top set and its back-offs, a line each.
+  await entry('1-0', '06d-workout-entry-manual')
   if (await page.shown('entry-sheet')) await page.click('[data-testid="entry-sheet-close"]')
   await page.click('[data-testid="add-entry-0"]')
   await page.waitFor('exercise-picker')

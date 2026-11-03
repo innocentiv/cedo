@@ -3269,3 +3269,57 @@ test(
   },
   E2E_TIMEOUT_MS,
 )
+
+/**
+ * A target is its person's, not the plan's (ADR-0026): a reader of a coach's plan opens an entry
+ * read only — the plan said, nothing of it to change — and still sets their own next session,
+ * which leaves the coach's own as it was.
+ */
+test(
+  "a reader opens a coach's entry read only, and changes their own target",
+  async () => {
+    const athlete = unique('rdr')
+    await withApp('reader-changes-target', async (page) => {
+      const app = screens(page)
+      await app.auth.register(athlete)
+      const coach = await signUp(`${athlete}c`)
+      const squad = await coach.api.groups.create({ name: 'Squad' })
+      await coach.api.groups.addMember(squad.id, { username: athlete, role: 'reader' })
+      const [bench] = (await coach.api.exercises.list({ q: 'Bench', limit: 1 })).items
+      if (bench === undefined) throw new Error('The seeded library has no bench press')
+      const plan = await coach.api.workouts.create({ name: 'Coached', notes: null })
+      const eight = { targetReps: 8, targetWeightG: kgToG(60) }
+      await coach.api.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [
+            {
+              name: 'Press',
+              entries: [
+                {
+                  exerciseId: bench.id,
+                  progression: { kind: 'double', repRange: [8, 12], incrementG: 2500 },
+                  sets: [eight, eight, eight],
+                },
+              ],
+            },
+          ],
+        }),
+      )
+      await coach.api.workouts.transfer(plan.id, { toGroupId: squad.id })
+
+      await app.planEditor.open(plan.id)
+      const entry = app.planEditor.entry(0, 0)
+      expect(await entry.readOnly()).toBe(true)
+      expect(await entry.progressionSummary()).toContain('Climb from 8 to 12 reps')
+      expect(await entry.next()).toBe('8 × 60 kg')
+      await entry.changeReps(10)
+      await page.until(entry.next, (next) => next === '10 × 60 kg')
+
+      // Theirs alone: the coach's own next session is the plan's still.
+      const [coachs] = await coach.api.workouts.progression(plan.id)
+      expect(coachs?.suggested.reps).toBe(8)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)

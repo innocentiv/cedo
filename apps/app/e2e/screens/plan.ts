@@ -125,6 +125,11 @@ const planEntry = (page: Page, day: number, index: number) => {
         await page.keys([...text])
       }
     },
+    /** Whether it opened read only — the plan said, not edited: a reader's view. */
+    readOnly: async (): Promise<boolean> => {
+      await open()
+      return await page.exists(`${id}-rule`)
+    },
     /** The viewer's own next session, as its column reads it: `9 × 60 kg`. */
     next: async (): Promise<string | null> => {
       await open()
