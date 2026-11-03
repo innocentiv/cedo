@@ -3,7 +3,13 @@ import { closeDatabase, db } from '../client.ts'
 import { ensureDatabaseExists } from '../ensure.ts'
 import { seedMuscles } from '../seed.ts'
 import { runMigrations } from '../migrate.ts'
-import { PERF_TARGET_SET_LOGS, type PerfFixtures, countRows, loadSharedGroup } from './shape.ts'
+import {
+  PERF_TARGET_SET_LOGS,
+  type PerfFixtures,
+  countRows,
+  loadSharedGroup,
+  seedSteps,
+} from './shape.ts'
 import {
   seedBackgroundSessions,
   seedBackgroundUsers,
@@ -60,6 +66,7 @@ export async function seedPerf(): Promise<PerfFixtures> {
   // After the profiles, so the users the hot paths run as have pins too: an empty favourites
   // join is solved for free and proves nothing.
   await seedFavourites(sharedGroupId)
+  await seedSteps()
   const curator = await seedCuratedLibrary()
 
   // Without fresh statistics the planner works from defaults and chooses plans nobody in
