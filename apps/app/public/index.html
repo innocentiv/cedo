@@ -47,6 +47,19 @@
       html {
         scrollbar-color: #3a3b40 #1b1c1e;
       }
+      /* Installed on an iPhone (iOS 26), `black-translucent` draws the app under the status bar but
+         sizes the page one status bar SHORT: `100%`, `dvh` and `svh` all leave ~59pt of the body
+         showing below the tab bar, and every sheet and its scrim stop as high (#61). Only `lvh`
+         reports the whole screen. The page is the short height plus the inset it lost, capped at
+         the screen: once the page is as tall as the screen, iOS gives it the whole viewport, and
+         what is fixed to the bottom reaches it too. The inset is 0 wherever nothing drew under a
+         status bar — Android, a desktop, a Safari tab (not standalone) — so there it changes
+         nothing. */
+      @media (display-mode: standalone) {
+        html {
+          height: min(100lvh, calc(100% + env(safe-area-inset-top)));
+        }
+      }
     </style>
   </head>
 
