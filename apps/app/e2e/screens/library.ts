@@ -335,7 +335,7 @@ export const library = (page: Page) => {
       const showing = await inView(page, 'exercise-showing')
       return scope && muscle && showing
     },
-    /** Puts every filter back with the ×, which is there only while one narrows the list. */
+    /** Puts every filter back with Clear filters, under the bar only while one narrows the list. */
     clearFilters: async (): Promise<void> => {
       await page.click('[data-testid="exercise-filters-clear"]')
       await page.until(
@@ -348,5 +348,10 @@ export const library = (page: Page) => {
       await page.evaluate(
         `document.querySelector('[data-testid="exercise-filters"]').getBoundingClientRect().height`,
       ),
+    /** Whether the filters' bar is exactly as wide as the search above it: nothing beside it. */
+    filtersFullWidth: async (): Promise<boolean> =>
+      (await page.evaluate(
+        `['exercise-filters', 'exercise-search'].map((id) => document.querySelector('[data-testid="' + id + '"]').getBoundingClientRect().width).reduce((a, b) => a === b)`,
+      )) === true,
   }
 }

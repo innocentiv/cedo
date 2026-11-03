@@ -1530,10 +1530,11 @@ test(
 
 /**
  * One filter language (#52): each filter a trigger saying its value, choosing in a sheet of its own
- * — one of your groups by name, a muscle from its region — and one × putting them all back.
+ * — one of your groups by name, a muscle from its region — and Clear filters, under the bar, putting
+ * them all back.
  */
 test(
-  'the library narrows to one of your groups, or a muscle, and the × puts it back',
+  'the library narrows to one of your groups, or a muscle, and Clear filters puts it back',
   async () => {
     await withApp('library-filters', async (page) => {
       const app = screens(page)
@@ -1550,6 +1551,8 @@ test(
 
       await app.library.narrowToGroup(squad.id)
       expect(await app.library.filterValue('scope')).toBe('Squad')
+      // Clear filters is under the bar, not a control beside it taking its width.
+      expect(await app.library.filtersFullWidth()).toBe(true)
       expect(await page.until(app.library.names, (names) => names.length === 1)).toEqual([
         'Barbell Standing Calf Raise',
       ])

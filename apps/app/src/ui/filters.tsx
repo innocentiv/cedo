@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Pressable, StyleSheet, View } from 'react-native'
-import { Icon, IconButton, type IconName } from './icon.tsx'
+import { Icon, type IconName } from './icon.tsx'
 import { Sheet } from './sheet.tsx'
 import { Text } from './text.tsx'
 import { segmented } from './segmented.ts'
@@ -16,7 +16,8 @@ import { color, space, stroke } from './tokens.ts'
  * The filters of one list, as one bar of segments — the look of reps in reserve
  * (`ReserveChips`) — the width of the list: each in view, its value cut short in its own segment,
  * never the bar cut at the screen's edge, as a line of pills scrolling sideways was. `onClear`,
- * given while any filter is off its default, puts them all back, beside the bar; the search typed
+ * given while any filter is off its default, puts them all back: small words on a line under the
+ * bar, not a control beside it, so the bar keeps its width as a filter is set; the search typed
  * above them is the reader's, and is left alone.
  */
 export function FilterRow({
@@ -29,17 +30,22 @@ export function FilterRow({
   readonly testID: string
 }): React.JSX.Element {
   return (
-    <View style={styles.line}>
-      <View style={[segmented.bar, styles.bar]} testID={testID}>
+    <View style={styles.filters}>
+      <View style={segmented.bar} testID={testID}>
         {children}
       </View>
       {onClear === undefined ? null : (
-        <IconButton
-          name="close"
-          label="Clear filters"
+        <Pressable
+          accessibilityRole="button"
           onPress={onClear}
+          hitSlop={CLEAR_SLOP}
           testID={`${testID}-clear`}
-        />
+          style={({ pressed }) => [styles.clear, pressed ? styles.pressed : null]}
+        >
+          <Text variant="caption" tone="accent">
+            Clear filters
+          </Text>
+        </Pressable>
       )}
     </View>
   )
@@ -146,9 +152,13 @@ export function FilterTrigger({
   )
 }
 
+/** The words are small; what a finger needs to hit is not. */
+const CLEAR_SLOP = { top: space.sm, bottom: space.sm, left: space.sm, right: space.sm }
+
 const styles = StyleSheet.create({
-  line: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  bar: { flex: 1 },
+  filters: { gap: space.sm },
+  // At the bar's end, where the × beside it was.
+  clear: { alignSelf: 'flex-end' },
   /**
    * Each as wide as what it says, then an equal share of what is left — so a short "All" leaves room
    * for "My Equipment"; past the bar's width, each value is cut short. Each draws the line before it
