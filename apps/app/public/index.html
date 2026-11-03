@@ -40,6 +40,12 @@
         height: 100%;
         flex: 1;
       }
+      /* Every scrollbar in the app's own colours, not the browser's light one: the grey of a line
+         (`border`) on the floor (`bg`), from src/ui/tokens.ts. Kept, not hidden: on a desktop it is
+         the only cue that a column scrolls on its own (#50). Inherited, so said once. */
+      html {
+        scrollbar-color: #3a3b40 #1b1c1e;
+      }
     </style>
   </head>
 
