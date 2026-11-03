@@ -120,13 +120,18 @@ export function Screen({
     </Stack>
   )
 
+  const split = desk && columns !== undefined && beside !== null
+  // A page that is one scroll runs under the status bar, as a native one does (#61): the room the
+  // clock takes is the page's own once it scrolls. At rest the title sits just below the bar.
+  const underBar = header === undefined && scroll && !split
+
   return (
     <View
       testID={testID}
-      style={[styles.page, { paddingTop: header === undefined ? insets.top : 0 }]}
+      style={[styles.page, { paddingTop: header === undefined && !underBar ? insets.top : 0 }]}
     >
       {header}
-      {desk && columns !== undefined && beside !== null ? (
+      {split ? (
         // Two scrolls, not one: the page stays put, its title pinned above them (#50).
         <View style={styles.split}>
           {heading === null ? null : <View style={styles.heading}>{heading}</View>}
@@ -140,7 +145,11 @@ export function Screen({
         </View>
       ) : scroll ? (
         <ScrollView
-          contentContainerStyle={[styles.content, wide ? styles.wide : null]}
+          contentContainerStyle={[
+            styles.content,
+            wide ? styles.wide : null,
+            underBar && insets.top > 0 ? { paddingTop: insets.top + space.sm } : null,
+          ]}
           keyboardShouldPersistTaps="handled"
           testID="screen-scroll"
         >
@@ -160,6 +169,9 @@ export function Screen({
           {footer}
         </View>
       )}
+      {underBar && insets.top > 0 ? (
+        <View style={[styles.statusBar, { height: insets.top }]} />
+      ) : null}
     </View>
   )
 }
@@ -181,6 +193,15 @@ const styles = StyleSheet.create({
    */
   split: { ...centred, flex: 1, maxWidth: WIDE_CONTENT_MAX_WIDTH },
   heading: { paddingHorizontal: space.lg, paddingTop: space.lg },
+  /** Over what scrolls beneath the clock; a tap there reaches the page, as if it were not there. */
+  statusBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: color.statusBar,
+    pointerEvents: 'none',
+  },
   footer: {
     ...centred,
     paddingHorizontal: space.lg,
