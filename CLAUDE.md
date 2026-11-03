@@ -114,7 +114,9 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   failed after seventeen minutes; the WebView needs the session it was started from.
 - **Library behaviour that looked right and was not.** Each shipped a bug in this codebase:
   Zod 4 applies `.default()` inside `.partial()` (use `patchOf`); Drizzle's `.desc()` builds
-  `DESC NULLS LAST`, which an `ORDER BY … DESC` cannot walk (use `.desc().nullsFirst()`); Drizzle
+  `DESC NULLS LAST`, which an `ORDER BY … DESC` cannot walk (use `.desc().nullsFirst()`); Postgres
+  `now()` is when the transaction BEGAN, so a row dated `now()` under a lock it waited for can sort
+  before one written by whoever held it (use `clock_timestamp()` after the lock); Drizzle
   skips `mapWith` for SQL NULL, so it stays `null`, never `NaN`; a JS `Date` inside raw `sql`
   bypasses the column encoder and fails in the driver; `ON DELETE RESTRICT` raises SQLSTATE
   **23001**, not the 23503 everyone guesses; Drizzle drops `.offset(0)` as falsy, so it is no
