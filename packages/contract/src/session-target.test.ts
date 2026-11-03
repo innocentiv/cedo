@@ -19,6 +19,7 @@ const asked = (more: Partial<EntryTarget>): EntryTarget => ({
   limit: null,
   last: null,
   warmups: [],
+  working: [],
   ...more,
 })
 

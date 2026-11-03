@@ -72,7 +72,7 @@ function evaluate(
   readonly entry: EntryToEvaluate
   readonly suggestion: ProgressionSuggestion
   readonly limit: LoadLimit | null
-  readonly reached: SetTarget
+  readonly working: SetTarget[]
 }[] {
   const setsByEntry = groupBy(prescribed, (s) => s.entryId)
   const stepByEntry = new Map(steps.map((s) => [s.entryId, s]))
@@ -95,12 +95,8 @@ export function targetsFrom(
   loadFor: LoadFor,
   lastByExercise: ReadonlyMap<string, LoggedEffort[]>,
 ): EntryTarget[] {
-  const warmupsByEntry = groupBy(
-    prescribed.filter((s) => s.isWarmup),
-    (s) => s.entryId,
-  )
   const read = evaluate(entries, prescribed, steps, loadFor)
-  return read.map(({ entry, suggestion: s, limit, reached }) => ({
+  return read.map(({ suggestion: s, limit, working }) => ({
     entryId: s.entryId,
     prescribed: s.current,
     target: s.suggested,
@@ -108,13 +104,8 @@ export function targetsFrom(
     held: s.held,
     limit,
     last: lastByExercise.get(s.exerciseId) ?? null,
-    warmups: warmupsFor(
-      (warmupsByEntry.get(s.entryId) ?? []).map((w) => setTargetOf(w)),
-      // Unsnapped, both: snapping a 22.5 kg plan to 22 is not progress for a warm-up to follow.
-      s.current,
-      reached,
-      loadFor(entry),
-    ),
+    warmups: s.warmups,
+    working,
   }))
 }
 
@@ -130,8 +121,8 @@ function suggestForEntry(
 ): {
   readonly suggestion: ProgressionSuggestion
   readonly limit: LoadLimit | null
-  /** The target before snapping: the step's, or the plan's — what warm-ups follow. */
-  readonly reached: SetTarget
+  /** What each working set asks: the target with its own reserve, or on Manual its own numbers. */
+  readonly working: SetTarget[]
 } {
   const first = prescriptionOf({ sets: prescribed })
   const current = first === undefined ? NOTHING_PRESCRIBED : setTargetOf(first)
@@ -147,6 +138,7 @@ function suggestForEntry(
     ? loadableTarget(load, { ...latest.target, reserve: current.reserve })
     : shown
 
+  const working = prescribed.filter((s) => !s.isWarmup)
   const suggestion = {
     entryId: entry.id,
     exerciseId: entry.exerciseId,
@@ -158,9 +150,32 @@ function suggestForEntry(
     changed: !sameTarget(shown.target, reached.target),
     held: counts ? latest.held : null,
     sessionsConsidered: latest?.sessions ?? 0,
+    warmups: warmupsFor(
+      prescribed.filter((s) => s.isWarmup).map((w) => setTargetOf(w)),
+      // Unsnapped, both: snapping a 22.5 kg plan to 22 is not progress for a warm-up to follow.
+      current,
+      counts ? latest.target : current,
+      load,
+    ),
   }
-  return { suggestion, limit: reached.limit, reached: counts ? latest.target : current }
+  return { suggestion, limit: reached.limit, working: asksOf(entry, working, reached.target, load) }
 }
+
+/**
+ * What each working set asks (ADR-0026): under a rule, the target with that set's own reps in
+ * reserve; on Manual, the set's own numbers, as the athlete's equipment loads them (#36).
+ */
+const asksOf = (
+  entry: EntryToEvaluate,
+  working: readonly PrescribedSet[],
+  target: SetTarget,
+  load: ReturnType<LoadFor>,
+): SetTarget[] =>
+  working.map((s) =>
+    entry.progression.kind === 'none'
+      ? loadableTarget(load, setTargetOf(s)).target
+      : Object.assign({}, target, { reserve: s.targetReserve }),
+  )
 
 /** An entry with no working set prescribes nothing — every target null. */
 const NOTHING_PRESCRIBED: SetTarget = {

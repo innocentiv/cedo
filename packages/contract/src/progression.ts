@@ -174,6 +174,11 @@ export const ProgressionSuggestion = z.object({
   held: Held.nullable(),
   /** How many past sessions were considered. Zero means there is no history to judge from. */
   sessionsConsidered: z.int().nonnegative(),
+  /**
+   * What each warm-up asks of the next session, in set order: its weight following the target in
+   * proportion (`warmupsFor`, ADR-0026) — what the editor shows beside the plan's.
+   */
+  warmups: z.array(SetTarget),
 })
 export type ProgressionSuggestion = z.output<typeof ProgressionSuggestion>
 

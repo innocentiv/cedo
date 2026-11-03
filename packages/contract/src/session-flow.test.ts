@@ -55,6 +55,9 @@ const entry = (
 })
 
 let clock = Date.parse('2026-10-25T18:00:00Z')
+/** What the server asks of every working set alike, no warm-up asked: a rule's target. */
+const asking = (working: SetTarget) => ({ warmups: [], working: [working, working, working] })
+
 const log = (entryId: string | null, isWarmup = false): FlowLog => {
   clock += 60_000
   return {
@@ -78,18 +81,30 @@ describe("an entry's sets", () => {
     const sets = setsOf(squat, [], null, bar)
     // A 20 kg warm-up under a 25 kg bar is the bar; 40 and 100 load as written.
     expect(sets.map((s) => s.target.weightG)).toEqual([25_000, 40_000, 100_000, 100_000, 100_000])
-    expect(setsOf(squat, [], target(5, 102.5), bar).at(-1)?.target.weightG).toBe(102_500)
+    expect(setsOf(squat, [], asking(target(5, 102.5)), bar).at(-1)?.target.weightG).toBe(102_500)
   })
 
-  test('warm-ups first, each with its own target; working sets ask what the session asks', () => {
-    const sets = setsOf(squat, [], target(5, 102.5))
-    expect(sets.map((s) => [s.key, s.isWarmup, s.target.weightG])).toEqual([
-      ['w0', true, 20_000],
-      ['w1', true, 40_000],
-      ['s0', false, 102_500],
-      ['s1', false, 102_500],
-      ['s2', false, 102_500],
+  /** Each set asks what the server says of it (ADR-0026): its own warm-up, its own working set. */
+  test('warm-ups first, each as the session asks it; each working set its own ask', () => {
+    const asked = {
+      warmups: [target(5, 25), target(3, 50)],
+      working: [target(5, 102.5), target(8, 90), target(8, 90)],
+    }
+    const sets = setsOf(squat, [], asked)
+    expect(sets.map((s) => [s.key, s.isWarmup, s.target.reps, s.target.weightG])).toEqual([
+      ['w0', true, 5, 25_000],
+      ['w1', true, 3, 50_000],
+      ['s0', false, 5, 102_500],
+      ['s1', false, 8, 90_000],
+      ['s2', false, 8, 90_000],
     ])
+  })
+
+  test('a set beyond the plan asks what its last working set asked', () => {
+    const asked = { warmups: [], working: [target(5, 100), target(8, 90)] }
+    const two = entry('rdl', 1, { working: 2 })
+    const logs = [log('rdl'), log('rdl'), log('rdl')]
+    expect(setsOf(two, logs, asked).at(-1)).toMatchObject({ extra: true, target: target(8, 90) })
   })
 
   test('the nth warm-up logged is the nth warm-up, the nth working set the nth working set', () => {

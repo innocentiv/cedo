@@ -69,7 +69,14 @@ describe('what the workout shows', () => {
   ) =>
     workoutView({
       day,
-      targets: [{ entryId: 'squat', target: target(5, 102) }],
+      targets: [
+        {
+          entryId: 'squat',
+          target: target(5, 102),
+          working: [target(5, 102), target(5, 102)],
+          warmups: [],
+        },
+      ],
       sets,
       added: [],
       choices: NO_CHOICES,

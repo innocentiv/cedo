@@ -44,6 +44,12 @@ export const EntryTarget = z.object({
    * proportion (`warmupsFor`, ADR-0026) — worked out as it is read, never kept.
    */
   warmups: z.array(SetTarget),
+  /**
+   * What each working set asks, in set order: under a rule, the target with that set's own reps in
+   * reserve (ADR-0026); on Manual, the set's own numbers — a top set and its back-offs as written.
+   * Each in a weight the athlete can load (#36).
+   */
+  working: z.array(SetTarget),
 })
 export type EntryTarget = z.output<typeof EntryTarget>
 

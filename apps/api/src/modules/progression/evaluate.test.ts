@@ -155,3 +155,41 @@ describe("a session's warm-ups, against the equipment", () => {
     expect(asked?.warmups.map((w) => w.weightG)).toEqual([20_000])
   })
 })
+
+/**
+ * What a session asks of each working set (docs/08-frontend.md, the logger): under a rule, the
+ * target, each set asking its own reps in reserve (ADR-0026); on Manual, each set's own numbers —
+ * a top set and its back-offs pre-filled as written, not all as set 1.
+ */
+describe("a session's working sets, each its own", () => {
+  const ramp = [2, 1, 0].map((targetReserve) => prescribed(60_000, 8, { targetReserve }))
+
+  test("under a rule: the target, with each set's own reps in reserve", () => {
+    const [asked] = targetsFrom([entry()], ramp, [stepped(at(62_500), ramp)], () => null, new Map())
+    expect(asked?.working).toEqual(
+      [2, 1, 0].map((reserve) => Object.assign(at(62_500), { reserve })),
+    )
+  })
+
+  test("on Manual: each set's own numbers, as the equipment loads them", () => {
+    const top = [
+      prescribed(90_000, 6, { targetReserve: 1 }),
+      prescribed(80_500, 8),
+      prescribed(80_500, 8),
+    ]
+    const loadFor = (exercise: Parameters<typeof loadOf>[0]) => loadOf(exercise, DUMBBELLS, 'kg')
+    const [asked] = targetsFrom([entry({ kind: 'none' })], top, [], loadFor, new Map())
+    // 90 is past the heaviest dumbbell (30); 80.5 too — each asked as it can be loaded.
+    expect(asked?.working).toEqual([{ ...at(30_000, 6), reserve: 1 }, at(30_000), at(30_000)])
+    const [unloaded] = targetsFrom([entry({ kind: 'none' })], top, [], () => null, new Map())
+    expect(unloaded?.working).toEqual([{ ...at(90_000, 6), reserve: 1 }, at(80_500), at(80_500)])
+  })
+})
+
+/** The editor's Your next session column shows the warm-ups as the next session asks them. */
+describe('a target, as the editor reads it', () => {
+  test('carries its warm-ups, following the working target in proportion', () => {
+    expect(read(plan(), [stepped(at(75_000))])?.warmups).toEqual([at(25_000, 5)])
+    expect(read(plan(), [])?.warmups).toEqual([at(20_000, 5)])
+  })
+})
