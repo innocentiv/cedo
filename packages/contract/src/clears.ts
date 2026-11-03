@@ -3,27 +3,43 @@ import type { Held, SetAttempt, SessionAttempts, SetTarget } from './progression
 /**
  * Judging what was logged against a prescription: whether a session clears it, one judge per
  * dimension a rule advances, each over the WORKING sets alone, in set order (warm-ups dropped by
- * `working`); whether a run of sessions does (`judgeRun`); and, when not, why it was held. Shared
- * by the rules in progression.ts; not part of the contract's surface. See
- * docs/adr/0012-progression-rules.md.
+ * `working`); whether a run of sessions does (`judgeRun`); and, when not, why it was held — named
+ * by the working set that held it (ADR-0026). Shared by the rules in step.ts; not part of the
+ * contract's surface. See docs/adr/0012-progression-rules.md.
  */
 
 /** What a session did to a prescription: cleared it, or held it, and why. */
 export type Verdict = 'cleared' | Held
 
-/** Held short of the targets — the reason with nothing to add to it. */
-export const SHORT_OF_TARGETS: Held = { reason: 'targets' }
+/** What a set did, as a hold names it: every dimension said, unrecorded as null. */
+const didOf = (attempt: SetAttempt): SetTarget => ({
+  reps: attempt.reps ?? null,
+  weightG: attempt.weightG ?? null,
+  reserve: attempt.reserve ?? null,
+  durationS: attempt.durationS ?? null,
+  distanceMm: attempt.distanceMm ?? null,
+})
 
 /**
- * Every prescribed working set met `goal`. A session with fewer sets than prescribed cannot clear
+ * Every prescribed working set met `goal` — or the first that did not, held short of `asked`, with
+ * what it did, or null when it was not done. A session with fewer sets than prescribed cannot clear
  * it — logging one set of an intended three is not a promotion — and sets past them are not judged.
  */
-const everyWorkingSet = (
+function firstShort(
   session: SessionAttempts,
   workingSets: number,
+  asked: SetTarget,
   goal: (attempt: SetAttempt) => boolean,
-): boolean =>
-  session.length >= workingSets && session.slice(0, workingSets).every((attempt) => goal(attempt))
+): Held | null {
+  // No working set done at all is short at the first, however many were prescribed.
+  if (session.length === 0) return { reason: 'targets', set: 1, did: null, asked }
+  for (let i = 0; i < workingSets; i += 1) {
+    const attempt = session[i]
+    if (attempt === undefined) return { reason: 'targets', set: i + 1, did: null, asked }
+    if (!goal(attempt)) return { reason: 'targets', set: i + 1, did: didOf(attempt), asked }
+  }
+  return null
+}
 
 /**
  * Whether a working set left fewer reps in reserve than its OWN set asked (ADR-0026): effort ramps
@@ -37,15 +53,19 @@ const pastItsReserve = (attempt: SetAttempt, asked: number | null): boolean => {
 }
 
 /**
- * The fewest reps in reserve a working set left past what its own set asked — the reason a session
- * was held for effort — or null when none was ground out.
+ * The working set ground out furthest past what its own set asked — the one that left the fewest
+ * reps in reserve, the first of them on a tie — or null when none was.
  */
-const groundOut = (session: SessionAttempts, asked: readonly (number | null)[]): number | null => {
-  const past = asked.flatMap((reserve, i) => {
+function groundOut(session: SessionAttempts, asked: readonly (number | null)[]): Held | null {
+  let worst: Held | null = null
+  asked.forEach((reserve, i) => {
     const attempt = session[i]
-    return attempt !== undefined && pastItsReserve(attempt, reserve) ? [attempt.reserve ?? 0] : []
+    if (reserve === null || attempt === undefined || !pastItsReserve(attempt, reserve)) return
+    const left = attempt.reserve ?? 0
+    if (worst?.reason === 'effort' && worst.reserve <= left) return
+    worst = { reason: 'effort', set: i + 1, reserve: left, asked: reserve }
   })
-  return past.length === 0 ? null : Math.min(...past)
+  return worst
 }
 
 /**
@@ -54,7 +74,7 @@ const groundOut = (session: SessionAttempts, asked: readonly (number | null)[]):
  * working set, in set order. A missing set, an unrecorded rep count, or a lighter load fall short
  * of the targets — which outranks the effort: a session that missed its reps is told so, however
  * hard it was. The goal is its own argument: double progression asks for the top of its range, not
- * the target.
+ * the target, at the top of it.
  */
 export function judgeReps(
   session: SessionAttempts,
@@ -62,19 +82,17 @@ export function judgeReps(
   target: SetTarget,
   asked: readonly (number | null)[],
 ): Verdict {
-  if (repGoal === null) return SHORT_OF_TARGETS
-  const reached = everyWorkingSet(session, asked.length, (attempt) => {
+  const goal: SetTarget = { ...target, reps: repGoal }
+  const short = firstShort(session, asked.length, goal, (attempt) => {
     const reps = attempt.reps ?? null
-    if (reps === null || reps < repGoal) return false
+    if (repGoal === null || reps === null || reps < repGoal) return false
     if (target.weightG === null) return true
     const weight = attempt.weightG ?? null
     // Against assistance (#19) — a bodyweight target only — unrecorded is no help: past any band.
     if (target.weightG < 0) return (weight ?? 0) >= target.weightG
     return weight !== null && weight >= target.weightG
   })
-  if (!reached) return SHORT_OF_TARGETS
-  const reserve = groundOut(session, asked)
-  return reserve === null ? 'cleared' : { reason: 'effort', reserve }
+  return short ?? groundOut(session, asked) ?? 'cleared'
 }
 
 /**
@@ -87,12 +105,11 @@ export function judgeDuration(
   workingSets: number,
 ): Verdict {
   const { durationS: goal } = target
-  if (goal === null) return SHORT_OF_TARGETS
-  const held = everyWorkingSet(session, workingSets, (attempt) => {
+  const short = firstShort(session, workingSets, target, (attempt) => {
     const time = attempt.durationS ?? null
-    return time !== null && time >= goal
+    return goal !== null && time !== null && time >= goal
   })
-  return held ? 'cleared' : SHORT_OF_TARGETS
+  return short ?? 'cleared'
 }
 
 /**
@@ -107,20 +124,20 @@ export function judgeDistance(
   workingSets: number,
 ): Verdict {
   const { distanceMm: goal, durationS: goalTime } = target
-  if (goal === null) return SHORT_OF_TARGETS
-  const covered = everyWorkingSet(session, workingSets, (attempt) => {
+  const short = firstShort(session, workingSets, target, (attempt) => {
     const distance = attempt.distanceMm ?? null
-    if (distance === null || distance < goal) return false
+    if (goal === null || distance === null || distance < goal) return false
     if (goalTime === null) return true
     const time = attempt.durationS ?? null
     return time !== null && time * goal <= goalTime * distance
   })
-  return covered ? 'cleared' : SHORT_OF_TARGETS
+  return short ?? 'cleared'
 }
 
 /**
  * The most recent `count` sessions must all clear: `cleared` when they did, else the verdict of the
- * newest that did not — or null when none held it, and there are only too few of them yet.
+ * newest that did not — or null when none held it, and there are only too few of them yet. A
+ * session of nothing that counts is judged empty: short at its first set.
  */
 export function judgeRun(
   count: number,
@@ -128,8 +145,7 @@ export function judgeRun(
   judge: (session: SessionAttempts) => Verdict,
 ): Verdict | null {
   for (const session of sessions.slice(0, count)) {
-    const sets = working(session)
-    const verdict = sets === null ? SHORT_OF_TARGETS : judge(sets)
+    const verdict = judge(working(session) ?? [])
     if (verdict !== 'cleared') return verdict
   }
   return sessions.length >= count ? 'cleared' : null

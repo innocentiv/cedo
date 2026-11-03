@@ -42,7 +42,7 @@ describe('progression, against what can be loaded', () => {
       null,
     )
     expect(next.target.weightG).toBe(22_500)
-    expect(next.held).toEqual({ reason: 'targets' })
+    expect(next.held).toMatchObject({ reason: 'targets', set: 1 })
   })
 
   test('why it held is told as the rule told it (#45)', () => {
@@ -52,7 +52,7 @@ describe('progression, against what can be loaded', () => {
       dumbbells,
     )
     expect(next.target.weightG).toBe(22_000)
-    expect(next.held).toEqual({ reason: 'effort', reserve: 0 })
+    expect(next.held).toEqual({ reason: 'effort', set: 1, reserve: 0, asked: 2 })
     expect(
       nextLoadableTarget(
         { rule: linear, target: plan(22_500), workingSets: 3, sessions: sessionAt(22_000) },

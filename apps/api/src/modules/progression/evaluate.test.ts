@@ -101,7 +101,7 @@ describe('reading a target', () => {
   })
 
   test('says why the latest step held', () => {
-    const held = { reason: 'effort', reserve: 0 } as const
+    const held = { reason: 'effort', set: 1, reserve: 0, asked: 2 } as const
     expect(read(plan(), [stepped(at(60_000), plan(), { held })])?.held).toEqual(held)
   })
 

@@ -91,14 +91,27 @@ export const NO_TARGET: SetTarget = {
 }
 
 /**
- * Why a rule held a prescription (#45) — the glossary's "Held": a session short of its `targets`,
- * or one ground out past its reserve (`effort`), with the fewest reps in reserve a working set left
- * past its own. Null when the rule advanced, or had nothing to hold it for: no history, no rule,
- * nothing left to add, or a ceiling. Not a timed set, which the glossary also calls a hold.
+ * Why a rule held a prescription (#45) — the glossary's "Held" — named by the working set that held
+ * it (ADR-0026), counted from 1, so it reads as the logger says it ("held: set 3 did 7 of 10"):
+ * short of its `targets`, the first set that was, with what it `did` (null: not done) and what it
+ * was `asked`; or ground out past its own reserve (`effort`), the set that left the fewest, with
+ * the `reserve` it left and the reserve it `asked`. Null when the rule advanced, or had nothing to
+ * hold it for: no history, no rule, nothing left to add, or a ceiling. Not a timed set, which the
+ * glossary also calls a hold.
  */
 export const Held = z.discriminatedUnion('reason', [
-  z.object({ reason: z.literal('targets') }),
-  z.object({ reason: z.literal('effort'), reserve: Reserve }),
+  z.object({
+    reason: z.literal('targets'),
+    set: z.int().positive(),
+    did: SetTarget.nullable(),
+    asked: SetTarget,
+  }),
+  z.object({
+    reason: z.literal('effort'),
+    set: z.int().positive(),
+    reserve: Reserve,
+    asked: Reserve,
+  }),
 ])
 export type Held = z.output<typeof Held>
 

@@ -38,6 +38,21 @@ const timed = (seconds: number | null): SetTarget => ({
 })
 
 const DOUBLE: Progression = { kind: 'double', repRange: [8, 12], incrementG: kgToG(2.5) }
+
+/** What a set did, as a hold names it: an attempt with every dimension said, unrecorded as null. */
+const did = (attempt: SessionAttempts[number]): SetTarget => ({
+  reps: attempt.reps ?? null,
+  weightG: attempt.weightG ?? null,
+  reserve: attempt.reserve ?? null,
+  durationS: attempt.durationS ?? null,
+  distanceMm: attempt.distanceMm ?? null,
+})
+/** Held short of the targets at working set `set` (from 1): what it did — null, not done — and was asked. */
+const short = (set: number, done: SetTarget | null, asked: SetTarget) =>
+  ({ reason: 'targets', set, did: done, asked }) as const
+/** Held for effort at working set `set`: the reserve it left, and the reserve it asked. */
+const effort = (set: number, reserve: number, asked: number) =>
+  ({ reason: 'effort', set, reserve, asked }) as const
 const LINEAR: Progression = { kind: 'linear', incrementG: kgToG(2.5), afterSuccesses: 1 }
 
 describe('progress — double progression (3 sets of 8-12, +2.5kg)', () => {
@@ -269,7 +284,7 @@ describe('progress — each working set is judged against its own reserve', () =
   test('an early set ground out past its own reserve holds, though a later set asks less', () => {
     expect(judged([2, 1, 0], rated([12, 1], [12, 1], [12, 0]))).toEqual({
       target: ramp,
-      held: { reason: 'effort', reserve: 1 },
+      held: effort(1, 1, 2),
     })
   })
 
@@ -295,26 +310,34 @@ describe('progress — why a prescription held', () => {
   })
 
   test('short of the targets', () => {
-    expect(why(DOUBLE, top, all(2, 12, 12, 10))).toEqual({ reason: 'targets' })
-    expect(why(DOUBLE, top, all(2, 12, 12))).toEqual({ reason: 'targets' })
+    expect(why(DOUBLE, top, all(2, 12, 12, 10))).toEqual(
+      short(3, did({ weightG: kgToG(60), reps: 10, reserve: 2 }), top),
+    )
+    expect(why(DOUBLE, top, all(2, 12, 12))).toEqual(short(3, null, top))
   })
 
-  test('ground out past the reserve, with the fewest left', () => {
-    expect(why(DOUBLE, top, rated([12, 3], [12, 0], [12, 1]))).toEqual({
-      reason: 'effort',
-      reserve: 0,
-    })
+  test('ground out past the reserve: the set that left the fewest, and what it asked', () => {
+    expect(why(DOUBLE, top, rated([12, 3], [12, 0], [12, 1]))).toEqual(effort(2, 0, 2))
+  })
+
+  test('under double, the first set short of its reps is named, with what it did', () => {
+    const below = { ...target(9, 60), reserve: 2 }
+    expect(why(DOUBLE, below, all(2, 9, 8, 9))).toEqual(
+      short(2, did({ weightG: kgToG(60), reps: 8, reserve: 2 }), below),
+    )
   })
 
   test('short of the targets outranks the effort', () => {
-    expect(why(DOUBLE, top, all(0, 12, 12, 10))).toEqual({ reason: 'targets' })
+    expect(why(DOUBLE, top, all(0, 12, 12, 10))).toEqual(
+      short(3, did({ weightG: kgToG(60), reps: 10, reserve: 0 }), top),
+    )
   })
 
   /** It prescribed working sets and none were done — not "nothing to judge", under either rule. */
   test('a session of nothing but warm-ups is short of the targets, under either rule', () => {
     const warmups: SessionAttempts = [{ weightG: kgToG(40), reps: 5, isWarmup: true }]
-    expect(why(DOUBLE, top, warmups)).toEqual({ reason: 'targets' })
-    expect(why(LINEAR, top, warmups)).toEqual({ reason: 'targets' })
+    expect(why(DOUBLE, top, warmups)).toEqual(short(1, null, top))
+    expect(why(LINEAR, top, warmups)).toEqual(short(1, null, top))
   })
 
   test('none when it advanced, had nothing to judge, or could not move', () => {
@@ -340,11 +363,10 @@ describe('progress — why a prescription held', () => {
     const t = { ...target(5, 100), reserve: 2 }
     const at100 = (reserve: number, ...reps: number[]): SessionAttempts =>
       reps.map((r) => ({ weightG: kgToG(100), reps: r, reserve }))
-    expect(why(rule, t, at100(0, 5, 5, 5), at100(2, 5, 5, 5))).toEqual({
-      reason: 'effort',
-      reserve: 0,
-    })
-    expect(why(rule, t, at100(0, 5, 5, 4), at100(0, 5, 5, 5))).toEqual({ reason: 'targets' })
+    expect(why(rule, t, at100(0, 5, 5, 5), at100(2, 5, 5, 5))).toEqual(effort(1, 0, 2))
+    expect(why(rule, t, at100(0, 5, 5, 4), at100(0, 5, 5, 5))).toEqual(
+      short(3, did({ weightG: kgToG(100), reps: 4, reserve: 0 }), t),
+    )
     expect(why(rule, t, at100(2, 5, 5, 5), at100(0, 5, 5, 5))).toBeNull()
     expect(why(rule, t, at100(2, 5, 5, 5))).toBeNull()
   })
@@ -353,7 +375,7 @@ describe('progress — why a prescription held', () => {
     const rule: Progression = { kind: 'linear_duration', incrementS: 15, afterSuccesses: 1 }
     expect(
       progress({ rule, target: timed(60), workingSets: 1, sessions: [[{ durationS: 45 }]] }).held,
-    ).toEqual({ reason: 'targets' })
+    ).toEqual(short(1, did({ durationS: 45 }), timed(60)))
   })
 })
 

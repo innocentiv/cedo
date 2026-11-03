@@ -36,14 +36,14 @@ describe('targetLine', () => {
 
   /** #45: the one reason a prescription held that is nowhere else on the screen. */
   test('held for effort, with the reserve a set left', () => {
-    const held = asked({ held: { reason: 'effort', reserve: 0 } })
+    const held = asked({ held: { reason: 'effort', set: 3, reserve: 0, asked: 2 } })
     expect(targetLine(held, 'weight_reps', 'kg')).toBe(
       'Held at 8 × 60 kg · 2 in reserve · a recent set left 0 in reserve',
     )
   })
 
   test('short of the targets reads as prescribed: last time, beside it, shows the miss', () => {
-    const held = asked({ held: { reason: 'targets' } })
+    const held = asked({ held: { reason: 'targets', set: 3, did: at(60_000), asked: at(60_000) } })
     expect(targetLine(held, 'weight_reps', 'kg')).toBe('Prescribed 8 × 60 kg · 2 in reserve')
   })
 

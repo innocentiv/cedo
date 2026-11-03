@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import type { Progression } from './progression.ts'
-import { describeProgression } from './progression-words.ts'
+import type { Held, Progression, SetTarget } from './progression.ts'
+import { describeProgression, heldWords } from './progression-words.ts'
 import { formatWeight, kgToG } from './units.ts'
 
 const LINEAR: Progression = { kind: 'linear', incrementG: kgToG(2.5), afterSuccesses: 1 }
@@ -35,5 +35,60 @@ describe('describeProgression', () => {
     const unknown: Progression = { kind: 'none' }
     Reflect.set(unknown, 'kind', 'percentage')
     expect(() => describeProgression(unknown, kg)).toThrow('Unhandled progression kind')
+  })
+})
+
+const effort = (fields: Partial<SetTarget>): SetTarget => ({
+  reps: null,
+  weightG: null,
+  reserve: null,
+  durationS: null,
+  distanceMm: null,
+  ...fields,
+})
+
+/**
+ * Why a step held, per set (ADR-0026) — the words `workout_progression` says and the logger says
+ * beside the target, so the AI and the athlete read a hold alike.
+ */
+describe('heldWords', () => {
+  const short = (set: number, did: SetTarget | null, asked: SetTarget): Held => ({
+    reason: 'targets',
+    set,
+    did,
+    asked,
+  })
+
+  test('short of the reps alone: the reps it did, of those asked', () => {
+    const held = short(
+      3,
+      effort({ reps: 7, weightG: 55_000, reserve: 2 }),
+      effort({ reps: 10, weightG: 55_000, reserve: 2 }),
+    )
+    expect(heldWords(held, 'weight_reps', 'kg')).toBe('held: set 3 did 7 of 10')
+  })
+
+  test('short of anything else: what it did, of what it was asked, in full', () => {
+    const lighter = short(
+      2,
+      effort({ reps: 8, weightG: 50_000 }),
+      effort({ reps: 8, weightG: 55_000 }),
+    )
+    expect(heldWords(lighter, 'weight_reps', 'kg')).toBe('held: set 2 did 8 × 50 kg of 8 × 55 kg')
+    const plank = short(1, effort({ durationS: 45 }), effort({ durationS: 60 }))
+    expect(heldWords(plank, 'duration', 'kg')).toBe('held: set 1 did 0:45 of 1:00')
+  })
+
+  test('a set not done says so', () => {
+    expect(heldWords(short(3, null, effort({ reps: 10 })), 'weight_reps', 'kg')).toBe(
+      'held: set 3 not done',
+    )
+  })
+
+  test('ground out past its reserve: what it left, and what it asked', () => {
+    const held: Held = { reason: 'effort', set: 3, reserve: 0, asked: 2 }
+    expect(heldWords(held, 'weight_reps', 'kg')).toBe(
+      'held for effort: set 3 left 0 in reserve, asked 2',
+    )
   })
 })

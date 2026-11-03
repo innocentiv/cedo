@@ -1,11 +1,4 @@
-import {
-  SHORT_OF_TARGETS,
-  type Verdict,
-  judgeDistance,
-  judgeDuration,
-  judgeReps,
-  working,
-} from './clears.ts'
+import { type Verdict, judgeDistance, judgeDuration, judgeReps, working } from './clears.ts'
 import { type Held, type Progression, type SessionAttempts, SetTarget } from './progression.ts'
 import { unhandledKind } from './stored-rule.ts'
 
@@ -127,11 +120,9 @@ const reservesOf = ({ target, workingSets, reserves }: StepInput): (number | nul
     reserves === undefined ? target.reserve : (reserves[i] ?? null),
   )
 
-/** The session's verdict: short of the targets when it did no working set at all. */
-function judged(input: StepInput, judge: (sets: SessionAttempts) => Verdict): Verdict {
-  const sets = working(input.session)
-  return sets === null ? SHORT_OF_TARGETS : judge(sets)
-}
+/** The session's verdict: short at its first set when it did no working set at all. */
+const judged = (input: StepInput, judge: (sets: SessionAttempts) => Verdict): Verdict =>
+  judge(working(input.session) ?? [])
 
 /**
  * A linear rule's step: held, with its reason, and the streak broken; cleared, one more in the

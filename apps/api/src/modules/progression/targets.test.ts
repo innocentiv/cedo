@@ -144,7 +144,7 @@ describe('a prescribed reserve, as the logger is told it', () => {
     const target = await targetOf(p)
     expect(target?.target.weightG).toBe(60_000)
     expect(target?.changed).toBe(false)
-    expect(target?.held).toEqual({ reason: 'effort', reserve: 0 })
+    expect(target?.held).toEqual({ reason: 'effort', set: 1, reserve: 0, asked: 2 })
   })
 
   test('a session within it advances, and nothing held it', async () => {
