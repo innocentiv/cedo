@@ -14,44 +14,44 @@ import {
  * counting the reps left in reserve as reps done (Helms et al., Front Physiol 2018).
  */
 describe('the estimated max of a set', () => {
-  const set = (weightG: number | null, reps: number | null, rpe: number | null = null) => ({
+  const set = (weightG: number | null, reps: number | null, reserve: number | null = null) => ({
     weightG,
     reps,
-    rpe,
+    reserve,
   })
 
-  test('is weight × (1 + reps / 30), with no RPE said', () => {
+  test('is weight × (1 + reps / 30), with no reserve said', () => {
     expect(estimatedMax(set(60_000, 5), 'weight_reps')).toBe(70_000)
   })
 
   test('counts the reps left in reserve as reps done', () => {
-    // RPE 8 leaves 2: as if 7 reps — 60 × (1 + 7/30) = 74 kg.
-    expect(estimatedMax(set(60_000, 5, 8), 'weight_reps')).toBe(74_000)
-    // At RPE 10, nothing in reserve: the same as not saying.
-    expect(estimatedMax(set(60_000, 5, 10), 'weight_reps')).toBe(70_000)
+    // 2 in reserve: as if 7 reps — 60 × (1 + 7/30) = 74 kg.
+    expect(estimatedMax(set(60_000, 5, 2), 'weight_reps')).toBe(74_000)
+    // None in reserve: the same as not saying.
+    expect(estimatedMax(set(60_000, 5, 0), 'weight_reps')).toBe(70_000)
   })
 
   /** An estimate, not a measurement: said to the nearest half kilogram, never to the gram. */
   test('is rounded to the nearest half kilogram', () => {
-    // RPE 9 leaves 1, as if 8: 62.5 × (1 + 8/30) = 79.17 kg.
-    expect(estimatedMax(set(62_500, 7, 9), 'weight_reps')).toBe(79_000)
+    // 1 in reserve, as if 8: 62.5 × (1 + 8/30) = 79.17 kg.
+    expect(estimatedMax(set(62_500, 7, 1), 'weight_reps')).toBe(79_000)
     // 55 × (1 + 5/30) = 64.17 kg; 62.5 × (1 + 5/30) = 72.92 kg.
     expect(estimatedMax(set(55_000, 5), 'weight_reps')).toBe(64_000)
     expect(estimatedMax(set(62_500, 5), 'weight_reps')).toBe(73_000)
     expect(estimatedMax(set(60_500, 5), 'weight_reps')).toBe(70_500)
   })
 
-  /** A single at RPE 10 is a one-rep max lifted, not estimated: Epley would add 3%. */
+  /** A single with none in reserve is a one-rep max lifted, not estimated: Epley would add 3%. */
   test('of a true single is the weight lifted', () => {
     expect(estimatedMax(set(100_000, 1), 'weight_reps')).toBe(100_000)
-    expect(estimatedMax(set(100_000, 1, 10), 'weight_reps')).toBe(100_000)
+    expect(estimatedMax(set(100_000, 1, 0), 'weight_reps')).toBe(100_000)
     // One left in reserve: as if two reps.
-    expect(estimatedMax(set(90_000, 1, 9), 'weight_reps')).toBe(96_000)
+    expect(estimatedMax(set(90_000, 1, 1), 'weight_reps')).toBe(96_000)
   })
 
   /** The reserve counts as reps done, so it counts toward the dozen too. */
   test(`is none past ${MAX_ESTIMATE_REPS} reps done and in reserve`, () => {
-    expect(estimatedMax(set(40_000, 10, 8), 'weight_reps')).not.toBeNull()
+    expect(estimatedMax(set(40_000, 10, 2), 'weight_reps')).not.toBeNull()
     expect(estimatedMax(set(40_000, 12, 5), 'weight_reps')).toBeNull()
   })
 
@@ -78,7 +78,7 @@ describe("an exercise's trend", () => {
     setIndex: 0,
     weightG,
     reps,
-    rpe: null,
+    reserve: null,
     durationS: null,
     distanceMm: null,
     isWarmup: false,

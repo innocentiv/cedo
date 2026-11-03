@@ -7,13 +7,13 @@ import { type LoggedWork, isPersonalBest, personalBestsIn } from './personal-bes
 const lift = (
   reps: number,
   kg: number,
-  rpe: number | null = null,
-): Effort & { rpe: number | null } => ({
+  reserve: number | null = null,
+): Effort & { reserve: number | null } => ({
   reps,
   weightG: kg * 1000,
   durationS: null,
   distanceMm: null,
-  rpe,
+  reserve,
 })
 
 describe('a weight lift, by estimated max from what was lifted', () => {
@@ -28,8 +28,8 @@ describe('a weight lift, by estimated max from what was lifted', () => {
   })
 
   test('the reserve a set was rated with plays no part', () => {
-    // Rated 8 — two in reserve — it would estimate as seven reps, over the earlier 5 × 100.
-    expect(isPersonalBest(lift(5, 100, 8), [lift(5, 100)], 'weight_reps')).toBe(false)
+    // Two in reserve, counted, it would estimate as seven reps, over the earlier 5 × 100.
+    expect(isPersonalBest(lift(5, 100, 2), [lift(5, 100)], 'weight_reps')).toBe(false)
   })
 
   test('a set beyond the estimate’s range neither makes a best nor blocks one', () => {

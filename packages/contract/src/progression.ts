@@ -9,7 +9,7 @@ import {
 } from './clears.ts'
 import { TrackingMode } from './exercise.ts'
 import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
-import { Rpe } from './rpe.ts'
+import { Reserve } from './rpe.ts'
 import { unhandledKind } from './stored-rule.ts'
 
 /**
@@ -83,7 +83,8 @@ export const NO_PROGRESSION: Progression = { kind: 'none' }
 export const SetTarget = z.object({
   reps: TargetReps.nullable(),
   weightG: TargetWeightG.nullable(),
-  rpe: Rpe.nullable(),
+  /** The fewest reps in reserve the set must leave: a floor, not an aim (#45, ADR-0027). */
+  reserve: Reserve.nullable(),
   durationS: TargetDurationS.nullable(),
   distanceMm: TargetDistanceMm.nullable(),
 })
@@ -93,20 +94,20 @@ export type SetTarget = z.output<typeof SetTarget>
 export const NO_TARGET: SetTarget = {
   reps: null,
   weightG: null,
-  rpe: null,
+  reserve: null,
   durationS: null,
   distanceMm: null,
 }
 
 /**
  * Why a rule held a prescription (#45) — the glossary's "Held": a session short of its `targets`,
- * or one ground out past its RPE (`effort`), with the hardest working set's RPE as it was rated.
- * Null when the rule advanced, or had nothing to hold it for: no history, no rule, nothing left to
- * add, or a ceiling. Not a timed set, which the glossary also calls a hold.
+ * or one ground out past its reserve (`effort`), with the fewest reps in reserve a working set left
+ * past its own. Null when the rule advanced, or had nothing to hold it for: no history, no rule,
+ * nothing left to add, or a ceiling. Not a timed set, which the glossary also calls a hold.
  */
 export const Held = z.discriminatedUnion('reason', [
   z.object({ reason: z.literal('targets') }),
-  z.object({ reason: z.literal('effort'), rpe: Rpe }),
+  z.object({ reason: z.literal('effort'), reserve: Reserve }),
 ])
 export type Held = z.output<typeof Held>
 
@@ -139,8 +140,8 @@ export interface SetAttempt {
   readonly reps?: number | null
   readonly durationS?: number | null
   readonly distanceMm?: number | null
-  /** How hard it was. Judged against a prescribed RPE, its ceiling (#45). */
-  readonly rpe?: number | null
+  /** How many reps it had left. Judged against the reserve its set asked, a floor (#45). */
+  readonly reserve?: number | null
   /** Warm-ups are excluded from progression entirely. See docs/adr/0012-progression-rules.md. */
   readonly isWarmup?: boolean
 }
@@ -155,10 +156,10 @@ export interface ProgressionInput {
   /** How many WORKING sets the entry prescribes. Warm-ups do not count. */
   readonly workingSets: number
   /**
-   * Each working set's own prescribed RPE, in set order (ADR-0026: effort ramps across sets, and
-   * each set is judged against its own). Omitted, every working set asks the target's.
+   * The reps in reserve each working set asks, in set order (ADR-0026: effort ramps across sets,
+   * and each set is judged against its own). Omitted, every working set asks the target's.
    */
-  readonly ceilings?: readonly (number | null)[]
+  readonly reserves?: readonly (number | null)[]
   /** Past sessions for this entry, MOST RECENT FIRST. */
   readonly sessions: readonly SessionAttempts[]
 }
@@ -209,17 +210,17 @@ function advance(input: ProgressionInput): Progressed {
 
 type RuleOf<K extends Progression['kind']> = Extract<Progression, { kind: K }>
 
-/** The RPE each working set asks, in set order: its own, or — not given — the target's. */
-const ceilingsOf = ({ target, workingSets, ceilings }: ProgressionInput): (number | null)[] =>
+/** The reserve each working set asks, in set order: its own, or — not given — the target's. */
+const reservesOf = ({ target, workingSets, reserves }: ProgressionInput): (number | null)[] =>
   Array.from({ length: workingSets }, (_, i) =>
-    ceilings === undefined ? target.rpe : (ceilings[i] ?? null),
+    reserves === undefined ? target.reserve : (reserves[i] ?? null),
   )
 
 function advanceWeight(rule: RuleOf<'linear'>, input: ProgressionInput): Progressed {
   const { target, sessions } = input
-  const ceilings = ceilingsOf(input)
+  const reserves = reservesOf(input)
   const run = judgeRun(rule.afterSuccesses, sessions, (s) =>
-    judgeReps(s, target.reps, target, ceilings),
+    judgeReps(s, target.reps, target, reserves),
   )
   if (run !== 'cleared') return { target, held: run }
   if (target.weightG === null) return unheld(target)
@@ -266,7 +267,7 @@ function advanceDouble(rule: RuleOf<'double'>, input: ProgressionInput): Progres
 
   // Every working set asked for the top of the range when at it, else the current target.
   const goal = atTop ? maxReps : currentReps
-  const verdict = judgeReps(last, goal, target, ceilingsOf(input))
+  const verdict = judgeReps(last, goal, target, reservesOf(input))
   if (verdict !== 'cleared') return { target, held: verdict }
 
   // Cleared the top of the range: add weight, restart at the bottom.

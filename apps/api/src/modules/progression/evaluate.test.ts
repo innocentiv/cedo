@@ -32,7 +32,7 @@ const prescribed = (weightG: number, reps: number, isWarmup = false): Prescribed
   entryId: 'bench',
   targetReps: reps,
   targetWeightG: weightG,
-  targetRpe: null,
+  targetReserve: null,
   targetDurationS: null,
   targetDistanceMm: null,
   isWarmup,
@@ -50,7 +50,7 @@ const logged = (
   reps,
   durationS: null,
   distanceMm: null,
-  rpe: null,
+  reserve: null,
   isWarmup: false,
   ...more,
 })
@@ -93,25 +93,25 @@ describe('suggesting the next prescription', () => {
     expect(suggestion?.current).toMatchObject({ weightG: 60_000, reps: 8 })
   })
 
-  /** A logged RPE reaches the rule (#45), and the suggestion says what held it. */
-  test('a session ground out past the prescribed RPE holds, for effort', () => {
-    const plan = threeWorkingAt60.map((s) => ({ ...s, targetRpe: 8 }))
-    const ground = [1, 2, 3].map(() => logged('monday', 60_000, 8, { rpe: 10 }))
+  /** A logged reserve reaches the rule (#45), and the suggestion says what held it. */
+  test('a session ground out past the prescribed reserve holds, for effort', () => {
+    const plan = threeWorkingAt60.map((s) => ({ ...s, targetReserve: 2 }))
+    const ground = [1, 2, 3].map(() => logged('monday', 60_000, 8, { reserve: 0 }))
     const [suggestion] = suggestFor([entry(LINEAR)], plan, ground)
     expect(suggestion?.changed).toBe(false)
-    expect(suggestion?.held).toEqual({ reason: 'effort', rpe: 10 })
+    expect(suggestion?.held).toEqual({ reason: 'effort', reserve: 0 })
 
     const [missed] = suggestFor([entry(LINEAR)], plan, [logged('monday', 60_000, 8)])
     expect(missed?.held).toEqual({ reason: 'targets' })
   })
 
   /**
-   * Each working set's own RPE reaches the rule (ADR-0026): a plan whose last set may go to failure
+   * Each working set's own reserve reaches the rule (ADR-0026): a plan whose last set may go to failure
    * was judged against set 1's, and held for effort every session.
    */
   test('a ramp to failure done as prescribed advances', () => {
-    const plan = threeWorkingAt60.map((s, i) => ({ ...s, targetRpe: [8, 9, 10][i] ?? null }))
-    const ramp = [8, 9, 10].map((rpe) => logged('monday', 60_000, 8, { rpe }))
+    const plan = threeWorkingAt60.map((s, i) => ({ ...s, targetReserve: [2, 1, 0][i] ?? null }))
+    const ramp = [2, 1, 0].map((reserve) => logged('monday', 60_000, 8, { reserve }))
     const [suggestion] = suggestFor([entry(LINEAR)], plan, ramp)
     expect(suggestion?.held).toBeNull()
     expect(suggestion?.suggested).toMatchObject({ weightG: 62_500, reps: 8 })
@@ -152,7 +152,7 @@ describe('suggesting the next prescription', () => {
     expect(suggestions[0]?.current).toEqual({
       reps: null,
       weightG: null,
-      rpe: null,
+      reserve: null,
       durationS: null,
       distanceMm: null,
     })

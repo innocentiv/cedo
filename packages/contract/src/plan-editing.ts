@@ -122,7 +122,7 @@ export const newEntry = (exercise: {
   sets: Array.from({ length: 3 }, () => ({
     targetReps: tracks(exercise.tracking, 'reps') ? 8 : null,
     targetWeightG: null,
-    targetRpe: null,
+    targetReserve: null,
     targetDurationS: tracks(exercise.tracking, 'duration') ? 30 : null,
     targetDistanceMm: tracks(exercise.tracking, 'distance') ? 100_000 : null,
     isWarmup: false,
@@ -166,7 +166,7 @@ export const setCounts = (entry: WorkoutEntryInput): Record<SetKind, number> => 
 const UNPRESCRIBED: WorkoutSetInput = {
   targetReps: null,
   targetWeightG: null,
-  targetRpe: null,
+  targetReserve: null,
   targetDurationS: null,
   targetDistanceMm: null,
   isWarmup: false,
@@ -257,7 +257,7 @@ export function planIssues(
  */
 const FIELD_NAMES: Readonly<Record<string, string>> = {
   ...Object.fromEntries(Object.values(DIMENSION_FIELDS).map((f) => [f.targetKey, f.dimension])),
-  targetRpe: 'RPE',
+  targetReserve: 'reps in reserve',
   name: 'name',
   sets: 'sets',
   entries: 'exercises',

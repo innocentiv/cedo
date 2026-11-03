@@ -562,21 +562,22 @@ describe('training review', () => {
   })
 
   /** How hard each set was is half of what it says: the AI reads it as it logs it. */
-  test('history carries each set’s RPE', async () => {
+  test('history carries each set’s reps in reserve, as the app says them', async () => {
     const pat = await mintPat(alice)
     const exerciseId = await createExercise(pat, 'Test Bench', 'pectoralis_major')
     await callTool(pat, 'session_log', {
       sets: [
-        { exerciseId, weightG: 60_000, reps: 5, rpe: 9 },
-        { exerciseId, weightG: 60_000, reps: 5, rpe: 8 },
+        { exerciseId, weightG: 60_000, reps: 5, reserve: 1 },
+        { exerciseId, weightG: 60_000, reps: 5, reserve: 2 },
         { exerciseId, weightG: 60_000, reps: 5 },
       ],
     })
 
     const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
-    // "8", not "8.0": a numeric read back as a string, unconverted, would say so.
-    expect(history).toContain('5 × 60 kg @ RPE 9, 5 × 60 kg @ RPE 8, 5 × 60 kg')
-    // The session's best estimated max: 5 reps at RPE 8 leave 2, as if 7 — 60 × (1 + 7/30).
+    // "2", not "2.0": a numeric read back as a string, unconverted, would say so.
+    expect(history).toContain('5 × 60 kg · 1 in reserve, 5 × 60 kg · 2 in reserve, 5 × 60 kg')
+    expect(history).not.toContain('RPE')
+    // The session's best estimated max: 5 reps with 2 in reserve, as if 7 — 60 × (1 + 7/30).
     expect(history).toContain('· estimated max 74 kg')
   })
 
@@ -619,17 +620,17 @@ describe('training review', () => {
     const pat = await mintPat(alice)
     const bench = await createExercise(pat, 'Test Bench', 'pectoralis_major')
     const row = await createExercise(pat, 'Test Row', 'latissimus_dorsi')
-    for (const [benchKg, rowRpe] of [
-      [66, 7],
-      [63, 7],
-      [60, 9],
-      [57, 9],
+    for (const [benchKg, rowReserve] of [
+      [66, 3],
+      [63, 3],
+      [60, 1],
+      [57, 1],
     ] as const) {
       // oxlint-disable-next-line no-await-in-loop -- sessions in order: what is under test.
       await callTool(pat, 'session_log', {
         sets: [
           { exerciseId: bench, weightG: benchKg * 1000, reps: 5 },
-          { exerciseId: row, weightG: 50_000, reps: 8, rpe: rowRpe },
+          { exerciseId: row, weightG: 50_000, reps: 8, reserve: rowReserve },
         ],
       })
     }
@@ -641,9 +642,9 @@ describe('training review', () => {
     )
     expect(review).toContain('Test Bench: down in each of the latest 3 sessions, 77 kg → 66.5 kg')
     expect(review).toContain(
-      'Effort drift (RPE up 1+ at the same set, in each of the latest 2 sessions):',
+      'Effort drift (reps in reserve down 1+ at the same set, in each of the latest 2 sessions):',
     )
-    expect(review).toContain('Test Row at 8 × 50 kg: average RPE 7 → 9')
+    expect(review).toContain('Test Row at 8 × 50 kg: average 3 → 1 in reserve')
   })
 
   /** Every effort reaches the AI as the app shows it. See `stalled.test.ts` for the history. */
@@ -666,7 +667,7 @@ describe('training review', () => {
           { exerciseId: pullUp, weightG: 20_000, reps: 6 },
           { exerciseId: plank, durationS: 60 },
           { exerciseId: squat, weightG: 100_000 + i * 2500, reps: 5 },
-          { exerciseId: bench, weightG: 60_000, reps: 5, rpe: 8 },
+          { exerciseId: bench, weightG: 60_000, reps: 5, reserve: 2 },
         ],
       })
     }
@@ -676,7 +677,7 @@ describe('training review', () => {
     expect(review).toContain('Weighted Pull-up: 3 sessions at 6 × bodyweight +20 kg')
     expect(review).toContain('Plank: 3 sessions at 1:00')
     // A weight lift's stall says what it is worth: the estimated max of the set it is stuck at —
-    // its reserve counted, as exercise_history counts it: RPE 8 leaves 2, so 60 × (1 + 7/30).
+    // its reserve counted, as exercise_history counts it: 2 in reserve, so 60 × (1 + 7/30).
     expect(review).toContain('Test Bench: 3 sessions at 5 × 60 kg (estimated max 74 kg)')
     const history = textOf((await callTool(pat, 'exercise_history', { exerciseId: bench })).body)
     expect(history).toContain('· estimated max 74 kg')
@@ -883,13 +884,13 @@ describe('a past set corrected', () => {
 })
 
 /**
- * A prescribed RPE is a ceiling (#45). The AI is told why a rule held — or it reads a prescription
- * held for effort as a stall, and deloads a lift that only needed to be done at the effort
- * prescribed.
+ * A prescribed reserve is a floor (#45). The AI is told why a rule held — or it reads a
+ * prescription held for effort as a stall, and deloads a lift that only needed to be done at the
+ * effort prescribed.
  */
 describe('workout_progression says why it held', () => {
-  /** A bench planned at 60 kg for three sets of eight at RPE 8, trained once at `rpe`. */
-  async function trainedAt(rpe: number | null, done: readonly number[] = [8, 8, 8]) {
+  /** A bench planned at 60 kg for three sets of eight, 2 in reserve, trained once at `reserve`. */
+  async function trainedAt(reserve: number | null, done: readonly number[] = [8, 8, 8]) {
     const bench = expectContract(
       Exercise,
       await post(alice, '/exercises', {
@@ -898,7 +899,7 @@ describe('workout_progression says why it held', () => {
       }),
     )
     const workout = expectContract(Workout, await post(alice, '/workouts', { name: 'Push' }))
-    const set = { targetReps: 8, targetWeightG: 60_000, targetRpe: 8 }
+    const set = { targetReps: 8, targetWeightG: 60_000, targetReserve: 2 }
     const plan = expectContract(
       Workout,
       await post(
@@ -933,7 +934,7 @@ describe('workout_progression says why it held', () => {
         entryId,
         weightG: 60_000,
         reps,
-        rpe,
+        reserve,
       })
     }
     await post(alice, `/sessions/${session.id}`, { endedAt: new Date().toISOString() }, 'PATCH')
@@ -943,21 +944,21 @@ describe('workout_progression says why it held', () => {
     return textOf(result.body)
   }
 
-  test('a session ground out past the RPE holds, for effort', async () => {
-    expect(await trainedAt(10)).toBe(
-      'Bench: hold at 8 × 60 kg @ RPE 8 — held for effort: a working set at RPE 10, past RPE 8  (linear, from 1 session of history)',
+  test('a session ground out past the reserve holds, for effort', async () => {
+    expect(await trainedAt(0)).toBe(
+      'Bench: hold at 8 × 60 kg · 2 in reserve — held for effort: a working set left 0 in reserve, fewer than it asked  (linear, from 1 session of history)',
     )
   })
 
   test('a session short of its reps holds, and says so', async () => {
-    expect(await trainedAt(8, [8, 8, 6])).toBe(
-      'Bench: hold at 8 × 60 kg @ RPE 8 — held: short of the targets  (linear, from 1 session of history)',
+    expect(await trainedAt(2, [8, 8, 6])).toBe(
+      'Bench: hold at 8 × 60 kg · 2 in reserve — held: short of the targets  (linear, from 1 session of history)',
     )
   })
 
-  test('a session within it advances, with its ceiling', async () => {
-    expect(await trainedAt(8)).toBe(
-      'Bench: 8 × 60 kg @ RPE 8 -> 8 × 62.5 kg @ RPE 8  (linear, from 1 session of history)',
+  test('a session within it advances, with its floor', async () => {
+    expect(await trainedAt(2)).toBe(
+      'Bench: 8 × 60 kg · 2 in reserve -> 8 × 62.5 kg · 2 in reserve  (linear, from 1 session of history)',
     )
   })
 })
@@ -1046,30 +1047,31 @@ describe('editing a plan', () => {
     )
     const workout = expectContract(
       Workout,
-      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'RPE' }) }))
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Pull' }) }))
         .body,
     )
-    const entry = (targetRpe: number) => ({
+    const entry = (targetReserve: number) => ({
       exerciseId,
       cue: 'Pause at the chest',
-      sets: [{ targetReps: 5, targetRpe }],
+      sets: [{ targetReps: 5, targetReserve }],
     })
     const half = await callTool(pat, 'workout_save_plan', {
       workoutId: workout.id,
-      days: [{ name: 'Day', entries: [entry(8.5), entry(8)] }],
+      days: [{ name: 'Day', entries: [entry(1.5), entry(2)] }],
     })
     expect(JSON.stringify(half.body)).toContain('Reps in reserve are whole, none to five')
     await callTool(pat, 'workout_save_plan', {
       workoutId: workout.id,
-      days: [{ name: 'Day', entries: [entry(9), entry(8)] }],
+      days: [{ name: 'Day', entries: [entry(1), entry(2)] }],
     })
 
     const outline = textOf((await callTool(pat, 'workout_get', { workoutId: workout.id })).body)
-    expect(outline).toContain('@ RPE 9')
+    expect(outline).toContain('work: 5 reps · 1 in reserve')
     // Written by the AI for the athlete, and read back as written.
     expect(outline).toContain('cue: Pause at the chest')
-    // A whole RPE reads whole: "8.0" would be a numeric read back as a string, unconverted.
-    expect(outline).toMatch(/@ RPE 8(?![.\d])/u)
+    // Whole reads whole: "2.0" would be a numeric read back as a string, unconverted.
+    expect(outline).toMatch(/· 2 in reserve(?![.\d])/u)
+    expect(outline).not.toContain('RPE')
   })
 
   /**

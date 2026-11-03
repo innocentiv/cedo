@@ -43,9 +43,9 @@ export function PrescriptionFields({
       </Stack>
       <ReserveChips
         label="Reps to leave in reserve"
-        rpe={first?.targetRpe ?? null}
-        onChange={(targetRpe) => {
-          onChange(prescribe(entry, { targetRpe }))
+        reserve={first?.targetReserve ?? null}
+        onChange={(targetReserve) => {
+          onChange(prescribe(entry, { targetReserve }))
         }}
         testID={`${testID}-reserve`}
       />

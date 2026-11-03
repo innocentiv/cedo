@@ -268,7 +268,7 @@ describe('a plan entry is held to its progression rule', () => {
 
   test('reps in reserve may differ from set to set, and a manual entry may differ in anything', () => {
     expect(
-      issues(double(8, 12), [working(8, { targetRpe: 8 }), working(8, { targetRpe: 10 })]),
+      issues(double(8, 12), [working(8, { targetReserve: 2 }), working(8, { targetReserve: 0 })]),
     ).toEqual([])
     expect(issues({ kind: 'none' }, [working(6, { targetWeightG: 90_000 }), working(8)])).toEqual(
       [],

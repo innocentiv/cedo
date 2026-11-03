@@ -145,7 +145,7 @@ test('a set heavy enough to overflow int4 does not break the review', async () =
     entryId: null,
     weightG: 500_000,
     reps: 50,
-    rpe: null,
+    reserve: null,
     durationS: null,
     distanceMm: null,
     isWarmup: false,

@@ -2,10 +2,10 @@ import { describe, expect, test } from 'bun:test'
 import type { SetTarget } from './progression.ts'
 import { type EntryTarget, targetLine } from './session-target.ts'
 
-const at = (weightG: number, rpe: number | null = 8): SetTarget => ({
+const at = (weightG: number, reserve: number | null = 2): SetTarget => ({
   reps: 8,
   weightG,
-  rpe,
+  reserve,
   durationS: null,
   distanceMm: null,
 })
@@ -35,7 +35,7 @@ describe('targetLine', () => {
 
   /** #45: the one reason a prescription held that is nowhere else on the screen. */
   test('held for effort, with the reserve a set left', () => {
-    const held = asked({ held: { reason: 'effort', rpe: 10 } })
+    const held = asked({ held: { reason: 'effort', reserve: 0 } })
     expect(targetLine(held, 'weight_reps', 'kg')).toBe(
       'Held at 8 × 60 kg · 2 in reserve · a recent set left 0 in reserve',
     )

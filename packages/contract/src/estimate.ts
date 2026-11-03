@@ -1,14 +1,13 @@
 import { type Effort, formatEffort, topSet } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
 import type { ExerciseHistory } from './history.ts'
-import { reserveOf } from './rpe.ts'
 import { type WeightUnit, formatWeight, roundToIncrement } from './units.ts'
 
 /**
  * Estimated max (GLOSSARY.md): the most weight a set suggests could be lifted once, from its
  * weight, its reps and the reps it left in reserve — so sets of different rep counts compare.
  * Epley's formula, counting the reserve as reps done (Helms et al., Front Physiol 2018; Hickmott et
- * al., Sports Med Open 2022). With no RPE said, nothing is counted in reserve.
+ * al., Sports Med Open 2022). With no reserve said, nothing is counted in reserve.
  */
 
 /** Past a dozen reps the formula stops meaning a single lift: such a set estimates nothing. */
@@ -29,16 +28,16 @@ export function estimatedMax(
   set: {
     readonly weightG: number | null
     readonly reps: number | null
-    readonly rpe: number | null
+    readonly reserve: number | null
   },
   tracking: TrackingMode,
 ): number | null {
-  const { weightG, reps, rpe } = set
+  const { weightG, reps, reserve } = set
   // Not positive: no load to estimate from — and a negative one is assistance left behind by an
   // exercise whose mode changed from bodyweight (#19), never a max.
   if (tracking !== 'weight_reps' || weightG === null || weightG <= 0) return null
   if (reps === null || reps < 1) return null
-  const done = reps + (rpe === null ? 0 : reserveOf(rpe))
+  const done = reps + (reserve ?? 0)
   if (done > MAX_ESTIMATE_REPS) return null
   return done === 1 ? weightG : roundToIncrement(weightG * (1 + done / 30), ESTIMATE_STEP_G)
 }

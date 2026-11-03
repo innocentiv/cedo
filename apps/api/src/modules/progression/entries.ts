@@ -77,7 +77,7 @@ async function loadLogs(caller: Caller, entryIds: string[], before: Date | null)
       reps: ranked.reps,
       durationS: ranked.durationS,
       distanceMm: ranked.distanceMm,
-      rpe: ranked.rpe,
+      reserve: ranked.reserve,
       startedAt: ranked.startedAt,
     })
     .from(ranked)
@@ -104,7 +104,7 @@ function rankedLogs(caller: Caller, entryIds: string[], before: Date | null) {
       reps: setLogs.reps,
       durationS: setLogs.durationS,
       distanceMm: setLogs.distanceMm,
-      rpe: setLogs.rpe,
+      reserve: setLogs.reserve,
       startedAt: workoutSessions.startedAt,
       rank: sql<number>`dense_rank() over (partition by ${setLogs.entryId} order by ${workoutSessions.startedAt} desc)`.as(
         'rank',

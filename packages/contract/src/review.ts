@@ -3,7 +3,7 @@ import { formatEffort } from './effort.ts'
 import { LoggedEffort, LoggedExercise } from './log.ts'
 import { MUSCLES } from './muscle.ts'
 import { Timestamp } from './primitives.ts'
-import { Rpe, reserveOf } from './rpe.ts'
+import { Reserve } from './rpe.ts'
 import { formatStall } from './stall.ts'
 import { type WeightUnit, formatWeight } from './units.ts'
 import { BodyweightTrend } from './weigh-in.ts'
@@ -41,7 +41,7 @@ export const MuscleWork = z.object({
 export type MuscleWork = z.output<typeof MuscleWork>
 
 /** A top set and, when one was said, how hard it was: a stall's set is worth both. */
-export const RatedEffort = LoggedEffort.extend({ rpe: Rpe.nullable() })
+export const RatedEffort = LoggedEffort.extend({ reserve: Reserve.nullable() })
 export type RatedEffort = z.output<typeof RatedEffort>
 
 /** The same top set, sessions running (GLOSSARY.md, "Stalled"): change something. */
@@ -61,12 +61,15 @@ export const Falling = z.object({
 })
 export type Falling = z.output<typeof Falling>
 
-/** The same set rated harder each time (GLOSSARY.md, "Effort drift"). */
+/**
+ * The same set left with fewer reps in reserve each time (GLOSSARY.md, "Effort drift"): averages,
+ * so to one decimal — an average is not a rating, and may be a fraction.
+ */
 export const EffortDrift = z.object({
   exercise: LoggedExercise,
   effort: LoggedEffort,
-  fromRpe: z.number(),
-  toRpe: z.number(),
+  fromReserve: z.number(),
+  toReserve: z.number(),
 })
 export type EffortDrift = z.output<typeof EffortDrift>
 
@@ -147,12 +150,9 @@ export const stallLine = (s: Stalled, unit: WeightUnit): string =>
 export const fallingLine = (f: Falling, unit: WeightUnit): string =>
   `Estimated max ${formatWeight(f.fromG, unit)} → ${formatWeight(f.toG, unit)}, ${counted(f.sessions, 'session')} running`
 
-/** Reserve to one decimal: an average of RPEs is no half-point. */
-const reserveSaid = (rpe: number): string => String(Math.round(reserveOf(rpe) * 10) / 10)
-
 /**
- * `5 × 60 kg: 3 → 1 in reserve` — effort drift said as it is asked, reps in reserve; averages, so
- * to one decimal.
+ * `5 × 60 kg: 3 → 1 in reserve` — effort drift said as it is asked, reps in reserve; averages, as
+ * the review gives them, to one decimal.
  */
 export const driftLine = (d: EffortDrift, unit: WeightUnit): string =>
-  `${formatEffort(d.effort, d.exercise.tracking, unit)}: ${reserveSaid(d.fromRpe)} → ${reserveSaid(d.toRpe)} in reserve`
+  `${formatEffort(d.effort, d.exercise.tracking, unit)}: ${String(d.fromReserve)} → ${String(d.toReserve)} in reserve`

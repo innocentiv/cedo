@@ -1,7 +1,9 @@
 import { describe, expect, test } from 'bun:test'
 import {
   RESERVE_CHOICES,
-  Rpe,
+  RPE_MAX,
+  RPE_MIN,
+  Reserve,
   formatReserve,
   formatWithReserve,
   inReserve,
@@ -10,37 +12,28 @@ import {
 } from './rpe.ts'
 
 /**
- * The stored scale behind reps in reserve (ADR-0027): 5 to 10, whole — 10 leaving no rep in
- * reserve. A half has no meaning to the person asked, so none is stored.
+ * Reps in reserve (ADR-0027): none to five, whole — the one rating of how hard a set was, for a
+ * person and an AI alike. A half means nothing to the person asked, so none is accepted.
  */
-describe('the RPE scale', () => {
-  test.each([5, 6, 8, 10])('accepts %p', (rpe) => {
-    expect(Rpe.safeParse(rpe).success).toBe(true)
+describe('reps in reserve', () => {
+  test.each([0, 1, 3, 5])('accepts %p', (reserve) => {
+    expect(Reserve.safeParse(reserve).success).toBe(true)
   })
 
-  test.each([4, 1, 11, 8.5, 7.5, 8.25])('refuses %p', (rpe) => {
-    expect(Rpe.safeParse(rpe).success).toBe(false)
+  test.each([-1, 6, 1.5, 2.5, 0.25])('refuses %p', (reserve) => {
+    expect(Reserve.safeParse(reserve).success).toBe(false)
   })
 
-  test('says what to send instead, in reps in reserve, when it refuses', () => {
-    expect(Rpe.safeParse(8.5).error?.issues[0]?.message).toBe(
+  test('says what to send instead when it refuses', () => {
+    expect(Reserve.safeParse(1.5).error?.issues[0]?.message).toBe(
       'Reps in reserve are whole, none to five: a range such as 1–2 is asked as its bottom',
     )
   })
-})
-
-describe('reps in reserve', () => {
-  test('are what an RPE leaves below 10, and back', () => {
-    expect(reserveOf(10)).toBe(0)
-    expect(reserveOf(8)).toBe(2)
-    expect(rpeOf(1)).toBe(9)
-    expect(rpeOf(5)).toBe(5)
-  })
 
   /** What a person is asked: none to five reps left, whole — one row under the thumb. */
-  test('are offered from none to five, whole, each a valid RPE', () => {
+  test('are offered from none to five, each one the scale accepts', () => {
     expect(RESERVE_CHOICES).toEqual([0, 1, 2, 3, 4, 5])
-    for (const reserve of RESERVE_CHOICES) expect(Rpe.safeParse(rpeOf(reserve)).success).toBe(true)
+    for (const reserve of RESERVE_CHOICES) expect(Reserve.safeParse(reserve).success).toBe(true)
   })
 
   test('read as the whole number they are', () => {
@@ -48,11 +41,25 @@ describe('reps in reserve', () => {
   })
 })
 
-/** How a set's RPE reads beside it, to the person who is asked it as reps in reserve. */
+/** The stored scale, the one place RPE survives: ten minus the reserve, and back. */
+describe('the stored RPE', () => {
+  test('is ten minus the reserve, and back', () => {
+    expect(rpeOf(0)).toBe(10)
+    expect(rpeOf(2)).toBe(8)
+    expect(reserveOf(9)).toBe(1)
+    expect(reserveOf(5)).toBe(5)
+  })
+
+  test('covers every reserve a person can be asked, and no more', () => {
+    expect(RESERVE_CHOICES.map((reserve) => rpeOf(reserve))).toEqual([10, 9, 8, 7, 6, 5])
+    expect([RPE_MIN, RPE_MAX]).toEqual([5, 10])
+  })
+})
+
 describe('inReserve', () => {
-  test('says the reserve an RPE leaves, after a separator', () => {
-    expect(inReserve(8)).toBe(' · 2 in reserve')
-    expect(inReserve(10)).toBe(' · 0 in reserve')
+  test('says the reserve after a separator', () => {
+    expect(inReserve(2)).toBe(' · 2 in reserve')
+    expect(inReserve(0)).toBe(' · 0 in reserve')
   })
 
   test('says nothing for a set without one', () => {
@@ -64,13 +71,13 @@ describe('inReserve', () => {
 describe('formatWithReserve', () => {
   const set = { reps: 5, weightG: 60_000, durationS: null, distanceMm: null }
 
-  test('says the reserve after the effort, when there is an RPE', () => {
-    expect(formatWithReserve({ ...set, rpe: 9 }, 'weight_reps', 'kg')).toBe(
+  test('says the reserve after the effort, when there is one', () => {
+    expect(formatWithReserve({ ...set, reserve: 1 }, 'weight_reps', 'kg')).toBe(
       '5 × 60 kg · 1 in reserve',
     )
   })
 
   test('is the effort alone without one', () => {
-    expect(formatWithReserve({ ...set, rpe: null }, 'weight_reps', 'kg')).toBe('5 × 60 kg')
+    expect(formatWithReserve({ ...set, reserve: null }, 'weight_reps', 'kg')).toBe('5 × 60 kg')
   })
 })

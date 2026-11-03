@@ -4,7 +4,7 @@ import type { TrackingMode } from './exercise.ts'
 import { LOAD_LIMIT_WORDS, LoadLimit } from './load.ts'
 import { LoggedEffort } from './log.ts'
 import { Held, SetTarget } from './progression.ts'
-import { formatReserve, formatWithReserve, reserveOf } from './rpe.ts'
+import { formatReserve, formatWithReserve } from './rpe.ts'
 import type { WeightUnit } from './units.ts'
 
 /**
@@ -56,7 +56,7 @@ export function targetLine(asked: EntryTarget, tracking: TrackingMode, unit: Wei
   }
   if (asked.held?.reason === 'effort') {
     // "a recent set", not "last time": with a streak to clear, an older session can be the one.
-    return `Held at ${target} · a recent set left ${formatReserve(reserveOf(asked.held.rpe))} in reserve`
+    return `Held at ${target} · a recent set left ${formatReserve(asked.held.reserve)} in reserve`
   }
   return `Prescribed ${target}`
 }

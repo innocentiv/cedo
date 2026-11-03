@@ -31,7 +31,7 @@ export interface NextSet {
 export interface LoggedHere {
   readonly effort: Effort
   readonly isWarmup: boolean
-  readonly rpe: LogSetInput['rpe']
+  readonly reserve: LogSetInput['reserve']
 }
 
 export interface FocusLoggerProps {
@@ -87,9 +87,9 @@ export function FocusLogger({
     distanceMm: next.target.distanceMm,
   })
   // Asked before the set is logged, of a working set counted in reps (the contract's
-  // `asksReserveOf`), and never pre-filled — not even from a plan's RPE: the answer is the
+  // `asksReserveOf`), and never pre-filled — not even from the plan's reserve: the answer is the
   // athlete's (#37). Empty for each set because the screen keys this logger by the set it logs.
-  const [rpe, setRpe] = useState<number | null>(null)
+  const [reserve, setReserve] = useState<number | null>(null)
   const asked = asksReserveOf(next, tracking)
   return (
     <Stack gap="lg" testID={testID}>
@@ -154,8 +154,8 @@ export function FocusLogger({
           {asked ? (
             <ReserveChips
               label="Reps in reserve"
-              rpe={rpe}
-              onChange={setRpe}
+              reserve={reserve}
+              onChange={setReserve}
               testID={`${testID}-reserve`}
             />
           ) : null}
@@ -165,7 +165,7 @@ export function FocusLogger({
               size="large"
               busy={busy}
               onPress={() => {
-                onLog({ effort, isWarmup: next.isWarmup, rpe: asked ? rpe : null })
+                onLog({ effort, isWarmup: next.isWarmup, reserve: asked ? reserve : null })
               }}
               testID={`${testID}-log`}
             />

@@ -8,7 +8,7 @@ import { NO_CHOICES, workoutView } from './workout-view.ts'
 const target = (reps: number, kg: number): SetTarget => ({
   reps,
   weightG: kg * 1000,
-  rpe: null,
+  reserve: null,
   durationS: null,
   distanceMm: null,
 })

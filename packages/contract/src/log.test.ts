@@ -85,7 +85,7 @@ describe('the exercises a session without a plan is working through', () => {
     setIndex: 0,
     weightG: null,
     reps: 8,
-    rpe: null,
+    reserve: null,
     durationS: null,
     distanceMm: null,
     isWarmup: false,

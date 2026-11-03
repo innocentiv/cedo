@@ -143,9 +143,10 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'a patch: anything omitted is removed. Order comes from array position; never send an ' +
         'index. Every entry needs at least one non-warm-up set. Weights are in GRAMS; on a ' +
         'bodyweight exercise a weight is ADDED load, and a negative one is assistance (a band ' +
-        'worth 20 kg is -20000), allowed there only. A `targetRpe` is a CEILING, not an aim: ' +
-        'write a range as its top (RPE 7-8 is 8). A working set logged more than half a point ' +
-        'past it holds progression, as a missed rep does. Send back ' +
+        'worth 20 kg is -20000), allowed there only. A `targetReserve` is reps in reserve, whole, ' +
+        'none to five — the FEWEST a set must leave, not an aim: write a range as its bottom ' +
+        '(1-2 in reserve is 1). Each working set may ask its own, and a set that left fewer holds ' +
+        'progression, as a missed rep does. Write cues in reps in reserve, never RPE. Send back ' +
         'the `id` of each day and entry you keep (from `workout_get_editable`): that keeps its ' +
         'logged history and progression. An entry with no id, or whose exercise you changed, ' +
         'starts with no history. Send the `version` workout_get_editable gave: if the plan was ' +
@@ -183,7 +184,8 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       description:
         "What each entry's next target should be, computed from the caller's own logged history " +
         'by the same rules the app uses, and why each one that held did: short of its targets, ' +
-        'or a set done past its RPE — that is effort, not a stall, and no reason to deload. ' +
+        'or a set that left fewer reps in reserve than it asked — that is effort, not a stall, ' +
+        'and no reason to deload. ' +
         'Read-only: apply them with `workout_save_plan`, ' +
         'after reading note_list — a sore shoulder outranks a rule.',
       inputSchema: z.object({ workoutId: z.uuid() }),

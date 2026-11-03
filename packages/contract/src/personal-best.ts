@@ -15,7 +15,7 @@ import type { TrackingMode } from './exercise.ts'
  */
 
 const liftedMax = (effort: Effort, tracking: TrackingMode): number | null =>
-  estimatedMax({ weightG: effort.weightG, reps: effort.reps, rpe: null }, tracking)
+  estimatedMax({ weightG: effort.weightG, reps: effort.reps, reserve: null }, tracking)
 
 /** Whether `effort` is strictly better than `than`. */
 export function beats(effort: Effort, than: Effort, tracking: TrackingMode): boolean {

@@ -91,7 +91,7 @@ export interface DimensionField extends Typing {
 }
 
 /** A prescribed set's measured targets — derived from the schema, so a rename there breaks here. */
-export type TargetKey = Exclude<Extract<keyof WorkoutSetInput, `target${string}`>, 'targetRpe'>
+export type TargetKey = Exclude<Extract<keyof WorkoutSetInput, `target${string}`>, 'targetReserve'>
 
 /** Weight, typed in the person's unit and stored in grams either way. */
 function weightField(unit: WeightUnit): DimensionField {

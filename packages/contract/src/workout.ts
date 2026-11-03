@@ -3,7 +3,7 @@ import { Exercise } from './exercise.ts'
 import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 import { EntryCue } from './cue.ts'
 import { DEFAULT_REST_S } from './rest.ts'
-import { Rpe } from './rpe.ts'
+import { Reserve } from './rpe.ts'
 import { Progression, SetTarget } from './progression.ts'
 import { ruleIssues } from './rule-issues.ts'
 import { OwnableQuery, ownableFields } from './ownable.ts'
@@ -36,7 +36,8 @@ export const MAX_DAYS_PER_PLAN = 14
 export const WorkoutSetInput = z.strictObject({
   targetReps: TargetReps.nullable().default(null),
   targetWeightG: TargetWeightG.nullable().default(null),
-  targetRpe: Rpe.nullable().default(null),
+  /** The fewest reps in reserve this set must leave — each working set may ask its own (ADR-0026). */
+  targetReserve: Reserve.nullable().default(null),
   targetDurationS: TargetDurationS.nullable().default(null),
   targetDistanceMm: TargetDistanceMm.nullable().default(null),
   /** Ramp-up sets. Excluded from progression, from working sets per muscle and weight lifted. */
@@ -54,7 +55,7 @@ export type TargetFields = Omit<WorkoutSetInput, 'isWarmup'>
 export const setTargetOf = (set: TargetFields): SetTarget => ({
   reps: set.targetReps,
   weightG: set.targetWeightG,
-  rpe: set.targetRpe,
+  reserve: set.targetReserve,
   durationS: set.targetDurationS,
   distanceMm: set.targetDistanceMm,
 })
@@ -62,7 +63,7 @@ export const setTargetOf = (set: TargetFields): SetTarget => ({
 export const targetFieldsOf = (target: SetTarget): TargetFields => ({
   targetReps: target.reps,
   targetWeightG: target.weightG,
-  targetRpe: target.rpe,
+  targetReserve: target.reserve,
   targetDurationS: target.durationS,
   targetDistanceMm: target.distanceMm,
 })

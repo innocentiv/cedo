@@ -248,7 +248,7 @@ async function seed(): Promise<World> {
           reps: target.reps,
           durationS: target.durationS === null ? null : target.durationS + week * 5,
           distanceMm: target.distanceMm,
-          rpe: set.isWarmup || target.reps === null ? null : 7 + (week % 3) * 0.5,
+          reserve: set.isWarmup || target.reps === null ? null : 3 - (week % 3),
           isWarmup: set.isWarmup,
         })
       }
@@ -347,7 +347,7 @@ async function startToday(page: Page, world: World): Promise<string> {
       entryId: squat.id,
       weightG: (set.target.weightG ?? 0) + (set.isWarmup ? 0 : 7500),
       reps: set.target.reps,
-      rpe: set.isWarmup ? null : 8,
+      reserve: set.isWarmup ? null : 2,
       durationS: null,
       distanceMm: null,
       isWarmup: set.isWarmup,

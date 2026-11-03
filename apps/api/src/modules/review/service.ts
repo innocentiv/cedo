@@ -15,7 +15,7 @@ import { muscleWorkOf } from './muscle-work.ts'
 import { judgedOver } from './deload.ts'
 
 /** The thresholds the review judges by, for whoever says its signals. */
-export { DRIFT_RPE, DRIFT_SESSIONS, FALLING_SESSIONS } from './deload.ts'
+export { DRIFT_RESERVE, DRIFT_SESSIONS, FALLING_SESSIONS } from './deload.ts'
 import type { WorkingSet } from './deload.ts'
 
 /**
@@ -165,7 +165,7 @@ async function latestWorkingSets(training: Training, since: Date): Promise<Worki
       weightG: r.weightG,
       durationS: r.durationS,
       distanceMm: r.distanceMm,
-      rpe: r.rpe,
+      reserve: r.reserve,
     },
   }))
 }
@@ -194,7 +194,7 @@ function latestSessions(training: Training, since: Date) {
       weightG: setLogs.weightG,
       durationS: setLogs.durationS,
       distanceMm: setLogs.distanceMm,
-      rpe: setLogs.rpe,
+      reserve: setLogs.reserve,
       setIndex: setLogs.setIndex,
       rank: sql<number>`dense_rank() over (partition by ${exercises.id} order by ${workoutSessions.startedAt} desc, ${setLogs.sessionId} desc)`.as(
         'rank',

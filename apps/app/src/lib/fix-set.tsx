@@ -77,7 +77,7 @@ function FixSetForm({
     durationS: log.durationS,
     distanceMm: log.distanceMm,
   })
-  const [rpe, setRpe] = useState(log.rpe)
+  const [reserve, setReserve] = useState(log.reserve)
   const [isWarmup, setIsWarmup] = useState(log.isWarmup)
   const correct = useCorrectSet(sessionId)
   const remove = useRemoveSet(sessionId)
@@ -85,7 +85,7 @@ function FixSetForm({
   const removing = useSubmit()
 
   // What is shown is what is sent; a set out of reach shows, and sends, no measures.
-  const patch: SetLogUpdate = { ...(tracking === null ? {} : effort), rpe, isWarmup }
+  const patch: SetLogUpdate = { ...(tracking === null ? {} : effort), reserve, isWarmup }
   return (
     <Stack gap="lg">
       {tracking === null
@@ -104,7 +104,12 @@ function FixSetForm({
           ))}
       {/* Out of reach, there is no saying it has no reps: how hard is offered, as it was logged. */}
       {tracking !== null && !asksReserve(tracking) ? null : (
-        <ReserveChips label="In reserve" rpe={rpe} onChange={setRpe} testID="fix-set-reserve" />
+        <ReserveChips
+          label="In reserve"
+          reserve={reserve}
+          onChange={setReserve}
+          testID="fix-set-reserve"
+        />
       )}
       <Chips
         options={KINDS}

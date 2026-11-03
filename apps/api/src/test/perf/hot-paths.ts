@@ -337,7 +337,7 @@ export const HOT_PATHS: readonly HotPath[] = [
         entryId: null,
         weightG: 60_000,
         reps: 8,
-        rpe: null,
+        reserve: null,
         durationS: null,
         distanceMm: null,
         isWarmup: false,

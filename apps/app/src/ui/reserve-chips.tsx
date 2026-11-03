@@ -1,28 +1,26 @@
 import { Pressable, StyleSheet, View } from 'react-native'
-import { RESERVE_CHOICES, formatReserve, reserveOf, rpeOf } from '@cedo/contract'
+import { RESERVE_CHOICES, formatReserve } from '@cedo/contract'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 import { segmented } from './segmented.ts'
 import { CONTROL_HEIGHT, color } from './tokens.ts'
 
 /**
- * Reps in reserve — the question RPE is asked as (`rpe.ts`): none to five, whole, as one row of
- * equal segments, so it never wraps under the thumb. Tapping the chosen one again takes the answer
- * back: not said needs no segment of its own. Holds an RPE, so the screen never converts: the
- * contract does.
+ * Reps in reserve (`rpe.ts`): none to five, whole, as one row of equal segments, so it never wraps
+ * under the thumb. Tapping the chosen one again takes the answer back: not said needs no segment of
+ * its own. Holds reps in reserve as the wire carries them: nothing in the app converts (ADR-0027).
  */
 export function ReserveChips({
   label,
-  rpe,
+  reserve: chosen,
   onChange,
   testID,
 }: {
   readonly label: string
-  readonly rpe: number | null
-  readonly onChange: (rpe: number | null) => void
+  readonly reserve: number | null
+  readonly onChange: (reserve: number | null) => void
   readonly testID: string
 }): React.JSX.Element {
-  const chosen = rpe === null ? null : reserveOf(rpe)
   return (
     <Stack gap="xs">
       <Text variant="caption" tone="muted">
@@ -36,7 +34,7 @@ export function ReserveChips({
             accessibilityLabel={`${formatReserve(reserve)} in reserve`}
             aria-selected={reserve === chosen}
             onPress={() => {
-              onChange(reserve === chosen ? null : rpeOf(reserve))
+              onChange(reserve === chosen ? null : reserve)
             }}
             testID={`${testID}-${String(reserve)}`}
             style={({ pressed }) => [

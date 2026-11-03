@@ -46,8 +46,8 @@ export interface LoggedSet extends Effort {
   readonly entryId: string | null
   readonly sessionId: string
   readonly isWarmup: boolean
-  /** Judged against a prescribed RPE, its ceiling (#45). */
-  readonly rpe: number | null
+  /** Judged against the reserve its set asked, a floor (#45). */
+  readonly reserve: number | null
 }
 
 /**
@@ -129,8 +129,8 @@ function suggestForEntry(
       rule: entry.progression,
       target: current,
       workingSets: working.length,
-      // Each set against its own RPE (ADR-0026), not every one against the first's.
-      ceilings: working.map((s) => s.targetRpe),
+      // Each set against its own reserve (ADR-0026), not every one against the first's.
+      reserves: working.map((s) => s.targetReserve),
       sessions,
     },
     loadFor(entry),
@@ -155,7 +155,7 @@ function suggestForEntry(
 const NOTHING_PRESCRIBED: SetTarget = {
   reps: null,
   weightG: null,
-  rpe: null,
+  reserve: null,
   durationS: null,
   distanceMm: null,
 }
@@ -170,7 +170,7 @@ function toSessions(rows: readonly LoggedSet[]): SessionAttempts[] {
       reps: row.reps,
       durationS: row.durationS,
       distanceMm: row.distanceMm,
-      rpe: row.rpe,
+      reserve: row.reserve,
       isWarmup: row.isWarmup,
     })
     bySession.set(row.sessionId, list)
@@ -181,6 +181,6 @@ function toSessions(rows: readonly LoggedSet[]): SessionAttempts[] {
 const sameTarget = (a: SetTarget, b: SetTarget): boolean =>
   a.reps === b.reps &&
   a.weightG === b.weightG &&
-  a.rpe === b.rpe &&
+  a.reserve === b.reserve &&
   a.durationS === b.durationS &&
   a.distanceMm === b.distanceMm

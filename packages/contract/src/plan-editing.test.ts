@@ -57,14 +57,14 @@ describe('a set’s targets', () => {
     const fields = {
       targetReps: 8,
       targetWeightG: 60_000,
-      targetRpe: 8,
+      targetReserve: 2,
       targetDurationS: 30,
       targetDistanceMm: 1000,
     }
     expect(setTargetOf(fields)).toEqual({
       reps: 8,
       weightG: 60_000,
-      rpe: 8,
+      reserve: 2,
       durationS: 30,
       distanceMm: 1000,
     })
@@ -192,7 +192,7 @@ describe('the issues a draft would be refused for', () => {
     const set = {
       targetReps: 8,
       targetWeightG: null,
-      targetRpe: null,
+      targetReserve: null,
       targetDurationS: null,
       targetDistanceMm: null,
       isWarmup: false,

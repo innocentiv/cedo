@@ -1823,7 +1823,7 @@ test(
           entryId: null,
           weightG: kgToG(kg),
           reps: 5,
-          rpe: null,
+          reserve: null,
           durationS: null,
           distanceMm: null,
           isWarmup: false,
@@ -1914,7 +1914,7 @@ test(
             entryId: null,
             weightG: kgToG(kg),
             reps: 5,
-            rpe: null,
+            reserve: null,
             durationS: null,
             distanceMm: null,
             isWarmup: false,
@@ -2689,12 +2689,12 @@ test(
 )
 
 /**
- * A prescribed RPE is a ceiling (#45): every rep done, but ground out with none left in reserve
+ * A prescribed reserve is a floor (#45): every rep done, but ground out with none left in reserve
  * against two prescribed, holds the target — and the logger says why, since last time's sets show
  * the reps were all there.
  */
 test(
-  'a session ground out past its RPE holds the next one, and the logger says why',
+  'a session ground out past its reserve holds the next one, and the logger says why',
   async () => {
     await withApp('held-for-effort', async (page) => {
       const app = screens(page)
@@ -2703,7 +2703,7 @@ test(
       const [bench] = (await mine.exercises.list({ q: 'Bench', limit: 1 })).items
       if (bench === undefined) throw new Error('The seeded library has no bench press')
       const plan = await mine.workouts.create({ name: 'Strength', notes: null })
-      const five = { targetReps: 5, targetWeightG: 60_000, targetRpe: 8 }
+      const five = { targetReps: 5, targetWeightG: 60_000, targetReserve: 2 }
       await mine.workouts.replacePlan(
         plan.id,
         WorkoutPlanInput.parse({
@@ -2821,16 +2821,16 @@ test(
 )
 
 /**
- * RPE, asked as reps in reserve: a target set in the editor, said of a set before it is logged
+ * Reps in reserve, end to end (ADR-0027): a target set in the editor, said of a set before it is logged
  * (#37) — never pre-filled from the plan's, never carried to the next set, which would be answers
  * the athlete did not give, and not asked again once the set is logged.
  */
 test(
-  'a set logged with one rep left reads back as RPE 9, and the next is asked afresh',
+  'a set logged with one rep left reads back as one in reserve, and the next is asked afresh',
   async () => {
-    await withApp('rpe-reserve', async (page) => {
+    await withApp('reserve-asked', async (page) => {
       const app = screens(page)
-      await app.auth.register(unique('rpe'))
+      await app.auth.register(unique('reserve'))
       await app.planEditor.create()
       await app.planEditor.entry(0, 0).reserve('2')
       await app.planEditor.saveAndStart()
@@ -2857,12 +2857,12 @@ test(
       const [latest] = (await mine.sessions.list({ limit: 1 })).items
       if (latest === undefined) throw new Error('The session was not listed')
       const logs = (await mine.sessions.get(latest.id)).logs
-      expect(logs.map((l) => l.rpe)).toEqual([9, null])
-      // And the editor's 2 in reserve was saved as the plan's target: RPE 8.
+      expect(logs.map((l) => l.reserve)).toEqual([1, null])
+      // And the editor's 2 in reserve was saved as the plan's target, as it was said.
       const [plan] = (await mine.workouts.list({})).items
       if (plan === undefined) throw new Error('The plan was not listed')
       const saved = (await mine.workouts.get(plan.id)).days[0]?.entries[0]?.sets
-      expect(saved?.filter((s) => !s.isWarmup).map((s) => s.target.rpe)).toEqual([8, 8, 8])
+      expect(saved?.filter((s) => !s.isWarmup).map((s) => s.target.reserve)).toEqual([2, 2, 2])
     })
   },
   E2E_TIMEOUT_MS,

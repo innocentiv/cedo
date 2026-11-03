@@ -42,7 +42,7 @@ const toLog = (
   isWarmup: row.isWarmup,
   weightG: row.weightG,
   reps: row.reps,
-  rpe: row.rpe,
+  reserve: row.reserve,
   durationS: row.durationS,
   distanceMm: row.distanceMm,
   loggedAt: row.loggedAt.toISOString(),

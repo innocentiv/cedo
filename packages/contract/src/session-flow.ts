@@ -101,7 +101,7 @@ export const nextSet = <L extends FlowLog>(sets: readonly SessionSet<L>[]): Sess
 const effortOf = (log: FlowLog): SetTarget => ({
   reps: log.reps,
   weightG: log.weightG,
-  rpe: null,
+  reserve: null,
   durationS: log.durationS,
   distanceMm: log.distanceMm,
 })

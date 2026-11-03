@@ -71,7 +71,7 @@ describe('a set of a finished session, corrected', () => {
   test('takes what it names, keeps what it leaves out, and is answered as read', async () => {
     const bench = await anExercise(alice)
     const { id, logs } = await aFinishedSession(alice, bench, [
-      { weightG: kgToG(100), reps: 5, rpe: 8 },
+      { weightG: kgToG(100), reps: 5, reserve: 2 },
     ])
     const set = logs[0]
     if (set === undefined) throw new Error('nothing was logged')
@@ -81,7 +81,7 @@ describe('a set of a finished session, corrected', () => {
       id: set.id,
       weightG: kgToG(80),
       reps: 5,
-      rpe: 8,
+      reserve: 2,
       isWarmup: true,
       setIndex: 0,
     })
@@ -234,8 +234,12 @@ test('a set of an exercise out of reach is corrected and removed, but takes no n
     200,
   )
 
-  const counted = await correct(bob, id, first.id, { reps: 6, rpe: 9, isWarmup: true })
-  expect(expectContract(SetLog, counted.body)).toMatchObject({ reps: 6, rpe: 9, exercise: null })
+  const counted = await correct(bob, id, first.id, { reps: 6, reserve: 1, isWarmup: true })
+  expect(expectContract(SetLog, counted.body)).toMatchObject({
+    reps: 6,
+    reserve: 1,
+    exercise: null,
+  })
   const weighed = await correct(bob, id, first.id, { weightG: kgToG(70) })
   expect(weighed.status).toBe(404)
   expect((await send(bob, `/sessions/${id}/logs/${second.id}`, 'DELETE')).status).toBe(200)

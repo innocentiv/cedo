@@ -21,9 +21,10 @@ import {
   formatEffort,
   formatStall,
   formatWeight,
+  inReserve,
   pointsOf,
 } from '@cedo/contract'
-import { DRIFT_RPE, DRIFT_SESSIONS, FALLING_SESSIONS } from '../modules/review/service.ts'
+import { DRIFT_RESERVE, DRIFT_SESSIONS, FALLING_SESSIONS } from '../modules/review/service.ts'
 import { aboutLine } from './format-file.ts'
 import { type GroupNameOf, ownership } from './format-group.ts'
 
@@ -61,7 +62,7 @@ const setLine = (
   unit: WeightUnit,
   load: Load | null,
 ): string =>
-  `${set.isWarmup ? 'warm-up' : 'work'}: ${formatEffort(set.target, tracking, unit)}${atRpe(set.target.rpe)}${loadsNote(set.target.weightG, load, unit)}`
+  `${set.isWarmup ? 'warm-up' : 'work'}: ${formatEffort(set.target, tracking, unit)}${inReserve(set.target.reserve)}${loadsNote(set.target.weightG, load, unit)}`
 
 /** ` (loads 22 kg)` beside a weight the athlete's equipment cannot load as written (#36). */
 function loadsNote(weightG: number | null, load: Load | null, unit: WeightUnit): string {
@@ -71,9 +72,6 @@ function loadsNote(weightG: number | null, load: Load | null, unit: WeightUnit):
   const end = can.limit === null ? '' : `, ${LOAD_LIMIT_WORDS[can.limit]}`
   return ` (loads ${formatWeight(can.weightG, unit)}${end})`
 }
-
-/** ` @ RPE 8` after a set prescribed or logged at one, and nothing after one without. */
-export const atRpe = (rpe: number | null): string => (rpe === null ? '' : ` @ RPE ${rpe}`)
 
 /** The whole plan as an outline. A 6-day plan is ~60 short lines rather than ~40 KB of JSON. */
 export function workoutDetail(
@@ -130,25 +128,26 @@ export function suggestionLines(
     .join('\n')
 }
 
-/** A target with its RPE — the ceiling a set is judged against (#45). */
+/** A target with its reps in reserve — the floor a set is judged against (#45). */
 function describeTarget(
   target: ProgressionSuggestion['current'],
   tracking: TrackingMode,
   unit: WeightUnit,
 ): string {
   const effort = formatEffort(target, tracking, unit)
-  return effort === '—' ? 'no target set' : `${effort}${atRpe(target.rpe)}`
+  return effort === '—' ? 'no target set' : `${effort}${inReserve(target.reserve)}`
 }
 
 /**
- * Why it held (#45): ` — held for effort: a working set at RPE 10, past RPE 8`, so the AI does not
- * read a lift done harder than prescribed as a stall — or ` — held: short of the targets`. Nothing
- * when nothing held it: no history yet, or a run of cleared sessions still too short.
+ * Why it held (#45): ` — held for effort: a working set left 0 in reserve, fewer than it asked`, so
+ * the AI does not read a lift done harder than prescribed as a stall — or ` — held: short of the
+ * targets`. Nothing when nothing held it: no history yet, or a run of cleared sessions still too
+ * short.
  */
-function heldFor({ held, current }: ProgressionSuggestion): string {
+function heldFor({ held }: ProgressionSuggestion): string {
   if (held === null) return ''
   if (held.reason === 'targets') return ' — held: short of the targets'
-  return ` — held for effort: a working set at RPE ${held.rpe}, past RPE ${current.rpe ?? '—'}`
+  return ` — held for effort: a working set left ${String(held.reserve)} in reserve, fewer than it asked`
 }
 
 /**
@@ -156,7 +155,10 @@ function heldFor({ held, current }: ProgressionSuggestion): string {
  * terms, like every other effort here: no unit arithmetic of its own.
  */
 function stalledLine(s: TrainingReview['stalled'][number], unit: WeightUnit): string {
-  const estimate = estimatedMax({ ...s.effort, rpe: s.effort.rpe ?? null }, s.exercise.tracking)
+  const estimate = estimatedMax(
+    { ...s.effort, reserve: s.effort.reserve ?? null },
+    s.exercise.tracking,
+  )
   const max = estimate === null ? '' : ` (estimated max ${formatWeight(estimate, unit)})`
   return `${s.exercise.name}: ${formatStall(s, s.exercise.tracking, unit)}${max}`
 }
@@ -179,10 +181,10 @@ function deloadSections(review: TrainingReview, unit: WeightUnit): string[] {
   }
   if (review.effortDrift.length > 0) {
     sections.push(
-      `Effort drift (RPE up ${DRIFT_RPE}+ at the same set, in each of the latest ${DRIFT_SESSIONS} sessions):\n  ${review.effortDrift
+      `Effort drift (reps in reserve down ${DRIFT_RESERVE}+ at the same set, in each of the latest ${DRIFT_SESSIONS} sessions):\n  ${review.effortDrift
         .map(
           (d) =>
-            `${d.exercise.name} at ${formatEffort(d.effort, d.exercise.tracking, unit)}: average RPE ${d.fromRpe} → ${d.toRpe}`,
+            `${d.exercise.name} at ${formatEffort(d.effort, d.exercise.tracking, unit)}: average ${String(d.fromReserve)} → ${String(d.toReserve)} in reserve`,
         )
         .join('\n  ')}`,
     )
@@ -192,7 +194,7 @@ function deloadSections(review: TrainingReview, unit: WeightUnit): string[] {
 
 /**
  * An exercise's recent sessions, one line each, with the session's best estimated max for a weight
- * lift — `2026-10-14: w10 × 20 kg, 8 × 60 kg @ RPE 9 · estimated max 76 kg` — and its stall,
+ * lift — `2026-10-14: w10 × 20 kg, 8 × 60 kg · 1 in reserve · estimated max 76 kg` — and its stall,
  * if it has one, last.
  */
 export function historyLines(history: ExerciseHistory, unit: WeightUnit): string {
@@ -204,7 +206,7 @@ export function historyLines(history: ExerciseHistory, unit: WeightUnit): string
     const sets = s.sets
       .map(
         (set) =>
-          `${set.isWarmup ? 'w' : ''}${formatEffort(set, history.tracking, unit)}${atRpe(set.rpe)}`,
+          `${set.isWarmup ? 'w' : ''}${formatEffort(set, history.tracking, unit)}${inReserve(set.reserve)}`,
       )
       .join(', ')
     const estimate = estimates.get(s.sessionId)
