@@ -813,7 +813,7 @@ test(
       // Opened again within the 30-second `staleTime`: the history cached before the set existed
       // is shown unless the set's write invalidated it.
       await app.nav.tab('exercises')
-      await app.library.findRow(name, exerciseId)
+      await app.library.find(name, exerciseId)
       const history = await page.until(
         async () => await app.exercise.historyText(),
         (text) => !text.includes('Nothing logged yet'),

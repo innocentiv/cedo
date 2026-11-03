@@ -1,6 +1,6 @@
 import type { EquipmentSlug, MuscleSlug, OwnableScope } from '@cedo/contract'
 import type { Page } from '../harness.ts'
-import { inView } from './desk.ts'
+import { inView, paneOpen } from './desk.ts'
 import { closed } from './form.ts'
 import { chooseOption, rowNames } from './lines.ts'
 import { placement } from './placement.ts'
@@ -107,7 +107,7 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
 
 /** Whether an exercise is open: in its sheet over the library on a phone, its pane on a desktop. */
 const detailShown = async (page: Page): Promise<boolean> =>
-  (await page.shown('exercise-detail-sheet')) || (await page.shown('exercise-detail-pane'))
+  (await page.shown('exercise-detail-sheet')) || (await paneOpen(page))
 
 /** An exercise, open in the library — reached however the journey reached it. */
 export const exercise = (page: Page) => ({
@@ -200,8 +200,13 @@ export const library = (page: Page) => {
     await page.goto('/exercises')
     await page.waitFor('exercise-list')
   }
-  const openRow = async () => {
-    const row = await page.waitForSelector('[data-testid^="exercise-row-"]')
+  /** Opens the exercise `id` names, or the first row when none is named. */
+  const openRow = async (id?: string) => {
+    const row =
+      id === undefined
+        ? await page.waitForSelector('[data-testid^="exercise-row-"]')
+        : `exercise-row-${id}`
+    await page.waitFor(row)
     await page.click(`[data-testid="${row}"]`)
     const detail = exercise(page)
     await detail.shown()
@@ -220,21 +225,14 @@ export const library = (page: Page) => {
       await list()
       return await openRow()
     },
-    /** Searches the library tab as it stands — no reload — and opens the first match. */
-    find: async (name: string) => {
+    /**
+     * Searches the library tab as it stands — no reload — and opens the first match, or the one
+     * exercise `id` names when the name matches more than one.
+     */
+    find: async (name: string, id?: string) => {
       await page.waitFor('exercises-screen')
       await page.fill('exercise-search', name)
-      return await openRow()
-    },
-    /** Searches the library tab as it stands — no reload — and opens the one exercise `id` names. */
-    findRow: async (name: string, id: string) => {
-      await page.waitFor('exercises-screen')
-      await page.fill('exercise-search', name)
-      await page.waitFor(`exercise-row-${id}`)
-      await page.click(`[data-testid="exercise-row-${id}"]`)
-      const detail = exercise(page)
-      await detail.shown()
-      return detail
+      return await openRow(id)
     },
     /**
      * Searches the library and chooses the first match, opening it where this layout opens one: a

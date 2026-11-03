@@ -12,6 +12,10 @@ export const inView = async (page: Page, testID: string): Promise<boolean> =>
     `(() => { const r = document.querySelector('[data-testid="${testID}"]')?.getBoundingClientRect(); return r !== undefined && r.height > 0 && r.top >= 0 && r.top < innerHeight && r.left >= 0 && r.right <= innerWidth })()`,
   )) === true
 
+/** Whether an exercise is open in the pane beside the library, on a desktop (#29). */
+export const paneOpen = async (page: Page): Promise<boolean> =>
+  await page.shown('exercise-detail-pane')
+
 /** What only a desktop shows (#29): the sidebar's head and foot, and the library's pane. */
 export const desk = (page: Page) => ({
   /** Whether the library's pane is in view, beside however far down the list is scrolled. */
