@@ -7,13 +7,13 @@ const dumbbells: Load = { stepG: 2000, minG: 2000, maxG: 30_000, assisted: false
 const plan = (weightG: number | null): SetTarget => ({
   reps: 8,
   weightG,
-  rpe: null,
+  reserve: null,
   durationS: null,
   distanceMm: null,
 })
 const linear = { kind: 'linear' as const, incrementG: 2500, afterSuccesses: 1 }
-const sessionAt = (weightG: number, rpe: number | null = null) => [
-  Array.from({ length: 3 }, () => ({ weightG, reps: 8, rpe })),
+const sessionAt = (weightG: number, reserve: number | null = null) => [
+  Array.from({ length: 3 }, () => ({ weightG, reps: 8, reserve })),
 ]
 
 describe('a prescription as it can be loaded', () => {
@@ -42,17 +42,17 @@ describe('progression, against what can be loaded', () => {
       null,
     )
     expect(next.target.weightG).toBe(22_500)
-    expect(next.held).toEqual({ reason: 'targets' })
+    expect(next.held).toMatchObject({ reason: 'targets', set: 1 })
   })
 
   test('why it held is told as the rule told it (#45)', () => {
-    const ground = sessionAt(22_000, 10)
+    const ground = sessionAt(22_000, 0)
     const next = nextLoadableTarget(
-      { rule: linear, target: { ...plan(22_500), rpe: 8 }, workingSets: 3, sessions: ground },
+      { rule: linear, target: { ...plan(22_500), reserve: 2 }, workingSets: 3, sessions: ground },
       dumbbells,
     )
     expect(next.target.weightG).toBe(22_000)
-    expect(next.held).toEqual({ reason: 'effort', rpe: 10 })
+    expect(next.held).toEqual({ reason: 'effort', set: 1, reserve: 0, asked: 2 })
     expect(
       nextLoadableTarget(
         { rule: linear, target: plan(22_500), workingSets: 3, sessions: sessionAt(22_000) },

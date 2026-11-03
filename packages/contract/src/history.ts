@@ -3,7 +3,7 @@ import { TrackingMode } from './exercise.ts'
 import { LoggedEffort } from './log.ts'
 import { LoggedDistanceMm, LoggedDurationS, LoggedReps, LoggedWeightG } from './measurement.ts'
 import { Id, Timestamp } from './primitives.ts'
-import { Rpe } from './rpe.ts'
+import { Reserve } from './rpe.ts'
 
 /**
  * An exercise's history: what someone logged of it, session by session — what its screen, a
@@ -22,7 +22,7 @@ export const ExerciseHistoryEntry = z.object({
       setIndex: z.int().nonnegative(),
       weightG: LoggedWeightG.nullable(),
       reps: LoggedReps.nullable(),
-      rpe: Rpe.nullable(),
+      reserve: Reserve.nullable(),
       durationS: LoggedDurationS.nullable(),
       distanceMm: LoggedDistanceMm.nullable(),
       isWarmup: z.boolean(),

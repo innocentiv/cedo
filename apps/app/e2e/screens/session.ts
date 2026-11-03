@@ -78,6 +78,11 @@ const logger = (page: Page, id: string, choose: string) => {
       await current()
       return await page.text(`${id}-target`)
     },
+    /** What the next set asks of how hard it is: "Leave 2 in reserve" — null when it asks none. */
+    asks: async (): Promise<string | null> => {
+      await current()
+      return (await page.exists(`${id}-asks`)) ? await page.text(`${id}-asks`) : null
+    },
     /** What the plan tells the athlete about this entry — null when nothing. */
     cue: async (): Promise<string | null> => {
       await current()

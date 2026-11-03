@@ -45,13 +45,17 @@ export interface SessionSet<L extends FlowLog = SetLog> {
  * entry is its nth warm-up, the nth working set its nth working set — counted, as `done` is, in
  * the entry's own series. Working sets logged beyond the prescription follow as extra.
  *
- * `working` is what this session asks of a working set (`EntryTarget.target`); without one — an
- * exercise out of reach — the plan's own prescription is shown.
+ * `asked` is what this session asks of each set (`EntryTarget`: its `warmups` and `working`, in set
+ * order); without it — an exercise out of reach — each set shows the plan's own numbers. A set past
+ * the plan asks what the last working set asked.
  */
 export function setsOf<L extends FlowLog>(
   entry: Pick<FlowEntry, 'id' | 'sets'>,
   logs: readonly L[],
-  working: SetTarget | null,
+  asked: {
+    readonly warmups: readonly SetTarget[]
+    readonly working: readonly SetTarget[]
+  } | null,
   /** What the athlete can load on it (#36): the plan's own targets asked as they can load them. */
   load: Load | null = null,
 ): SessionSet<L>[] {
@@ -62,32 +66,33 @@ export function setsOf<L extends FlowLog>(
   const planned = entry.sets.toSorted((a, b) => a.index - b.index)
   const warmups = planned.filter((s) => s.isWarmup)
   const workingSets = planned.filter((s) => !s.isWarmup)
-  const firstWorking = workingSets[0]?.target
-  const workingTarget = working ?? (firstWorking === undefined ? null : asLoaded(firstWorking))
 
   const sets: SessionSet<L>[] = [
     ...warmups.map((s, i) => ({
       key: `w${i}`,
       isWarmup: true,
-      target: asLoaded(s.target),
+      target: asked?.warmups[i] ?? asLoaded(s.target),
       log: warmLogs[i] ?? null,
       extra: false,
     })),
     ...workingSets.map((s, i) => ({
       key: `s${i}`,
       isWarmup: false,
-      target: workingTarget ?? asLoaded(s.target),
+      target: asked?.working[i] ?? asLoaded(s.target),
       log: workLogs[i] ?? null,
       extra: false,
     })),
   ]
   const beyond = workLogs.slice(workingSets.length)
+  const lastWorking = workingSets.at(-1)
+  const lastAsked =
+    asked?.working.at(-1) ?? (lastWorking === undefined ? null : asLoaded(lastWorking.target))
   return [
     ...sets,
     ...beyond.map((log, i) => ({
       key: `x${i}`,
       isWarmup: false,
-      target: workingTarget ?? effortOf(log),
+      target: lastAsked ?? effortOf(log),
       log,
       extra: true,
     })),
@@ -101,7 +106,7 @@ export const nextSet = <L extends FlowLog>(sets: readonly SessionSet<L>[]): Sess
 const effortOf = (log: FlowLog): SetTarget => ({
   reps: log.reps,
   weightG: log.weightG,
-  rpe: null,
+  reserve: null,
   durationS: log.durationS,
   distanceMm: log.distanceMm,
 })

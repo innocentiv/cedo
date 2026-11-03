@@ -61,7 +61,15 @@ export function WorkoutBody({
   const exercise = chosen === undefined ? undefined : editor.library.get(chosen.exerciseId)
   const settings =
     at === null || exercise === undefined ? null : (
-      <EntrySettings days={days} at={at} exercise={exercise} onChange={editor.change} />
+      <EntrySettings
+        key={selected ?? ''}
+        workoutId={workout.id}
+        canEdit={workout.canEdit}
+        days={days}
+        at={at}
+        exercise={exercise}
+        onChange={editor.change}
+      />
     )
   const outline = (
     <>
@@ -70,6 +78,7 @@ export function WorkoutBody({
       <Outline
         days={days}
         library={editor.library}
+        workoutId={workout.id}
         canEdit={workout.canEdit}
         selected={selected}
         onChange={editor.change}
@@ -109,10 +118,10 @@ export function WorkoutBody({
       // On a desktop the entry's pane beside the outline, each its own scroll: an entry on the last
       // day opens beside it, not at the top of the page (#50). The name and Back are the screen's
       // heading, pinned over both; the notes scroll with the outline, so a long note takes no
-      // height from the pane. A workout only read has nothing to set, so no pane.
+      // height from the pane. A reader opens an entry too: the plan said, and their own target.
       columns={{
         main: page,
-        pane: workout.canEdit ? <EntryPane name={exercise?.name}>{settings}</EntryPane> : null,
+        pane: <EntryPane name={exercise?.name}>{settings}</EntryPane>,
         chosen: selected,
       }}
     >

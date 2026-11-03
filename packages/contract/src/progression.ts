@@ -1,16 +1,8 @@
 import { z } from 'zod'
-import {
-  SHORT_OF_TARGETS,
-  judgeDistance,
-  judgeDuration,
-  judgeReps,
-  judgeRun,
-  working,
-} from './clears.ts'
 import { TrackingMode } from './exercise.ts'
 import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
-import { Rpe } from './rpe.ts'
-import { normaliseRange, unhandledKind } from './stored-rule.ts'
+import { Reserve } from './rpe.ts'
+import { PLAN_WORDS } from './plan-words.ts'
 
 /**
  * How a set's targets advance over time. Stored as JSONB on `workout_entries`, so adding a rule
@@ -20,16 +12,28 @@ import { normaliseRange, unhandledKind } from './stored-rule.ts'
 
 export const Progression = z.discriminatedUnion('kind', [
   /** Targets never change automatically; the user or the AI sets them explicitly. */
-  z.object({ kind: z.literal('none') }),
+  z.object({
+    kind: z
+      .literal('none')
+      .describe(
+        'Manual: the sets are the plan’s numbers and nothing moves them — to change them, change ' +
+          'the plan. Sets may differ freely (a top set and back-offs).',
+      ),
+  }),
 
   /**
    * Add weight once the target has been met for `afterSuccesses` consecutive sessions.
    * Classic linear periodisation — the right default for novices.
    */
   z.object({
-    kind: z.literal('linear'),
-    incrementG: z.int().positive().max(50_000),
-    afterSuccesses: z.int().min(1).max(10).default(1),
+    kind: z
+      .literal('linear')
+      .describe(
+        'Add weight once every working set met its reps at its weight, leaving no fewer reps in ' +
+          'reserve than it asked, for `afterSuccesses` sessions running. Weight-and-reps exercises.',
+      ),
+    incrementG: z.int().positive().max(50_000).describe(PLAN_WORDS.incrementG),
+    afterSuccesses: z.int().min(1).max(10).default(1).describe(PLAN_WORDS.afterSuccesses),
   }),
 
   /**
@@ -37,9 +41,20 @@ export const Progression = z.discriminatedUnion('kind', [
    * and drop back to the bottom. The standard hypertrophy scheme.
    */
   z.object({
-    kind: z.literal('double'),
-    repRange: z.tuple([z.int().min(1).max(100), z.int().min(1).max(100)]),
-    incrementG: z.int().positive().max(50_000),
+    kind: z
+      .literal('double')
+      .describe(
+        'Double progression: one rep more after each cleared session, at the same weight, up ' +
+          'through `repRange`; once every working set clears its top, add `incrementG` and start ' +
+          'again at its bottom. Weight-and-reps exercises.',
+      ),
+    repRange: z
+      .tuple([z.int().min(1).max(100), z.int().min(1).max(100)])
+      .describe(
+        '[from, to] reps, `from` below `to`. Every working set’s `targetReps` sits inside it — ' +
+          'it is where each follower starts.',
+      ),
+    incrementG: z.int().positive().max(50_000).describe(PLAN_WORDS.incrementG),
   }),
 
   /**
@@ -47,9 +62,14 @@ export const Progression = z.discriminatedUnion('kind', [
    * progression is time under load rather than weight on the bar.
    */
   z.object({
-    kind: z.literal('linear_duration'),
-    incrementS: z.int().positive().max(3600),
-    afterSuccesses: z.int().min(1).max(10).default(1),
+    kind: z
+      .literal('linear_duration')
+      .describe(
+        'Hold for longer: add `incrementS` once every working set lasted its duration, for ' +
+          '`afterSuccesses` sessions running. Duration exercises (a plank, a dead hang).',
+      ),
+    incrementS: z.int().positive().max(3600).describe('Seconds added at each advance.'),
+    afterSuccesses: z.int().min(1).max(10).default(1).describe(PLAN_WORDS.afterSuccesses),
   }),
 
   /**
@@ -58,9 +78,19 @@ export const Progression = z.discriminatedUnion('kind', [
    * deliberate change: a shorter time would break advance-or-hold.
    */
   z.object({
-    kind: z.literal('linear_distance'),
-    incrementMm: z.int().positive().max(10_000_000),
-    afterSuccesses: z.int().min(1).max(10).default(1),
+    kind: z
+      .literal('linear_distance')
+      .describe(
+        'Go further at the same pace: add `incrementMm`, and time in proportion, once every ' +
+          'working set covered its distance within its pace, for `afterSuccesses` sessions ' +
+          'running. Distance-and-duration exercises (a run, a row).',
+      ),
+    incrementMm: z
+      .int()
+      .positive()
+      .max(10_000_000)
+      .describe('Distance added at each advance, in millimetres (500 m is 500000).'),
+    afterSuccesses: z.int().min(1).max(10).default(1).describe(PLAN_WORDS.afterSuccesses),
   }),
 ])
 export type Progression = z.output<typeof Progression>
@@ -83,7 +113,8 @@ export const NO_PROGRESSION: Progression = { kind: 'none' }
 export const SetTarget = z.object({
   reps: TargetReps.nullable(),
   weightG: TargetWeightG.nullable(),
-  rpe: Rpe.nullable(),
+  /** The fewest reps in reserve the set must leave: a floor, not an aim (#45, ADR-0027). */
+  reserve: Reserve.nullable(),
   durationS: TargetDurationS.nullable(),
   distanceMm: TargetDistanceMm.nullable(),
 })
@@ -93,20 +124,33 @@ export type SetTarget = z.output<typeof SetTarget>
 export const NO_TARGET: SetTarget = {
   reps: null,
   weightG: null,
-  rpe: null,
+  reserve: null,
   durationS: null,
   distanceMm: null,
 }
 
 /**
- * Why a rule held a prescription (#45) — the glossary's "Held": a session short of its `targets`,
- * or one ground out past its RPE (`effort`), with the hardest working set's RPE as it was rated.
- * Null when the rule advanced, or had nothing to hold it for: no history, no rule, nothing left to
- * add, or a ceiling. Not a timed set, which the glossary also calls a hold.
+ * Why a rule held a prescription (#45) — the glossary's "Held" — named by the working set that held
+ * it (ADR-0026), counted from 1, so it reads as the logger says it ("held: set 3 did 7 of 10"):
+ * short of its `targets`, the first set that was, with what it `did` (null: not done) and what it
+ * was `asked`; or ground out past its own reserve (`effort`), the set that left the fewest, with
+ * the `reserve` it left and the reserve it `asked`. Null when the rule advanced, or had nothing to
+ * hold it for: no history, no rule, nothing left to add, or a ceiling. Not a timed set, which the
+ * glossary also calls a hold.
  */
 export const Held = z.discriminatedUnion('reason', [
-  z.object({ reason: z.literal('targets') }),
-  z.object({ reason: z.literal('effort'), rpe: Rpe }),
+  z.object({
+    reason: z.literal('targets'),
+    set: z.int().positive(),
+    did: SetTarget.nullable(),
+    asked: SetTarget,
+  }),
+  z.object({
+    reason: z.literal('effort'),
+    set: z.int().positive(),
+    reserve: Reserve,
+    asked: Reserve,
+  }),
 ])
 export type Held = z.output<typeof Held>
 
@@ -130,6 +174,11 @@ export const ProgressionSuggestion = z.object({
   held: Held.nullable(),
   /** How many past sessions were considered. Zero means there is no history to judge from. */
   sessionsConsidered: z.int().nonnegative(),
+  /**
+   * What each warm-up asks of the next session, in set order: its weight following the target in
+   * proportion (`warmupsFor`, ADR-0026) — what the editor shows beside the plan's.
+   */
+  warmups: z.array(SetTarget),
 })
 export type ProgressionSuggestion = z.output<typeof ProgressionSuggestion>
 
@@ -139,134 +188,11 @@ export interface SetAttempt {
   readonly reps?: number | null
   readonly durationS?: number | null
   readonly distanceMm?: number | null
-  /** How hard it was. Judged against a prescribed RPE, its ceiling (#45). */
-  readonly rpe?: number | null
+  /** How many reps it had left. Judged against the reserve its set asked, a floor (#45). */
+  readonly reserve?: number | null
   /** Warm-ups are excluded from progression entirely. See docs/adr/0012-progression-rules.md. */
   readonly isWarmup?: boolean
 }
 
 /** The attempts belonging to a single past session, in set order. */
 export type SessionAttempts = readonly SetAttempt[]
-
-export interface ProgressionInput {
-  readonly rule: Progression
-  /** The entry's current prescription. One weight per entry — sets never diverge. */
-  readonly target: SetTarget
-  /** How many WORKING sets the entry prescribes. Warm-ups do not count. */
-  readonly workingSets: number
-  /** Past sessions for this entry, MOST RECENT FIRST. */
-  readonly sessions: readonly SessionAttempts[]
-}
-
-/**
- * Compute the next prescription, and why it held when it did. Pure, total, and deterministic — the
- * single implementation, called by the API's progression service, whose answers the
- * `workout_progression` MCP tool and the logger's pre-fill (`EntryTarget`) both render.
- *
- * It ADVANCES OR HOLDS, never decreases. Deloading is a judgement call needing context this
- * function does not have (illness, a bad week, form breakdown), so it stays with the user or the
- * AI, acting through `workout_save_plan`.
- *
- * At a target's ceiling it holds: a suggestion past what a target may be would be refused by the
- * API's own response schema, failing the plan's whole progression and the logger's pre-fill.
- */
-export function progress(input: ProgressionInput): Progressed {
-  const next = advance(input)
-  return SetTarget.safeParse(next.target).success ? next : unheld(input.target)
-}
-
-/** What `progress` answers: the next prescription, and why it held, if something held it. */
-export interface Progressed {
-  readonly target: SetTarget
-  readonly held: Held | null
-}
-
-/** A prescription nothing held: advanced, or with nothing to hold it for. */
-const unheld = (target: SetTarget): Progressed => ({ target, held: null })
-
-function advance(input: ProgressionInput): Progressed {
-  const { rule } = input
-  switch (rule.kind) {
-    case 'none':
-      return unheld(input.target)
-    case 'linear':
-      return advanceWeight(rule, input)
-    case 'linear_duration':
-      return advanceDuration(rule, input)
-    case 'linear_distance':
-      return advanceDistance(rule, input)
-    case 'double':
-      return advanceDouble(rule, input)
-    default:
-      return unhandledKind(rule)
-  }
-}
-
-type RuleOf<K extends Progression['kind']> = Extract<Progression, { kind: K }>
-
-function advanceWeight(
-  rule: RuleOf<'linear'>,
-  { target, workingSets, sessions }: ProgressionInput,
-): Progressed {
-  const run = judgeRun(rule.afterSuccesses, sessions, (s) =>
-    judgeReps(s, target.reps, target, workingSets),
-  )
-  if (run !== 'cleared') return { target, held: run }
-  if (target.weightG === null) return unheld(target)
-  return unheld({ ...target, weightG: target.weightG + rule.incrementG })
-}
-
-function advanceDuration(
-  rule: RuleOf<'linear_duration'>,
-  { target, workingSets, sessions }: ProgressionInput,
-): Progressed {
-  const run = judgeRun(rule.afterSuccesses, sessions, (s) => judgeDuration(s, target, workingSets))
-  if (run !== 'cleared') return { target, held: run }
-  if (target.durationS === null) return unheld(target)
-  return unheld({ ...target, durationS: target.durationS + rule.incrementS })
-}
-
-function advanceDistance(
-  rule: RuleOf<'linear_distance'>,
-  { target, workingSets, sessions }: ProgressionInput,
-): Progressed {
-  const run = judgeRun(rule.afterSuccesses, sessions, (s) => judgeDistance(s, target, workingSets))
-  if (run !== 'cleared') return { target, held: run }
-  if (target.distanceMm === null) return unheld(target)
-  const distanceMm = target.distanceMm + rule.incrementMm
-  // The prescribed pace, kept: the time grows in proportion, to whole seconds rounded up — rounded
-  // down, it would ask for a hair faster than the pace.
-  const durationS =
-    target.durationS === null
-      ? null
-      : Math.ceil((target.durationS * distanceMm) / target.distanceMm)
-  return unheld({ ...target, distanceMm, durationS })
-}
-
-function advanceDouble(
-  rule: RuleOf<'double'>,
-  { target, workingSets, sessions }: ProgressionInput,
-): Progressed {
-  const latest = sessions[0]
-  if (latest === undefined) return unheld(target)
-  const last = working(latest)
-  if (last === null) return { target, held: SHORT_OF_TARGETS }
-
-  const [minReps, maxReps] = normaliseRange(rule.repRange)
-  const currentReps = target.reps ?? minReps
-  const atTop = currentReps >= maxReps
-
-  // Every working set asked for the top of the range when at it, else the current target.
-  const goal = atTop ? maxReps : currentReps
-  const verdict = judgeReps(last, goal, target, workingSets)
-  if (verdict !== 'cleared') return { target, held: verdict }
-
-  // Cleared the top of the range: add weight, restart at the bottom.
-  if (atTop) {
-    if (target.weightG === null) return unheld(target)
-    return unheld({ ...target, reps: minReps, weightG: target.weightG + rule.incrementG })
-  }
-
-  // Met the current target: climb one rep.
-  return unheld({ ...target, reps: currentReps + 1 })
-}

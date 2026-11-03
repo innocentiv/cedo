@@ -12,7 +12,7 @@ import {
 import { expectContract } from '../../test/contract.ts'
 import { type TestUser, makeApi } from '../../test/harness.ts'
 import { trainingReview } from '../review/service.ts'
-import { logWhole } from './start.ts'
+import { logWhole } from './log-whole.ts'
 import { own } from '../coaching/training.ts'
 
 /**

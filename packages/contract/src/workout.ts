@@ -1,12 +1,13 @@
 import { z } from 'zod'
 import { Exercise } from './exercise.ts'
-import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 import { EntryCue } from './cue.ts'
 import { DEFAULT_REST_S } from './rest.ts'
-import { Rpe } from './rpe.ts'
 import { Progression, SetTarget } from './progression.ts'
+import { ruleIssues } from './rule-issues.ts'
 import { OwnableQuery, ownableFields } from './ownable.ts'
 import { Id, NonEmptyString, OrderIndex, patchOf } from './primitives.ts'
+import { PLAN_WORDS } from './plan-words.ts'
+import { WorkoutSetInput, targetFieldsOf } from './plan-set.ts'
 
 /**
  * A workout is a sequence of days; a day is a sequence of entries; an entry is one exercise with
@@ -32,40 +33,6 @@ export const MAX_SETS_PER_ENTRY = 20
 export const MAX_ENTRIES_PER_DAY = 40
 export const MAX_DAYS_PER_PLAN = 14
 
-export const WorkoutSetInput = z.strictObject({
-  targetReps: TargetReps.nullable().default(null),
-  targetWeightG: TargetWeightG.nullable().default(null),
-  targetRpe: Rpe.nullable().default(null),
-  targetDurationS: TargetDurationS.nullable().default(null),
-  targetDistanceMm: TargetDistanceMm.nullable().default(null),
-  /** Ramp-up sets. Excluded from progression, from working sets per muscle and weight lifted. */
-  isWarmup: z.boolean().default(false),
-})
-export type WorkoutSetInput = z.output<typeof WorkoutSetInput>
-
-/** A set's targets as a plan is written — `targetReps`, `targetWeightG`, … — without the flag. */
-export type TargetFields = Omit<WorkoutSetInput, 'isWarmup'>
-
-/**
- * A set's targets as a plan is written, and as it is read (`target.reps`, …): the one mapping
- * each way. The plan read, progression and `planInputFrom` each spelled it out for themselves.
- */
-export const setTargetOf = (set: TargetFields): SetTarget => ({
-  reps: set.targetReps,
-  weightG: set.targetWeightG,
-  rpe: set.targetRpe,
-  durationS: set.targetDurationS,
-  distanceMm: set.targetDistanceMm,
-})
-
-export const targetFieldsOf = (target: SetTarget): TargetFields => ({
-  targetReps: target.reps,
-  targetWeightG: target.weightG,
-  targetRpe: target.rpe,
-  targetDurationS: target.durationS,
-  targetDistanceMm: target.distanceMm,
-})
-
 export const WorkoutEntryInput = z
   .strictObject({
     /**
@@ -73,22 +40,34 @@ export const WorkoutEntryInput = z
      * trusted: an id that is not an entry of THIS workout, or whose exercise changed, becomes a new
      * entry. See `id` on `WorkoutDayInput` for why it matters.
      */
-    id: Id.optional(),
-    exerciseId: Id,
-    supersetGroup: SupersetGroup.default(null),
+    id: Id.optional().describe(PLAN_WORDS.entryId),
+    exerciseId: Id.describe(PLAN_WORDS.exerciseId),
+    supersetGroup: SupersetGroup.default(null).describe(PLAN_WORDS.supersetGroup),
     /** Two minutes when not said; null or 0 is none — see `rest.ts`. */
-    restSeconds: z.int().nonnegative().max(3600).nullable().default(DEFAULT_REST_S),
+    restSeconds: z
+      .int()
+      .nonnegative()
+      .max(3600)
+      .nullable()
+      .default(DEFAULT_REST_S)
+      .describe(PLAN_WORDS.restSeconds),
     /** One line for the athlete about this entry — see `cue.ts`. */
-    cue: EntryCue.default(null),
-    progression: Progression.default({ kind: 'none' }),
+    cue: EntryCue.default(null).describe(PLAN_WORDS.cue),
+    progression: Progression.default({ kind: 'none' }).describe(PLAN_WORDS.progression),
     sets: z
       .array(WorkoutSetInput)
       .min(1)
-      .max(MAX_SETS_PER_ENTRY, `An exercise holds at most ${MAX_SETS_PER_ENTRY} sets`),
+      .max(MAX_SETS_PER_ENTRY, `An exercise holds at most ${MAX_SETS_PER_ENTRY} sets`)
+      .describe(PLAN_WORDS.sets),
   })
   .refine((e) => e.sets.some((s) => !s.isWarmup), {
     path: ['sets'],
     message: 'An entry must prescribe at least one working set',
+  })
+  .superRefine((e, ctx) => {
+    for (const message of ruleIssues(e.progression, e.sets)) {
+      ctx.addIssue({ code: 'custom', path: ['progression'], message })
+    }
   })
 export type WorkoutEntryInput = z.output<typeof WorkoutEntryInput>
 
@@ -99,11 +78,12 @@ export const WorkoutDayInput = z.strictObject({
    * attached through renames, retargets and reorders. Omitted means a new day. Optional, and never
    * trusted: an id that is not a day of THIS workout is treated as omitted.
    */
-  id: Id.optional(),
-  name: NonEmptyString.max(80),
+  id: Id.optional().describe(PLAN_WORDS.dayId),
+  name: NonEmptyString.max(80).describe(PLAN_WORDS.dayName),
   entries: z
     .array(WorkoutEntryInput)
-    .max(MAX_ENTRIES_PER_DAY, `A day holds at most ${MAX_ENTRIES_PER_DAY} exercises`),
+    .max(MAX_ENTRIES_PER_DAY, `A day holds at most ${MAX_ENTRIES_PER_DAY} exercises`)
+    .describe(PLAN_WORDS.entries),
 })
 export type WorkoutDayInput = z.output<typeof WorkoutDayInput>
 
@@ -113,7 +93,8 @@ export const WorkoutPlanInput = z
     days: z
       .array(WorkoutDayInput)
       .min(1, 'A plan needs at least one day')
-      .max(MAX_DAYS_PER_PLAN, `A plan holds at most ${MAX_DAYS_PER_PLAN} days`),
+      .max(MAX_DAYS_PER_PLAN, `A plan holds at most ${MAX_DAYS_PER_PLAN} days`)
+      .describe(PLAN_WORDS.days),
   })
   .superRefine((plan, ctx) => {
     const days = plan.days.flatMap((d) => (d.id === undefined ? [] : [d.id]))
@@ -141,7 +122,9 @@ export type WorkoutPlanInput = z.output<typeof WorkoutPlanInput>
  * Without one the save is unconditional: for a caller writing a plan it composed whole, with no
  * earlier copy to have gone stale.
  */
-export const PlanSave = WorkoutPlanInput.safeExtend({ version: z.int().positive().optional() })
+export const PlanSave = WorkoutPlanInput.safeExtend({
+  version: z.int().positive().optional().describe(PLAN_WORDS.version),
+})
 export type PlanSave = z.output<typeof PlanSave>
 
 export const WorkoutSet = z.object({

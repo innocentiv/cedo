@@ -13,7 +13,7 @@ import {
 } from './measurement.ts'
 import { SetTarget } from './progression.ts'
 import { LogSetInput } from './log.ts'
-import { WorkoutSetInput } from './workout.ts'
+import { WorkoutSetInput } from './plan-set.ts'
 
 /** Postgres `integer`. Every measurement bound must fit, or a valid value overflows the column. */
 const PG_INT4_MAX = 2_147_483_647
@@ -46,7 +46,7 @@ describe('weight is bounded everywhere it appears', () => {
     [
       'SetTarget',
       SetTarget,
-      { reps: null, weightG: overflow, rpe: null, durationS: null, distanceMm: null },
+      { reps: null, weightG: overflow, reserve: null, durationS: null, distanceMm: null },
     ],
     ['WorkoutSetInput', WorkoutSetInput, { targetWeightG: overflow }],
     ['LogSetInput', LogSetInput, { exerciseId: crypto.randomUUID(), weightG: overflow }],
@@ -77,16 +77,17 @@ describe('bounds are shared, not redeclared', () => {
     expect(LoggedWeightG.safeParse(0).success).toBe(true)
   })
 
-  /** One scale for a target and a log: 5 to 10 in half-points (`rpe.ts`). */
-  test('rpe is the same scale wherever it appears', () => {
+  /** One scale for a target and a log: none to five, whole (`rpe.ts`, ADR-0027). */
+  test('reps in reserve are the same scale wherever they appear', () => {
     const readings = [
-      (rpe: number) =>
-        SetTarget.safeParse({ reps: 5, weightG: null, rpe, durationS: null, distanceMm: null }),
-      (rpe: number) => WorkoutSetInput.safeParse({ targetReps: 5, targetRpe: rpe }),
-      (rpe: number) => LogSetInput.safeParse({ exerciseId: crypto.randomUUID(), reps: 5, rpe }),
+      (reserve: number) =>
+        SetTarget.safeParse({ reps: 5, weightG: null, reserve, durationS: null, distanceMm: null }),
+      (reserve: number) => WorkoutSetInput.safeParse({ targetReps: 5, targetReserve: reserve }),
+      (reserve: number) =>
+        LogSetInput.safeParse({ exerciseId: crypto.randomUUID(), reps: 5, reserve }),
     ]
     for (const read of readings) {
-      expect([8.5, 8.25, 4].map((rpe) => read(rpe).success)).toEqual([true, false, false])
+      expect([2, 1.5, 6].map((reserve) => read(reserve).success)).toEqual([true, false, false])
     }
   })
 })

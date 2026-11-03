@@ -158,7 +158,8 @@ the AI replace either through the media endpoints.
 
 `seed-perf/` builds a **separate** database (`cedo_test_perf`, selected by `CEDO_PERF=1`) at
 production volume: 250,000 set logs, 10,000 shared exercises, 1,000 plans, 5,000 sessions, plus
-media, favourites and browser sessions. It shares nothing with `seed.ts` beyond `seedMuscles`,
+media, favourites, browser sessions, and the progression steps those sessions took — some taken
+against a prescription since edited, so the target read has stale steps to pass over. It shares nothing with `seed.ts` beyond `seedMuscles`,
 because it is answering a different question.
 
 Four rules govern it:

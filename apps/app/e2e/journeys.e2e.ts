@@ -995,9 +995,9 @@ test(
       await app.planEditor.create('Zz Hold', 'Core')
       const entry = app.planEditor.entry(0, 0)
       expect(await entry.text()).toContain('Zz Hold')
-      // A duration exercise: Seconds, not weight and reps.
-      expect(await entry.has('duration')).toBe(true)
-      expect(await entry.has('weight')).toBe(false)
+      // A duration exercise, a new entry on Manual: its first line asks seconds, not weight and reps.
+      expect(await entry.line(1).has('duration')).toBe(true)
+      expect(await entry.line(1).has('weight')).toBe(false)
     })
   },
   E2E_TIMEOUT_MS,
@@ -1015,7 +1015,8 @@ test(
       const app = screens(page)
       await app.auth.register(unique('clock'))
       await app.planEditor.create('Plank')
-      const plank = app.planEditor.entry(0, 0)
+      // A new entry is Manual: each working set its own line.
+      const plank = app.planEditor.entry(0, 0).line(1)
 
       // A new entry prescribes 30 seconds: shown as a clock, and typed over as one.
       expect(await plank.value('duration')).toBe('0:30')
@@ -1092,7 +1093,9 @@ test(
       await app.planEditor.create('Rowing Machine', 'Row Day')
       const planned = app.planEditor.entry(0, 0)
       await planned.progression('linear_distance')
-      expect(await planned.progressionSummary()).toBe('Distance, +500 m at the same pace')
+      expect(await planned.progressionSummary()).toBe(
+        'Go 500 m further at the same pace when every working set covers its distance in its time.',
+      )
       await app.planEditor.saveAndStart()
 
       const mine = await page.client()
@@ -1126,12 +1129,15 @@ test(
 
       await app.planEditor.create()
       const planned = app.planEditor.entry(0, 0)
+      // A new rule adds 5 lb for someone who reads pounds — not the 5.51 that 2.5 kg would be.
+      await planned.progression('linear')
+      expect(await planned.progressionSummary()).toBe(
+        'Add 5 lb when every working set makes its reps, leaving the reps in reserve it asks.',
+      )
+      // Under a rule, the plan's weight is every working set's.
       await planned.focus('weight')
       await page.keys(['1', '3', '2', '.', '5'])
       expect(await planned.value('weight')).toBe('132.5')
-      // A new rule adds 5 lb for someone who reads pounds — not the 5.51 that 2.5 kg would be.
-      await planned.progression('linear')
-      expect(await planned.progressionSummary()).toBe('Linear, +5 lb')
 
       await app.planEditor.saveAndStart()
       const bench = app.session.entry(0)
@@ -1823,7 +1829,7 @@ test(
           entryId: null,
           weightG: kgToG(kg),
           reps: 5,
-          rpe: null,
+          reserve: null,
           durationS: null,
           distanceMm: null,
           isWarmup: false,
@@ -1914,7 +1920,7 @@ test(
             entryId: null,
             weightG: kgToG(kg),
             reps: 5,
-            rpe: null,
+            reserve: null,
             durationS: null,
             distanceMm: null,
             isWarmup: false,
@@ -2689,12 +2695,12 @@ test(
 )
 
 /**
- * A prescribed RPE is a ceiling (#45): every rep done, but ground out with none left in reserve
+ * A prescribed reserve is a floor (#45): every rep done, but ground out with none left in reserve
  * against two prescribed, holds the target — and the logger says why, since last time's sets show
  * the reps were all there.
  */
 test(
-  'a session ground out past its RPE holds the next one, and the logger says why',
+  'a session ground out past its reserve holds the next one, and the logger says why',
   async () => {
     await withApp('held-for-effort', async (page) => {
       const app = screens(page)
@@ -2703,7 +2709,7 @@ test(
       const [bench] = (await mine.exercises.list({ q: 'Bench', limit: 1 })).items
       if (bench === undefined) throw new Error('The seeded library has no bench press')
       const plan = await mine.workouts.create({ name: 'Strength', notes: null })
-      const five = { targetReps: 5, targetWeightG: 60_000, targetRpe: 8 }
+      const five = { targetReps: 5, targetWeightG: 60_000, targetReserve: 2 }
       await mine.workouts.replacePlan(
         plan.id,
         WorkoutPlanInput.parse({
@@ -2726,7 +2732,9 @@ test(
       await app.workouts.openFirst()
       await app.workouts.startDay(0)
       const first = app.session.entry(0)
-      expect(await first.target()).toBe('Prescribed 5 × 60 kg · 2 in reserve')
+      expect(await first.target()).toBe('Prescribed 5 × 60 kg')
+      // What the set asks of how hard it is, said above the answer — never filled in with it.
+      expect(await first.asks()).toBe('Leave 2 in reserve')
       for (let set = 0; set < 3; set += 1) {
         await first.reserve('0')
         await first.log()
@@ -2738,8 +2746,9 @@ test(
       await app.workouts.startDay(0)
       const next = app.session.entry(0)
       expect(await next.value('weight')).toBe('60')
+      // Why, by its set (ADR-0026): the reps were there, done harder than asked — not a stall.
       expect(await next.target()).toBe(
-        'Held at 5 × 60 kg · 2 in reserve · a recent set left 0 in reserve',
+        'Prescribed 5 × 60 kg · held for effort: set 1 left 0 in reserve, asked 2',
       )
     })
   },
@@ -2821,22 +2830,24 @@ test(
 )
 
 /**
- * RPE, asked as reps in reserve: a target set in the editor, said of a set before it is logged
+ * Reps in reserve, end to end (ADR-0027): a target set in the editor, said of a set before it is logged
  * (#37) — never pre-filled from the plan's, never carried to the next set, which would be answers
  * the athlete did not give, and not asked again once the set is logged.
  */
 test(
-  'a set logged with one rep left reads back as RPE 9, and the next is asked afresh',
+  'a set logged with one rep left reads back as one in reserve, and the next is asked afresh',
   async () => {
-    await withApp('rpe-reserve', async (page) => {
+    await withApp('reserve-asked', async (page) => {
       const app = screens(page)
-      await app.auth.register(unique('rpe'))
+      await app.auth.register(unique('reserve'))
       await app.planEditor.create()
+      // Under a rule, one row of reps in reserve asks it of every working set.
+      await app.planEditor.entry(0, 0).progression('linear')
       await app.planEditor.entry(0, 0).reserve('2')
       await app.planEditor.saveAndStart()
 
       const bench = app.session.entry(0)
-      expect(await bench.target()).toContain('· 2 in reserve')
+      expect(await bench.asks()).toBe('Leave 2 in reserve')
       // Asked before the set, and not filled in from the plan's 2: the answer is the athlete's.
       expect(await bench.reserveChosen()).toBe('none')
       await bench.reserve('1')
@@ -2857,12 +2868,12 @@ test(
       const [latest] = (await mine.sessions.list({ limit: 1 })).items
       if (latest === undefined) throw new Error('The session was not listed')
       const logs = (await mine.sessions.get(latest.id)).logs
-      expect(logs.map((l) => l.rpe)).toEqual([9, null])
-      // And the editor's 2 in reserve was saved as the plan's target: RPE 8.
+      expect(logs.map((l) => l.reserve)).toEqual([1, null])
+      // And the editor's 2 in reserve was saved as the plan's target, as it was said.
       const [plan] = (await mine.workouts.list({})).items
       if (plan === undefined) throw new Error('The plan was not listed')
       const saved = (await mine.workouts.get(plan.id)).days[0]?.entries[0]?.sets
-      expect(saved?.filter((s) => !s.isWarmup).map((s) => s.target.rpe)).toEqual([8, 8, 8])
+      expect(saved?.filter((s) => !s.isWarmup).map((s) => s.target.reserve)).toEqual([2, 2, 2])
     })
   },
   E2E_TIMEOUT_MS,
@@ -3034,6 +3045,281 @@ test(
       // Asking the server who the token is: the one request a cut network must fail.
       { allowErrors: [/\[network\] Load failed/u] },
     )
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/** A client the journey sets up data with — never a screen. */
+type Client = Awaited<ReturnType<Page['client']>>
+
+/**
+ * A finished session of the plan's first day, its first entry trained `reps` at `kg` a set — the
+ * steps a finish takes (ADR-0026), set up as a fixture.
+ */
+async function trained(mine: Client, kg: number, ...reps: number[]): Promise<void> {
+  const [summary] = (await mine.workouts.list({})).items
+  if (summary === undefined) throw new Error('No plan to train')
+  const day = (await mine.workouts.get(summary.id)).days[0]
+  const entry = day?.entries[0]
+  if (day === undefined || entry === undefined) throw new Error('The plan has no entry')
+  const session = await mine.sessions.start({ workoutId: summary.id, dayId: day.id })
+  for (const r of reps) {
+    // oxlint-disable-next-line no-await-in-loop -- sets in order.
+    await mine.sessions.logSet(
+      session.id,
+      LogSetInput.parse({
+        exerciseId: entry.exerciseId,
+        entryId: entry.id,
+        weightG: kgToG(kg),
+        reps: r,
+      }),
+    )
+  }
+  await mine.sessions.update(session.id, { endedAt: new Date().toISOString() })
+}
+
+/**
+ * A double entry carried session by session past its plan (ADR-0026): the plan stays as written,
+ * the athlete's own next session moves — on its line, in its editor, and in the logger — and a
+ * finish in the app moves it again; Change puts it where they say.
+ */
+test(
+  'a double entry advances over sessions, and the plan says where you are without changing',
+  async () => {
+    await withApp('double-advances', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('dbl'))
+      await app.planEditor.create()
+      const bench = app.planEditor.entry(0, 0)
+      await bench.progression('double')
+      // Start at is the range, so reps outside it cannot be asked.
+      expect(await bench.startAtChoices()).toEqual(['8', '9', '10', '11', '12'])
+      await bench.focus('weight')
+      await page.keys(['6', '0'])
+      await app.planEditor.saved()
+      expect(await bench.next()).toBe('8 × 60 kg')
+
+      const mine = await page.client()
+      await trained(mine, 60, 8, 8, 8)
+      await trained(mine, 60, 9, 9, 9)
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      expect(await bench.text()).toContain(
+        '3 sets · 8 × 60 kg · Double 8–12, +2.5 kg · next 10 × 60 kg',
+      )
+      expect(await bench.next()).toBe('10 × 60 kg')
+
+      await app.planEditor.saved()
+      await app.workouts.startDay(0)
+      const logger = app.session.entry(0)
+      expect(await logger.target()).toBe('Progressed to 10 × 60 kg · the plan says 8 × 60 kg')
+      for (let set = 0; set < 3; set += 1) await logger.log()
+      await app.session.finish()
+
+      // Finishing moved it; the plan still says 8.
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await page.until(bench.next, (next) => next === '11 × 60 kg')
+      expect(await bench.text()).toContain('3 sets · 8 × 60 kg')
+      // Change: where the athlete says they are, inside the range.
+      await bench.changeReps(12)
+      await page.until(bench.next, (next) => next === '12 × 60 kg')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * A typo restarts nothing for good (ADR-0026): editing what the rule judges says the target
+ * restarts from the plan, and putting it back brings the target back — the reset is derived, never
+ * written.
+ */
+test(
+  'a typo in the plan restarts the target, and putting it back brings it back',
+  async () => {
+    await withApp('typo-and-back', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('typo'))
+      await app.planEditor.create()
+      const bench = app.planEditor.entry(0, 0)
+      await bench.progression('double')
+      await bench.focus('weight')
+      await page.keys(['6', '0'])
+      await app.planEditor.saved()
+      await trained(await page.client(), 60, 8, 8, 8)
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await page.until(bench.next, (next) => next === '9 × 60 kg')
+
+      await bench.focus('weight')
+      await page.keys(['6', '5'])
+      await page.until(
+        bench.restarts,
+        (said) => said === 'Your next session restarts from the plan (you were at 9 × 60 kg).',
+      )
+      await page.until(bench.next, (next) => next === '8 × 65 kg')
+
+      // Still in the field, where a tap puts the caret: to its end, emptied, and typed again.
+      await bench.focus('weight')
+      await page.keys(['End', 'Backspace', 'Backspace', '6', '0'])
+      await page.until(bench.restarts, (said) => said === null)
+      await page.until(bench.next, (next) => next === '9 × 60 kg')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * A top set and its back-offs, written on Manual as on paper (ADR-0026): each line its own, said
+ * as runs on the outline, and asked set by set in the logger. A rule would make them one, so
+ * switching asks first.
+ */
+test(
+  'a manual top set and back-offs are written line by line, and logged as written',
+  async () => {
+    await withApp('manual-back-offs', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('top'))
+      await app.planEditor.create()
+      const bench = app.planEditor.entry(0, 0)
+      const lines: readonly (readonly [number, string, string[]])[] = [
+        [1, '6', ['9', '0']],
+        [2, '8', ['8', '0']],
+        [3, '8', ['8', '0']],
+      ]
+      for (const [n, reps, kg] of lines) {
+        // oxlint-disable-next-line no-await-in-loop -- line by line, as a thumb would.
+        await bench.line(n).focus('reps')
+        // oxlint-disable-next-line no-await-in-loop -- line by line.
+        await page.keys([reps])
+        // oxlint-disable-next-line no-await-in-loop -- line by line.
+        await bench.line(n).focus('weight')
+        // oxlint-disable-next-line no-await-in-loop -- line by line.
+        await page.keys(kg)
+      }
+      // A rule would ask every working set the same: asked first, and kept when declined.
+      await bench.progression('linear')
+      expect(await bench.asksToAlign()).toBe(true)
+      await bench.align('cancel')
+      await app.planEditor.saved()
+      expect(await bench.text()).toContain('1 set 6 × 90 kg · 2 sets 8 × 80 kg · Manual')
+
+      await app.workouts.startDay(0)
+      const logger = app.session.entry(0)
+      expect(await logger.value('weight')).toBe('90')
+      expect(await logger.value('reps')).toBe('6')
+      await logger.log()
+      await page.until(
+        async () => await logger.value('weight'),
+        (kg) => kg === '80',
+      )
+      expect(await logger.value('reps')).toBe('8')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * Reps in reserve ramping by set under a rule (ADR-0026): the rows stay open while they differ,
+ * each set asks its own in the logger, and Same for all sets asks before making them one.
+ */
+test(
+  'reps in reserve vary by set, each asked of its own set, and are made one only when asked',
+  async () => {
+    await withApp('vary-by-set', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('ramp'))
+      await app.planEditor.create()
+      const bench = app.planEditor.entry(0, 0)
+      await bench.progression('double')
+      await bench.varyReserve()
+      for (const [n, reserve] of [
+        [1, '2'],
+        [2, '1'],
+        [3, '0'],
+      ] as const) {
+        // oxlint-disable-next-line no-await-in-loop -- set by set.
+        await bench.line(n).reserve(reserve)
+      }
+      await app.planEditor.saved()
+      // Opened again, the rows are still open: a difference is never hidden behind one row.
+      expect(await bench.reserveBySet()).toBe(true)
+      await bench.sameReserveForAll('cancel')
+      expect(await bench.reserveBySet()).toBe(true)
+
+      await app.planEditor.saved()
+      await app.workouts.startDay(0)
+      const logger = app.session.entry(0)
+      expect(await logger.asks()).toBe('Leave 2 in reserve')
+      await logger.log()
+      await page.until(logger.asks, (asks) => asks === 'Leave 1 in reserve')
+      await app.session.back()
+
+      await app.planEditor.open((await (await page.client()).workouts.list({})).items[0]?.id ?? '')
+      await bench.sameReserveForAll('confirm')
+      await app.planEditor.saved()
+      expect(await bench.reserveBySet()).toBe(false)
+      const [plan] = (await (await page.client()).workouts.list({})).items
+      const saved =
+        plan === undefined
+          ? []
+          : ((await (await page.client()).workouts.get(plan.id)).days[0]?.entries[0]?.sets ?? [])
+      expect(saved.filter((s) => !s.isWarmup).map((s) => s.target.reserve)).toEqual([2, 2, 2])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * A target is its person's, not the plan's (ADR-0026): a reader of a coach's plan opens an entry
+ * read only — the plan said, nothing of it to change — and still sets their own next session,
+ * which leaves the coach's own as it was.
+ */
+test(
+  "a reader opens a coach's entry read only, and changes their own target",
+  async () => {
+    const athlete = unique('rdr')
+    await withApp('reader-changes-target', async (page) => {
+      const app = screens(page)
+      await app.auth.register(athlete)
+      const coach = await signUp(`${athlete}c`)
+      const squad = await coach.api.groups.create({ name: 'Squad' })
+      await coach.api.groups.addMember(squad.id, { username: athlete, role: 'reader' })
+      const [bench] = (await coach.api.exercises.list({ q: 'Bench', limit: 1 })).items
+      if (bench === undefined) throw new Error('The seeded library has no bench press')
+      const plan = await coach.api.workouts.create({ name: 'Coached', notes: null })
+      const eight = { targetReps: 8, targetWeightG: kgToG(60) }
+      await coach.api.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [
+            {
+              name: 'Press',
+              entries: [
+                {
+                  exerciseId: bench.id,
+                  progression: { kind: 'double', repRange: [8, 12], incrementG: 2500 },
+                  sets: [eight, eight, eight],
+                },
+              ],
+            },
+          ],
+        }),
+      )
+      await coach.api.workouts.transfer(plan.id, { toGroupId: squad.id })
+
+      await app.planEditor.open(plan.id)
+      const entry = app.planEditor.entry(0, 0)
+      expect(await entry.readOnly()).toBe(true)
+      expect(await entry.progressionSummary()).toContain('Climb from 8 to 12 reps')
+      expect(await entry.next()).toBe('8 × 60 kg')
+      await entry.changeReps(10)
+      await page.until(entry.next, (next) => next === '10 × 60 kg')
+
+      // Theirs alone: the coach's own next session is the plan's still.
+      const [coachs] = await coach.api.workouts.progression(plan.id)
+      expect(coachs?.suggested.reps).toBe(8)
+    })
   },
   E2E_TIMEOUT_MS,
 )

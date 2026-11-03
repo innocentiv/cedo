@@ -1,10 +1,10 @@
 import { z } from 'zod'
-import { formatEffort } from './effort.ts'
+import { type Effort, formatEffort } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
 import { LOAD_LIMIT_WORDS, LoadLimit } from './load.ts'
 import { LoggedEffort } from './log.ts'
 import { Held, SetTarget } from './progression.ts'
-import { formatReserve, formatWithReserve, reserveOf } from './rpe.ts'
+import { heldWords } from './progression-words.ts'
 import type { WeightUnit } from './units.ts'
 
 /**
@@ -39,24 +39,43 @@ export const EntryTarget = z.object({
    * other, or none — in the order they were logged. Null when there is none.
    */
   last: z.array(LoggedEffort).nullable(),
+  /**
+   * What each warm-up asks, in set order: its own line, its weight following the working target in
+   * proportion (`warmupsFor`, ADR-0026) — worked out as it is read, never kept.
+   */
+  warmups: z.array(SetTarget),
+  /**
+   * What each working set asks, in set order: under a rule, the target with that set's own reps in
+   * reserve (ADR-0026); on Manual, the set's own numbers — a top set and its back-offs as written.
+   * Each in a weight the athlete can load (#36).
+   */
+  working: z.array(SetTarget),
 })
 export type EntryTarget = z.output<typeof EntryTarget>
 
 /**
- * What the logger says beside an entry's target: moved by the rule, beside what the plan says; held
- * for effort (#45), with the reserve a set left — the one reason a prescription held that is nowhere
- * else on the screen, since last time's sets, beside it, show a missed rep but not a ground-out one; or as
- * prescribed. Where the athlete's equipment stopped it (#36) is said after the target.
+ * What the logger says beside an entry's target (docs/08-frontend.md, the workout screen): moved by
+ * the rule, beside what the plan says — "Progressed to 11 × 20 kg · the plan says 10 × 20 kg" — or as
+ * prescribed; then why the latest session held it, per set, in the words `workout_progression` says
+ * ("held: set 3 did 7 of 10", "held for effort: set 3 left 0 in reserve, asked 2"), so what the last
+ * session did is read where the next one is done. Where the athlete's equipment stopped it (#36) is
+ * said after the target. No reps in reserve: each set asks its own, and the logger says it above it.
  */
-export function targetLine(asked: EntryTarget, tracking: TrackingMode, unit: WeightUnit): string {
+export function targetLine(
+  asked: EntryTarget,
+  tracking: TrackingMode,
+  unit: WeightUnit,
+  /**
+   * The set it is said for: on Manual each working set asks its own. A warm-up is never judged, so
+   * on one — or none given — the line says the entry's target.
+   */
+  set?: { readonly isWarmup: boolean; readonly target: Effort },
+): string {
+  const said = set === undefined || set.isWarmup ? asked.target : set.target
   const limit = asked.limit === null ? '' : ` · ${LOAD_LIMIT_WORDS[asked.limit]}`
-  const target = `${formatWithReserve(asked.target, tracking, unit)}${limit}`
-  if (asked.changed) {
-    return `Progressed to ${target} · the plan says ${formatEffort(asked.prescribed, tracking, unit)}`
-  }
-  if (asked.held?.reason === 'effort') {
-    // "a recent set", not "last time": with a streak to clear, an older session can be the one.
-    return `Held at ${target} · a recent set left ${formatReserve(reserveOf(asked.held.rpe))} in reserve`
-  }
-  return `Prescribed ${target}`
+  const target = `${formatEffort(asked.target, tracking, unit)}${limit}`
+  const moved = asked.changed
+    ? `Progressed to ${target} · the plan says ${formatEffort(asked.prescribed, tracking, unit)}`
+    : `Prescribed ${formatEffort(said, tracking, unit)}${limit}`
+  return asked.held === null ? moved : `${moved} · ${heldWords(asked.held, tracking, unit)}`
 }

@@ -8,11 +8,12 @@ import {
   type TrackingMode,
   asksReserveOf,
   fieldsOf,
+  formatReserve,
 } from '@cedo/contract'
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
 import { IconButton } from './icon.tsx'
-import { ReserveChips } from './reserve-chips.tsx'
+import { ReserveSegments } from './reserve-segments.tsx'
 import { SetMarks } from './set-marks.tsx'
 import { Stack } from './stack.tsx'
 import { Stepper } from './stepper.tsx'
@@ -31,7 +32,7 @@ export interface NextSet {
 export interface LoggedHere {
   readonly effort: Effort
   readonly isWarmup: boolean
-  readonly rpe: LogSetInput['rpe']
+  readonly reserve: LogSetInput['reserve']
 }
 
 export interface FocusLoggerProps {
@@ -87,9 +88,9 @@ export function FocusLogger({
     distanceMm: next.target.distanceMm,
   })
   // Asked before the set is logged, of a working set counted in reps (the contract's
-  // `asksReserveOf`), and never pre-filled — not even from a plan's RPE: the answer is the
+  // `asksReserveOf`), and never pre-filled — not even from the plan's reserve: the answer is the
   // athlete's (#37). Empty for each set because the screen keys this logger by the set it logs.
-  const [rpe, setRpe] = useState<number | null>(null)
+  const [reserve, setReserve] = useState<number | null>(null)
   const asked = asksReserveOf(next, tracking)
   return (
     <Stack gap="lg" testID={testID}>
@@ -152,11 +153,11 @@ export function FocusLogger({
             ))}
           </Stack>
           {asked ? (
-            <ReserveChips
-              label="Reps in reserve"
-              rpe={rpe}
-              onChange={setRpe}
-              testID={`${testID}-reserve`}
+            <ReserveAsked
+              asks={next.target.reserve}
+              reserve={reserve}
+              onChange={setReserve}
+              testID={testID}
             />
           ) : null}
           <Stack gap="sm">
@@ -165,7 +166,7 @@ export function FocusLogger({
               size="large"
               busy={busy}
               onPress={() => {
-                onLog({ effort, isWarmup: next.isWarmup, rpe: asked ? rpe : null })
+                onLog({ effort, isWarmup: next.isWarmup, reserve: asked ? reserve : null })
               }}
               testID={`${testID}-log`}
             />
@@ -177,6 +178,38 @@ export function FocusLogger({
           </Stack>
         </Stack>
       </Card>
+    </Stack>
+  )
+}
+
+/**
+ * How hard the set was, asked before it is logged (#37): what this set asks said above it — each
+ * working set may ask its own (ADR-0026) — and the answer never pre-filled: it is how the set went.
+ */
+function ReserveAsked({
+  asks,
+  reserve,
+  onChange,
+  testID,
+}: {
+  readonly asks: number | null
+  readonly reserve: number | null
+  readonly onChange: (reserve: number | null) => void
+  readonly testID: string
+}): React.JSX.Element {
+  return (
+    <Stack gap="xs">
+      {asks === null ? null : (
+        <Text variant="caption" tone="muted" testID={`${testID}-asks`}>
+          {`Leave ${formatReserve(asks)} in reserve`}
+        </Text>
+      )}
+      <ReserveSegments
+        label="Reps in reserve"
+        reserve={reserve}
+        onChange={onChange}
+        testID={`${testID}-reserve`}
+      />
     </Stack>
   )
 }

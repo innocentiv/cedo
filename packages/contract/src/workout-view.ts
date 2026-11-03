@@ -20,7 +20,12 @@ import {
 type ViewLog = FlowLog & { readonly exerciseId: string }
 /** What they read of an exercise added to a session, and of what the session asks of an entry. */
 type Added = { readonly id: string }
-type EntryAsked = { readonly entryId: string; readonly target: SetTarget }
+type EntryAsked = {
+  readonly entryId: string
+  readonly target: SetTarget
+  readonly working: readonly SetTarget[]
+  readonly warmups: readonly SetTarget[]
+}
 
 /**
  * The exercise a set logged with no plan entry goes to (#24): the one chosen — each exercise picked
@@ -139,7 +144,7 @@ function readsOf<E extends FlowEntry, X extends Added, L extends ViewLog, T exte
     asked,
     chosenEntry: chosen !== null && 'entry' in chosen ? chosen.entry : null,
     chosenAdded: chosen !== null && 'added' in chosen ? chosen.added : null,
-    setsFor: (entry: E) => setsOf(entry, sets, asked(entry)?.target ?? null, input.loadFor(entry)),
+    setsFor: (entry: E) => setsOf(entry, sets, asked(entry) ?? null, input.loadFor(entry)),
     adHocShown: (r: Reopened) =>
       adHocSetsOf(r.exerciseId, sets).find((s) => s.key === r.key)?.log ?? null,
     addedFocus: (exercise: X): Focused<E, X, L, T> => ({

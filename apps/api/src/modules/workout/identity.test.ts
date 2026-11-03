@@ -91,6 +91,11 @@ async function logFirstDay(user: TestUser, workout: Workout): Promise<void> {
       }),
     })
   }
+  // Finished: a session takes its step when it is finished (ADR-0026).
+  await user.wire(`/sessions/${session.id}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ endedAt: new Date().toISOString() }),
+  })
 }
 
 /** How many logged sessions progression sees for one entry of the plan. */

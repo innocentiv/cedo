@@ -64,7 +64,7 @@ export async function history(
       isWarmup: setLogs.isWarmup,
       weightG: setLogs.weightG,
       reps: setLogs.reps,
-      rpe: setLogs.rpe,
+      reserve: setLogs.reserve,
       durationS: setLogs.durationS,
       distanceMm: setLogs.distanceMm,
     })
@@ -106,7 +106,7 @@ type HistoryRow = {
   isWarmup: boolean
   weightG: number | null
   reps: number | null
-  rpe: number | null
+  reserve: number | null
   durationS: number | null
   distanceMm: number | null
 }
@@ -123,7 +123,7 @@ function groupIntoSessions(rows: readonly HistoryRow[]): ExerciseHistory['sessio
       setIndex: row.setIndex,
       weightG: row.weightG,
       reps: row.reps,
-      rpe: row.rpe,
+      reserve: row.reserve,
       durationS: row.durationS,
       distanceMm: row.distanceMm,
       isWarmup: row.isWarmup,

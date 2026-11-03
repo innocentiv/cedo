@@ -8,7 +8,7 @@ import { NO_CHOICES, workoutView } from './workout-view.ts'
 const target = (reps: number, kg: number): SetTarget => ({
   reps,
   weightG: kg * 1000,
-  rpe: null,
+  reserve: null,
   durationS: null,
   distanceMm: null,
 })
@@ -69,7 +69,14 @@ describe('what the workout shows', () => {
   ) =>
     workoutView({
       day,
-      targets: [{ entryId: 'squat', target: target(5, 102) }],
+      targets: [
+        {
+          entryId: 'squat',
+          target: target(5, 102),
+          working: [target(5, 102), target(5, 102)],
+          warmups: [],
+        },
+      ],
       sets,
       added: [],
       choices: NO_CHOICES,

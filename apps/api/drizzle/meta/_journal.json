@@ -120,6 +120,34 @@
       "when": 1793555966256,
       "tag": "0016_weigh_ins_and_birth_year",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793728258234,
+      "tag": "0017_reps_in_reserve_whole",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1793728838068,
+      "tag": "0018_entries_held_to_their_rule",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1793730543783,
+      "tag": "0019_rpe_check_whole",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793731920245,
+      "tag": "0020_progression_steps",
+      "breakpoints": true
     }
   ]
 }

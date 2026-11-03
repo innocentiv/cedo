@@ -86,7 +86,7 @@ function Focus({
       selected={selected}
       onSelect={onSelect}
       next={{ target, isWarmup: next?.isWarmup ?? false, title: words.title, action: words.action }}
-      progressed={asked === undefined ? null : targetLine(asked, tracking, unit)}
+      progressed={asked === undefined ? null : targetLine(asked, tracking, unit, next ?? undefined)}
       last={asked?.last == null ? null : `Last time ${formatSets(asked.last, tracking, unit)}`}
       busy={sets.record.busy}
       load={load}

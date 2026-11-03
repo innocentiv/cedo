@@ -1,6 +1,6 @@
 import { DIMENSION_FIELDS, WEIGHT_STEP_G, tracks } from './dimension.ts'
-import { type Effort, formatEffort } from './effort.ts'
 import type { TrackingMode } from './exercise.ts'
+import { workingRuns } from './entry-line.ts'
 import type { Load } from './load.ts'
 import { NO_PROGRESSION, type Progression } from './progression.ts'
 import { DEFAULT_REST_S } from './rest.ts'
@@ -9,12 +9,11 @@ import {
   MAX_DAYS_PER_PLAN,
   MAX_ENTRIES_PER_DAY,
   MAX_SETS_PER_ENTRY,
-  type TargetFields,
   type WorkoutDayInput,
   type WorkoutEntryInput,
   WorkoutPlanInput,
-  type WorkoutSetInput,
 } from './workout.ts'
+import { type TargetFields, type WorkoutSetInput } from './plan-set.ts'
 
 /**
  * The rules for editing a plan before it is saved — here rather than in the editor, where they
@@ -122,7 +121,7 @@ export const newEntry = (exercise: {
   sets: Array.from({ length: 3 }, () => ({
     targetReps: tracks(exercise.tracking, 'reps') ? 8 : null,
     targetWeightG: null,
-    targetRpe: null,
+    targetReserve: null,
     targetDurationS: tracks(exercise.tracking, 'duration') ? 30 : null,
     targetDistanceMm: tracks(exercise.tracking, 'distance') ? 100_000 : null,
     isWarmup: false,
@@ -141,21 +140,12 @@ export const prescriptionOf = <S extends { readonly isWarmup: boolean }>(entry: 
 }): S | undefined => entry.sets.find((s) => !s.isWarmup)
 
 /**
- * `3 sets · 8 × 60 kg`: how many working sets, and the prescription they share (`prescriptionOf`),
- * in its exercise's terms — a mode of `null` for an unavailable exercise reads it as measured. Over
- * any shape of set, like `prescriptionOf`: a plan as read, or a draft's sets through `setTargetOf`.
+ * `3 sets · 8 × 60 kg`: how many working sets, and what they ask, in its exercise's terms — a mode
+ * of `null` for an unavailable exercise reads it as measured; sets that differ, each run of equal
+ * ones, `1 set 6 × 90 kg · 2 sets 8 × 80 kg` (`workingRuns`). Over any shape of set, like
+ * `prescriptionOf`: a plan as read, or a draft's sets through `setTargetOf`.
  */
-export function formatPrescription(
-  sets: readonly { readonly isWarmup: boolean; readonly target: Effort }[],
-  tracking: TrackingMode | null,
-  unit: WeightUnit,
-): string {
-  const working = sets.filter((s) => !s.isWarmup)
-  const first = working[0]
-  if (first === undefined) return 'no working sets'
-  const count = `${working.length} set${working.length === 1 ? '' : 's'}`
-  return `${count} · ${formatEffort(first.target, tracking, unit)}`
-}
+export const formatPrescription = workingRuns
 
 export const setCounts = (entry: WorkoutEntryInput): Record<SetKind, number> => {
   const { warmup, working } = split(entry)
@@ -166,7 +156,7 @@ export const setCounts = (entry: WorkoutEntryInput): Record<SetKind, number> => 
 const UNPRESCRIBED: WorkoutSetInput = {
   targetReps: null,
   targetWeightG: null,
-  targetRpe: null,
+  targetReserve: null,
   targetDurationS: null,
   targetDistanceMm: null,
   isWarmup: false,
@@ -257,7 +247,7 @@ export function planIssues(
  */
 const FIELD_NAMES: Readonly<Record<string, string>> = {
   ...Object.fromEntries(Object.values(DIMENSION_FIELDS).map((f) => [f.targetKey, f.dimension])),
-  targetRpe: 'RPE',
+  targetReserve: 'reps in reserve',
   name: 'name',
   sets: 'sets',
   entries: 'exercises',

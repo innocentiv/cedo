@@ -25,6 +25,10 @@ though it were written at once.
   relation guards them; instead only those modules, `db/` and tests may name them — the lint
   refuses an import elsewhere, and `db/raw-sql.test.ts` a raw SQL mention. Anywhere else reads them
   through the kind's service (`bodyweightOf`).
+- **Progression steps are progression's.** `progression_steps` is personal too, so the same guard
+  holds it: only `modules/progression/`, `db/` and tests may name it. The session module takes and
+  re-takes steps by calling progression's service, inside its own transaction; everything else reads
+  a target through it (ADR-0026).
 - **Never create a `utils.ts`.** Name the file after what it does (`password.ts`, `token.ts`).
 
 ## The service rule
@@ -106,8 +110,9 @@ errors.
 ## Units
 
 All measurements are integers in base units — `weight_g`, `distance_mm`, `duration_s`. Never a
-float, never a `numeric`, never kilograms in the database or on the wire. RPE is not a measurement
-but a rating, in half-points: `numeric(3,1)` (ADR-0020).
+float, never a `numeric`, never kilograms in the database or on the wire. Reps in reserve is not a
+measurement but a rating — whole, stored as RPE in `numeric(3,1)` (ADR-0020, ADR-0027); nothing a
+person or an AI reads or writes says RPE.
 
 **`packages/contract/src/units.ts` is the only file permitted to convert.** If you find yourself
 writing `/ 1000` or `* 2.20462` anywhere else, stop and use a helper from that file.

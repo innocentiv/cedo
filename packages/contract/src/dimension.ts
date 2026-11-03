@@ -3,7 +3,7 @@ import type { TrackingMode } from './exercise.ts'
 import { type Load, steppedOn } from './load.ts'
 import { CLOCK, COUNT, type Typing, typing } from './typing.ts'
 import { type WeightUnit, gToKgShown, gToLbShown, kgToG, lbToG, mToMm, mmToM } from './units.ts'
-import type { WorkoutSetInput } from './workout.ts'
+import type { WorkoutSetInput } from './plan-set.ts'
 
 /** The measurable quantities a set can carry. See GLOSSARY.md. */
 export type Dimension = 'weight' | 'reps' | 'duration' | 'distance'
@@ -91,7 +91,7 @@ export interface DimensionField extends Typing {
 }
 
 /** A prescribed set's measured targets — derived from the schema, so a rename there breaks here. */
-export type TargetKey = Exclude<Extract<keyof WorkoutSetInput, `target${string}`>, 'targetRpe'>
+export type TargetKey = Exclude<Extract<keyof WorkoutSetInput, `target${string}`>, 'targetReserve'>
 
 /** Weight, typed in the person's unit and stored in grams either way. */
 function weightField(unit: WeightUnit): DimensionField {

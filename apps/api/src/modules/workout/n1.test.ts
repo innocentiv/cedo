@@ -150,7 +150,7 @@ describe('reads do not N+1', () => {
     expect(largeCount.result).toHaveLength(48)
 
     expect(largeCount.count).toBe(smallCount.count)
-    // The workout, its entries, their prescribed sets, the caller's logs, and what they have to
+    // The workout, its entries, their prescribed sets, the caller's latest steps, and what they have to
     // train with — the weights they can load (#36).
     expect(largeCount.count).toBeLessThanOrEqual(5)
   })

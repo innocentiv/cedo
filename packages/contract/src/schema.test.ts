@@ -198,6 +198,91 @@ describe('workout plan input', () => {
   })
 })
 
+/**
+ * What a rule asks of the sets it moves (ADR-0026): states nothing can mean are refused, each
+ * saying what to do instead — an AI learns the model from them.
+ */
+describe('a plan entry is held to its progression rule', () => {
+  const double = (from: number, to: number) => ({
+    kind: 'double',
+    repRange: [from, to],
+    incrementG: 2500,
+  })
+  const working = (targetReps: number, more: Record<string, unknown> = {}) => ({
+    targetReps,
+    targetWeightG: 60_000,
+    ...more,
+  })
+  const issues = (progression: unknown, sets: unknown[]) => {
+    const entry = { exerciseId: crypto.randomUUID(), progression, sets }
+    const parsed = WorkoutPlanInput.safeParse({ days: [{ name: 'D', entries: [entry] }] })
+    return parsed.success ? [] : parsed.error.issues.map((i) => i.message)
+  }
+
+  test('a double range runs from fewer reps to more', () => {
+    expect(issues(double(8, 12), [working(8)])).toEqual([])
+    expect(issues(double(12, 8), [working(8)])).toEqual([
+      'A double range runs from fewer reps to more: 8 to 12, not 12 to 8',
+    ])
+    expect(issues(double(10, 10), [working(10)])).toEqual([
+      'A double range runs from fewer reps to more — for one rep count, use linear',
+    ])
+  })
+
+  test("a double's reps lie inside its range", () => {
+    expect(issues(double(8, 12), [working(12)])).toEqual([])
+    expect(issues(double(8, 12), [working(4)])).toEqual([
+      'Double 8–12 starts at 8 to 12 reps, not 4: set the reps inside the range, or change it',
+    ])
+  })
+
+  test('a warm-up is not held to the range', () => {
+    expect(issues(double(8, 12), [working(4, { isWarmup: true }), working(8)])).toEqual([])
+  })
+
+  /** One target moves for every working set; a top set and its back-offs are Manual's. */
+  test('under a rule, the working sets share what it moves or judges', () => {
+    const linear = { kind: 'linear', incrementG: 2500, afterSuccesses: 1 }
+    const backOff = 'For sets that differ — a top set and its back-offs — use Manual'
+    expect(issues(linear, [working(5), working(5, { targetWeightG: 50_000 })])).toEqual([
+      `Under linear, every working set asks the same reps and weight: set 2 differs from set 1. ${backOff}`,
+    ])
+    // Linear never moves reps, but it judges them: 10, 8, 6 under one weight is not one target.
+    expect(issues(linear, [working(10), working(8)])).toEqual([
+      `Under linear, every working set asks the same reps and weight: set 2 differs from set 1. ${backOff}`,
+    ])
+    const hold = { kind: 'linear_duration', incrementS: 5, afterSuccesses: 1 }
+    expect(issues(hold, [{ targetDurationS: 30 }, { targetDurationS: 45 }])).toEqual([
+      `Under linear duration, every working set asks the same time: set 2 differs from set 1. ${backOff}`,
+    ])
+    const run = { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 }
+    expect(
+      issues(run, [
+        { targetDistanceMm: 5_000_000, targetDurationS: 1800 },
+        { targetDistanceMm: 5_000_000, targetDurationS: 1700 },
+      ]),
+    ).toEqual([
+      `Under distance, every working set asks the same distance and time: set 2 differs from set 1. ${backOff}`,
+    ])
+  })
+
+  test('reps in reserve may differ from set to set, and a manual entry may differ in anything', () => {
+    expect(
+      issues(double(8, 12), [working(8, { targetReserve: 2 }), working(8, { targetReserve: 0 })]),
+    ).toEqual([])
+    expect(issues({ kind: 'none' }, [working(6, { targetWeightG: 90_000 }), working(8)])).toEqual(
+      [],
+    )
+  })
+
+  test('warm-ups may differ from the working sets', () => {
+    const linear = { kind: 'linear', incrementG: 2500, afterSuccesses: 1 }
+    expect(
+      issues(linear, [working(10, { isWarmup: true, targetWeightG: 20_000 }), working(5)]),
+    ).toEqual([])
+  })
+})
+
 describe('error envelope', () => {
   test('every error code maps to an HTTP status', () => {
     for (const code of ERROR_CODES) {

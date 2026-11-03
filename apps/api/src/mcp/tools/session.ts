@@ -5,7 +5,7 @@ import type { Caller } from '../../plugins/auth.ts'
 import { ownOrCoached } from '../../modules/coaching/training.ts'
 import { history } from '../../modules/session/history.ts'
 import { amendLog } from '../../modules/session/set-writes.ts'
-import { logWhole } from '../../modules/session/start.ts'
+import { logWhole } from '../../modules/session/log-whole.ts'
 import { historyLines, text } from '../format.ts'
 import { setLine } from '../format-coaching.ts'
 
@@ -50,7 +50,8 @@ export function registerSessionTools(server: McpServer, caller: Caller): void {
       description:
         'Fix a mistake in one of your sets already logged — "I did 80, not 100, on Monday" — in a ' +
         'session in progress or finished. Name it by the [id] session_get shows. Only the fields ' +
-        'you send change: weight in GRAMS, reps, time, distance, RPE, or whether it was a warm-up. ' +
+        'you send change: weight in GRAMS, reps, time, distance, reps in reserve (whole, none to ' +
+        'five), or whether it was a warm-up. ' +
         'Personal bests and progression follow. A set of an exercise you can no longer see takes ' +
         'no new weight. It cannot move a set to another exercise, add a set to a finished ' +
         'session, or remove one: removing stays in the app.',
@@ -68,7 +69,7 @@ export function registerSessionTools(server: McpServer, caller: Caller): void {
     {
       title: 'History for one exercise',
       description:
-        'Logged sessions for one exercise, newest first, with each set and its RPE, the ' +
+        'Logged sessions for one exercise, newest first, with each set and its reps in reserve, the ' +
         "session's best estimated max for a weight lift, and — when it has stalled — how many " +
         'sessions it has repeated one top set.',
       inputSchema: ExerciseHistoryQuery.safeExtend({ exerciseId: z.uuid(), ...OfAthlete.shape }),

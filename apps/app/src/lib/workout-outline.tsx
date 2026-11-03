@@ -2,16 +2,18 @@ import { type Exercise, canAddDay, canAddEntry, canRemoveDay, newDay } from '@ce
 import { AddRow, Button, Stack, Text } from '../ui/index.ts'
 import { DayHead, type DayMoves, EntryLine } from './outline-parts.tsx'
 import { type DayDraft, keyDay, moveItem, removeAt, replaceAt } from './plan-draft.ts'
+import { useTargetsById } from './use-entry-target.ts'
 
 /**
  * A workout's page is its outline (#26): days, and each entry one line — "Barbell Back Squat · 5 × 5
  * · 100 kg · Linear, +2.5 kg". A line opens the entry's settings; a day is renamed where its name
  * is, moved or removed beside it, and given another exercise at its foot. Every change goes to
- * `onChange` whole, to be saved as made (ADR-0022). Read-only for a reader: the same outline, with
- * nothing to tap but Start. See docs/08-frontend.md, "Editing a workout".
+ * `onChange` whole, to be saved as made (ADR-0022). Read-only for a reader: the same outline, an
+ * entry opening to what it asks and their own target, nothing else to change but Start. See docs/08-frontend.md, "Editing a workout".
  */
 export function Outline({
   days,
+  workoutId,
   library,
   canEdit,
   selected,
@@ -22,6 +24,8 @@ export function Outline({
 }: {
   readonly days: readonly DayDraft[]
   readonly library: ReadonlyMap<string, Exercise>
+  /** Whose targets each line says, where one differs from the plan (ADR-0026). */
+  readonly workoutId: string
   readonly canEdit: boolean
   /** The entry whose settings are open, by its key: it stays the one open as the plan moves. */
   readonly selected: string | null
@@ -34,6 +38,7 @@ export function Outline({
    */
   readonly start: { readonly onStart: (dayId: string) => void; readonly busy: boolean } | null
 }): React.JSX.Element {
+  const targets = useTargetsById(workoutId)
   const movesOf = (d: number): DayMoves => ({
     up:
       d === 0
@@ -86,14 +91,12 @@ export function Outline({
               key={entry.key}
               entry={entry}
               exercise={library.get(entry.exerciseId)}
+              target={entry.id === undefined ? undefined : targets.get(entry.id)}
               current={selected === entry.key}
-              onPress={
-                canEdit
-                  ? () => {
-                      onSelect(entry.key)
-                    }
-                  : undefined
-              }
+              // A reader opens it too: the plan said, and their own target to change.
+              onPress={() => {
+                onSelect(entry.key)
+              }}
               onRemove={
                 canEdit
                   ? () => {

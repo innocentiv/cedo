@@ -13,9 +13,9 @@ import { loadEntries } from './entries.ts'
  * What a session asks of each entry of the day it follows — the logger's pre-fill — and what was
  * done last time. See `EntryTarget`.
  *
- * Over the caller's sessions that started BEFORE this one, never this one: counted with its own
- * sets, a session whose sets had all hit would offer its next set the advanced target. A session
- * following no day, or a day out of the caller's reach, asks nothing — there is nothing to offer.
+ * The caller's target as their steps left it (ADR-0026). A session takes its step only when it is
+ * finished, so its own sets never move what it asks mid-session. A session following no day, or a
+ * day out of the caller's reach, asks nothing — there is nothing to offer.
  */
 export async function targetsForSession(caller: Caller, sessionId: string): Promise<EntryTarget[]> {
   const [session] = await db
@@ -30,14 +30,14 @@ export async function targetsForSession(caller: Caller, sessionId: string): Prom
   if (session === undefined) throw notFound('session')
   if (session.workoutId === null || session.dayId === null) return []
 
-  const loaded = await loadEntries(caller, session.workoutId, session.dayId, session.startedAt)
+  const loaded = await loadEntries(caller, session.workoutId, session.dayId)
   if (loaded === null) return []
   const exerciseIds = [...new Set(loaded.entries.map((e) => e.exerciseId))]
   const [last, loadFor] = await Promise.all([
     lastTimes(caller, exerciseIds, session.startedAt),
     loadsOf(caller.userId, caller.weightUnit),
   ])
-  return targetsFrom(loaded.entries, loaded.prescribed, loaded.logs, loadFor, last)
+  return targetsFrom(loaded.entries, loaded.prescribed, loaded.steps, loadFor, last)
 }
 
 /**

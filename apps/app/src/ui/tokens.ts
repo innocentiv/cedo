@@ -101,6 +101,12 @@ export const TABLET_MIN_WIDTH = 768
 /** Touch targets. 44 is the smallest reliably hittable control with a thumb, mid-set. */
 export const CONTROL_HEIGHT = 48
 
+/**
+ * Whether a choice's options fit one line as segments (`Choice`): the widest line counted on — a
+ * phone's content width, with room — a caption character's width, and a segment's own padding.
+ */
+export const SEGMENT_FIT = { lineWidth: 320, charWidth: 8, padding: 20 } as const
+
 /** A row of a list: a thumb's height, and room for a name over a line of detail. */
 export const ROW_HEIGHT = 56
 

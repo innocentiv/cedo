@@ -35,13 +35,13 @@ describe('work per muscle', () => {
 
 describe('what needs attention', () => {
   test('says the set that stalled, the max that fell, and the reserve that shrank', () => {
-    expect(stallLine({ exercise: bench, sessions: 4, effort: { ...set, rpe: null } }, 'kg')).toBe(
-      '4 sessions at 5 × 80 kg',
-    )
+    expect(
+      stallLine({ exercise: bench, sessions: 4, effort: { ...set, reserve: null } }, 'kg'),
+    ).toBe('4 sessions at 5 × 80 kg')
     expect(fallingLine({ exercise: bench, sessions: 2, fromG: 77_000, toG: 70_000 }, 'kg')).toBe(
       'Estimated max 77 kg → 70 kg, 2 sessions running',
     )
-    expect(driftLine({ exercise: bench, effort: set, fromRpe: 7, toRpe: 8.7 }, 'kg')).toBe(
+    expect(driftLine({ exercise: bench, effort: set, fromReserve: 3, toReserve: 1.3 }, 'kg')).toBe(
       '5 × 80 kg: 3 → 1.3 in reserve',
     )
   })

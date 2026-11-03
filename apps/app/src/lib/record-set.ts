@@ -34,7 +34,7 @@ export function useRecordSet(sessionId: string) {
             entryId: set.entryId,
             weightG: set.effort.weightG,
             reps: set.effort.reps,
-            rpe: set.rpe,
+            reserve: set.reserve,
             durationS: set.effort.durationS,
             distanceMm: set.effort.distanceMm,
             isWarmup: set.isWarmup,

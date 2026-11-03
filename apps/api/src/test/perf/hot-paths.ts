@@ -177,13 +177,17 @@ export const HOT_PATHS: readonly HotPath[] = [
   },
   {
     name: 'progression suggestions',
-    why: 'Evaluates every entry against its history. A per-entry history query grows with the plan.',
+    why: "Every entry's target, as the caller's steps left it (ADR-0026). A per-entry step query grows with the plan.",
     dimension: 'plan size (3 vs 560 entries)',
-    // The workout; its entries; their sets; the caller's logs; what they can load (#36).
+    // The workout; its entries; their sets; the caller's latest steps; what they can load (#36).
     maxQueries: 5,
     budgetMs: 200,
-    noSeqScan: ['set_logs', 'workout_sets', 'workout_entries'],
-    indexes: ['workout_entries_order_idx', 'workout_sets_order_idx'],
+    noSeqScan: ['progression_steps', 'workout_sets', 'workout_entries'],
+    indexes: [
+      'workout_entries_order_idx',
+      'workout_sets_order_idx',
+      'progression_steps_target_idx',
+    ],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
       return await suggestForWorkout(profile.caller, profile.workoutId)
@@ -337,7 +341,7 @@ export const HOT_PATHS: readonly HotPath[] = [
         entryId: null,
         weightG: 60_000,
         reps: 8,
-        rpe: null,
+        reserve: null,
         durationS: null,
         distanceMm: null,
         isWarmup: false,

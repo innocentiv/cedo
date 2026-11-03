@@ -1,10 +1,23 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
-import type { ExerciseCreate, ExerciseUpdate } from '@cedo/contract'
+import type { ExerciseCreate, ExerciseUpdate, TrackingMode } from '@cedo/contract'
 import { type Transaction, db } from '../../db/client.ts'
 import { type OwnedRow, assertEditorOf, editable } from '../../db/ownable.ts'
 import { exerciseMedia, exerciseMuscles, exercises, media } from '../../db/schema.ts'
-import { notFound } from '../../lib/error.ts'
+import { invalid, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
+
+const TRACKING_FIXED =
+  'How an exercise is measured is fixed once it exists: duplicate it to track it differently'
+
+/**
+ * How an exercise is measured is fixed once it exists (ADR-0026): plans and logs measured one way
+ * would be left measured another, and a rule that fit would stop fitting. Sent back unchanged — the
+ * edit form sends the whole exercise — is no change.
+ */
+function assertTrackingKept(patch: ExerciseUpdate, stored: TrackingMode): void {
+  if (patch.tracking === undefined || patch.tracking === stored) return
+  throw invalid(TRACKING_FIXED, [{ path: 'tracking', message: TRACKING_FIXED }])
+}
 
 /**
  * An exercise's own writes — create and update, with its muscles and media — and the guards that
@@ -113,16 +126,20 @@ export async function updateExercise(
      * as well. See docs/02-conventions.md.
      */
     const [existing] = await tx
-      .select({ id: exercises.id, ownerGroupId: exercises.ownerGroupId })
+      .select({
+        id: exercises.id,
+        ownerGroupId: exercises.ownerGroupId,
+        tracking: exercises.tracking,
+      })
       .from(exercises)
       .where(and(editable(exercises, caller), eq(exercises.id, id)))
       .limit(1)
       .for('update')
     if (existing === undefined) throw notFound('exercise')
+    assertTrackingKept(patch, existing.tracking)
 
     const columns = {
       ...(patch.name !== undefined && { name: patch.name }),
-      ...(patch.tracking !== undefined && { tracking: patch.tracking }),
       ...(patch.description !== undefined && { description: patch.description }),
       ...(patch.instructions !== undefined && { instructions: patch.instructions }),
       ...(patch.equipment !== undefined && { equipment: patch.equipment }),

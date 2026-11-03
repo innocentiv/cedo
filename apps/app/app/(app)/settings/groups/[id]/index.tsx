@@ -3,8 +3,8 @@ import { useLocalSearchParams } from 'expo-router'
 import type { GroupMember, GroupMembership, GroupRole } from '@cedo/contract'
 import {
   Button,
-  type ChipOption,
-  Chips,
+  type ChoiceOption,
+  Choice,
   ConfirmButton,
   Empty,
   ErrorNotice,
@@ -30,12 +30,12 @@ import { useAuth } from '../../../../../src/auth/auth-provider.tsx'
 import { useGoBack } from '../../../../../src/lib/use-go-back.ts'
 import { useSubmit } from '../../../../../src/lib/use-submit.ts'
 
-const ROLE_OPTIONS: readonly ChipOption<GroupRole>[] = [
+const ROLE_OPTIONS: readonly ChoiceOption<GroupRole>[] = [
   { value: 'reader', label: 'Reader' },
   { value: 'editor', label: 'Editor' },
 ]
 
-const SHARING_OPTIONS: readonly ChipOption<'private' | 'shared'>[] = [
+const SHARING_OPTIONS: readonly ChoiceOption<'private' | 'shared'>[] = [
   { value: 'private', label: 'Private' },
   { value: 'shared', label: 'Shared with editors' },
 ]
@@ -175,7 +175,7 @@ function ShareTraining({ group }: { readonly group: GroupMembership }): React.JS
       <Text variant="caption" tone="muted">
         Your training
       </Text>
-      <Chips
+      <Choice
         options={SHARING_OPTIONS}
         value={group.sharesTraining ? 'shared' : 'private'}
         onChange={(value) => {
@@ -213,7 +213,7 @@ function AddMember({ groupId }: { readonly groupId: string }): React.JSX.Element
           testID="member-username"
         />
       </Field>
-      <Chips options={ROLE_OPTIONS} value={role} onChange={setRole} testID="member-role" />
+      <Choice options={ROLE_OPTIONS} value={role} onChange={setRole} testID="member-role" />
       <Button
         title="Add"
         busy={busy}

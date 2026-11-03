@@ -3,12 +3,13 @@ import {
   DEFAULT_GROUP_SLUG,
   type TrackingMode,
   type WorkoutPlanInput,
+  ruleMisfit,
   weightAllowed,
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groups } from '../../db/schema.ts'
 import { visibleExercises } from '../../db/visible.ts'
-import { conflict, notFound } from '../../lib/error.ts'
+import { conflict, invalid, notFound } from '../../lib/error.ts'
 import { assistanceRefused } from '../session/loggable.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { planEntries } from './plan.ts'
@@ -111,6 +112,25 @@ export function assertAssistanceAllowed(
       )
       if (s === -1) return
       throw assistanceRefused(`days.${d}.entries.${e}.sets.${s}.targetWeightG`)
+    })
+  })
+}
+
+/**
+ * Every entry's progression rule fits how its exercise is measured (#22, ADR-0026): a rule that
+ * moves a dimension the exercise never logs can never advance. The contract's `ruleMisfit` says
+ * which rules do fit, so the refusal is something to act on — the editor offers only those.
+ */
+export function assertRulesFit(
+  plan: WorkoutPlanInput,
+  tracking: ReadonlyMap<string, TrackingMode>,
+): void {
+  plan.days.forEach((day, d) => {
+    day.entries.forEach((entry, e) => {
+      const mode = tracking.get(entry.exerciseId)
+      const misfit = mode === undefined ? null : ruleMisfit(entry.progression.kind, mode)
+      if (misfit === null) return
+      throw invalid(misfit, [{ path: `days.${d}.entries.${e}.progression`, message: misfit }])
     })
   })
 }

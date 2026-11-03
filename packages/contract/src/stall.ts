@@ -22,7 +22,7 @@ export const STALL_DEPTH = 10
  * set — or null when it has not stalled. `sessions` are its WORKING sets session by session, newest
  * first; past `STALL_DEPTH` they are not read. The top set, not every set: a rep missed on a
  * back-off set is not progress, and used to hide the stall. The set is passed through as given, so
- * a reader that carries more than its measures — its RPE — keeps it.
+ * a reader that carries more than its measures — its reps in reserve — keeps it.
  */
 export function stallOf<E extends Effort>(
   sessions: readonly (readonly E[])[],

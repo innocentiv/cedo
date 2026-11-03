@@ -13,17 +13,17 @@ import type { WorkingSet } from './stalled.ts'
 
 const bench: LoggedExercise = { name: 'Bench', tracking: 'weight_reps' }
 
-/** Sessions of one exercise, newest first, each a list of `[weightKg, reps, rpe]`. */
+/** Sessions of one exercise, newest first, each a list of `[weightKg, reps, reserve]`. */
 function logged(
   sessions: readonly (readonly [number, number, number | null])[][],
   exercise: LoggedExercise = bench,
 ): WorkingSet[] {
   return sessions.flatMap((sets, s) =>
-    sets.map(([weightKg, reps, rpe]) => ({
+    sets.map(([weightKg, reps, reserve]) => ({
       exerciseId: exercise.name,
       exercise,
       sessionId: `session-${s}`,
-      effort: { weightG: weightKg * 1000, reps, durationS: null, distanceMm: null, rpe },
+      effort: { weightG: weightKg * 1000, reps, durationS: null, distanceMm: null, reserve },
     })),
   )
 }
@@ -46,12 +46,12 @@ describe('falling', () => {
   })
 
   /**
-   * What was lifted, not how it was rated: the same 60 × 5 said half a point harder each time
-   * estimates 76, 75, 74 kg with the reserve counted — a "fall" made of rating noise, and the very
-   * thing effort drift reads, said twice.
+   * What was lifted, not how it was rated: the same 60 × 5 said with a rep less in reserve each
+   * time estimates 76, 74, 72 kg with the reserve counted — a "fall" made of rating noise, and the
+   * very thing effort drift reads, said twice.
    */
   test('is not the same set rated harder', () => {
-    expect(fallingOf(logged([[[60, 5, 8]], [[60, 5, 7.5]], [[60, 5, 7]]]))).toEqual([])
+    expect(fallingOf(logged([[[60, 5, 1]], [[60, 5, 2]], [[60, 5, 3]]]))).toEqual([])
   })
 
   test('is not a fall that has already turned', () => {
@@ -67,67 +67,71 @@ describe('falling', () => {
       exerciseId: 'plank',
       exercise: plank,
       sessionId: `session-${s}`,
-      effort: { weightG: null, reps: null, durationS, distanceMm: null, rpe: null },
+      effort: { weightG: null, reps: null, durationS, distanceMm: null, reserve: null },
     }))
     expect(fallingOf(holds)).toEqual([])
   })
 })
 
 describe('effort drift', () => {
-  /** Each session weighs the same: the two-set session before averages 7.25, not two votes of three. */
-  test('is RPE up by 1 or more at the same set, in each of the latest two sessions', () => {
+  /**
+   * Each session weighs the same: the two-set session before averages 2 in reserve, and the two
+   * sessions 2.5 — not 2.3, its two sets two votes of three. An average may be a fraction; a rating
+   * is whole.
+   */
+  test('is the reserve down by 1 or more at the same set, in each of the latest two sessions', () => {
     const sets = logged([
       [
-        [60, 5, 8.5],
-        [60, 5, 8.5],
+        [60, 5, 1],
+        [60, 5, 1],
       ],
-      [[60, 5, 8.5]],
-      [[60, 5, 7]],
+      [[60, 5, 1]],
+      [[60, 5, 3]],
       [
-        [60, 5, 7.5],
-        [60, 5, 7],
+        [60, 5, 1],
+        [60, 5, 3],
       ],
     ])
     expect(effortDriftOf(sets)).toEqual([
       {
         exercise: bench,
         effort: { weightG: 60_000, reps: 5, durationS: null, distanceMm: null },
-        fromRpe: 7.1,
-        toRpe: 8.5,
+        fromReserve: 2.5,
+        toReserve: 1,
       },
     ])
   })
 
-  /** Self-reported RPE is off by about one (Halperin et al., Sports Med 2022): one set says little. */
+  /** A self-reported reserve is off by about one (Halperin et al., Sports Med 2022). */
   test('is not one hard set alone, nor one hard session', () => {
     const oneSet = logged([
       [
-        [60, 5, 10],
-        [60, 5, 7],
+        [60, 5, 0],
+        [60, 5, 3],
       ],
-      [[60, 5, 7]],
-      [[60, 5, 7]],
+      [[60, 5, 3]],
+      [[60, 5, 3]],
     ])
     expect(effortDriftOf(oneSet)).toEqual([])
     const oneSession = logged([
       [
-        [60, 5, 9],
-        [60, 5, 9],
+        [60, 5, 1],
+        [60, 5, 1],
       ],
-      [[60, 5, 7]],
-      [[60, 5, 7]],
+      [[60, 5, 3]],
+      [[60, 5, 3]],
     ])
     expect(effortDriftOf(oneSession)).toEqual([])
   })
 
   /** A heavier set is harder; that is the load, not drift. */
   test('compares only the same set — not a heavier one, nor more reps', () => {
-    const sets = logged([[[65, 5, 9]], [[60, 6, 9]], [[60, 5, 7]], [[60, 5, 7]]])
+    const sets = logged([[[65, 5, 1]], [[60, 6, 1]], [[60, 5, 3]], [[60, 5, 3]]])
     expect(effortDriftOf(sets)).toEqual([])
   })
 
-  test('needs RPE said, before and since', () => {
-    const sets = logged([[[60, 5, 9]], [[60, 5, 9]], [[60, 5, null]]])
+  test('needs a reserve said, before and since', () => {
+    const sets = logged([[[60, 5, 1]], [[60, 5, 1]], [[60, 5, null]]])
     expect(effortDriftOf(sets)).toEqual([])
   })
 })
@@ -143,24 +147,24 @@ describe('in the training review', () => {
   test('a lift falling, and one drifting, are said', async () => {
     const falling = await fixture.anExercise({ name: 'Bench' })
     const drifting = await fixture.anExercise({ name: 'Row' })
-    // Oldest first, as they happened: the bench 66, 63, 60, 57 kg; the row's RPE 7, 7, 8.5, 8.5.
-    for (const [benchKg, rowRpe] of [
-      [66, 7],
-      [63, 7],
-      [60, 8.5],
-      [57, 8.5],
+    // Oldest first, as they happened: the bench 66, 63, 60, 57 kg; the row's reserve 3, 3, 1, 1.
+    for (const [benchKg, rowReserve] of [
+      [66, 3],
+      [63, 3],
+      [60, 1],
+      [57, 1],
     ] as const) {
       // oxlint-disable-next-line no-await-in-loop -- one session after another, as they happened.
       await fixture.aSession([
         { exerciseId: falling, weightG: benchKg * 1000, reps: 5 },
-        { exerciseId: drifting, weightG: 50_000, reps: 8, rpe: rowRpe },
+        { exerciseId: drifting, weightG: 50_000, reps: 8, reserve: rowReserve },
       ])
     }
 
     const review = await fixture.review()
     expect(review.falling.map((f) => [f.exercise.name, f.sessions])).toEqual([['Bench', 3]])
-    expect(review.effortDrift.map((d) => [d.exercise.name, d.fromRpe, d.toRpe])).toEqual([
-      ['Row', 7, 8.5],
+    expect(review.effortDrift.map((d) => [d.exercise.name, d.fromReserve, d.toReserve])).toEqual([
+      ['Row', 3, 1],
     ])
   })
 })

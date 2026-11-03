@@ -50,9 +50,13 @@ describe('measured from the logs', () => {
       const exerciseId = await fixture.anExercise({ tracking })
       await threeIdenticalSessions({ exerciseId, ...effort })
 
-      // Whole, and with its RPE — none said here — so what it is worth counts the reserve.
+      // Whole, and with its reserve — none said here — so what it is worth counts it.
       expect((await fixture.review()).stalled).toEqual([
-        { exercise: { name: 'Movement', tracking }, sessions: 3, effort: { ...effort, rpe: null } },
+        {
+          exercise: { name: 'Movement', tracking },
+          sessions: 3,
+          effort: { ...effort, reserve: null },
+        },
       ])
     },
   )
@@ -86,7 +90,7 @@ describe('measured from the logs', () => {
       {
         exercise: { name: 'Movement', tracking: 'weight_reps' },
         sessions: 3,
-        effort: { ...NOTHING, reps: 8, weightG: 60_000, rpe: null },
+        effort: { ...NOTHING, reps: 8, weightG: 60_000, reserve: null },
       },
     ])
   })
@@ -118,7 +122,12 @@ describe('measured from the logs', () => {
 /** What has stalled, from each exercise's sessions, newest first. See GLOSSARY.md, "Stalled". */
 describe('what has stalled', () => {
   const bench = { name: 'Bench Press', tracking: 'weight_reps' } as const
-  const lift = (reps: number, kg: number) => ({ ...NOTHING, reps, weightG: kg * 1000, rpe: null })
+  const lift = (reps: number, kg: number) => ({
+    ...NOTHING,
+    reps,
+    weightG: kg * 1000,
+    reserve: null,
+  })
   /** `sessions[0]` the newest, each its working sets in the order logged. */
   const logged = (sessions: readonly (readonly RatedEffort[])[]): WorkingSet[] =>
     sessions.flatMap((efforts, i) =>
@@ -157,7 +166,7 @@ describe('what has stalled', () => {
         exerciseId: 'pull-up',
         exercise: { name: 'Pull-up', tracking: 'bodyweight_reps' },
         sessionId: `s${i}`,
-        effort: { ...NOTHING, reps: 8, weightG: i === 1 ? added : null, rpe: null },
+        effort: { ...NOTHING, reps: 8, weightG: i === 1 ? added : null, reserve: null },
       }))
     expect(stalledOf(pullUps(0)).map((s) => s.sessions)).toEqual([3])
   })

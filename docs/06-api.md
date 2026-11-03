@@ -13,7 +13,9 @@ src/
   lib/                error, password, token, keyset (cursors, LIKE escaping), media, storage/
   modules/<name>/     index.ts (routes) + service.ts (logic) + tests beside them. Not every
                       module has both halves: ownable/ is the lifecycle exercise/ and workout/
-                      configure; progression/ is reached through the workout routes and MCP;
+                      configure; progression/ is reached through the workout routes (its
+                      reads, and PUT …/entries/:entryId/target) and MCP, and takes steps
+                      when session/ finishes or corrects a session;
                       review/ through MCP, admin/ and coaching/'s GET /review; admin/ is routes onto
                       review/diagnostics.ts. A module grows write*.ts, lifecycle.ts and its pure
                       parts beside these as it needs them.
@@ -135,7 +137,10 @@ today, because it's the only one the app queues while offline (#9).
 ## Nested resources: replace, do not patch
 
 `PUT /workouts/:id/plan` replaces the **entire** nested plan — days, entries and sets — in one
-transaction. There is deliberately no per-day or per-entry endpoint.
+transaction. There is deliberately no per-day or per-entry endpoint that changes the plan.
+`PUT /workouts/:id/entries/:entryId/target` is not one: it writes the caller's own progression
+step — never the plan — and needs only an entry they can see, so a reader of a plan sets their own
+target too (ADR-0026).
 
 Granular CRUD over three levels would need reorder endpoints, index-collision handling, and a
 partial-failure story for each. A transactional replace is one endpoint, one MCP tool, atomic
@@ -148,7 +153,8 @@ are strict.
 
 **Inputs may carry ids, and a save keeps what they name.** A replace is a replace of the plan's
 *content*, not of its identity. Logged history hangs off day and entry ids — a session names its
-day, progression reads the logs of an entry — through `ON DELETE SET NULL`, so the first version,
+day, a set its entry — through `ON DELETE SET NULL`, and each person's progression steps are deleted
+with their entry (see `docs/03-domain-model.md`, "Targets and steps"), so the first version,
 which deleted and re-inserted everything, severed all history on every save: renaming a day reset
 every progression to zero sessions. Now `planInputFrom(workout)` (in the contract) produces the
 round-trip shape with ids; days and entries sent back with their id are updated in place, and only

@@ -38,36 +38,42 @@ describe('what a write makes stale', () => {
    * is computed FROM the logs catches up behind it, or the Log button stays busy until progression
    * has been recomputed.
    */
-  test('logging a set awaits the session, and refreshes history and progression behind it', () => {
+  test('logging a set awaits the session, and refreshes its history behind it', () => {
     const { awaited, background } = affectedBy('session')
     expect(sorted(awaited)).toEqual(['session', 'sessionList', 'today'])
-    expect(sorted(background)).toEqual([
-      'exerciseHistory',
-      'progression',
-      'recentExercises',
-      'review',
-    ])
+    expect(sorted(background)).toEqual(['exerciseHistory', 'recentExercises', 'review'])
   })
 
   /**
-   * A session's targets are carried over the sessions BEFORE it, and those are finished — final —
-   * so logging in it cannot move them. They used to be recomputed after every set, for nothing.
+   * A target moves only when a session is finished (ADR-0026), so a set logged in one in progress
+   * moves none. Progression and the session's targets used to be recomputed after every set.
    */
-  test("logging a set leaves the session's targets alone", () => {
+  test('logging a set leaves the targets alone', () => {
     const { awaited, background } = affectedBy('session')
     expect([...awaited, ...background]).not.toContain('sessionTargets')
+    expect([...awaited, ...background]).not.toContain('progression')
   })
 
   /**
-   * A finished session can still be fixed (#31) — a set corrected or removed, or the session
-   * deleted — and what the next session asks is carried over it. The fix refreshes all a write to
-   * the session does, and the targets behind it.
+   * What moves a target names the targets (docs/08-frontend.md): finishing a session, fixing a
+   * finished one (#31) — a set corrected or removed, or the session deleted — each refresh all a
+   * write to the session does, and the targets behind it: the plan's Your next session column and
+   * the next session's logger.
    */
-  test('fixing a finished session refreshes what logging does, and the targets', () => {
+  test('finishing or fixing a session refreshes what logging does, and the targets', () => {
     const logging = affectedBy('session')
-    const { awaited, background } = affectedBy('session', 'pastSession')
+    const { awaited, background } = affectedBy('session', 'target')
     expect(sorted(awaited)).toEqual(sorted(logging.awaited))
-    expect(sorted(background)).toEqual(sorted([...logging.background, 'sessionTargets']))
+    expect(sorted(background)).toEqual(
+      sorted([...logging.background, 'progression', 'sessionTargets']),
+    )
+  })
+
+  /** A target set by hand (Change) moves the targets alone. */
+  test('a target set by hand refreshes the targets, and nothing else', () => {
+    const { awaited, background } = affectedBy('target')
+    expect(awaited).toEqual([])
+    expect(sorted(background)).toEqual(['progression', 'sessionTargets'])
   })
 
   /**
@@ -95,14 +101,17 @@ describe('what a write makes stale', () => {
    * just left stayed listed — and opening it said it does not exist.
    */
   /** Saying what you train with (#35): every exercise you read says again whether you can do it. */
-  test('saying what you train with refreshes it, and every read that says what is doable', () => {
+  /** And the targets, which are asked in weights the equipment loads (#36). */
+  test('saying what you train with refreshes it, every read that says what is doable, and the targets', () => {
     const { awaited, background } = affectedBy('equipment')
     expect(sorted(awaited)).toEqual(['equipment'])
     expect(sorted(background)).toEqual([
       'exercise',
       'exerciseList',
+      'progression',
       'recentExercises',
       'session',
+      'sessionTargets',
       'workout',
     ])
   })

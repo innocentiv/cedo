@@ -86,7 +86,8 @@ multipart framing. Forward `Host` and `X-Forwarded-Proto`.
 The web app installs to a phone's home screen: no app store, and the same for every instance. It then
 opens full screen with its own icon, and opens at once — and without a signal — from the app shell
 its service worker keeps (`apps/app/src/pwa/`). Only the shell: training data is still read from
-the server, and a set logged without a signal is not queued (#9).
+the server; a set logged without a signal is kept on the phone and sent when one returns (#9, see
+`docs/08-frontend.md`, "Logging without a signal").
 
 **It needs HTTPS.** Browsers run a service worker, and Android offers to install, only on a secure
 origin — `https://`, or `localhost` on the machine itself. At `http://192.168.1.20:8080` the app

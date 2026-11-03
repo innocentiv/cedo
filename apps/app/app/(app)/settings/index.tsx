@@ -2,8 +2,8 @@ import { useState } from 'react'
 import { type WeightUnit, equipmentCount } from '@cedo/contract'
 import {
   Button,
-  type ChipOption,
-  Chips,
+  type ChoiceOption,
+  Choice,
   FormError,
   ListRow,
   NavButton,
@@ -18,7 +18,7 @@ import { useAuth } from '../../../src/auth/auth-provider.tsx'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 import { useWeightUnit } from '../../../src/lib/weight-unit.ts'
 
-const UNIT_OPTIONS: readonly ChipOption<WeightUnit>[] = [
+const UNIT_OPTIONS: readonly ChoiceOption<WeightUnit>[] = [
   { value: 'kg', label: 'Kilograms' },
   { value: 'lb', label: 'Pounds' },
 ]
@@ -41,7 +41,7 @@ export default function Settings(): React.JSX.Element {
             subtitle="How weights read and are typed"
             testID="settings-weights"
           />
-          <Chips
+          <Choice
             options={UNIT_OPTIONS}
             value={unit}
             onChange={(chosen) => {

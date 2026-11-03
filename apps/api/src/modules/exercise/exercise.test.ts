@@ -332,3 +332,37 @@ describe('listing', () => {
     expect(legs.items.map((e) => e.name)).toEqual(['Leg Thing'])
   })
 })
+
+/**
+ * How an exercise is measured is fixed once it exists (ADR-0026): plans and logs measured one way
+ * would be left measured another, and a rule that fit would stop fitting. Refusing only while unused
+ * would need to see plans in groups the caller cannot. To track a movement differently, duplicate it.
+ */
+describe("an exercise's tracking mode", () => {
+  test('cannot be changed, and the refusal says to duplicate it', async () => {
+    const lift = await created(alice)
+    const res = await alice.wire(`/exercises/${lift.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ tracking: 'duration' }),
+    })
+    expect(res.status).toBe(422)
+    expect(expectContract(ApiError, res.body).error.message).toBe(
+      'How an exercise is measured is fixed once it exists: duplicate it to track it differently',
+    )
+    const read = expectContract(Exercise, (await alice.wire(`/exercises/${lift.id}`)).body)
+    expect(read.tracking).toBe('weight_reps')
+  })
+
+  /** The edit form sends the whole exercise back, tracking included: unchanged is no change. */
+  test('sent back unchanged with an edit, is no change', async () => {
+    const lift = await created(alice)
+    const res = await alice.wire(`/exercises/${lift.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ ...exerciseInputFrom(lift), name: 'Renamed Lift' }),
+    })
+    expect(expectContract(Exercise, res.body)).toMatchObject({
+      name: 'Renamed Lift',
+      tracking: 'weight_reps',
+    })
+  })
+})

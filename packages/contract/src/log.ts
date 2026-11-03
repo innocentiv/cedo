@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { LoggedDistanceMm, LoggedDurationS, LoggedReps, LoggedWeightG } from './measurement.ts'
 import { SessionRest } from './rest.ts'
-import { Rpe } from './rpe.ts'
+import { Reserve } from './rpe.ts'
 import { Exercise } from './exercise.ts'
 import { Id, PaginationQuery, Timestamp, patchOf } from './primitives.ts'
 import { WorkoutDay, WorkoutEntry } from './workout.ts'
@@ -41,7 +41,7 @@ export const SetLog = z.object({
   setIndex: z.int().nonnegative().max(MAX_SET_INDEX),
   weightG: LoggedWeightG.nullable(),
   reps: LoggedReps.nullable(),
-  rpe: Rpe.nullable(),
+  reserve: Reserve.nullable(),
   durationS: LoggedDurationS.nullable(),
   distanceMm: LoggedDistanceMm.nullable(),
   isWarmup: z.boolean(),
@@ -174,7 +174,7 @@ export function notesToKeep(typed: string, kept: string | null): string | null |
 const SetDone = {
   weightG: LoggedWeightG.nullable().default(null),
   reps: LoggedReps.nullable().default(null),
-  rpe: Rpe.nullable().default(null),
+  reserve: Reserve.nullable().default(null),
   durationS: LoggedDurationS.nullable().default(null),
   distanceMm: LoggedDistanceMm.nullable().default(null),
   isWarmup: z.boolean().default(false),

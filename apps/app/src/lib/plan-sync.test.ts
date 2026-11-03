@@ -23,7 +23,7 @@ const bench = '00000000-0000-4000-8000-000000000002'
 const set = {
   targetReps: 5,
   targetWeightG: 100_000,
-  targetRpe: null,
+  targetReserve: null,
   targetDurationS: null,
   targetDistanceMm: null,
   isWarmup: false,

@@ -26,7 +26,7 @@ import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 import { logSet } from './set-writes.ts'
-import { logWhole } from './start.ts'
+import { logWhole } from './log-whole.ts'
 
 const Page = page(WorkoutSessionSummary)
 
@@ -152,7 +152,7 @@ describe('logging sets', () => {
       (
         await alice.wire(`/sessions/${session.id}/logs`, {
           method: 'POST',
-          body: JSON.stringify({ exerciseId, weightG: kgToG(62.5), reps: 8, rpe: 8 }),
+          body: JSON.stringify({ exerciseId, weightG: kgToG(62.5), reps: 8, reserve: 2 }),
         })
       ).body,
     )
@@ -647,6 +647,11 @@ describe('progression suggestions', () => {
         }),
       })
     }
+    // Finished: a session takes its step when it is finished (ADR-0026).
+    await user.wire(`/sessions/${session.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ endedAt: new Date().toISOString() }),
+    })
   }
 
   test('with no history at all, it holds and says so', async () => {
@@ -743,6 +748,10 @@ describe('progression suggestions', () => {
         distanceMm: 5_000_000,
         durationS: 1770,
       }),
+    })
+    await alice.wire(`/sessions/${session.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ endedAt: new Date().toISOString() }),
     })
 
     const [suggestion] = expectContract(
@@ -1238,25 +1247,26 @@ test('a set past the most a series holds is refused', async () => {
 })
 
 /**
- * RPE, as GLOSSARY.md defines it: 5 to 10 in half-points. A set's effort, logged and prescribed —
- * the half-point is what a person answering "one and a half reps left" means.
+ * Reps in reserve, whole (ADR-0027), stored as RPE 5 to 10. A half means nothing to the person
+ * asked, so it is refused wherever it is sent — logged or prescribed — saying what to send instead.
  */
-describe('RPE in half-points', () => {
-  test('a set logged at RPE 8.5 reads back as 8.5', async () => {
+describe('reps in reserve, whole', () => {
+  test('a set logged at a half is refused, saying what to send instead', async () => {
     const exerciseId = await anExercise(alice)
     const session = expectContract(WorkoutSession, (await startSession(alice)).body)
-    const logged = await alice.wire(`/sessions/${session.id}/logs`, {
+    const res = await alice.wire(`/sessions/${session.id}/logs`, {
       method: 'POST',
-      body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, rpe: 8.5 }),
+      body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, reserve: 1.5 }),
     })
-    expect(expectContract(SetLog, logged.body).rpe).toBe(8.5)
-
-    const read = expectContract(WorkoutSession, (await alice.wire(`/sessions/${session.id}`)).body)
-    expect(read.logs.map((l) => l.rpe)).toEqual([8.5])
+    expect(res.status).toBe(422)
+    expect(JSON.stringify(res.body)).toContain('Reps in reserve are whole, none to five')
   })
 
-  /** The column holds the scale too, for a write that never passes the contract: a seed, a fix. */
-  test('the database refuses an RPE off the scale written past the API', async () => {
+  /**
+   * The column holds the stored scale too, for a write that never passes the contract: a seed, a
+   * fix. Past the column type, a raw write is the only way to send it an RPE at all.
+   */
+  test('the database refuses a stored RPE off the scale written past the API', async () => {
     const exerciseId = await anExercise(alice)
     const session = expectContract(WorkoutSession, (await startSession(alice)).body)
     const logged = expectContract(
@@ -1264,7 +1274,7 @@ describe('RPE in half-points', () => {
       (
         await alice.wire(`/sessions/${session.id}/logs`, {
           method: 'POST',
-          body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, rpe: 8 }),
+          body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, reserve: 2 }),
         })
       ).body,
     )
@@ -1272,60 +1282,85 @@ describe('RPE in half-points', () => {
     const refusal = async (rpe: number) =>
       await db
         .update(setLogs)
-        .set({ rpe })
+        .set({ reserve: sql`${rpe}` })
         .where(eq(setLogs.id, logged.id))
         .then(
           () => null,
           (error: unknown) => error,
         )
     const byTheCheck = { cause: { constraint_name: 'set_logs_rpe_ck' } }
-    expect(await refusal(8.25)).toMatchObject(byTheCheck)
-    expect(await refusal(4.5)).toMatchObject(byTheCheck)
+    expect(await refusal(8.5)).toMatchObject(byTheCheck)
+    expect(await refusal(4)).toMatchObject(byTheCheck)
   })
 
-  test.each([5, 10])('a set at the edge of the scale, RPE %p, is logged', async (rpe) => {
-    const exerciseId = await anExercise(alice)
-    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
-    const res = await alice.wire(`/sessions/${session.id}/logs`, {
-      method: 'POST',
-      body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, rpe }),
-    })
-    expect(expectContract(SetLog, res.body).rpe).toBe(rpe)
-  })
+  /** Stored as RPE, read back as the reserve it is: the column converts both ways, NULL alone. */
+  test.each([0, 5])(
+    'a set at the edge of the scale, %p in reserve, is logged and read back',
+    async (reserve) => {
+      const exerciseId = await anExercise(alice)
+      const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+      const res = await alice.wire(`/sessions/${session.id}/logs`, {
+        method: 'POST',
+        body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, reserve }),
+      })
+      expect(expectContract(SetLog, res.body).reserve).toBe(reserve)
+      const stored = await db
+        .select({ rpe: sql<string>`${setLogs.reserve}::text` })
+        .from(setLogs)
+        .where(eq(setLogs.sessionId, session.id))
+      expect(stored.map((r) => Number(r.rpe))).toEqual([10 - reserve])
+      const read = expectContract(
+        WorkoutSession,
+        (await alice.wire(`/sessions/${session.id}`)).body,
+      )
+      expect(read.logs.map((l) => l.reserve)).toEqual([reserve])
+    },
+  )
 
   test("a plan's target off the scale is refused", async () => {
     const exerciseId = await anExercise(alice)
     const created = expectContract(
       Workout,
-      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'RPE' }) }))
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Reserve' }) }))
         .body,
     )
     const res = await alice.wire(`/workouts/${created.id}/plan`, {
       method: 'PUT',
       body: JSON.stringify({
         days: [
-          { name: 'Day', entries: [{ exerciseId, sets: [{ targetReps: 5, targetRpe: 8.25 }] }] },
+          { name: 'Day', entries: [{ exerciseId, sets: [{ targetReps: 5, targetReserve: 6 }] }] },
         ],
       }),
     })
     expect(res.status).toBe(422)
   })
 
-  test.each([4.5, 10.5, 8.25])('a set at RPE %p is refused', async (rpe) => {
+  test.each([-1, 6, 1.5])('a set %p in reserve is refused', async (reserve) => {
     const exerciseId = await anExercise(alice)
     const session = expectContract(WorkoutSession, (await startSession(alice)).body)
     const res = await alice.wire(`/sessions/${session.id}/logs`, {
       method: 'POST',
-      body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, rpe }),
+      body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, reserve }),
     })
     expect(res.status).toBe(422)
   })
 
-  test("a plan's target RPE of 7.5 is saved and read back", async () => {
+  /** RPE is no longer a name anything past the column answers to (ADR-0027). */
+  test('a set sent an RPE is refused, as a field nobody reads', async () => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const res = await alice.wire(`/sessions/${session.id}/logs`, {
+      method: 'POST',
+      body: JSON.stringify({ exerciseId, weightG: kgToG(60), reps: 5, rpe: 8 }),
+    })
+    expect(res.status).toBe(422)
+  })
+
+  test("a plan's target at a half is refused", async () => {
     const exerciseId = await anExercise(alice)
     const created = expectContract(
       Workout,
-      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'RPE' }) }))
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Reserve' }) }))
         .body,
     )
     const saved = await alice.wire(`/workouts/${created.id}/plan`, {
@@ -1335,14 +1370,17 @@ describe('RPE in half-points', () => {
           {
             name: 'Day',
             entries: [
-              { exerciseId, sets: [{ targetReps: 5, targetWeightG: kgToG(60), targetRpe: 7.5 }] },
+              {
+                exerciseId,
+                sets: [{ targetReps: 5, targetWeightG: kgToG(60), targetReserve: 2.5 }],
+              },
             ],
           },
         ],
       }),
     })
-    const plan = expectContract(Workout, saved.body)
-    expect(plan.days[0]?.entries[0]?.sets[0]?.target.rpe).toBe(7.5)
+    expect(saved.status).toBe(422)
+    expect(JSON.stringify(saved.body)).toContain('Reps in reserve are whole, none to five')
   })
 })
 
@@ -1351,7 +1389,7 @@ describe('RPE in half-points', () => {
  * done — and, a past mistake being fixable (#31), after the session is finished too.
  */
 describe("a set's reserve, said after it", () => {
-  test('sets the RPE of a set already logged, and answers it as read', async () => {
+  test('sets the reserve of a set already logged, and answers it as read', async () => {
     const exerciseId = await anExercise(alice)
     const session = expectContract(WorkoutSession, (await startSession(alice)).body)
     const set = expectContract(
@@ -1363,21 +1401,21 @@ describe("a set's reserve, said after it", () => {
         })
       ).body,
     )
-    expect(set.rpe).toBeNull()
+    expect(set.reserve).toBeNull()
 
-    const amend = (rpe: number | null) =>
+    const amend = (reserve: number | null) =>
       alice.wire(`/sessions/${session.id}/logs/${set.id}`, {
         method: 'PATCH',
-        body: JSON.stringify({ rpe }),
+        body: JSON.stringify({ reserve }),
       })
-    expect(expectContract(SetLog, (await amend(8)).body)).toMatchObject({
+    expect(expectContract(SetLog, (await amend(2)).body)).toMatchObject({
       id: set.id,
-      rpe: 8,
+      reserve: 2,
       reps: 5,
     })
 
     await finishSession(alice, session.id)
-    expect(expectContract(SetLog, (await amend(9)).body).rpe).toBe(9)
+    expect(expectContract(SetLog, (await amend(1)).body).reserve).toBe(1)
   })
 
   test("is a 404 for a set of another session, or someone else's", async () => {
@@ -1393,7 +1431,7 @@ describe("a set's reserve, said after it", () => {
       ).body,
     )
     const bobs = expectContract(WorkoutSession, (await startSession(bob)).body)
-    const patch = { method: 'PATCH', body: JSON.stringify({ rpe: 8 }) }
+    const patch = { method: 'PATCH', body: JSON.stringify({ reserve: 2 }) }
     expect((await alice.wire(`/sessions/${bobs.id}/logs/${set.id}`, patch)).status).toBe(404)
     expect((await bob.wire(`/sessions/${session.id}/logs/${set.id}`, patch)).status).toBe(404)
   })

@@ -17,11 +17,11 @@ beforeEach(async () => {
   alice = await h.as('alice')
 })
 
-const set = (exerciseId: string, kg: number, rpe: number | null = null) => ({
+const set = (exerciseId: string, kg: number, reserve: number | null = null) => ({
   exerciseId,
   weightG: kgToG(kg),
   reps: 5,
-  rpe,
+  reserve,
 })
 
 describe('your training, reviewed over HTTP', () => {
@@ -30,14 +30,14 @@ describe('your training, reviewed over HTTP', () => {
     const stuck = await fixture.anExercise({ name: 'Row' })
     const sliding = await fixture.anExercise({ name: 'Bench' })
     // Oldest first: the row at 80 kg four times running, which has stalled; the bench beside it.
-    for (const [daysAgo, benchKg, rpe] of [
-      [20, 66, 7],
-      [14, 63, 8],
-      [7, 60, 9],
-      [1, 60, 10],
+    for (const [daysAgo, benchKg, reserve] of [
+      [20, 66, 3],
+      [14, 63, 2],
+      [7, 60, 1],
+      [1, 60, 0],
     ] as const) {
       // oxlint-disable-next-line no-await-in-loop -- in order: each session is a day of its own.
-      await fixture.aSession([set(stuck, 80), set(sliding, benchKg, rpe)], daysAgo)
+      await fixture.aSession([set(stuck, 80), set(sliding, benchKg, reserve)], daysAgo)
     }
 
     const res = await alice.wire('/review?weeks=4')

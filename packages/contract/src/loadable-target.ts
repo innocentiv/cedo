@@ -1,5 +1,6 @@
 import { type Load, type LoadLimit, loadable, steppedOn } from './load.ts'
-import { type Held, type ProgressionInput, type SetTarget, progress } from './progression.ts'
+import type { Held, SetTarget } from './progression.ts'
+import { type ProgressionInput, type StepInput, progress, step } from './step.ts'
 
 /** A prescription in a weight an athlete can load, and where their equipment stopped it, if it did. */
 interface LoadableTarget {
@@ -34,6 +35,30 @@ export function nextLoadableTarget(
   const asked = loadableTarget(load, input.target)
   const { target: next, held } = progress({ ...input, target: asked.target })
   return { shown: asked.target, ...fitted(load, asked, next), held }
+}
+
+/**
+ * One step taken in weights an athlete can load (ADR-0024, ADR-0026): the session judged against the
+ * target as they were shown it, and an advance added to THAT weight — a loadable weight up at least
+ * — so the step keeps a weight their equipment could load the day it was taken.
+ */
+export function nextLoadableStep(
+  input: StepInput,
+  load: Load | null,
+): LoadableTarget & {
+  /** The target as shown — what the session was judged against, and the step's `from`. */
+  readonly shown: SetTarget
+  readonly held: Held | null
+  readonly streak: number
+} {
+  const asked = loadableTarget(load, input.target)
+  const stepped = step({ ...input, target: asked.target })
+  return {
+    shown: asked.target,
+    ...fitted(load, asked, stepped.target),
+    held: stepped.held,
+    streak: stepped.streak,
+  }
 }
 
 /**

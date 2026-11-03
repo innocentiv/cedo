@@ -9,7 +9,7 @@ This is the rule the whole frontend is organised around, and the reason the test
 small as it is.
 
 > A screen **may**: call the hooks in `src/api/queries.ts`, `src/api/session-queries.ts`,
-> `src/api/athlete-queries.ts` and `src/api/equipment-queries.ts` (never
+> `src/api/athlete-queries.ts`, `src/api/equipment-queries.ts` and `src/api/target-queries.ts` (never
 > `api.*` or `fetch` directly),
 > render UI primitives, hold form state, and call pure helpers from `@cedo/contract`
 > (`formatEffort`, `formatWeight`, `formatPrescription`, `workingSetsDone`, `planInputFrom`).
@@ -60,6 +60,7 @@ src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-
                              session-queries.ts (a session's writes and its offline queue),
                              athlete-queries.ts (a coach's reads of an athlete's training),
                              equipment-queries.ts (what you, or an athlete, train with),
+                             target-queries.ts (your own targets on a plan, and Change),
                              retry.ts and pending.ts (+ their unit tests)
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
@@ -111,10 +112,12 @@ Two constraints found by building it:
 | `ProgressTrend` | an exercise's progress: a bar per session from the contract's `trendOf` — the estimated max of a weight lift, the top set otherwise — and the server's stall as a badge |
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput`. `Input`'s `look` sets a name edited where it reads — a workout's title, a day's heading — with no box |
 | `Card`, `ListRow` | the one row shape every list uses |
-| `Chips` | one choice from a short flat set, all in view — tracking mode, progression kind |
+| `Choice` | one choice among alternatives, as `Segmented` or `Select` by what its options need — the screen never decides which |
+| `Segmented` | one choice whose options all fit one line — a few short ones, or many tiny ones: the progression rule, a superset's letter or none, a day of five, reps in reserve. One bar of equal segments (`segmented`, the look reps in reserve set) |
+| `Select` | one choice whose options do not fit one line: a vertical list, one row selected, as a native select — the day an entry moves to, once a plan has more days than a line holds. Which of the two a choice gets is decided by its options, not by the screen |
 | `FilterRow`, `FilterSheet`, `FilterTrigger` | how a list is narrowed (#52): every filter one trigger — a glyph for what it narrows, its value cut short to fit, a ▾ — a segment of one bar as wide as the list, each as wide as what it says and a share of the rest (`segmented`, the look reps in reserve shares), filled while it narrows the list, with Clear filters — small words under the bar's end, no outline — putting them all back, so the bar keeps its width as a filter is set. `FilterSheet` is a filter whole: its trigger, and the sheet of its own it opens, closed by choosing |
 | `OptionRow`, `OptionGrid`, `OptionSection` | a filter's sheet: a few choices one per line, each with a word if it needs one (`OptionRow`); many in cells of one width, so many to a line (`OptionGrid`); a headed part of either (`OptionSection`) |
-| `Chip` | one choice of a set, on or off — what `Chips`, the muscle and equipment pickers and the equipment checklist are built of |
+| `Chip` | one choice of a set, on or off, any number on — multi-select only: what the muscle and equipment pickers and the equipment checklist are built of. A chip looks like one of many that can be on, so one choice among alternatives is never chips |
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |
 | `Loaded` | failed / not-yet / here, around any query. A screen never writes that ternary |
 | `ErrorBoundary` | the last line of defence |
@@ -154,9 +157,15 @@ a workout's outline gives it a line that says so — what it prescribes, and the
 only way the plan saves again.
 
 Smaller parts serve those composites and no screen, so they are not in the list above:
-`ReserveChips` — RPE asked as reps in reserve, holding an RPE while the contract converts
-(`rpe.ts`) — used by `LastSet` and by `PrescriptionFields`: what an entry asks of the athlete,
-its targets, reserve, rest and cue. The rest band's clock is `useRestClock`
+`ReserveSegments` — reps in reserve, none to five, whole, one `Segmented`: the one rating of how hard
+a set was that a person reads, holding reps in reserve as the wire carries it — only the contract
+converts, to and from the stored column (`rpe.ts`; no half exists to show, ADR-0027) —
+used by the logger before a set, the fix of a past set, and the entry editor — a row for all sets,
+a row per set (`ReserveRows`), or a Manual line's own. The editor's sections are their own parts:
+`RuleField` (the rule, its settings, its sentence, and asking before a switch overwrites a set),
+`SetsField` with `set-lines.tsx` (counts, warm-up lines, Plan beside Your next session, Manual's
+lines), `NextSession` (the viewer's target and **Change**), and `EntryRead`, an entry a reader
+opens. The rest band's clock is `useRestClock`
 (`src/lib/rest-clock.ts`); it and the session's clock read `useNow`
 (`src/lib/use-now.ts`), a clock of its own that ticks once a second only while it must — so the
 band re-renders, not the day. The tone at the end of a rest is `src/lib/chime.ts`, made by the
@@ -178,13 +187,15 @@ of its own; a plan the target group could not read is refused by the server, whi
 a copy in their own group and opens the copy's editor. A refusal is the server's, shown beside the
 button.
 
-Editing a plan follows the same split. How sets resize within an entry's total, what a target change
-applies to, what a new entry prescribes, and whether another day or exercise fits are
-`plan-editing.ts` in the contract, with its tests; the limits themselves are declared once beside
-the schema in `workout.ts`, which enforces them. The editor only wires these to controls. It also
+Editing a plan follows the same split. How sets resize within an entry's total, what a prescription
+change applies to, what a new entry prescribes, which rules fit an exercise's tracking mode, and
+whether another day or exercise fits are `plan-editing.ts` in the contract, with its tests; the
+limits themselves are declared once beside the schema in `workout.ts`, which enforces them — reps
+inside a double's range, a range whose `from` is below its `to`, the dimensions a rule moves or
+judges shared by every working set (ADR-0026). The editor only wires these to controls. It also
 reads `planIssues(draft, visible)` — the schema's own verdict, located by day and exercise, and
 first every entry whose exercise it cannot see, which the server would refuse — as the draft is
-edited, shows it above Save, and disables Save while there is one. The editor prevents what it
+edited, shows it on the plan's save line, and sends nothing while there is one. The editor prevents what it
 models; that line catches what it does not, before the request rather than as a 422. The editor
 once clamped warm-ups and working sets to 20 each while the schema allowed 20 in total, which is
 the drift this split exists to stop.
@@ -209,10 +220,11 @@ sign, so an assisted target opens assisted. A field emptied on the way to retypi
 sign seen. Those rules are the contract's `assistance`, tested there; the input only wires them.
 
 A logged set is held as an `Effort` and read and written through each field's `key`; a prescribed
-set's target through its `targetKey`. A screen therefore names no measurement field itself. The
-plan editor patches only the target that changed — never a whole `Effort` mapped back onto the
-set — because its patch is applied to every working set, and a whole one would overwrite the other
-sets' targets.
+set's prescription through its `targetKey`. A screen therefore names no measurement field itself.
+The plan editor patches only the dimension that changed — never a whole `Effort` mapped back onto
+the set — because under a rule its patch is applied to every working set, and a whole one would
+overwrite what each set asks of its own (its reps in reserve). On a manual entry the patch is the
+one set's.
 
 Both share one field, `TypedNumber`. A value is `number | null`, where null means empty — an empty
 numeric field is not zero, and zero reps is a meaningful log. While focused the field shows the text
@@ -245,10 +257,16 @@ next, to do — the next set's numbers large, with − / + steppers whose steps 
 (2.5 kg or 5 lb, one rep, five seconds, a hundred metres) and a tap on a number to type it, and
 one Log button under the thumb. A weight whose load the athlete's equipment knows (#36, `useLoads`,
 the contract's `loadOf`) steps between the weights they have instead — 20, 22, 24 on 2 kg
-dumbbells, from 21 typed to 22 or 20 — stopping at their lightest and heaviest; the plan's own
-targets (warm-ups) are asked as they can be loaded (`setsOf`), the session's as the server sends
-them, and the target says when it stopped at "your heaviest" or "your lightest". Typing is never
-refused. A new weight rule in the plan editor adds one step of that equipment. "Up next" is the rest of the day, an entry to a line, a superset
+dumbbells, from 21 typed to 22 or 20 — stopping at their lightest and heaviest. What each set is
+pre-filled with is the server's (`GET /sessions/:id/targets`): under a rule, the athlete's target —
+their latest step if it was taken against the prescription and rule as they stand, else the
+prescription (ADR-0026); on a manual entry, the plan's numbers for that
+set, with last time's set beside it; a warm-up, its own line's weight scaled by the working target,
+worked out as it is asked. Each is asked as it can be loaded (`setsOf`), and the target says when it
+stopped at "your heaviest" or "your lightest". Beside it the logger says what moved it or held it,
+per set — "Progressed to 11 × 20 kg · the plan says 10 × 20 kg", "held: set 3 did 7 of 10", "held
+for effort: set 3 left 0 in reserve, asked 2" — the same words `workout_progression` says, so what
+the last session did is read where the next one is done. Typing is never refused. A new weight rule in the plan editor adds one step of that equipment. "Up next" is the rest of the day, an entry to a line, a superset
 drawn as one item; tapping one makes it current, and tapping a logged set re-opens it.
 
 - **A choice holds until this device logs or undoes a set**, or goes to pick an exercise — not
@@ -268,7 +286,9 @@ drawn as one item; tapping one makes it current, and tapping a logged set re-ope
 - **Reserve is asked before Log** (#37), as one optional row in the logger, under the numbers, and
   only for a working set of an exercise measured in reps — which those are is the contract's, not
   the screen's. Whole reps, none to five, one row of segments; tapping the chosen one again takes it
-  back. Never pre-filled, not even from the plan's RPE, and empty for each set. Once logged, the set
+  back. Never pre-filled — the answer is how the set went, not what it asked — and empty for each
+  set. What the set asks is said above it ("leave 2 in reserve"), because each working set is
+  judged against its own (ADR-0026), and a set that left fewer holds the target. Once logged, the set
   says its reserve and asks nothing more: Undo, or correcting it from the summary (#31), is how a
   mistake is fixed.
 - **"+ set"** logs one beyond the prescription; **Add exercise** logs one with no entry, as a swap
@@ -311,7 +331,8 @@ As built (#25), on a phone top to bottom, on a desktop in two columns (`Screen` 
   Warm-up, Save — and Remove set, asked twice. Never its exercise: that set is removed and logged
   again. Delete session is last, under the sets, asked twice, and goes back to where it was opened
   from. A set of an exercise out of reach shows no measures, so offers only how hard and which
-  kind. Bests, history and the next targets follow, being judged on read. A coach's view of the
+  kind. Bests and history follow, being judged on read; the next targets follow because the fix
+  takes the steps from that session onward again (ADR-0026). A coach's view of the
   same session has none of it (#30).
 
 The app says where its week starts (`startOfWeek`, local Monday); the server cannot know the
@@ -319,11 +340,17 @@ reader's time zone. Weeks and lines are the contract's `week.ts`.
 
 ### Editing a workout
 
-The workout's page is its outline: days, and each entry one line — "Barbell Back Squat · 5 × 5 ·
-100 kg · +2.5 kg a session". Tapping a line opens the entry's settings in a sheet, or a pane beside
+The workout's page is its outline: days, and each entry one line — "Barbell Back Squat · 5 sets ·
+5 × 100 kg · Linear, +2.5 kg". Tapping a line opens the entry's settings in a sheet, or a pane beside
 the outline on a wide screen. Each change is saved as it is made, and there is no edit mode: see
 `docs/adr/0022-plans-edited-in-place.md`. Days and entries reorder, entries move between days, and a
 workout is renamed and its notes edited where they are shown.
+
+What an entry asks is two things, kept apart on screen (ADR-0026): the **prescription**, what the
+plan's author set and where everyone following it starts, and the viewer's own **target**, what
+their next session asks — their latest step, while it was taken against the prescription and rule
+as they stand. The plan is never written to by progression; the editor shows both, so what was set
+and what the logs did to it are read side by side.
 
 As built (#26):
 
@@ -331,11 +358,12 @@ As built (#26):
   screen's `ownHeading`), the notes under it, each kept as its field is left; then one line on
   the plan: Saved, Saving…, or Not saved and why.
 - **The outline** — each day its name (edited where it reads, kept as the field is left and put
-  back if left empty — no day is nameless), Start, ↑ ↓ and the bin; each entry one line, `5 sets · 5 × 100 kg · Linear, +2.5 kg`, a superset's letter before its name; Add exercise
+  back if left empty — no day is nameless), Start, ↑ ↓ and the bin; each entry one line, `3 sets · 10 × 20 kg · Double 8–12, +5 kg`, and the viewer's target after it — `· next 12 × 40 kg` — only when it differs from the plan; a manual entry whose sets differ says each run of equal sets, `1 set 6 × 90 kg · 2 sets 8 × 80 kg · Manual`; a superset's letter before its name; Add exercise
   at the foot of a day, Add day at the foot of the plan. An unavailable exercise's line says so,
   with the bin.
-- **An entry's settings** — its fields (`EntryEditor`), then where it is in the plan: chips to move
-  it to another day, ↑ ↓ within its day, the bin. In a sheet on a phone; on a desktop, a pane
+- **An entry's settings** — its fields (`EntryEditor`, below), then where it is in the plan: the
+  day it moves to (`Segmented` while the days fit a line, `Select` once they do not), ↑ ↓ within its
+  day, the bin. In a sheet on a phone; on a desktop, a pane
   beside the outline (`Screen` `columns`), which waits with a line until an entry is chosen. Kept
   open by the entry's key, so it follows the entry as it moves and closes once it is gone. The
   outline and the pane scroll each on their own (#50): an entry on the fifth day opens beside it,
@@ -357,16 +385,65 @@ As built (#26):
   with other values start their fields from those.
 - Under the name, one quiet line (`OwnershipLine`): which group it is in, a star pinning it, ⇄
   transferring it — rarely used, so glyphs, not buttons of their own. Delete sits under the
-  outline. A reader sees the same outline with nothing to tap but Start and the star, and Copy into
-  my group under it.
+  outline. A reader sees the same outline with nothing to change but Start and the star, and Copy
+  into my group under it — and opens an entry read only, where **Your next session** and **Change**
+  are still theirs: a target is its person's, not the plan's.
 - `/workouts/:id/edit` redirects to the workout's page, for old links.
+
+**An entry's settings** (`EntryEditor`, ADR-0026). The first version laid every field out at one
+weight, in one stack: a label such as "rest" read like the cue under it, and a double's range and
+increment sat beside each other under the reps with nothing saying they were the rule's. So the
+editor is titled sections with the widest space between them, and three levels of text — a
+section's heading, a field's label, then help (the rule's sentence, the cue) — never two at one
+look. In order, because what the rule is decides what every field below it means:
+
+1. **Progression** — the mode, one `Segmented`: only the rules that fit the exercise's tracking mode,
+   from the contract's one function the plan save and MCP also ask (`Double | Linear | Manual` for a
+   lift; `Linear | Manual` for a hold, where Linear adds seconds; `Distance | Manual` for a run). Then
+   the rule's settings — from / to and the increase for a double, the increase and after how many
+   cleared sessions for linear — and one plain sentence saying what it does: "Climb from 8 to 12
+   reps at the same weight. When every working set reaches 12, add 5 kg and start again at 8."
+   Manual says "Nothing moves these numbers but an edit to the plan." There is no beginner or
+   power-user switch: the rules are the guided view, Manual the notebook.
+2. **Sets** — warm-ups and working sets counted, then what they ask, labelled for the mode:
+   - **Under a rule**, two columns, always — **Plan**, the prescription, edited here, and **Your
+     next session**, the viewer's own target, read only, with **Change** to set it by hand, which
+     offers only what the rule moves (a double's reps, inside its range, and weight; linear's
+     weight; a hold's seconds; a run's distance, its time following in proportion). Under a double
+     the reps read **Start at**, one choice of the range's values — `Segmented` while they fit a
+     line, `Select` once they do not — so reps outside it cannot be entered. Shown even when the two are equal: a column that comes and
+     goes from one entry to the next teaches less than one always there. Editing the prescription
+     or the rule says, as information, "your next session restarts from the plan (you were at
+     12 × 40)" — no confirmation, because the reset is derived, not written: put it back and the
+     target is back, for everyone who has not trained since. The number of working sets and the warm-ups restart
+     nothing.
+   - **Manual**, one column, a line per working set — reps, weight, reps in reserve — so a top set
+     and its back-offs are written as on paper. Switching a manual entry whose sets differ to a
+     rule asks first to use set 1's numbers — what the rule moves or judges — for every set.
+   - **Warm-ups** are lines of their own, reps × weight, under either mode. Under a rule their next
+     session's weight follows the working target in proportion, worked out as shown, never stored,
+     so editing one takes effect at once; on Manual, or when the working sets have no positive
+     weight to follow, a warm-up asks what it says.
+   - **Under a rule, reps in reserve** is one row for **All sets**, and **Vary by set** opening a row per working
+     set, so reps in reserve can ramp. While the sets differ the rows stay open, and the way back to one row
+     is **Same for all sets**, which asks first to use set 1's for every set. A difference is never hidden
+     behind a summary — the first editor showed set 1's reserve for all three, and a tap wrote it
+     over the other two.
+3. **Rest & superset** — the rest, and the superset's letter or none, one `Segmented`.
+4. **Cue** — the one line for the athlete.
+
+The rules behind each — which rules fit, what a target may differ in, how warm-ups scale — are the
+contract's; the editor lays them out. What a person read at a glance and what an AI wrote through
+MCP are one plan: nothing the contract accepts is left without a place on this screen.
 
 ### Finding exercises
 
 Search, and a muscle filter grouped by region; each row its main muscles, and the video's thumbnail
 when there is one. The picker leads with what you have logged lately, marks what the day already
 has, and adds several at once. A new exercise starts from its muscles, their loads an even split
-that totals 100, to adjust.
+that totals 100, to adjust. Its tracking mode is chosen when it is created and read only after: a
+plan's rules and every logged set were measured in it, so tracking a movement differently is a
+duplicate (ADR-0026).
 
 As built (#27):
 
@@ -529,7 +606,7 @@ used **only for state, and one meaning each everywhere**:
 | white | a warm-up |
 | red | careful — something went wrong, or a change cannot be taken back |
 
-Everything else is chalk on a charcoal ground — a selection too: a chosen chip, the tab you are on,
+Everything else is chalk on a charcoal ground — a selection too: a chosen segment or chip, the tab you are on,
 a set re-opened are chalk, never yellow, so nothing chosen is taken for the next thing to do. Weight and reps are set large in Barlow
 Condensed with tabular figures, everything else in Barlow — bundled with the app, so a self-hosted
 instance asks nothing of a third party and the installed app works offline. Fewer boxes: hierarchy
@@ -590,8 +667,13 @@ it changes (`useWriteTo('exercise', …)`), and `affectedBy` derives the rest: t
 awaited — the next write may depend on them — and the reads that embed it refetch in the background.
 A write that makes nothing stale — creating a media link, which is an exercise's only once the
 exercise is saved with it — is a plain `useMutation`. A write to more than one names them all: a fix
-to a finished session (#31) writes `['session', 'pastSession']`, the second refreshing the targets
-carried over it, which a set logged leaves alone.
+to a finished session (#31) writes `['session', 'target']`, the second refreshing the targets
+whose steps it took again, which a set logged leaves alone. The other writes that move a target say
+so the same way: finishing a session and deleting one write `['session', 'target']`, setting a
+target by hand (**Change**) writes `target` alone, and a plan save — an edited prescription or rule
+restarts the targets — writes `workout`, which the targets are OF. So the plan's Your next session
+column, its outline's `· next`, and the next session's logger refresh with them. The targets embed
+`equipment` too: they are asked in weights it loads (#36).
 
 It used to be per write: each mutation listed what else it touched, and the lists had gaps nobody
 could see. Renaming an exercise left the open plan, its progression and a live session showing the

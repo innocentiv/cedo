@@ -241,3 +241,6 @@ export async function attachMuscles(ownerGroupId: string): Promise<void> {
     on conflict do nothing
   `)
 }
+
+/** What finishing would have taken, seeded beside the logs it judged (ADR-0026). */
+export { seedSteps } from './steps.ts'

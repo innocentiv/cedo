@@ -23,9 +23,8 @@ import {
   MAX_SETS_PER_ENTRY,
   WorkoutEntryInput,
   WorkoutPlanInput,
-  setTargetOf,
-  targetFieldsOf,
 } from './workout.ts'
+import { setTargetOf, targetFieldsOf } from './plan-set.ts'
 
 const bench = newEntry({ id: crypto.randomUUID(), tracking: 'weight_reps' })
 
@@ -57,14 +56,14 @@ describe('a set’s targets', () => {
     const fields = {
       targetReps: 8,
       targetWeightG: 60_000,
-      targetRpe: 8,
+      targetReserve: 2,
       targetDurationS: 30,
       targetDistanceMm: 1000,
     }
     expect(setTargetOf(fields)).toEqual({
       reps: 8,
       weightG: 60_000,
-      rpe: 8,
+      reserve: 2,
       durationS: 30,
       distanceMm: 1000,
     })
@@ -192,7 +191,7 @@ describe('the issues a draft would be refused for', () => {
     const set = {
       targetReps: 8,
       targetWeightG: null,
-      targetRpe: null,
+      targetReserve: null,
       targetDurationS: null,
       targetDistanceMm: null,
       isWarmup: false,
@@ -289,6 +288,16 @@ describe('a prescription in one line', () => {
     expect(formatPrescription(sets, 'bodyweight_reps', 'kg')).toBe('2 sets · 6 × bodyweight +20 kg')
     // An unavailable exercise: as measured.
     expect(formatPrescription(sets, null, 'kg')).toBe('2 sets · 6 × 20 kg')
+  })
+
+  /** A top set and its back-offs (ADR-0026): each run of equal sets, as the outline says them. */
+  test('working sets that differ are said as their runs', () => {
+    const sets = [
+      { isWarmup: false, target: target(6, 90_000) },
+      { isWarmup: false, target: target(8, 80_000) },
+      { isWarmup: false, target: target(8, 80_000) },
+    ]
+    expect(formatPrescription(sets, 'weight_reps', 'kg')).toBe('1 set 6 × 90 kg · 2 sets 8 × 80 kg')
   })
 
   test('one set is a set, and warm-ups alone prescribe nothing', () => {

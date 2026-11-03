@@ -1,36 +1,13 @@
 import { and, eq, isNotNull } from 'drizzle-orm'
 import type { LogSetInput, SetLog, SetLogUpdate } from '@cedo/contract'
-import { type Transaction, db } from '../../db/client.ts'
+import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { assertLoggable, assertWeightFor } from './loggable.ts'
 import { nextNumber } from './numbering.ts'
-import { keepRest } from './rest.ts'
-import { lockInProgress, lockOwn, ownedBy, readOwn, rethrowMissingEntry } from './service.ts'
-
-/**
- * Every write to a session's sets (#24, #31): under the session's row lock — so they are taken in
- * turn, and the next set's number is read from the sets as they stand — then the rest it has
- * running worked out again and kept (`keepRest`, #38). `inProgress` refuses a finished session; a
- * correction or a removal takes either. Thrown, nothing is written, and the rest is as it was. The
- * rest is kept after the write is committed, outside the lock, as it always was: two writes at once
- * may keep theirs in either order, and the next write puts it right.
- */
-export async function writeSessionSets<T>(
-  caller: Caller,
-  sessionId: string,
-  { inProgress }: { readonly inProgress: boolean },
-  write: (tx: Transaction) => Promise<T>,
-): Promise<T> {
-  const written = await db.transaction(async (tx) => {
-    if (inProgress) await lockInProgress(tx, caller, sessionId)
-    else await lockOwn(tx, caller, sessionId)
-    return await write(tx)
-  })
-  await keepRest(caller, sessionId)
-  return written
-}
+import { ownedBy, readOwn, rethrowMissingEntry } from './service.ts'
+import { writeSessionSets } from './write-session.ts'
 
 /**
  * One performed set. With an `idempotencyKey`, a repeat of a key already stored in this session is

@@ -10,11 +10,19 @@ import { sessionQueue, useWriteTo } from './write-to.ts'
  * these share one queue and one session.
  */
 
-/** In the session's queue: finishing waits for every set logged before it. */
+/**
+ * In the session's queue: finishing waits for every set logged before it. Finishing takes the
+ * session's steps, so it names the targets too (ADR-0026); a note saved refreshes them for nothing,
+ * in the background — rare, and cheaper than a second hook that could be called for a finish.
+ */
 export const useUpdateSession = (id: string) =>
-  useWriteTo('session', async (input: SessionUpdate) => await api.sessions.update(id, input), {
-    queued: { mutationKey: sessionQueue(id).update, scope: sessionQueue(id).scope },
-  })
+  useWriteTo(
+    ['session', 'target'],
+    async (input: SessionUpdate) => await api.sessions.update(id, input),
+    {
+      queued: { mutationKey: sessionQueue(id).update, scope: sessionQueue(id).scope },
+    },
+  )
 
 /**
  * +30 s, or skip, of the rest the server keeps (#38) — in the session's queue, behind the set that
@@ -74,11 +82,11 @@ export const useRemoveLog = (sessionId: string) =>
   useWriteTo('session', async (logId: string) => await api.sessions.removeLog(sessionId, logId))
 
 /**
- * A finished session's past mistakes fixed (#31): to the session, and to `pastSession` — the
- * sessions the next one's targets are carried over. Never queued: a fix is made with a signal, at
- * leisure, and said at once when refused.
+ * A finished session's past mistakes fixed (#31): to the session, and to the targets its steps
+ * moved, which a fix takes again (ADR-0026). Never queued: a fix is made with a signal, at leisure,
+ * and said at once when refused.
  */
-const PAST_FIXED = ['session', 'pastSession'] as const
+const PAST_FIXED = ['session', 'target'] as const
 
 export const useCorrectSet = (sessionId: string) =>
   useWriteTo(

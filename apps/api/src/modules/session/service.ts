@@ -3,7 +3,6 @@ import {
   type LoggedExercise,
   REST_EXTENSION_S,
   type RestChange,
-  type SessionUpdate,
   type SetLog,
   type WorkoutSession,
   personalBestsIn,
@@ -42,7 +41,7 @@ const toLog = (
   isWarmup: row.isWarmup,
   weightG: row.weightG,
   reps: row.reps,
-  rpe: row.rpe,
+  reserve: row.reserve,
   durationS: row.durationS,
   distanceMm: row.distanceMm,
   loggedAt: row.loggedAt.toISOString(),
@@ -107,48 +106,6 @@ export async function changeRest(
         sql`${logged} = ${sets}`,
       ),
     )
-}
-
-export async function update(
-  caller: Caller,
-  id: string,
-  patch: SessionUpdate,
-): Promise<WorkoutSession> {
-  const columns = {
-    ...(patch.endedAt !== undefined && {
-      /**
-       * Never before the start, clamped in SQL against the row's own `started_at`. The app finishes
-       * with the PHONE's clock while `started_at` is the database's, so rejecting an earlier end
-       * refused any session shorter than the skew — and a refusal is not what anyone wants here.
-       * An ISO string, never a JS Date: raw `sql` bypasses the column encoder.
-       */
-      endedAt: sql<Date>`greatest(${patch.endedAt}::timestamptz, ${workoutSessions.startedAt})`,
-      // Finished, no rest runs on (#38).
-      ...NO_REST,
-    }),
-    ...(patch.notes !== undefined && { notes: patch.notes }),
-  }
-
-  /**
-   * An empty patch is valid input — `SessionUpdate` has only optional fields — but Drizzle throws
-   * "No values to set" on `.set({})`, which surfaces as a 500. Exercise and workout updates escape
-   * this only because they always touch `updated_at`; `workout_sessions` has no such column.
-   */
-  if (Object.keys(columns).length === 0) return await readOwn(caller, id)
-
-  await db.transaction(async (tx) => {
-    // Finishing is final, and once: only a session in progress is finished. Notes are not a
-    // change to what was logged, so they need neither the lock nor a session in progress.
-    if (patch.endedAt !== undefined) await lockInProgress(tx, caller, id)
-    const written = await tx
-      .update(workoutSessions)
-      .set(columns)
-      .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
-      .returning({ id: workoutSessions.id })
-    if (written.length === 0) throw notFound('session')
-  })
-
-  return await readOwn(caller, id)
 }
 
 /**
@@ -244,17 +201,4 @@ export async function read(training: Training, id: string): Promise<WorkoutSessi
 export function rethrowMissingEntry(error: unknown): never {
   if (isForeignKeyRefusal(error)) throw notFound('entry')
   throw error
-}
-
-/**
- * A whole session deleted (#31) — one started by mistake, or logged twice — and its sets with it,
- * in progress or finished. Its row lock is the one every write to its sets takes, so a set being
- * logged lands before it, and goes with it, or finds no session.
- */
-export async function remove(caller: Caller, id: string): Promise<void> {
-  const deleted = await db
-    .delete(workoutSessions)
-    .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
-    .returning({ id: workoutSessions.id })
-  if (deleted.length === 0) throw notFound('session')
 }

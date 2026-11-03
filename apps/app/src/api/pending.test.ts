@@ -7,7 +7,7 @@ const input = (entryId: string, isWarmup = false): LogSetInput => ({
   entryId,
   weightG: 100_000,
   reps: 5,
-  rpe: null,
+  reserve: null,
   durationS: null,
   distanceMm: null,
   isWarmup,
@@ -23,7 +23,7 @@ const stored = (entryId: string, loggedAt: string): PendingLog => ({
   weightG: 100_000,
   durationS: null,
   distanceMm: null,
-  rpe: null,
+  reserve: null,
 })
 
 describe('sets logged without a signal (#9), on the workout screen (#24)', () => {
@@ -34,7 +34,7 @@ describe('sets logged without a signal (#9), on the workout screen (#24)', () =>
       [first],
       [
         { input: input('squat'), key: 'a' },
-        { input: { ...input('rdl'), rpe: 8 }, key: 'b' },
+        { input: { ...input('rdl'), reserve: 2 }, key: 'b' },
       ],
       now,
     )
@@ -44,7 +44,7 @@ describe('sets logged without a signal (#9), on the workout screen (#24)', () =>
       ['b', 'rdl'],
     ])
     // How hard each was, said before it was logged (#37), shown while it waits too.
-    expect(logs.map((l) => l.rpe)).toEqual([null, null, 8])
+    expect(logs.map((l) => l.reserve)).toEqual([null, null, 2])
     expect(logs.map((l) => l.loggedAt).toSorted()).toEqual(logs.map((l) => l.loggedAt))
   })
 
@@ -68,7 +68,7 @@ describe('sets logged without a signal (#9), on the workout screen (#24)', () =>
         {
           index: 0,
           isWarmup: false,
-          target: { reps: 5, weightG: 100_000, rpe: null, durationS: null, distanceMm: null },
+          target: { reps: 5, weightG: 100_000, reserve: null, durationS: null, distanceMm: null },
         },
       ],
     })

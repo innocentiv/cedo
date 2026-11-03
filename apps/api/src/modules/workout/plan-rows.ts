@@ -17,7 +17,7 @@ export function setsFor(entry: EntryInput, entryId: string, ownerGroupId: string
     isWarmup: set.isWarmup,
     targetReps: set.targetReps,
     targetWeightG: set.targetWeightG,
-    targetRpe: set.targetRpe,
+    targetReserve: set.targetReserve,
     targetDurationS: set.targetDurationS,
     targetDistanceMm: set.targetDistanceMm,
   }))
