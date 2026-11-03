@@ -225,11 +225,10 @@ export const library = (page: Page) => {
     chooseLast: async (): Promise<string> => {
       await list()
       await page.waitForSelector('[data-testid^="exercise-row-"]')
-      const last = String(
-        await page.evaluate(
-          `[...document.querySelectorAll('[data-testid="exercise-list"] [data-testid^="exercise-row-"]')].map((row) => row.dataset.testid).filter((id) => /^exercise-row-[0-9a-f-]{36}$/.test(id)).at(-1)`,
-        ),
+      const last = await page.evaluate(
+        `[...document.querySelectorAll('[data-testid="exercise-list"] [data-testid^="exercise-row-"]')].map((row) => row.dataset.testid).filter((id) => /^exercise-row-[0-9a-f-]{36}$/.test(id)).at(-1) ?? null`,
       )
+      if (typeof last !== 'string') throw new Error('The library lists no exercise to choose')
       const name = (await page.text(`${last}-name`)) ?? ''
       await page.click(`[data-testid="${last}"]`)
       return name
