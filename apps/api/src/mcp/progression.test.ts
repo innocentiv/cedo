@@ -362,5 +362,10 @@ describe('a plan written from the tool descriptions alone', () => {
     expect(
       await save({ exerciseId: bench.id, sets: [{ targetReps: 8, targetReserve: 1.5 }] }),
     ).toContain('a range such as 1–2 is asked as its bottom')
+    const retracked = await callTool(pat, 'exercise_update', {
+      exerciseId: bench.id,
+      tracking: 'duration',
+    })
+    expect(textOf(retracked.body)).toContain('duplicate it to track it differently')
   })
 })

@@ -121,7 +121,9 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
       title: 'Update an exercise',
       description:
         'Change any field of an exercise you can edit. Omitted fields are left alone. Supplying ' +
-        '`muscles` REPLACES the whole set, so include every muscle, summing to 100.',
+        '`muscles` REPLACES the whole set, so include every muscle, summing to 100. `tracking` is ' +
+        'fixed once the exercise exists — its sets and its plans’ rules are measured by it: to ' +
+        'track it differently, `exercise_duplicate` it and change the copy.',
       inputSchema: ExerciseUpdate.safeExtend({ exerciseId: z.uuid() }),
       annotations: WRITE,
     },
