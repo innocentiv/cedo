@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { TrackingMode } from './exercise.ts'
 import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 import { Reserve } from './rpe.ts'
+import { PLAN_WORDS } from './plan-words.ts'
 
 /**
  * How a set's targets advance over time. Stored as JSONB on `workout_entries`, so adding a rule
@@ -31,19 +32,8 @@ export const Progression = z.discriminatedUnion('kind', [
         'Add weight once every working set met its reps at its weight, leaving no fewer reps in ' +
           'reserve than it asked, for `afterSuccesses` sessions running. Weight-and-reps exercises.',
       ),
-    incrementG: z
-      .int()
-      .positive()
-      .max(50_000)
-      .describe('Weight added at each advance, in grams (2.5 kg is 2500).'),
-    afterSuccesses: z
-      .int()
-      .min(1)
-      .max(10)
-      .default(1)
-      .describe(
-        'Cleared sessions in a row an advance waits for. Default 1: every cleared session advances.',
-      ),
+    incrementG: z.int().positive().max(50_000).describe(PLAN_WORDS.incrementG),
+    afterSuccesses: z.int().min(1).max(10).default(1).describe(PLAN_WORDS.afterSuccesses),
   }),
 
   /**
@@ -64,11 +54,7 @@ export const Progression = z.discriminatedUnion('kind', [
         '[from, to] reps, `from` below `to`. Every working set’s `targetReps` sits inside it — ' +
           'it is where each follower starts.',
       ),
-    incrementG: z
-      .int()
-      .positive()
-      .max(50_000)
-      .describe('Weight added at each advance, in grams (2.5 kg is 2500).'),
+    incrementG: z.int().positive().max(50_000).describe(PLAN_WORDS.incrementG),
   }),
 
   /**
@@ -83,14 +69,7 @@ export const Progression = z.discriminatedUnion('kind', [
           '`afterSuccesses` sessions running. Duration exercises (a plank, a dead hang).',
       ),
     incrementS: z.int().positive().max(3600).describe('Seconds added at each advance.'),
-    afterSuccesses: z
-      .int()
-      .min(1)
-      .max(10)
-      .default(1)
-      .describe(
-        'Cleared sessions in a row an advance waits for. Default 1: every cleared session advances.',
-      ),
+    afterSuccesses: z.int().min(1).max(10).default(1).describe(PLAN_WORDS.afterSuccesses),
   }),
 
   /**
@@ -111,14 +90,7 @@ export const Progression = z.discriminatedUnion('kind', [
       .positive()
       .max(10_000_000)
       .describe('Distance added at each advance, in millimetres (500 m is 500000).'),
-    afterSuccesses: z
-      .int()
-      .min(1)
-      .max(10)
-      .default(1)
-      .describe(
-        'Cleared sessions in a row an advance waits for. Default 1: every cleared session advances.',
-      ),
+    afterSuccesses: z.int().min(1).max(10).default(1).describe(PLAN_WORDS.afterSuccesses),
   }),
 ])
 export type Progression = z.output<typeof Progression>

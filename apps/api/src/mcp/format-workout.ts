@@ -5,6 +5,7 @@ import type {
   TrackingMode,
   WeightUnit,
   Workout,
+  WorkoutSet,
   WorkoutSummary,
 } from '@cedo/contract'
 import {
@@ -41,7 +42,7 @@ const ruleWords = (rule: ProgressionSuggestion['rule'], unit: WeightUnit): strin
   describeProgression(rule, (grams) => formatWeight(grams, unit))
 
 const setLine = (
-  set: Workout['days'][number]['entries'][number]['sets'][number],
+  set: WorkoutSet,
   tracking: TrackingMode | null,
   unit: WeightUnit,
   load: Load | null,
@@ -62,7 +63,7 @@ export function workoutDetail(
   workout: Workout,
   unit: WeightUnit,
   /** What the athlete it is read for has: a weight they cannot load as written says so (#36). */
-  held: AthleteEquipment,
+  equipment: AthleteEquipment,
   groupNameOf: GroupNameOf,
   /** The caller's own targets — none when it is read for an athlete (docs/07-mcp.md). */
   targets: readonly ProgressionSuggestion[],
@@ -80,7 +81,7 @@ export function workoutDetail(
       const name = entry.exercise?.name ?? '[unavailable exercise]'
       // Kept in the plan, still loggable — but the AI is told before it plans around it (#35).
       const kit = entry.exercise?.doable === false ? ` [${MISSING_EQUIPMENT}]` : ''
-      const load = entry.exercise === null ? null : loadOf(entry.exercise, held, unit)
+      const load = entry.exercise === null ? null : loadOf(entry.exercise, equipment, unit)
       const tracking = entry.exercise?.tracking ?? null
       // Said only where it differs: the plan's numbers are the target of anyone who has not moved.
       const target = targetOf.get(entry.id)

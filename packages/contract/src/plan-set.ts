@@ -5,7 +5,6 @@ import type { SetTarget } from './progression.ts'
 import { Reserve } from './rpe.ts'
 
 /** One set of a plan as it is written — its targets and whether it is a warm-up (workout.ts). */
-
 export const WorkoutSetInput = z.strictObject({
   targetReps: TargetReps.nullable().default(null).describe(PLAN_WORDS.targetReps),
   targetWeightG: TargetWeightG.nullable().default(null).describe(PLAN_WORDS.targetWeightG),

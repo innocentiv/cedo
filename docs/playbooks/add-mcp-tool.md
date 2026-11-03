@@ -62,7 +62,12 @@ result, and the caller reads it as data.
 
 `apps/api/src/mcp/mcp.test.ts` drives JSON-RPC over HTTP with a real personal access token. Nothing
 reaches into the handler directly, because the parts most likely to break — auth, framing, schema
-publication — are exactly what a direct call skips.
+publication — are exactly what a direct call skips. An area with many cases gets its own file beside
+it, as `mcp/progression.test.ts` does, with the same wire from `apps/api/src/test/mcp-wire.ts`.
+
+What a tool reads for someone else is decided in the service it calls — except where only the tool
+combines two reads: `workout_get` adds the caller's own targets to a plan, and leaves them out when
+it is read for an `athlete`, since no route reads a plan and targets together.
 
 Cover at minimum: the happy path, a non-curator being refused, and one user's token not seeing
 another user's data.

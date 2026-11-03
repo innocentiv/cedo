@@ -3,7 +3,7 @@
  * own model"): the descriptions `workout_save_plan` publishes in its JSON Schema, which is all a
  * model reads of a plan's fields. Kept together, so they read as one account of the model —
  * prescription and target, warm-ups, the rules, reps in reserve as a floor (ADR-0026, ADR-0027).
- * The rules' own words are on `Progression`. `plan-descriptions.test.ts` fails on a field without one.
+ * Each rule's own words are on its `kind`, in `Progression`. `plan-descriptions.test.ts` fails on a field without one.
  */
 export const PLAN_WORDS = {
   targetReps: 'Reps the set asks. Under double, inside the rule’s `repRange`.',
@@ -32,6 +32,9 @@ export const PLAN_WORDS = {
   cue:
     'One short line for the athlete — technique, tempo, setup. Say effort in reps in reserve, ' +
     'never RPE. Warm-ups are sets, not a cue.',
+  incrementG: 'Weight added at each advance, in grams (2.5 kg is 2500).',
+  afterSuccesses:
+    'Cleared sessions in a row an advance waits for. Default 1: every cleared session advances.',
   progression:
     'How the working sets move from session to session. The plan holds the PRESCRIPTION: where ' +
     'each follower starts. Each has their own target, moved by their own finished sessions; ' +
