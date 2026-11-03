@@ -29,6 +29,7 @@ import {
   type PersonalAccessTokenCreate,
   PersonalAccessTokenCreated,
   ProgressionSuggestion,
+  type TargetByHand,
   SessionDetail,
   type SessionQuery,
   Today,
@@ -150,6 +151,9 @@ const workouts = ({ GET, POST, PATCH, PUT, DELETE }: Verbs) => ({
     await PUT(`/workouts/${id}/plan`, Workout, body),
   progression: async (id: string) =>
     await GET(`/workouts/${id}/progression`, z.array(ProgressionSuggestion)),
+  /** The caller's own target on one entry, set by hand (ADR-0026): what their next session asks. */
+  setTarget: async (id: string, entryId: string, body: TargetByHand) =>
+    await PUT(`/workouts/${id}/entries/${entryId}/target`, ProgressionSuggestion, body),
   duplicate: async (id: string, body: DuplicateInput = {}) =>
     await POST(`/workouts/${id}/duplicate`, Workout, body),
   transfer: async (id: string, body: TransferInput) =>

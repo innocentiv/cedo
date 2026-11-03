@@ -12,9 +12,9 @@
 
 /**
  * What a read is built from, and so what a write changes. A session's logs are part of the
- * session: logging and finishing both write to it. `pastSession` is a session already finished,
- * written only when it is fixed (#31) — a set corrected or removed, or the session deleted — and
- * always together with `session`: no read is OF it, it names what only a fix changes. `athlete`
+ * session: logging and finishing both write to it. `target` is the caller's targets — their steps
+ * (ADR-0026) — written by what moves one: finishing a session, fixing a finished one (#31), a target
+ * set by hand; no read is OF it, it names what only those change. `athlete`
  * is someone else's training, read by their coach (#30): they write it, on their own device, so
  * no write here is ever OF it — it catches up on the cache's window, and with what it embeds.
  * `equipment` is what the caller has to train with (#34): every exercise read says whether they
@@ -26,7 +26,7 @@ export type Source =
   | 'exercise'
   | 'workout'
   | 'session'
-  | 'pastSession'
+  | 'target'
   | 'token'
   | 'group'
   | 'athlete'
@@ -60,15 +60,19 @@ export const READS = {
   workoutList: { of: 'workout', embeds: ['group'] },
   /** Every entry carries its whole exercise. */
   workout: { of: 'workout', embeds: ['exercise', 'group', 'equipment'] },
-  /** An exercise's name and tracking mode, judged against the caller's logged sessions. */
-  progression: { of: 'workout', embeds: ['exercise', 'session', 'group'] },
   /**
-   * What a session asks of each entry: its plan, carried forward over the sessions before it, and
-   * last time's sets. Of the plan: a save changes what it prescribes. It embeds the sessions before
-   * it, which are finished — so not `session`: its own sets never count, and logging one would
-   * read it again for nothing — but `pastSession`, since a finished one can still be fixed (#31).
+   * The caller's targets on a plan (ADR-0026): an exercise's name and tracking mode, their steps —
+   * `target`, which only a finish, a fix or a target set by hand moves, never a set logged in a
+   * session in progress — and weights snapped to their equipment (#36).
    */
-  sessionTargets: { of: 'workout', embeds: ['exercise', 'pastSession', 'group'] },
+  progression: { of: 'workout', embeds: ['exercise', 'target', 'group', 'equipment'] },
+  /**
+   * What a session asks of each entry: its plan, carried forward by the caller's steps, and last
+   * time's sets. Of the plan: a save changes what it prescribes. Not `session`: its own sets never
+   * count, and logging one would read it again for nothing — but `target`, which a finish moves,
+   * and in weights the caller's equipment loads (#36).
+   */
+  sessionTargets: { of: 'workout', embeds: ['exercise', 'target', 'group', 'equipment'] },
   /**
    * Each session names its workout and day, and counts its personal bests — judged by each
    * exercise's tracking mode, as far as the reader can see the exercise (#25).
@@ -120,7 +124,7 @@ const READ_NAMES: readonly Read[] = Object.keys(READS).filter((name) => isRead(n
  * may depend on (the next set is numbered from the session's refreshed logs), and those that only
  * EMBED it, which can catch up in the background — awaiting them kept the Log button busy until
  * progression had been recomputed, after every set. A write to several sources at once — a fix to
- * a finished session is to `session` and `pastSession` — makes stale what any of them would.
+ * a finished session is to `session` and `target` — makes stale what any of them would.
  */
 export function affectedBy(...sources: readonly Source[]): {
   readonly awaited: readonly Read[]
