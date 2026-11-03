@@ -6,7 +6,7 @@ import type { PlanEditor } from './use-plan-editor.ts'
 import { useSubmit } from './use-submit.ts'
 
 /** Keeps a change to a workout's name or notes, and says why when it is refused. */
-function useKeep(workoutId: string): {
+function useWorkoutPatch(workoutId: string): {
   readonly keep: (patch: WorkoutUpdate) => void
   readonly error: string | null
 } {
@@ -36,7 +36,7 @@ export function WorkoutTitle({
   readonly canEdit: boolean
   readonly onBack: () => void
 }): React.JSX.Element {
-  const { keep, error } = useKeep(workout.id)
+  const { keep, error } = useWorkoutPatch(workout.id)
   const [name, setName] = useState(workout.name)
   return (
     <Stack gap="xs">
@@ -89,7 +89,7 @@ export function WorkoutHead({
   /** Null for a reader: nothing they do is saved. */
   readonly status: PlanEditor['status'] | null
 }): React.JSX.Element {
-  const { keep, error } = useKeep(workout.id)
+  const { keep, error } = useWorkoutPatch(workout.id)
   const [notes, setNotes] = useState(workout.notes ?? '')
   const canEdit = status !== null
 

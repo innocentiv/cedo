@@ -89,7 +89,7 @@ export function WorkoutBody({
   return (
     <Screen
       testID="workout-detail-screen"
-      heading={
+      ownHeading={
         <WorkoutTitle
           // Read again with another name — saved elsewhere — its field starts from that.
           key={workout.name}
