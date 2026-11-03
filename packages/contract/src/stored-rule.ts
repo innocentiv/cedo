@@ -1,8 +1,8 @@
 /**
  * A progression rule as it reads back from JSONB, where the type system never saw it written: an
- * unknown kind is refused loudly. A range stored the wrong way round is no longer tolerated — the
- * plan save refuses one, and migration 0018 turned any stored one Manual (ADR-0026). Shared by
- * progression.ts and progression-words.ts; like clears.ts, not part of the contract's surface.
+ * unknown kind is refused loudly. A rule is read as stored: what the plan save refuses — a range
+ * that does not run upward among it — never reaches a row (ADR-0026). Shared by progression.ts and
+ * progression-words.ts; like clears.ts, not part of the contract's surface.
  */
 
 /**

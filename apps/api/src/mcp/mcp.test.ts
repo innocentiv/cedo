@@ -644,7 +644,7 @@ describe('training review', () => {
     expect(review).toContain(
       'Effort drift (reps in reserve down 1+ at the same set, in each of the latest 2 sessions):',
     )
-    expect(review).toContain('Test Row at 8 × 50 kg: average 3 → 1 in reserve')
+    expect(review).toContain('Test Row at 8 × 50 kg: 3 → 1 in reserve')
   })
 
   /** Every effort reaches the AI as the app shows it. See `stalled.test.ts` for the history. */

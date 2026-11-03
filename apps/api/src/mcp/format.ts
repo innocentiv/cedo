@@ -16,6 +16,7 @@ import {
   loadOf,
   loadable,
   MISSING_EQUIPMENT,
+  driftLine,
   estimatedMax,
   formatDuration,
   formatEffort,
@@ -182,10 +183,7 @@ function deloadSections(review: TrainingReview, unit: WeightUnit): string[] {
   if (review.effortDrift.length > 0) {
     sections.push(
       `Effort drift (reps in reserve down ${DRIFT_RESERVE}+ at the same set, in each of the latest ${DRIFT_SESSIONS} sessions):\n  ${review.effortDrift
-        .map(
-          (d) =>
-            `${d.exercise.name} at ${formatEffort(d.effort, d.exercise.tracking, unit)}: average ${String(d.fromReserve)} → ${String(d.toReserve)} in reserve`,
-        )
+        .map((d) => `${d.exercise.name} at ${driftLine(d, unit)}`)
         .join('\n  ')}`,
     )
   }

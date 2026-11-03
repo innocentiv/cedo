@@ -1,4 +1,5 @@
 import type { Progression } from './progression.ts'
+import { ruleName } from './rule-fit.ts'
 
 /** What a rule needs to see of a prescribed set. */
 interface RuledSet {
@@ -18,17 +19,13 @@ type SharedField = Exclude<keyof RuledSet, 'isWarmup'>
  */
 const SHARED: Record<
   Progression['kind'],
-  { readonly name: string; readonly fields: readonly SharedField[]; readonly words: string } | null
+  { readonly fields: readonly SharedField[]; readonly words: string } | null
 > = {
   none: null,
-  linear: { name: 'linear', fields: ['targetReps', 'targetWeightG'], words: 'reps and weight' },
-  double: { name: 'double', fields: ['targetReps', 'targetWeightG'], words: 'reps and weight' },
-  linear_duration: { name: 'linear duration', fields: ['targetDurationS'], words: 'time' },
-  linear_distance: {
-    name: 'distance',
-    fields: ['targetDistanceMm', 'targetDurationS'],
-    words: 'distance and time',
-  },
+  linear: { fields: ['targetReps', 'targetWeightG'], words: 'reps and weight' },
+  double: { fields: ['targetReps', 'targetWeightG'], words: 'reps and weight' },
+  linear_duration: { fields: ['targetDurationS'], words: 'time' },
+  linear_distance: { fields: ['targetDistanceMm', 'targetDurationS'], words: 'distance and time' },
 }
 
 /**
@@ -49,7 +46,7 @@ function sharedIssues(rule: Progression, working: readonly RuledSet[]): string[]
   const differs = rest.findIndex((s) => shared.fields.some((field) => s[field] !== first[field]))
   if (differs === -1) return []
   return [
-    `Under ${shared.name}, every working set asks the same ${shared.words}: set ${String(differs + 2)} differs from set 1. For sets that differ — a top set and its back-offs — use Manual`,
+    `Under ${ruleName(rule.kind)}, every working set asks the same ${shared.words}: set ${String(differs + 2)} differs from set 1. For sets that differ — a top set and its back-offs — use Manual`,
   ]
 }
 

@@ -129,7 +129,7 @@ function suggestForEntry(
       rule: entry.progression,
       target: current,
       workingSets: working.length,
-      // Each set against its own reserve (ADR-0026), not every one against the first's.
+      // Each working set is judged against the reserve it asks itself (ADR-0026): effort ramps.
       reserves: working.map((s) => s.targetReserve),
       sessions,
     },

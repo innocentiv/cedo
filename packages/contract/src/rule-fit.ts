@@ -35,6 +35,9 @@ const RULE_WORDS: Record<Kind, { readonly name: string; readonly offered: string
 /** The rules that fit an exercise measured this way. */
 export const rulesFor = (tracking: TrackingMode): readonly Kind[] => RULES[tracking]
 
+/** A rule as every refusal names it — `linear duration`, `Manual` — one name in one place. */
+export const ruleName = (kind: Kind): string => RULE_WORDS[kind].name
+
 /**
  * Why a rule does not fit an exercise measured this way, saying which do — or null when it fits.
  * Said to a person in the editor and to an AI through MCP, so it names what to pick instead.
