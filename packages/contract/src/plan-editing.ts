@@ -9,12 +9,11 @@ import {
   MAX_DAYS_PER_PLAN,
   MAX_ENTRIES_PER_DAY,
   MAX_SETS_PER_ENTRY,
-  type TargetFields,
   type WorkoutDayInput,
   type WorkoutEntryInput,
   WorkoutPlanInput,
-  type WorkoutSetInput,
 } from './workout.ts'
+import { type TargetFields, type WorkoutSetInput } from './plan-set.ts'
 
 /**
  * The rules for editing a plan before it is saved — here rather than in the editor, where they

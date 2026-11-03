@@ -23,9 +23,8 @@ import {
   MAX_SETS_PER_ENTRY,
   WorkoutEntryInput,
   WorkoutPlanInput,
-  setTargetOf,
-  targetFieldsOf,
 } from './workout.ts'
+import { setTargetOf, targetFieldsOf } from './plan-set.ts'
 
 const bench = newEntry({ id: crypto.randomUUID(), tracking: 'weight_reps' })
 

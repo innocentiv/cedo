@@ -11,16 +11,39 @@ import { Reserve } from './rpe.ts'
 
 export const Progression = z.discriminatedUnion('kind', [
   /** Targets never change automatically; the user or the AI sets them explicitly. */
-  z.object({ kind: z.literal('none') }),
+  z.object({
+    kind: z
+      .literal('none')
+      .describe(
+        'Manual: the sets are the plan’s numbers and nothing moves them — to change them, change ' +
+          'the plan. Sets may differ freely (a top set and back-offs).',
+      ),
+  }),
 
   /**
    * Add weight once the target has been met for `afterSuccesses` consecutive sessions.
    * Classic linear periodisation — the right default for novices.
    */
   z.object({
-    kind: z.literal('linear'),
-    incrementG: z.int().positive().max(50_000),
-    afterSuccesses: z.int().min(1).max(10).default(1),
+    kind: z
+      .literal('linear')
+      .describe(
+        'Add weight once every working set met its reps at its weight, leaving no fewer reps in ' +
+          'reserve than it asked, for `afterSuccesses` sessions running. Weight-and-reps exercises.',
+      ),
+    incrementG: z
+      .int()
+      .positive()
+      .max(50_000)
+      .describe('Weight added at each advance, in grams (2.5 kg is 2500).'),
+    afterSuccesses: z
+      .int()
+      .min(1)
+      .max(10)
+      .default(1)
+      .describe(
+        'Cleared sessions in a row an advance waits for. Default 1: every cleared session advances.',
+      ),
   }),
 
   /**
@@ -28,9 +51,24 @@ export const Progression = z.discriminatedUnion('kind', [
    * and drop back to the bottom. The standard hypertrophy scheme.
    */
   z.object({
-    kind: z.literal('double'),
-    repRange: z.tuple([z.int().min(1).max(100), z.int().min(1).max(100)]),
-    incrementG: z.int().positive().max(50_000),
+    kind: z
+      .literal('double')
+      .describe(
+        'Double progression: one rep more after each cleared session, at the same weight, up ' +
+          'through `repRange`; once every working set clears its top, add `incrementG` and start ' +
+          'again at its bottom. Weight-and-reps exercises.',
+      ),
+    repRange: z
+      .tuple([z.int().min(1).max(100), z.int().min(1).max(100)])
+      .describe(
+        '[from, to] reps, `from` below `to`. Every working set’s `targetReps` sits inside it — ' +
+          'it is where each follower starts.',
+      ),
+    incrementG: z
+      .int()
+      .positive()
+      .max(50_000)
+      .describe('Weight added at each advance, in grams (2.5 kg is 2500).'),
   }),
 
   /**
@@ -38,9 +76,21 @@ export const Progression = z.discriminatedUnion('kind', [
    * progression is time under load rather than weight on the bar.
    */
   z.object({
-    kind: z.literal('linear_duration'),
-    incrementS: z.int().positive().max(3600),
-    afterSuccesses: z.int().min(1).max(10).default(1),
+    kind: z
+      .literal('linear_duration')
+      .describe(
+        'Hold for longer: add `incrementS` once every working set lasted its duration, for ' +
+          '`afterSuccesses` sessions running. Duration exercises (a plank, a dead hang).',
+      ),
+    incrementS: z.int().positive().max(3600).describe('Seconds added at each advance.'),
+    afterSuccesses: z
+      .int()
+      .min(1)
+      .max(10)
+      .default(1)
+      .describe(
+        'Cleared sessions in a row an advance waits for. Default 1: every cleared session advances.',
+      ),
   }),
 
   /**
@@ -49,9 +99,26 @@ export const Progression = z.discriminatedUnion('kind', [
    * deliberate change: a shorter time would break advance-or-hold.
    */
   z.object({
-    kind: z.literal('linear_distance'),
-    incrementMm: z.int().positive().max(10_000_000),
-    afterSuccesses: z.int().min(1).max(10).default(1),
+    kind: z
+      .literal('linear_distance')
+      .describe(
+        'Go further at the same pace: add `incrementMm`, and time in proportion, once every ' +
+          'working set covered its distance within its pace, for `afterSuccesses` sessions ' +
+          'running. Distance-and-duration exercises (a run, a row).',
+      ),
+    incrementMm: z
+      .int()
+      .positive()
+      .max(10_000_000)
+      .describe('Distance added at each advance, in millimetres (500 m is 500000).'),
+    afterSuccesses: z
+      .int()
+      .min(1)
+      .max(10)
+      .default(1)
+      .describe(
+        'Cleared sessions in a row an advance waits for. Default 1: every cleared session advances.',
+      ),
   }),
 ])
 export type Progression = z.output<typeof Progression>

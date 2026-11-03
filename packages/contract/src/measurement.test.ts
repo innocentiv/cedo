@@ -13,7 +13,7 @@ import {
 } from './measurement.ts'
 import { SetTarget } from './progression.ts'
 import { LogSetInput } from './log.ts'
-import { WorkoutSetInput } from './workout.ts'
+import { WorkoutSetInput } from './plan-set.ts'
 
 /** Postgres `integer`. Every measurement bound must fit, or a valid value overflows the column. */
 const PG_INT4_MAX = 2_147_483_647
