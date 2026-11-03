@@ -10,10 +10,10 @@ import {
 import { useCorrectSet, useRemoveSet } from '../api/session-queries.ts'
 import {
   Button,
-  Chips,
+  Choice,
   ConfirmButton,
   FormError,
-  ReserveChips,
+  ReserveSegments,
   Sheet,
   Stack,
   Stepper,
@@ -104,14 +104,14 @@ function FixSetForm({
           ))}
       {/* Out of reach, there is no saying it has no reps: how hard is offered, as it was logged. */}
       {tracking !== null && !asksReserve(tracking) ? null : (
-        <ReserveChips
+        <ReserveSegments
           label="In reserve"
           reserve={reserve}
           onChange={setReserve}
           testID="fix-set-reserve"
         />
       )}
-      <Chips
+      <Choice
         options={KINDS}
         value={isWarmup ? 'warmup' : 'working'}
         onChange={(kind) => {

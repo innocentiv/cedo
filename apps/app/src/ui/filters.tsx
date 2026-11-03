@@ -14,7 +14,7 @@ import { color, space, stroke } from './tokens.ts'
 
 /**
  * The filters of one list, as one bar of segments — the look of reps in reserve
- * (`ReserveChips`) — the width of the list: each in view, its value cut short in its own segment,
+ * (`ReserveSegments`) — the width of the list: each in view, its value cut short in its own segment,
  * never the bar cut at the screen's edge, as a line of pills scrolling sideways was. `onClear`,
  * given while any filter is off its default, puts them all back: small words on a line under the
  * bar, not a control beside it, so the bar keeps its width as a filter is set; the search typed

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { type Dimension, type TrackingMode, assistable, assistance, fieldFor } from '@cedo/contract'
 import { useWeightUnit } from '../lib/weight-unit.ts'
-import { type ChipOption, Chips } from './chips.tsx'
+import { type ChoiceOption, Choice } from './choice.tsx'
 import { CompactField, TypedNumber } from './input.tsx'
 
 export interface DimensionInputProps {
@@ -64,7 +64,7 @@ export function DimensionInput({
     <CompactField label={large ? null : caption}>
       {input}
       {canAssist ? (
-        <Chips
+        <Choice
           options={ASSISTANCE}
           value={assisted ? 'assisted' : 'added'}
           onChange={(chosen) => {
@@ -79,7 +79,7 @@ export function DimensionInput({
   )
 }
 
-const ASSISTANCE: readonly ChipOption<'added' | 'assisted'>[] = [
+const ASSISTANCE: readonly ChoiceOption<'added' | 'assisted'>[] = [
   { value: 'added', label: 'Added' },
   { value: 'assisted', label: 'Assisted' },
 ]

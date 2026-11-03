@@ -11,7 +11,7 @@ import {
 } from '@cedo/contract'
 import {
   Button,
-  Chips,
+  Choice,
   EquipmentPicker,
   Field,
   FormError,
@@ -97,11 +97,21 @@ export function ExerciseForm({
         />
       </Field>
 
-      <Field label="Tracking">
-        <Chips
+      {/* Fixed once it exists: its sets and its plans' rules are measured by it — the server
+          refuses a change, so the form offers none, and says what to do instead. */}
+      <Field
+        label="Tracking"
+        hint={
+          initial === undefined
+            ? undefined
+            : 'Fixed once the exercise exists. To track it differently, duplicate it.'
+        }
+      >
+        <Choice
           options={TRACKING_OPTIONS}
           value={tracking}
           onChange={setTracking}
+          disabled={initial !== undefined}
           testID="exercise-tracking"
         />
       </Field>

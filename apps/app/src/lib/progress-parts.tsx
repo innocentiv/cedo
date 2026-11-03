@@ -11,8 +11,8 @@ import {
 } from '@cedo/contract'
 import {
   Card,
-  type ChipOption,
-  Chips,
+  type ChoiceOption,
+  Choice,
   Columns,
   ListRow,
   Loaded,
@@ -32,7 +32,7 @@ export { BodyweightCard } from './bodyweight.tsx'
  * contract's (`review.ts`); these only place them. See docs/08-frontend.md, "Progress".
  */
 
-const PERIODS: readonly ChipOption<string>[] = [4, 8, 12].map((weeks) => ({
+const PERIODS: readonly ChoiceOption<string>[] = [4, 8, 12].map((weeks) => ({
   value: String(weeks),
   label: `${String(weeks)} weeks`,
 }))
@@ -49,7 +49,7 @@ export function Period({
   readonly onChange: (weeks: number) => void
 }): React.JSX.Element {
   return (
-    <Chips
+    <Choice
       options={PERIODS}
       value={String(weeks)}
       onChange={(chosen) => {

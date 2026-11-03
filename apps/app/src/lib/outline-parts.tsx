@@ -2,9 +2,9 @@ import { useState } from 'react'
 import {
   MISSING_EQUIPMENT,
   type Exercise,
-  describeProgression,
+  type SetTarget,
+  entryLine,
   formatPrescription,
-  formatWeight,
   nameToKeep,
   setTargetOf,
 } from '@cedo/contract'
@@ -104,6 +104,7 @@ export function DayHead({
 export function EntryLine({
   entry,
   exercise,
+  target,
   current,
   onPress,
   onRemove,
@@ -111,6 +112,8 @@ export function EntryLine({
 }: {
   readonly entry: EntryDraft
   readonly exercise: Exercise | undefined
+  /** The viewer's own target on it: said after the plan, only where it differs (ADR-0026). */
+  readonly target: SetTarget | undefined
   readonly current: boolean
   readonly onPress: (() => void) | undefined
   /** None for a reader: the plan is not theirs to change. */
@@ -143,16 +146,11 @@ export function EntryLine({
       </Stack>
     )
   }
-  const rule =
-    entry.progression.kind === 'none'
-      ? null
-      : describeProgression(entry.progression, (g) => formatWeight(g, unit))
+  const line = entryLine(sets, entry.progression, exercise.tracking, unit, target ?? null)
   return (
     <ListRow
       title={`${entry.supersetGroup === null ? '' : `${entry.supersetGroup} · `}${exercise.name}`}
-      subtitle={[exercise.doable ? null : MISSING_EQUIPMENT, prescription, rule]
-        .filter((part) => part !== null)
-        .join(' · ')}
+      subtitle={exercise.doable ? line : `${MISSING_EQUIPMENT} · ${line}`}
       onPress={onPress}
       selected={current}
       testID={`plan-line-${place}`}
