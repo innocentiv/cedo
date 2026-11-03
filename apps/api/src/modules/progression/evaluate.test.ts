@@ -105,6 +105,18 @@ describe('suggesting the next prescription', () => {
     expect(missed?.held).toEqual({ reason: 'targets' })
   })
 
+  /**
+   * Each working set's own RPE reaches the rule (ADR-0026): a plan whose last set may go to failure
+   * was judged against set 1's, and held for effort every session.
+   */
+  test('a ramp to failure done as prescribed advances', () => {
+    const plan = threeWorkingAt60.map((s, i) => ({ ...s, targetRpe: [8, 9, 10][i] ?? null }))
+    const ramp = [8, 9, 10].map((rpe) => logged('monday', 60_000, 8, { rpe }))
+    const [suggestion] = suggestFor([entry(LINEAR)], plan, ramp)
+    expect(suggestion?.held).toBeNull()
+    expect(suggestion?.suggested).toMatchObject({ weightG: 62_500, reps: 8 })
+  })
+
   /** The loader sends sessions newest first; the evaluator must keep them in that order. */
   test('the session that arrives first is read as the most recent', () => {
     const missedToday = [1, 2, 3].map(() => logged('today', 60_000, 6))

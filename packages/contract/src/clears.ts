@@ -33,44 +33,46 @@ const everyWorkingSet = (
   session.length >= workingSets && session.slice(0, workingSets).every((attempt) => goal(attempt))
 
 /**
- * No prescribed working set was rated more than the allowance past a prescribed RPE — the hardest
- * decides. An unrated set, or a prescription with no RPE, has nothing to go past.
+ * Whether a working set was rated more than the allowance past its OWN prescribed ceiling
+ * (ADR-0026): effort ramps across sets, so set 3 may ask what set 1 does not. An unrated set, or a
+ * set that asks no RPE, has nothing to go past.
  */
-const withinEffort = (
-  session: SessionAttempts,
-  target: SetTarget,
-  workingSets: number,
-): boolean => {
-  const { rpe: ceiling } = target
-  if (ceiling === null) return true
-  return session.slice(0, workingSets).every((attempt) => {
-    const rpe = attempt.rpe ?? null
-    return rpe === null || rpe <= ceiling + RPE_ALLOWANCE
-  })
+const pastItsCeiling = (attempt: SetAttempt, ceiling: number | null): boolean => {
+  const rpe = attempt.rpe ?? null
+  return ceiling !== null && rpe !== null && rpe > ceiling + RPE_ALLOWANCE
 }
 
 /**
- * The RPE of the hardest rated set of `sets` — the prescribed working sets of a session held for
- * effort, so at least one is rated past the RPE.
+ * The RPE of the hardest working set rated past its own ceiling — the reason a session was held for
+ * effort — or null when none was.
  */
-const hardestRpe = (sets: SessionAttempts): number =>
-  Math.max(...sets.map((attempt) => attempt.rpe ?? 0))
+const groundOut = (
+  session: SessionAttempts,
+  ceilings: readonly (number | null)[],
+): number | null => {
+  const past = ceilings.flatMap((ceiling, i) => {
+    const attempt = session[i]
+    return attempt !== undefined && pastItsCeiling(attempt, ceiling) ? [attempt.rpe ?? 0] : []
+  })
+  return past.length === 0 ? null : Math.max(...past)
+}
 
 /**
  * A session clears a rep goal only when EVERY prescribed working set reached it at no less than the
- * target weight, and none was ground out past the prescribed RPE. A missing set, an unrecorded rep
- * count, or a lighter load fall short of the targets — which outranks the effort: a session that
- * missed its reps is told so, however hard it was. The goal is its own argument: double progression
- * asks for the top of its range, not the target.
+ * target weight, and none was ground out past its own prescribed RPE — `ceilings`, one per working
+ * set, in set order. A missing set, an unrecorded rep count, or a lighter load fall short of the
+ * targets — which outranks the effort: a session that missed its reps is told so, however hard it
+ * was. The goal is its own argument: double progression asks for the top of its range, not the
+ * target.
  */
 export function judgeReps(
   session: SessionAttempts,
   repGoal: number | null,
   target: SetTarget,
-  workingSets: number,
+  ceilings: readonly (number | null)[],
 ): Verdict {
   if (repGoal === null) return SHORT_OF_TARGETS
-  const reached = everyWorkingSet(session, workingSets, (attempt) => {
+  const reached = everyWorkingSet(session, ceilings.length, (attempt) => {
     const reps = attempt.reps ?? null
     if (reps === null || reps < repGoal) return false
     if (target.weightG === null) return true
@@ -80,8 +82,8 @@ export function judgeReps(
     return weight !== null && weight >= target.weightG
   })
   if (!reached) return SHORT_OF_TARGETS
-  if (withinEffort(session, target, workingSets)) return 'cleared'
-  return { reason: 'effort', rpe: hardestRpe(session.slice(0, workingSets)) }
+  const rpe = groundOut(session, ceilings)
+  return rpe === null ? 'cleared' : { reason: 'effort', rpe }
 }
 
 /**

@@ -259,6 +259,35 @@ describe('progress — a prescribed RPE is a ceiling', () => {
 })
 
 /**
+ * Effort ramps across sets (ADR-0026): each working set may ask its own reserve, and is judged
+ * against its own — not every set against the first's. A plan whose last set may go to failure
+ * held for effort every session while it was judged against set 1.
+ */
+describe('progress — each working set is judged against its own reserve', () => {
+  const ramp = { ...target(12, 60), rpe: 8 }
+  const judged = (ceilings: readonly (number | null)[], session: SessionAttempts) =>
+    progress({ rule: DOUBLE, target: ramp, workingSets: 3, ceilings, sessions: [session] })
+
+  test('a ramp to failure, done as asked, advances', () => {
+    expect(judged([8, 9, 10], rated([12, 8], [12, 9], [12, 10])).target).toEqual({
+      ...target(8, 62.5),
+      rpe: 8,
+    })
+  })
+
+  test('an early set ground out past its own reserve holds, though a later set asks less', () => {
+    expect(judged([8, 9, 10], rated([12, 9], [12, 9], [12, 10]))).toEqual({
+      target: ramp,
+      held: { reason: 'effort', rpe: 9 },
+    })
+  })
+
+  test('a set that asks no reserve has nothing to go past', () => {
+    expect(judged([8, 8, null], rated([12, 8], [12, 8], [12, 10])).held).toBeNull()
+  })
+})
+
+/**
  * Why a rule held (#45): short of the targets, or ground out past the RPE — so neither the athlete
  * nor the AI reads a prescription held for effort as a stall. None when it advanced, or had nothing
  * to judge.

@@ -154,6 +154,11 @@ export interface ProgressionInput {
   readonly target: SetTarget
   /** How many WORKING sets the entry prescribes. Warm-ups do not count. */
   readonly workingSets: number
+  /**
+   * Each working set's own prescribed RPE, in set order (ADR-0026: effort ramps across sets, and
+   * each set is judged against its own). Omitted, every working set asks the target's.
+   */
+  readonly ceilings?: readonly (number | null)[]
   /** Past sessions for this entry, MOST RECENT FIRST. */
   readonly sessions: readonly SessionAttempts[]
 }
@@ -204,12 +209,17 @@ function advance(input: ProgressionInput): Progressed {
 
 type RuleOf<K extends Progression['kind']> = Extract<Progression, { kind: K }>
 
-function advanceWeight(
-  rule: RuleOf<'linear'>,
-  { target, workingSets, sessions }: ProgressionInput,
-): Progressed {
+/** The RPE each working set asks, in set order: its own, or — not given — the target's. */
+const ceilingsOf = ({ target, workingSets, ceilings }: ProgressionInput): (number | null)[] =>
+  Array.from({ length: workingSets }, (_, i) =>
+    ceilings === undefined ? target.rpe : (ceilings[i] ?? null),
+  )
+
+function advanceWeight(rule: RuleOf<'linear'>, input: ProgressionInput): Progressed {
+  const { target, sessions } = input
+  const ceilings = ceilingsOf(input)
   const run = judgeRun(rule.afterSuccesses, sessions, (s) =>
-    judgeReps(s, target.reps, target, workingSets),
+    judgeReps(s, target.reps, target, ceilings),
   )
   if (run !== 'cleared') return { target, held: run }
   if (target.weightG === null) return unheld(target)
@@ -243,10 +253,8 @@ function advanceDistance(
   return unheld({ ...target, distanceMm, durationS })
 }
 
-function advanceDouble(
-  rule: RuleOf<'double'>,
-  { target, workingSets, sessions }: ProgressionInput,
-): Progressed {
+function advanceDouble(rule: RuleOf<'double'>, input: ProgressionInput): Progressed {
+  const { target, sessions } = input
   const latest = sessions[0]
   if (latest === undefined) return unheld(target)
   const last = working(latest)
@@ -258,7 +266,7 @@ function advanceDouble(
 
   // Every working set asked for the top of the range when at it, else the current target.
   const goal = atTop ? maxReps : currentReps
-  const verdict = judgeReps(last, goal, target, workingSets)
+  const verdict = judgeReps(last, goal, target, ceilingsOf(input))
   if (verdict !== 'cleared') return { target, held: verdict }
 
   // Cleared the top of the range: add weight, restart at the bottom.

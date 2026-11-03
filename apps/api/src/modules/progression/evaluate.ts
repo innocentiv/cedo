@@ -122,12 +122,15 @@ function suggestForEntry(
   const first = prescriptionOf({ sets: prescribed })
   const current = first === undefined ? NOTHING_PRESCRIBED : setTargetOf(first)
   const sessions = toSessions(logs)
+  const working = prescribed.filter((s) => !s.isWarmup)
 
   const next = nextLoadableTarget(
     {
       rule: entry.progression,
       target: current,
-      workingSets: prescribed.filter((s) => !s.isWarmup).length,
+      workingSets: working.length,
+      // Each set against its own RPE (ADR-0026), not every one against the first's.
+      ceilings: working.map((s) => s.targetRpe),
       sessions,
     },
     loadFor(entry),
