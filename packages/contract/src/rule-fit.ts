@@ -24,16 +24,30 @@ const MODE_WORDS: Record<TrackingMode, string> = {
 }
 
 /** Each rule as a refusal names it, with what it moves where that says which to pick. */
-const RULE_WORDS: Record<Kind, { readonly name: string; readonly offered: string }> = {
-  none: { name: 'Manual', offered: 'Manual' },
-  linear: { name: 'linear', offered: 'linear (adds weight)' },
-  double: { name: 'double', offered: 'double' },
-  linear_duration: { name: 'linear duration', offered: 'linear duration (adds seconds)' },
-  linear_distance: { name: 'distance', offered: 'distance (further, at the same pace)' },
+const RULE_WORDS: Record<
+  Kind,
+  { readonly name: string; readonly offered: string; readonly label: string }
+> = {
+  none: { name: 'Manual', offered: 'Manual', label: 'Manual' },
+  linear: { name: 'linear', offered: 'linear (adds weight)', label: 'Linear' },
+  double: { name: 'double', offered: 'double', label: 'Double' },
+  linear_duration: {
+    name: 'linear duration',
+    offered: 'linear duration (adds seconds)',
+    label: 'Linear',
+  },
+  linear_distance: {
+    name: 'distance',
+    offered: 'distance (further, at the same pace)',
+    label: 'Distance',
+  },
 }
 
 /** The rules that fit an exercise measured this way. */
 export const rulesFor = (tracking: TrackingMode): readonly Kind[] => RULES[tracking]
+
+/** A rule as the editor offers it, among the rules that fit: `Double`, a hold's `Linear`. */
+export const ruleLabel = (kind: Kind): string => RULE_WORDS[kind].label
 
 /** A rule as every refusal names it — `linear duration`, `Manual` — one name in one place. */
 export const ruleName = (kind: Kind): string => RULE_WORDS[kind].name

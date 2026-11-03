@@ -9,6 +9,8 @@ import {
   formatWeight,
   newIncrementG,
   progressionOf,
+  hasTarget,
+  ruleLabel,
   ruleSentence,
   rulesFor,
   switchRule,
@@ -22,15 +24,6 @@ import { DimensionInput } from './dimension-input.tsx'
 import { Help } from './entry-section.tsx'
 import { CompactField, NumberInput } from './input.tsx'
 import { Stack } from './stack.tsx'
-
-/** Each rule as the editor offers it: a lift's `Double | Linear | Manual`, a hold's `Linear`. */
-const RULE_LABELS: Record<Progression['kind'], string> = {
-  double: 'Double',
-  linear: 'Linear',
-  none: 'Manual',
-  linear_duration: 'Linear',
-  linear_distance: 'Distance',
-}
 
 /**
  * The Progression section (docs/08-frontend.md, "An entry's settings"): the mode — only the rules
@@ -62,7 +55,7 @@ export function RuleField({
   return (
     <Stack gap="md">
       <Choice
-        options={rulesFor(tracking).map((kind) => ({ value: kind, label: RULE_LABELS[kind] }))}
+        options={rulesFor(tracking).map((kind) => ({ value: kind, label: ruleLabel(kind) }))}
         value={rule.kind}
         onChange={(kind) => {
           const switched = switchRule(entry, progressionOf(kind, rule, unit, load))
@@ -74,7 +67,7 @@ export function RuleField({
       {asking === null ? null : (
         <Stack gap="sm" testID={`${testID}-align`}>
           <Help>
-            {`Under ${RULE_LABELS[asking.progression.kind]}, every working set asks the same. Use set 1’s numbers for every set? Each keeps its own reps in reserve.`}
+            {`Under ${ruleLabel(asking.progression.kind)}, every working set asks the same. Use set 1’s numbers for every set? Each keeps its own reps in reserve.`}
           </Help>
           <Stack direction="row" gap="sm">
             <Button
@@ -130,7 +123,7 @@ function Settings({
   readonly testID: string
 }): React.JSX.Element | null {
   const unit = useWeightUnit()
-  if (rule.kind === 'none') return null
+  if (!hasTarget(rule)) return null
   return (
     <Stack direction="row" gap="sm" wrap>
       {rule.kind === 'double' ? (

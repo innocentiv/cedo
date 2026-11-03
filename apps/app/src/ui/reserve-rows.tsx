@@ -5,6 +5,8 @@ import {
   prescribeAt,
   reservesVary,
   sameReserveForAll,
+  setNames,
+  workingAt,
 } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
 import { Button } from './button.tsx'
@@ -32,13 +34,17 @@ export function ReserveRows({
   const varies = reservesVary(entry)
   const [bySet, setBySet] = useState(varies)
   const [asking, setAsking] = useState(false)
-  const working = entry.sets.flatMap((s, i) => (s.isWarmup ? [] : [{ set: s, at: i }]))
+  const working = workingAt(entry)
+  const names = setNames(entry.sets)
   const first = working[0]?.set.targetReserve ?? null
 
   if (!bySet && !varies) {
     return (
       <Stack gap="xs">
-        <Label>Reps in reserve, all sets</Label>
+        <Label>Reps in reserve</Label>
+        <Text variant="caption" tone="muted">
+          All sets
+        </Text>
         <ReserveSegments
           reserve={first}
           onChange={(targetReserve) => {
@@ -60,10 +66,12 @@ export function ReserveRows({
   }
   return (
     <Stack gap="sm">
-      <Label>Reps in reserve, by set</Label>
+      <Label>Reps in reserve</Label>
       {working.map(({ set, at }, n) => (
         <Stack key={at} gap="xs">
-          <Text variant="caption" tone="muted">{`Set ${String(n + 1)}`}</Text>
+          <Text variant="caption" tone="muted">
+            {names[at] ?? ''}
+          </Text>
           <ReserveSegments
             reserve={set.targetReserve}
             onChange={(targetReserve) => {

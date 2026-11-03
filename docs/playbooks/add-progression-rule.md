@@ -68,7 +68,8 @@ that differs from its prescription only in what the rule moves.
 person's unit — what `progressionOf` gives when the editor switches to that kind (switching back
 keeps the earlier rule's settings). It is typed over every kind, so a missing one does not compile.
 `apps/app/src/ui/rule-field.tsx` renders the rule's settings, so a kind with a new parameter gets
-its input there; `describeProgression` names it, `ruleSentence` says what it does in the editor,
+its input there; `describeProgression` names it, `ruleLabel` is its segment in the editor,
+`ruleSentence` says what it does there,
 `rulesFor` offers it to the exercises it fits, and `judgedBy` says what its working sets share.
 
 ## 5. Check nothing else needed changing

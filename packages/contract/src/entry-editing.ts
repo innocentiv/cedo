@@ -12,6 +12,32 @@ import type { WorkoutEntryInput } from './workout.ts'
 
 const workingOf = (entry: WorkoutEntryInput) => entry.sets.filter((s) => !s.isWarmup)
 
+/** One band of an entry's sets, each with its place among all of them — what `prescribeAt` takes. */
+const bandAt =
+  (warmup: boolean) =>
+  <S extends { readonly isWarmup: boolean }>(entry: {
+    readonly sets: readonly S[]
+  }): { readonly set: S; readonly at: number }[] =>
+    entry.sets.flatMap((set, at) => (set.isWarmup === warmup ? [{ set, at }] : []))
+
+/** The warm-ups, each with its place among all the entry's sets. */
+export const warmupsAt = bandAt(true)
+
+/** The working sets, each with its place among all the entry's sets. */
+export const workingAt = bandAt(false)
+
+/** What each set is called on its line: `Warm-up 1`, `Set 1` — warm-ups and working sets apart. */
+export function setNames(sets: readonly { readonly isWarmup: boolean }[]): string[] {
+  let warmups = 0
+  let working = 0
+  return sets.map((s) =>
+    s.isWarmup ? `Warm-up ${String((warmups += 1))}` : `Set ${String((working += 1))}`,
+  )
+}
+
+/** Whether a rule gives each follower a target of their own; Manual's numbers are the plan's. */
+export const hasTarget = (rule: Progression): boolean => rule.kind !== 'none'
+
 /**
  * One set changed, at its place among all the entry's sets, warm-ups first: a Manual line written
  * as on paper, a warm-up line, or one working set's reps in reserve under a rule.

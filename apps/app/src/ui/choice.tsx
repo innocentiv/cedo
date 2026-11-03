@@ -4,7 +4,7 @@ import { Icon } from './icon.tsx'
 import { segmented } from './segmented.ts'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
-import { CONTROL_HEIGHT, color, radius, space } from './tokens.ts'
+import { CONTROL_HEIGHT, SEGMENT_FIT, color, radius, space } from './tokens.ts'
 
 /**
  * One choice among alternatives (docs/08-frontend.md, the UI vocabulary): `Segmented` when its
@@ -34,16 +34,12 @@ interface ChoiceProps<T extends string> {
   readonly testID: string
 }
 
-/** The widest a line of segments may be counted to fit: a phone's content width, with room. */
-const LINE_WIDTH = 320
-/** Roughly a caption character's width, and a segment's own padding around it. */
-const CHAR_WIDTH = 8
-const SEGMENT_PADDING = 20
-
 /** Whether every option fits one line as a segment. A layout fact, not a domain rule. */
 export const fitsOneLine = (options: readonly ChoiceOption<string>[]): boolean =>
-  options.reduce((width, o) => width + o.label.length * CHAR_WIDTH + SEGMENT_PADDING, 0) <=
-  LINE_WIDTH
+  options.reduce(
+    (width, o) => width + o.label.length * SEGMENT_FIT.charWidth + SEGMENT_FIT.padding,
+    0,
+  ) <= SEGMENT_FIT.lineWidth
 
 /** `Segmented` while the options fit one line, else `Select`. */
 export function Choice<T extends string>(props: ChoiceProps<T>): React.JSX.Element {

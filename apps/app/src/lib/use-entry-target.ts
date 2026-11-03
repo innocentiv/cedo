@@ -3,6 +3,7 @@ import {
   type ProgressionSuggestion,
   type WorkoutEntryInput,
   formatEffort,
+  hasTarget,
   restartsTarget,
 } from '@cedo/contract'
 import { useSetTarget, useTargets } from '../api/target-queries.ts'
@@ -41,7 +42,7 @@ export function useEntryTarget(
   return {
     target: saved ? { suggested: suggestion.suggested, warmups: suggestion.warmups } : null,
     change:
-      !saved || entry.progression.kind === 'none'
+      !saved || !hasTarget(entry.progression)
         ? null
         : {
             busy,

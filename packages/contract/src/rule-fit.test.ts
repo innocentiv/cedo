@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { ruleMisfit, rulesFor } from './rule-fit.ts'
+import { ruleLabel, ruleMisfit, rulesFor } from './rule-fit.ts'
 
 /**
  * Which progression rules fit an exercise, by how it is measured (ADR-0026, #22): a rule that moves
@@ -33,4 +33,22 @@ describe('the rules that fit a tracking mode', () => {
     expect(ruleMisfit('double', 'bodyweight_reps')).toBeNull()
     expect(ruleMisfit('none', 'duration')).toBeNull()
   })
+})
+
+/** Each rule as the editor offers it — one name in one place, beside the refusals' words. */
+test('ruleLabel', () => {
+  const kinds: Parameters<typeof ruleLabel>[0][] = [
+    'double',
+    'linear',
+    'none',
+    'linear_duration',
+    'linear_distance',
+  ]
+  expect(kinds.map((kind) => ruleLabel(kind))).toEqual([
+    'Double',
+    'Linear',
+    'Manual',
+    'Linear',
+    'Distance',
+  ])
 })

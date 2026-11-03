@@ -5,8 +5,12 @@ import {
   restartsTarget,
   sameReserveForAll,
   startAtChoices,
+  setNames,
   switchRule,
+  hasTarget,
+  warmupsAt,
   withRange,
+  workingAt,
 } from './entry-editing.ts'
 import type { WorkoutSetInput } from './plan-set.ts'
 import type { Progression } from './progression.ts'
@@ -163,5 +167,33 @@ describe('withRange', () => {
   test('only a double has a range', () => {
     const linear = entry(LINEAR, set(10, 60))
     expect(withRange(linear, [6, 8])).toBe(linear)
+  })
+})
+
+/** What the editor lays out set by set: where each working set is, and what each set is called. */
+describe('sets, as the editor names them', () => {
+  const warm = entry(
+    DOUBLE,
+    set(5, 40, null, true),
+    set(3, 50, null, true),
+    set(10, 60),
+    set(10, 60),
+  )
+
+  test('the warm-ups and the working sets, each with its place among all the sets', () => {
+    expect(warmupsAt(warm).map((w) => w.at)).toEqual([0, 1])
+    expect(workingAt(warm).map((w) => w.at)).toEqual([2, 3])
+  })
+
+  test('warm-ups and working sets counted apart', () => {
+    expect(setNames(warm.sets)).toEqual(['Warm-up 1', 'Warm-up 2', 'Set 1', 'Set 2'])
+  })
+})
+
+describe('hasTarget', () => {
+  test('a rule gives each follower a target; Manual has none — its numbers are the plan’s', () => {
+    expect(hasTarget(DOUBLE)).toBe(true)
+    expect(hasTarget(LINEAR)).toBe(true)
+    expect(hasTarget(MANUAL)).toBe(false)
   })
 })

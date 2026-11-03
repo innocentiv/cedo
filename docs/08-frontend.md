@@ -9,7 +9,7 @@ This is the rule the whole frontend is organised around, and the reason the test
 small as it is.
 
 > A screen **may**: call the hooks in `src/api/queries.ts`, `src/api/session-queries.ts`,
-> `src/api/athlete-queries.ts` and `src/api/equipment-queries.ts` (never
+> `src/api/athlete-queries.ts`, `src/api/equipment-queries.ts` and `src/api/target-queries.ts` (never
 > `api.*` or `fetch` directly),
 > render UI primitives, hold form state, and call pure helpers from `@cedo/contract`
 > (`formatEffort`, `formatWeight`, `formatPrescription`, `workingSetsDone`, `planInputFrom`).
@@ -60,6 +60,7 @@ src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-
                              session-queries.ts (a session's writes and its offline queue),
                              athlete-queries.ts (a coach's reads of an athlete's training),
                              equipment-queries.ts (what you, or an athlete, train with),
+                             target-queries.ts (your own targets on a plan, and Change),
                              retry.ts and pending.ts (+ their unit tests)
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts

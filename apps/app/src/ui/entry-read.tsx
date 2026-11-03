@@ -4,7 +4,9 @@ import {
   formatDuration,
   formatWeight,
   formatWithReserve,
+  hasTarget,
   ruleSentence,
+  setNames,
   setTargetOf,
 } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
@@ -36,12 +38,11 @@ export function EntryRead({
   const unit = useWeightUnit()
   const rule = entry.progression
   const kg = (g: number) => formatWeight(g, unit)
-  let warmup = 0
-  let working = 0
-  const lines = entry.sets.map((set) => {
-    const name = set.isWarmup ? `Warm-up ${String((warmup += 1))}` : `Set ${String((working += 1))}`
-    return { name, said: formatWithReserve(setTargetOf(set), tracking, unit) }
-  })
+  const names = setNames(entry.sets)
+  const lines = entry.sets.map((set, at) => ({
+    name: names[at] ?? '',
+    said: formatWithReserve(setTargetOf(set), tracking, unit),
+  }))
   return (
     <Stack gap="xxl" testID={testID}>
       <Section title="Progression">
@@ -57,7 +58,7 @@ export function EntryRead({
             </Stack>
           ))}
         </Stack>
-        {rule.kind === 'none' ? null : (
+        {hasTarget(rule) ? (
           <Stack gap="sm">
             <Label>Your next session</Label>
             <NextSession
@@ -68,7 +69,7 @@ export function EntryRead({
               testID={testID}
             />
           </Stack>
-        )}
+        ) : null}
       </Section>
       <Section title="Rest & superset">
         <Text>

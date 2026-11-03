@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import {
+  DIMENSION_FIELDS,
+  type Dimension,
   type Progression,
   type SetTarget,
   type TargetByHand,
@@ -23,14 +25,6 @@ export interface ChangeTarget {
   /** Sets it; `done` once it is set, to close the form. A refusal stays, said in `error`. */
   readonly set: (input: TargetByHand, done: () => void) => void
 }
-
-/** Each dimension Change may set, as `DimensionInput` names it. */
-const DIMENSION = {
-  reps: 'reps',
-  weightG: 'weight',
-  durationS: 'duration',
-  distanceMm: 'distance',
-} as const
 
 /**
  * The viewer's next session (ADR-0026): their own target, read only, with **Change** — which offers
@@ -128,13 +122,13 @@ function ChangeForm({
         ) : (
           <DimensionInput
             key={dimension}
-            dimension={DIMENSION[dimension]}
+            dimension={dimensionOf(dimension)}
             tracking={tracking}
             value={draft[dimension] ?? target[dimension]}
             onChange={(value) => {
               onDraft(value === null ? draft : { ...draft, [dimension]: value })
             }}
-            testID={`${testID}-${DIMENSION[dimension]}`}
+            testID={`${testID}-${dimensionOf(dimension)}`}
           />
         ),
       )}
@@ -164,3 +158,7 @@ function ChangeForm({
     </Stack>
   )
 }
+
+/** A dimension Change may set, as `DimensionInput` names it: the contract's field for that key. */
+const dimensionOf = (key: keyof TargetByHand): Dimension =>
+  Object.values(DIMENSION_FIELDS).find((field) => field.key === key)?.dimension ?? 'reps'

@@ -3,6 +3,7 @@ import {
   type SetTarget,
   type TrackingMode,
   fieldsOf,
+  hasTarget,
   prescribe,
   resizeSets,
   setCounts,
@@ -66,7 +67,7 @@ export function SetsField(props: SetsFieldProps): React.JSX.Element {
         </CompactField>
       </Stack>
       <Warmups {...props} />
-      {entry.progression.kind === 'none' ? <ManualLines {...props} /> : <Ruled {...props} />}
+      {hasTarget(entry.progression) ? <Ruled {...props} /> : <ManualLines {...props} />}
       {restartedFrom === null ? null : (
         <Help testID={`${testID}-restarts`}>
           {`Your next session restarts from the plan (you were at ${restartedFrom}).`}

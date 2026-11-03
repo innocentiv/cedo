@@ -3,7 +3,11 @@ import {
   type TrackingMode,
   fieldsOf,
   formatEffort,
+  hasTarget,
   prescribeAt,
+  setNames,
+  warmupsAt,
+  workingAt,
   type prescribe,
 } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
@@ -66,16 +70,16 @@ export function Warmups({
   testID,
 }: LinesProps): React.JSX.Element {
   const unit = useWeightUnit()
-  const ruled = entry.progression.kind !== 'none'
+  const ruled = hasTarget(entry.progression)
+  const names = setNames(entry.sets)
   return (
     <>
-      {entry.sets.map((set, at) => {
-        if (!set.isWarmup) return null
-        const n = entry.sets.slice(0, at + 1).filter((s) => s.isWarmup).length
-        const next = target?.warmups[n - 1]
+      {warmupsAt(entry).map(({ set, at }, i) => {
+        const n = i + 1
+        const next = target?.warmups[i]
         return (
           <Stack key={at} gap="xs">
-            <Label>{`Warm-up ${String(n)}`}</Label>
+            <Label>{names[at] ?? ''}</Label>
             <SetFields
               set={set}
               tracking={tracking}
@@ -98,12 +102,13 @@ export function Warmups({
 
 /** On Manual, a line per working set — reps, weight, reps in reserve — so back-offs are written. */
 export function ManualLines({ entry, tracking, onChange, testID }: LinesProps): React.JSX.Element {
-  const lines = entry.sets.flatMap((set, at) => (set.isWarmup ? [] : [{ set, at }]))
+  const lines = workingAt(entry)
+  const names = setNames(entry.sets)
   return (
     <Stack gap="md">
       {lines.map(({ set, at }, n) => (
         <Stack key={at} gap="xs" testID={`${testID}-set-${String(n + 1)}`}>
-          <Label>{`Set ${String(n + 1)}`}</Label>
+          <Label>{names[at] ?? ''}</Label>
           <SetFields
             set={set}
             tracking={tracking}
