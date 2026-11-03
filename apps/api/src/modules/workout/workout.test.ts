@@ -489,3 +489,52 @@ describe("an entry's cue", () => {
     expect(copy.days[0]?.entries[0]?.cue).toBe('Pause at the chest')
   })
 })
+
+/**
+ * A rule that moves a dimension the exercise never logs can never advance (#22, ADR-0026): the save
+ * refuses it, by how the exercise is measured, saying which rules fit — one answer the editor and
+ * MCP ask too.
+ */
+describe("a rule fits its exercise's tracking mode", () => {
+  const aPlank = async () => {
+    const res = await alice.wire('/exercises', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: 'Plank',
+        tracking: 'duration',
+        muscles: [{ muscle: 'rectus_abdominis', loadPct: 100 }],
+      }),
+    })
+    return expectContract(Exercise, res.body).id
+  }
+  const holding = (exerciseId: string, progression: unknown) => ({
+    days: [
+      { name: 'Core', entries: [{ exerciseId, progression, sets: [{ targetDurationS: 30 }] }] },
+    ],
+  })
+  const save = async (workoutId: string, body: unknown) =>
+    await alice.wire(`/workouts/${workoutId}/plan`, { method: 'PUT', body: JSON.stringify(body) })
+
+  test('a rule that does not fit is refused, saying which do', async () => {
+    const workout = await aWorkout(alice)
+    const res = await save(
+      workout.id,
+      holding(await aPlank(), { kind: 'double', repRange: [8, 12], incrementG: 2500 }),
+    )
+    expect(res.status).toBe(422)
+    expect(JSON.stringify(expectContract(ApiError, res.body))).toContain(
+      'A timed exercise takes Manual or linear duration (adds seconds), not double',
+    )
+  })
+
+  test('a rule that fits is saved', async () => {
+    const workout = await aWorkout(alice)
+    const res = await save(
+      workout.id,
+      holding(await aPlank(), { kind: 'linear_duration', incrementS: 5, afterSuccesses: 1 }),
+    )
+    expect(expectContract(Workout, res.body).days[0]?.entries[0]?.progression.kind).toBe(
+      'linear_duration',
+    )
+  })
+})
