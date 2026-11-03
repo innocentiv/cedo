@@ -111,12 +111,12 @@ Two constraints found by building it:
 | `ProgressTrend` | an exercise's progress: a bar per session from the contract's `trendOf` — the estimated max of a weight lift, the top set otherwise — and the server's stall as a badge |
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput`. `Input`'s `look` sets a name edited where it reads — a workout's title, a day's heading — with no box |
 | `Card`, `ListRow` | the one row shape every list uses |
-| `Chips` | several choices from a short flat set, all in view, any number on — multi-select only. A chip looks like one of many that can be on, so one choice among alternatives is never chips |
+| `Choice` | one choice among alternatives, as `Segmented` or `Select` by what its options need — the screen never decides which |
 | `Segmented` | one choice whose options all fit one line — a few short ones, or many tiny ones: the progression rule, a superset's letter or none, a day of five, reps in reserve. One bar of equal segments (`segmented`, the look reps in reserve set) |
 | `Select` | one choice whose options do not fit one line: a vertical list, one row selected, as a native select — the day an entry moves to, once a plan has more days than a line holds. Which of the two a choice gets is decided by its options, not by the screen |
 | `FilterRow`, `FilterSheet`, `FilterTrigger` | how a list is narrowed (#52): every filter one trigger — a glyph for what it narrows, its value cut short to fit, a ▾ — a segment of one bar as wide as the list, each as wide as what it says and a share of the rest (`segmented`, the look reps in reserve shares), filled while it narrows the list, with Clear filters — small words under the bar's end, no outline — putting them all back, so the bar keeps its width as a filter is set. `FilterSheet` is a filter whole: its trigger, and the sheet of its own it opens, closed by choosing |
 | `OptionRow`, `OptionGrid`, `OptionSection` | a filter's sheet: a few choices one per line, each with a word if it needs one (`OptionRow`); many in cells of one width, so many to a line (`OptionGrid`); a headed part of either (`OptionSection`) |
-| `Chip` | one choice of a set, on or off — what `Chips`, the muscle and equipment pickers and the equipment checklist are built of |
+| `Chip` | one choice of a set, on or off, any number on — multi-select only: what the muscle and equipment pickers and the equipment checklist are built of. A chip looks like one of many that can be on, so one choice among alternatives is never chips |
 | `Empty`, `Spinner`, `ErrorNotice`, `FormError` | the four states that are not "content" |
 | `Loaded` | failed / not-yet / here, around any query. A screen never writes that ternary |
 | `ErrorBoundary` | the last line of defence |
@@ -159,8 +159,12 @@ Smaller parts serve those composites and no screen, so they are not in the list 
 `ReserveSegments` — reps in reserve, none to five, whole, one `Segmented`: the one rating of how hard
 a set was that a person reads, holding reps in reserve as the wire carries it — only the contract
 converts, to and from the stored column (`rpe.ts`; no half exists to show, ADR-0027) —
-used by `LastSet` and by `PrescriptionFields`: what an entry asks of the athlete, its
-prescription laid out for its mode, reserve, rest and cue. The rest band's clock is `useRestClock`
+used by the logger before a set, the fix of a past set, and the entry editor — a row for all sets,
+a row per set (`ReserveRows`), or a Manual line's own. The editor's sections are their own parts:
+`RuleField` (the rule, its settings, its sentence, and asking before a switch overwrites a set),
+`SetsField` with `set-lines.tsx` (counts, warm-up lines, Plan beside Your next session, Manual's
+lines), `NextSession` (the viewer's target and **Change**), and `EntryRead`, an entry a reader
+opens. The rest band's clock is `useRestClock`
 (`src/lib/rest-clock.ts`); it and the session's clock read `useNow`
 (`src/lib/use-now.ts`), a clock of its own that ticks once a second only while it must — so the
 band re-renders, not the day. The tone at the end of a rest is `src/lib/chime.ts`, made by the
@@ -662,12 +666,13 @@ it changes (`useWriteTo('exercise', …)`), and `affectedBy` derives the rest: t
 awaited — the next write may depend on them — and the reads that embed it refetch in the background.
 A write that makes nothing stale — creating a media link, which is an exercise's only once the
 exercise is saved with it — is a plain `useMutation`. A write to more than one names them all: a fix
-to a finished session (#31) writes `['session', 'pastSession']`, the second refreshing the targets
+to a finished session (#31) writes `['session', 'target']`, the second refreshing the targets
 whose steps it took again, which a set logged leaves alone. The other writes that move a target say
-so the same way: finishing a session, deleting one, setting a target by hand (**Change**), and a
-plan save — an edited prescription or rule restarts the targets — each name the targets as a source
-they change, so the plan's Your next session column and the next session's logger refresh with
-them.
+so the same way: finishing a session and deleting one write `['session', 'target']`, setting a
+target by hand (**Change**) writes `target` alone, and a plan save — an edited prescription or rule
+restarts the targets — writes `workout`, which the targets are OF. So the plan's Your next session
+column, its outline's `· next`, and the next session's logger refresh with them. The targets embed
+`equipment` too: they are asked in weights it loads (#36).
 
 It used to be per write: each mutation listed what else it touched, and the lists had gaps nobody
 could see. Renaming an exercise left the open plan, its progression and a live session showing the

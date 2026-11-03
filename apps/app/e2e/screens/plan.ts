@@ -73,6 +73,98 @@ const planEntry = (page: Page, day: number, index: number) => {
       await open()
       await page.click(`[data-testid="${id}-day-${String(to)}"]`)
     },
+    /**
+     * One working set's own line, on Manual (ADR-0026): its fields and its reps in reserve, set
+     * apart from every other — a top set and its back-offs written as on paper.
+     */
+    line: (n: number) => {
+      const line = `${id}-set-${String(n)}`
+      return {
+        has: async (field: EntryField): Promise<boolean> => {
+          await open()
+          return await page.exists(`${line}-${field}`)
+        },
+        focus: async (field: EntryField): Promise<void> => {
+          await open()
+          await page.click(`[data-testid="${line}-${field}"]`)
+        },
+        value: async (field: EntryField): Promise<unknown> => {
+          await open()
+          return await page.value(`${line}-${field}`)
+        },
+        /** Its reps in reserve, `0` to `5`: under a rule, once the rows vary by set. */
+        reserve: async (reps: string): Promise<void> => {
+          await open()
+          await page.click(`[data-testid="${line}-reserve-${reps}"]`)
+        },
+      }
+    },
+    /** Under double, the reps every working set starts at: one of its range, never typed. */
+    startAt: async (reps: number): Promise<void> => {
+      await open()
+      await page.click(`[data-testid="${id}-reps-${String(reps)}"]`)
+    },
+    /** The reps "Start at" offers, in order — the double's range, and nothing outside it. */
+    startAtChoices: async (): Promise<string[]> => {
+      await open()
+      const seen = await page.evaluate(
+        `[...document.querySelectorAll('[data-testid^="${id}-reps-"]')].map((e) => e.dataset.testid.slice('${id}-reps-'.length))`,
+      )
+      return Array.isArray(seen) ? seen.map(String) : []
+    },
+    /** A double's range, typed key by key into From and To. */
+    range: async (from: string, to: string): Promise<void> => {
+      await open()
+      for (const [field, text] of [
+        ['rep-min', from],
+        ['rep-max', to],
+      ] as const) {
+        // oxlint-disable-next-line no-await-in-loop -- one field, then the other.
+        await page.click(`[data-testid="${id}-${field}"]`)
+        // oxlint-disable-next-line no-await-in-loop -- one field, then the other.
+        await page.keys([...text])
+      }
+    },
+    /** The viewer's own next session, as its column reads it: `9 × 60 kg`. */
+    next: async (): Promise<string | null> => {
+      await open()
+      return await page.text(`${id}-next`)
+    },
+    /** **Change**: sets the viewer's own target by hand — under double, its reps. */
+    changeReps: async (reps: number): Promise<void> => {
+      await open()
+      await page.click(`[data-testid="${id}-change"]`)
+      await page.click(`[data-testid="${id}-change-reps-${String(reps)}"]`)
+      await page.click(`[data-testid="${id}-change-save"]`)
+      await page.until(
+        async () => await page.shown(`${id}-change-save`),
+        (asking) => !asking,
+      )
+    },
+    /** What the editor says while an edit restarts the target from the plan; null when nothing. */
+    restarts: async (): Promise<string | null> =>
+      (await page.exists(`${id}-restarts`)) ? await page.text(`${id}-restarts`) : null,
+    /** Opens a row of reps in reserve per working set. */
+    varyReserve: async (): Promise<void> => {
+      await open()
+      await page.click(`[data-testid="${id}-reserve-vary"]`)
+    },
+    /** Whether reps in reserve are shown a row per set. */
+    reserveBySet: async (): Promise<boolean> => {
+      await open()
+      return await page.exists(`${id}-set-1-reserve`)
+    },
+    /** **Same for all sets**: back to one row — asked first, when the sets differ, and answered. */
+    sameReserveForAll: async (answer: 'confirm' | 'cancel'): Promise<void> => {
+      await open()
+      await page.click(`[data-testid="${id}-reserve-same"]`)
+      await page.click(`[data-testid="${id}-reserve-same-${answer}"]`)
+    },
+    /** Whether switching rule is asking to use set 1's numbers for every set — and answering it. */
+    asksToAlign: async (): Promise<boolean> => await page.exists(`${id}-align`),
+    align: async (answer: 'confirm' | 'cancel'): Promise<void> => {
+      await page.click(`[data-testid="${id}-align-${answer}"]`)
+    },
     /** Out of the plan — asked twice: the bin on an unavailable line, else in its settings. */
     remove: async (): Promise<void> => {
       if (!(await page.shown(`${id}-remove`))) await open()
