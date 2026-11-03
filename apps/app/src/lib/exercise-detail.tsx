@@ -11,7 +11,7 @@ import {
   ErrorNotice,
   NavButton,
   PinButton,
-  Screen,
+  Sheet,
   Spinner,
   Stack,
   Text,
@@ -23,17 +23,38 @@ import { GroupPlacement } from './group-placement.tsx'
 import { useSubmit } from './use-submit.ts'
 
 /**
- * One exercise: what it is, its history, and what can be done with it (#29). A screen of its own on
- * a phone; on a desktop, a pane beside the list it was chosen from (`pane`), its title and Edit at
- * its head rather than a footer. `onGone`: where to go once it is deleted.
+ * One exercise over the library on a phone (#29): a sheet, put away with its × or a tap around it,
+ * as an entry's settings are over a plan — not a screen of its own with no way back from it. Titled
+ * with the exercise's name once it is read.
+ */
+export function ExerciseSheet({
+  id,
+  onClose,
+}: {
+  readonly id: string
+  readonly onClose: () => void
+}): React.JSX.Element {
+  const name = useExercise(id).data?.name ?? ''
+  return (
+    <Sheet open onClose={onClose} title={name} testID="exercise-sheet">
+      <ExerciseDetailView id={id} place="sheet" onGone={onClose} />
+    </Sheet>
+  )
+}
+
+/**
+ * One exercise: what it is, its history, and what can be done with it (#29). Where the library
+ * opens one: on a desktop a pane beside the list, its title and Edit at its head; on a phone in a
+ * sheet over it (`ExerciseSheet`), titled by the sheet, Edit first. `onGone`: where to go once it
+ * is deleted.
  */
 export function ExerciseDetailView({
   id,
-  pane = false,
+  place,
   onGone,
 }: {
   readonly id: string
-  readonly pane?: boolean
+  readonly place: 'pane' | 'sheet'
   readonly onGone: () => void
 }): React.JSX.Element {
   const { data, isPending, error, refetch } = useExercise(id)
@@ -47,7 +68,7 @@ export function ExerciseDetailView({
   const deleting = useSubmit()
 
   if (error !== null) {
-    const notice = (
+    return (
       <ErrorNotice
         message={error.message}
         onRetry={() => {
@@ -55,7 +76,6 @@ export function ExerciseDetailView({
         }}
       />
     )
-    return pane ? notice : <Screen testID="exercise-detail-screen">{notice}</Screen>
   }
   if (isPending) return <Spinner testID="exercise-loading" />
 
@@ -70,7 +90,7 @@ export function ExerciseDetailView({
     <DuplicateIntoMyGroup
       duplicate={async () => await duplicate.mutateAsync(data.id)}
       editorOf={(copyId) => `/exercises/${copyId}/edit`}
-      over={pane}
+      over
       testID="duplicate-exercise"
     />
   )
@@ -117,22 +137,23 @@ export function ExerciseDetailView({
       ) : null}
     </Stack>
   )
-  if (pane) {
+  if (place === 'sheet') {
     return (
-      <Stack gap="lg" testID="exercise-detail-pane">
-        <Stack direction="row" align="center" gap="md">
-          <Stack grow>
-            <Text variant="title">{data.name}</Text>
-          </Stack>
-          {action}
-        </Stack>
+      <Stack gap="lg" testID="exercise-detail-sheet">
+        {action}
         {contents}
       </Stack>
     )
   }
   return (
-    <Screen title={data.name} testID="exercise-detail-screen" footer={action}>
+    <Stack gap="lg" testID="exercise-detail-pane">
+      <Stack direction="row" align="center" gap="md">
+        <Stack grow>
+          <Text variant="title">{data.name}</Text>
+        </Stack>
+        {action}
+      </Stack>
       {contents}
-    </Screen>
+    </Stack>
   )
 }

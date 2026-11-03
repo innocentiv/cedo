@@ -19,8 +19,9 @@ export function DuplicateIntoMyGroup({
   /** The route of the copy's editor. */
   readonly editorOf: (copyId: string) => string
   /**
-   * Opened OVER the screen it was asked from, rather than in its place — from a pane beside a list
-   * (#29), whose list is the root of its tab: replaced, there was nothing to come back to.
+   * Opened OVER the screen it was asked from, rather than in its place — from a pane beside a list,
+   * or a sheet over it (#29), whose list is the root of its tab: replaced, there was nothing to come
+   * back to.
    */
   readonly over?: boolean
   readonly testID: string

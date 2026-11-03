@@ -627,6 +627,25 @@ test(
 )
 
 /**
+ * On a phone an exercise opens over the library in a sheet, put away with its × as an entry's
+ * settings are over a plan — it was a screen of its own, with no way back in an installed app.
+ */
+test(
+  'on a phone an exercise opens in a sheet over the library, and its × puts it away',
+  async () => {
+    await withApp('exercise-sheet', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('sheet'))
+      const detail = await app.library.openFirst()
+      await detail.close()
+      expect(await detail.isOpen()).toBe(false)
+      expect(await app.library.listShown()).toBe(true)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * On a desktop a pane stays beside what it was chosen from (#50): an entry on the last day of a
  * five-day plan opens its settings in view, not at the top of a page scrolled down past them, under
  * the plan's name — and the exercise last on the library's first page opens in view beside the
@@ -780,6 +799,9 @@ test(
       // Seen once before logging, so the (empty) history is cached.
       await page.goto(`/exercises/${exerciseId}`)
       expect(await app.exercise.historyText()).toContain('Nothing logged yet')
+      const { name } = await (await page.client()).exercises.get(exerciseId)
+      // Put away: its sheet covers the tab bar, as any sheet does.
+      await app.exercise.close()
 
       // Tabs, not `goto`: a navigation reloads the page and would empty the cache under test.
       await app.nav.tab('workouts')
@@ -788,10 +810,10 @@ test(
       await app.session.entry(0).fill('weight', '60')
       await app.session.entry(0).log()
 
-      // The tab keeps its stack, so this returns to the very detail screen seen above — still
-      // mounted, holding the history it fetched before the set existed.
+      // Opened again within the 30-second `staleTime`: the history cached before the set existed
+      // is shown unless the set's write invalidated it.
       await app.nav.tab('exercises')
-      await app.exercise.shown()
+      await app.library.findRow(name, exerciseId)
       const history = await page.until(
         async () => await app.exercise.historyText(),
         (text) => !text.includes('Nothing logged yet'),
@@ -833,6 +855,8 @@ test(
       await form.name(after)
       await form.save()
       await exercise.shown()
+      // Put away: its sheet covers the tab bar, as any sheet does.
+      await exercise.close()
 
       // The tab keeps its stack: back to the very plan seen above, cached before the rename.
       await app.nav.tab('workouts')

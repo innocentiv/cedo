@@ -12,7 +12,8 @@ import {
   useLayout,
 } from '../../../src/ui/index.ts'
 import { useExercises } from '../../../src/api/queries.ts'
-import { ExerciseDetailView } from '../../../src/lib/exercise-detail.tsx'
+import { ExerciseDetailView, ExerciseSheet } from '../../../src/lib/exercise-detail.tsx'
+import { useFocused } from '../../../src/lib/use-focused.ts'
 import { ExerciseListRow } from '../../../src/lib/exercise-media.tsx'
 import { EquipmentPrompt } from '../../../src/lib/doable-filter.tsx'
 import { ExerciseFilters, useExerciseFilters } from '../../../src/lib/exercise-filters.tsx'
@@ -20,13 +21,14 @@ import { ShowMore } from '../../../src/lib/show-more.tsx'
 
 /**
  * The exercise library (#27): searched, scoped, narrowed to a muscle. On a desktop the exercise
- * chosen opens beside the list (#29) — reading one and the next side by side; on a phone it is a
- * screen of its own. A filter that no longer lists the one open leaves it open: it is still being
- * read.
+ * chosen opens beside the list (#29) — reading one and the next side by side; on a phone in a sheet
+ * over it, put away to choose another. A filter that no longer lists the one open leaves it open:
+ * it is still being read.
  */
 export default function ExerciseList(): React.JSX.Element {
   const router = useRouter()
   const desk = useLayout() === 'tablet'
+  const focused = useFocused()
   const [search, setSearch] = useState('')
   const filters = useExerciseFilters()
   // In the address (`?open=`), so a reload or a link keeps it open (#29).
@@ -71,8 +73,7 @@ export default function ExerciseList(): React.JSX.Element {
                   tag={exercise.isFavourite ? 'Pinned' : undefined}
                   current={desk && open === exercise.id}
                   onPress={() => {
-                    if (desk) setOpen(exercise.id)
-                    else router.push(`/exercises/${exercise.id}`)
+                    setOpen(exercise.id)
                   }}
                   testID={`exercise-row-${exercise.id}`}
                 />
@@ -108,7 +109,7 @@ export default function ExerciseList(): React.JSX.Element {
               <ExerciseDetailView
                 key={open}
                 id={open}
-                pane
+                place="pane"
                 onGone={() => {
                   setOpen(null)
                 }}
@@ -118,6 +119,17 @@ export default function ExerciseList(): React.JSX.Element {
         ),
         chosen: open,
       }}
-    />
+    >
+      {desk || open === null || !focused ? null : (
+        // Not while its editor, pushed from inside it, is the screen shown: over that, it hid it.
+        <ExerciseSheet
+          key={open}
+          id={open}
+          onClose={() => {
+            setOpen(null)
+          }}
+        />
+      )}
+    </Screen>
   )
 }

@@ -448,9 +448,13 @@ bodyweight below on Progress, and inside an athlete's pane — stay in the page'
 window dragged across the tablet width loses its scroll position, as it changes layout.
 
 As built (#29): the exercise chosen from the library opens in a pane beside the list
-(`ExerciseDetailView`, a screen of its own on a phone, a pane on a desktop — its title and Edit at
-its head), the list kept; the sidebar names the product at its head, and at its foot who is signed
-in — a tap to Settings — above the band of a session left open.
+(`ExerciseDetailView`, a pane on a desktop — its title and Edit at its head), the list kept; the
+sidebar names the product at its head, and at its foot who is signed in — a tap to Settings —
+above the band of a session left open. On a phone it opens over the list in a sheet
+(`ExerciseSheet`), put away with its × or a tap around it, as an entry's settings are over a plan:
+it was a screen of its own, which an installed app gave no way back from. Its editor, pushed from
+inside the sheet, is not covered by it (`useFocused`); the sheet is there again on coming back. Its
+address, `/exercises/:id`, opens the library with it open, either way.
 
 ### Your equipment
 

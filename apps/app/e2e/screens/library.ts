@@ -104,7 +104,11 @@ const exerciseForm = (page: Page, screen: FormScreen) => ({
   },
 })
 
-/** The exercise detail screen — reached however the journey reached it. */
+/** Whether an exercise is open: in its sheet over the library on a phone, its pane on a desktop. */
+const detailShown = async (page: Page): Promise<boolean> =>
+  (await page.shown('exercise-detail-sheet')) || (await page.shown('exercise-detail-pane'))
+
+/** An exercise, open in the library — reached however the journey reached it. */
 export const exercise = (page: Page) => ({
   /** Which group it is in, and transferring it to another. */
   placement: placement(page, 'exercise-transfer'),
@@ -122,7 +126,20 @@ export const exercise = (page: Page) => ({
     }
   },
   shown: async (): Promise<void> => {
-    await page.waitFor('exercise-detail-screen')
+    await page.until(
+      async () => await detailShown(page),
+      (shown) => shown,
+    )
+  },
+  /** Whether it is still open, in its sheet or its pane. */
+  isOpen: async (): Promise<boolean> => await detailShown(page),
+  /** Puts its sheet away with its ×, on a phone: back to the library as it was left. */
+  close: async (): Promise<void> => {
+    await page.click('[data-testid="exercise-sheet-close"]')
+    await page.until(
+      async () => await page.shown('exercise-sheet'),
+      (shown) => !shown,
+    )
   },
   /** What it needs, as its Equipment card reads under its label: "High pulley", "Not described". */
   equipment: async (): Promise<string> => {
@@ -148,7 +165,7 @@ export const exercise = (page: Page) => ({
     await page.click('[data-testid="exercise-delete"]')
     await page.click('[data-testid="exercise-delete-confirm"]')
     await page.until(
-      async () => await page.shown('exercise-detail-screen'),
+      async () => await detailShown(page),
       (shown) => !shown,
     )
   },
@@ -208,9 +225,19 @@ export const library = (page: Page) => {
       await page.fill('exercise-search', name)
       return await openRow()
     },
+    /** Searches the library tab as it stands — no reload — and opens the one exercise `id` names. */
+    findRow: async (name: string, id: string) => {
+      await page.waitFor('exercises-screen')
+      await page.fill('exercise-search', name)
+      await page.waitFor(`exercise-row-${id}`)
+      await page.click(`[data-testid="exercise-row-${id}"]`)
+      const detail = exercise(page)
+      await detail.shown()
+      return detail
+    },
     /**
      * Searches the library and chooses the first match, opening it where this layout opens one: a
-     * screen of its own on a phone, the pane beside the list on a desktop (#29).
+     * sheet over the list on a phone, the pane beside the list on a desktop (#29).
      */
     choose: async (name: string): Promise<void> => {
       await page.goto('/exercises')

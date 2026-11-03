@@ -497,10 +497,11 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
     await page.waitFor('exercise-detail-pane')
     await snap('08b-exercises-pane')
   }
-  // Its own address opens a screen on a phone, and the pane beside the list on a desktop.
+  // Its own address opens the library with it open: in a sheet over the list on a phone, and the
+  // pane beside the list on a desktop.
   const detail = (await page.shown('shell-tablet'))
     ? 'exercise-detail-pane'
-    : 'exercise-detail-screen'
+    : 'exercise-detail-sheet'
   await show(page, `/exercises/${world.squatId}`, detail)
   await snap('09-exercise-detail-with-history')
   await show(page, `/exercises/${world.customId}`, detail)
