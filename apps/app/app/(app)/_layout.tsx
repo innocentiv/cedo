@@ -100,7 +100,13 @@ export default function AppLayout(): React.JSX.Element {
                 styles.sidebar,
                 { paddingTop: insets.top + space.md, paddingBottom: insets.bottom + space.sm },
               ]
-            : [styles.bottomBar, { paddingBottom: insets.bottom + space.xs }],
+            : [
+                styles.bottomBar,
+                // Over the home indicator, as a native tab bar sits (#61): the inset's top part is
+                // room the swipe never reaches. Clear of the indicator still, and a full touch
+                // target above it.
+                { paddingBottom: insets.bottom > 0 ? insets.bottom - space.md : space.xs },
+              ],
           // A session has the app to itself: its header stands where the tabs were (#24).
           onWorkout(pathname) ? styles.hidden : null,
         ]}
