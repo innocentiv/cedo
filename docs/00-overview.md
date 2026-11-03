@@ -57,8 +57,8 @@ them without being asked:
 
 - **An analytics dashboard.** The exercise screen will show one trend — for a weight lift, each
   session's estimated max; for other tracking modes, the top set — and whether the exercise has
-  stalled (#5). A per-exercise history of sessions and progression steps is planned as its own
-  issue (ADR-0026); charts across exercises or muscles are not.
+  stalled (#5). The stats view — one exercise's sessions and progression steps — is planned as
+  its own issue (ADR-0026); charts across exercises or muscles are not.
 - **Periodization** — weeks, blocks, mesocycles, a calendar. A plan is a flat list of days.
   Periodization gives a small edge in strength and none in muscle growth (Moesgaard et al., Sports
   Med 2022); training consistently matters more. A deload is the AI saving a lighter plan, prompted

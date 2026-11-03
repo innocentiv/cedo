@@ -137,7 +137,10 @@ today, because it's the only one the app queues while offline (#9).
 ## Nested resources: replace, do not patch
 
 `PUT /workouts/:id/plan` replaces the **entire** nested plan — days, entries and sets — in one
-transaction. There is deliberately no per-day or per-entry endpoint.
+transaction. There is deliberately no per-day or per-entry endpoint that changes the plan.
+`PUT /workouts/:id/entries/:entryId/target` is not one: it writes the caller's own progression
+step — never the plan — and needs only an entry they can see, so a reader of a plan sets their own
+target too (ADR-0026).
 
 Granular CRUD over three levels would need reorder endpoints, index-collision handling, and a
 partial-failure story for each. A transactional replace is one endpoint, one MCP tool, atomic

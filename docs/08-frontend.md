@@ -112,7 +112,7 @@ Two constraints found by building it:
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput`. `Input`'s `look` sets a name edited where it reads — a workout's title, a day's heading — with no box |
 | `Card`, `ListRow` | the one row shape every list uses |
 | `Chips` | several choices from a short flat set, all in view, any number on — multi-select only. A chip looks like one of many that can be on, so one choice among alternatives is never chips |
-| `Segmented` | one choice whose options all fit one line — three or more short ones, or many tiny ones: the progression rule, a superset's letter or none, a day of five, reps in reserve. One bar of equal segments (`segmented`, the look reps in reserve set) |
+| `Segmented` | one choice whose options all fit one line — a few short ones, or many tiny ones: the progression rule, a superset's letter or none, a day of five, reps in reserve. One bar of equal segments (`segmented`, the look reps in reserve set) |
 | `Select` | one choice whose options do not fit one line: a vertical list, one row selected, as a native select — the day an entry moves to, once a plan has more days than a line holds. Which of the two a choice gets is decided by its options, not by the screen |
 | `FilterRow`, `FilterSheet`, `FilterTrigger` | how a list is narrowed (#52): every filter one trigger — a glyph for what it narrows, its value cut short to fit, a ▾ — a segment of one bar as wide as the list, each as wide as what it says and a share of the rest (`segmented`, the look reps in reserve shares), filled while it narrows the list, with Clear filters — small words under the bar's end, no outline — putting them all back, so the bar keeps its width as a filter is set. `FilterSheet` is a filter whole: its trigger, and the sheet of its own it opens, closed by choosing |
 | `OptionRow`, `OptionGrid`, `OptionSection` | a filter's sheet: a few choices one per line, each with a word if it needs one (`OptionRow`); many in cells of one width, so many to a line (`OptionGrid`); a headed part of either (`OptionSection`) |
@@ -157,7 +157,8 @@ only way the plan saves again.
 
 Smaller parts serve those composites and no screen, so they are not in the list above:
 `ReserveSegments` — reps in reserve, none to five, whole, one `Segmented`: the one rating of how hard
-a set was that a person reads, holding the stored value while the contract converts (`rpe.ts`; no half exists to show, ADR-0027) —
+a set was that a person reads, holding reps in reserve as the wire carries it — only the contract
+converts, to and from the stored column (`rpe.ts`; no half exists to show, ADR-0027) —
 used by `LastSet` and by `PrescriptionFields`: what an entry asks of the athlete, its
 prescription laid out for its mode, reserve, rest and cue. The rest band's clock is `useRestClock`
 (`src/lib/rest-clock.ts`); it and the session's clock read `useNow`
@@ -253,7 +254,8 @@ one Log button under the thumb. A weight whose load the athlete's equipment know
 the contract's `loadOf`) steps between the weights they have instead — 20, 22, 24 on 2 kg
 dumbbells, from 21 typed to 22 or 20 — stopping at their lightest and heaviest. What each set is
 pre-filled with is the server's (`GET /sessions/:id/targets`): under a rule, the athlete's target —
-their latest step, or the prescription (ADR-0026); on a manual entry, the plan's numbers for that
+their latest step if it was taken against the prescription and rule as they stand, else the
+prescription (ADR-0026); on a manual entry, the plan's numbers for that
 set, with last time's set beside it; a warm-up, its own line's weight scaled by the working target,
 worked out as it is asked. Each is asked as it can be loaded (`setsOf`), and the target says when it
 stopped at "your heaviest" or "your lightest". Beside it the logger says what moved it or held it,
@@ -407,18 +409,18 @@ look. In order, because what the rule is decides what every field below it means
      line, `Select` once they do not — so reps outside it cannot be entered. Shown even when the two are equal: a column that comes and
      goes from one entry to the next teaches less than one always there. Editing the prescription
      or the rule says, as information, "your next session restarts from the plan (you were at
-     12 × 40)" — no confirmation, because the reset is derived, not written: put it back before
-     anyone trains and the target is back. The number of working sets and the warm-ups restart
+     12 × 40)" — no confirmation, because the reset is derived, not written: put it back and the
+     target is back, for everyone who has not trained since. The number of working sets and the warm-ups restart
      nothing.
    - **Manual**, one column, a line per working set — reps, weight, reps in reserve — so a top set
      and its back-offs are written as on paper. Switching a manual entry whose sets differ to a
      rule asks first to use set 1's numbers — what the rule moves or judges — for every set.
-   - **Warm-ups** are lines of their own, reps × weight, under either mode; their next session's
-     weight follows the working target in proportion, worked out as shown, never stored, so editing
-     one takes effect at once — or stays as written, when the working sets have no positive weight
-     to follow.
-   - **Reps in reserve**, one row for **All sets**, and **Vary by set** opening a row per working
-     set, so effort can ramp. While the sets differ the rows stay open, and the way back to one row
+   - **Warm-ups** are lines of their own, reps × weight, under either mode. Under a rule their next
+     session's weight follows the working target in proportion, worked out as shown, never stored,
+     so editing one takes effect at once; on Manual, or when the working sets have no positive
+     weight to follow, a warm-up asks what it says.
+   - **Under a rule, reps in reserve** is one row for **All sets**, and **Vary by set** opening a row per working
+     set, so reps in reserve can ramp. While the sets differ the rows stay open, and the way back to one row
      is **Same for all sets**, which asks first to use set 1's for every set. A difference is never hidden
      behind a summary — the first editor showed set 1's reserve for all three, and a tap wrote it
      over the other two.
@@ -662,9 +664,10 @@ A write that makes nothing stale — creating a media link, which is an exercise
 exercise is saved with it — is a plain `useMutation`. A write to more than one names them all: a fix
 to a finished session (#31) writes `['session', 'pastSession']`, the second refreshing the targets
 whose steps it took again, which a set logged leaves alone. The other writes that move a target say
-so the same way: finishing a session, and setting a target by hand (**Change**), each name the
-targets as a source they change, so the plan's Your next session column and the next session's
-logger refresh with them.
+so the same way: finishing a session, deleting one, setting a target by hand (**Change**), and a
+plan save — an edited prescription or rule restarts the targets — each name the targets as a source
+they change, so the plan's Your next session column and the next session's logger refresh with
+them.
 
 It used to be per write: each mutation listed what else it touched, and the lists had gaps nobody
 could see. Renaming an exercise left the open plan, its progression and a live session showing the

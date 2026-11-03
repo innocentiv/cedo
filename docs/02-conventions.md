@@ -25,6 +25,10 @@ though it were written at once.
   relation guards them; instead only those modules, `db/` and tests may name them — the lint
   refuses an import elsewhere, and `db/raw-sql.test.ts` a raw SQL mention. Anywhere else reads them
   through the kind's service (`bodyweightOf`).
+- **Progression steps are progression's.** `progression_steps` is personal too, so the same guard
+  holds it: only `modules/progression/`, `db/` and tests may name it. The session module takes and
+  re-takes steps by calling progression's service, inside its own transaction; everything else reads
+  a target through it (ADR-0026).
 - **Never create a `utils.ts`.** Name the file after what it does (`password.ts`, `token.ts`).
 
 ## The service rule

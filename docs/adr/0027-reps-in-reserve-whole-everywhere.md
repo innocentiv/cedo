@@ -7,7 +7,7 @@ its Consequences ("none rated more than half a point past a prescribed RPE").
 
 ## Context
 
-Effort was stored as RPE, 5 to 10 in half-points (#3, ADR-0020), and asked of people as reps in
+How hard a set was was stored as RPE, 5 to 10 in half-points (#3, ADR-0020), and asked of people as reps in
 reserve, none to five, whole. The store was finer than anything a person was ever asked, and the
 two sides of the product spoke different languages:
 
@@ -26,6 +26,9 @@ two sides of the product spoke different languages:
 written in that one name by the app, the API, MCP and the docs.** RPE survives only as the stored column (`10 − reserve`);
 nothing anyone reads or writes says RPE.
 
+- On the wire and in MCP the field is `reserve` (`targetReserve` on a prescribed set), none to five.
+  The contract converts to and from the stored column, and nothing past it — app, routes, tools —
+  holds an RPE.
 - The contract refuses a half, prescribed or logged, saying why.
 - Prescribed, reps in reserve is a **floor**: the fewest a set must leave. A range (1–2) is
   prescribed as its bottom. A set that left fewer than asked was ground out past it and holds

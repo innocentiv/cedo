@@ -19,7 +19,8 @@ groups ──< group_members >── users
            └──< workout_favourites >── users
 
 users ──< workout_sessions ──< set_logs >── exercises
-users ──< progression_steps >── workout_entries       (a person's target on an entry)
+users ──< progression_steps >── workout_entries       (a person's target on an entry;
+                 └── workout_sessions?            the session a step judged, if any)
 ```
 
 `exercises` and `workouts` hang off `groups` through `owner_group_id`. `workout_sessions` hangs off
@@ -226,8 +227,8 @@ what it asks next session is its weight scaled by the working target, worked out
 stored — or its own weight, when the working prescription has no positive weight to follow
 ([adr/0026](adr/0026-targets-and-steps.md)).
 
-`workout_entries.progression` is JSONB validated by the `Progression` union. Its sets are the
-entry's **prescription**, and the contract holds it to its rule
+`workout_entries.progression` is JSONB validated by the `Progression` union. Its working sets carry
+the entry's **prescription**, and the contract holds it to its rule
 ([adr/0026](adr/0026-targets-and-steps.md)):
 
 - **Under a rule**, what the rule moves or judges (reps and weight under `linear` and `double`;
@@ -265,7 +266,7 @@ deleted session's steps go before the steps after it are taken again.
 
 **Nothing resets a target by writing.** An edited prescription or rule leaves every step where it
 is; a step whose `against` no longer matches stops counting, so followers start again from the new
-prescription — and count again if it is put back before anyone trains. The number of working sets,
+prescription — and count again if it is put back, for each follower who has not trained since. The number of working sets,
 the warm-ups, rest, cue, superset and order are not part of `against`.
 
 **Corrections take steps again.** Correcting or removing a set of a finished session, deleting a
@@ -329,13 +330,15 @@ have nothing. A save locks the person's row first, so two at once take turns.
 
 **Weights an athlete can load** (#36): an exercise's item that holds its load, and the athlete's
 weights for it, make a `Load` (`loadOf`) — or none, when either is unknown, and nothing is snapped.
-A plan keeps its weights, and a step keeps the target as the rule asked it; what a person is shown
-is the heaviest loadable weight not above it, capped at the heaviest and raised to the lightest
-(`loadable`), and progression judges a session against what they were shown (`nextLoadableTarget`),
-never the plan's number — and moves it up a loadable weight at least, so an increase under one step
-still moves. A warm-up's scaled weight is snapped the same way. The grid is counted in the unit the athlete reads (`Load.unit`):
-grams are not whole pounds. `EntryTarget.limit` says where it stopped. See
-[adr/0024](adr/0024-targets-follow-the-athletes-equipment.md).
+A plan keeps its weights. What a person is shown is the heaviest loadable weight not above their
+target, capped at the heaviest and raised to the lightest (`loadable`), and progression judges a
+session against what they were shown (`nextLoadableTarget`), never the plan's number — and moves it
+up from there, a loadable weight at least, so an increase under one step still moves; the step keeps
+the weight it advanced to, loadable the day it was taken. A warm-up's scaled weight is snapped down
+the same way, and raised to the lightest. The grid is counted in the unit the athlete reads
+(`Load.unit`): grams are not whole pounds. `EntryTarget.limit` says where it stopped. See
+[adr/0024](adr/0024-targets-follow-the-athletes-equipment.md), and
+[adr/0026](adr/0026-targets-and-steps.md) for what a step keeps.
 
 ### Athlete records
 
@@ -408,7 +411,10 @@ it, written as ten minus it: 5 to 10, whole, or null when not said. The column i
 the RPE scale survives — the contract converts at the boundary (`rpe.ts`), and everything a person
 or an AI reads or writes says reps in reserve ([adr/0027](adr/0027-reps-in-reserve-whole-everywhere.md)).
 A rating, not a measurement, so it is `numeric(3,1)` rather than an integer in base units, with a
-check holding whole steps for a write that bypasses the contract (`db/tables/rpe.ts`, ADR-0020).
+check holding whole steps for a write that bypasses the contract (`db/tables/rpe.ts`; ADR-0020,
+as narrowed by ADR-0027). On the wire and in MCP the field is `reserve` — `targetReserve`
+on a prescribed set — none to five; the contract converts to and from the column, and nothing past
+it holds an RPE.
 
 `workout_id`, `day_id` and `entry_id` are nullable so ad-hoc training uses the same tables and feeds
 the same history. `exercise_id` is always set — that is what makes per-exercise history one indexed

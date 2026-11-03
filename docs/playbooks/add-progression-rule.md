@@ -58,7 +58,8 @@ In `packages/contract/src/progression.test.ts`. No database, no DOM — this is 
 correctness is actually proven.
 
 Cover: a success advancing, a failure not advancing, `afterSuccesses` counted over consecutive
-sessions only, warmup sets excluded, an empty history returning the target unchanged, and a target
+sessions only (the streak a step carries: one more when cleared, none when held or advanced),
+warmup sets excluded, a session with no working set holding the target, and a target
 that differs from its prescription only in what the rule moves.
 
 ## 4. Give the editor its defaults

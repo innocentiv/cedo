@@ -140,7 +140,7 @@ weights stays yours to choose in the app.
 whole session the AI is told about, and a set already logged corrected (#31) — "80, not 100, on
 Monday" — named by the `[id]` `session_get` prints beside each of your own sets. Removing a set
 or a session is not among them: see "Nothing can be deleted". Each changes what progression has
-judged: a session logged takes a **step** (`GLOSSARY.md`) for each entry it trained, as finishing
+judged: a session logged takes a **step** (`GLOSSARY.md`) for each entry it trained under a rule, as finishing
 one does — and, logged with an earlier date than a later one, or with a set corrected, takes every
 step of those entries again from that session onward (ADR-0026).
 Reps in reserve are sent whole, none to five; a half is refused.
@@ -202,8 +202,8 @@ it was taken against the prescription and rule as they stand, and the prescripti
 under a rule. `workout_progression` reads the caller's targets and their latest steps; the app's
 logger reads the same target (`GET /sessions/:id/targets`), so the AI and the logger cannot ask for
 different numbers. A session in progress moves nothing until it is finished. Both answer in weights
-the athlete can load (#36, ADR-0024): a step keeps the target as the rule asked it, and reading it
-snaps it to the caller's equipment as it is that day. `workout_get` keeps the plan's weights as
+the athlete can load (#36, ADR-0024): a step keeps the weight it advanced to, loadable the day it
+was taken (ADR-0026), and reading it snaps it to the caller's equipment as it is now. `workout_get` keeps the plan's weights as
 written, a set the athlete cannot load as written followed by `(loads 22 kg)` — or `, the heaviest`
 — for them, or for `athlete`.
 
@@ -218,8 +218,8 @@ set against its own reserve ([adr/0026](adr/0026-targets-and-steps.md)) and whol
 
 **A plan edit restarts its followers' targets — reversibly.** Editing what an entry's prescription
 asks, or its rule, writes nothing to anyone's steps: a step taken against something else simply
-stops counting, so every follower's target is the new prescription — until it is put back, so long
-as nobody has trained against the change. The number of working sets, warm-ups, rest, cue,
+stops counting, so every follower's target is the new prescription — until it is put back, which
+restores the target of each follower who has not trained since. The number of working sets, warm-ups, rest, cue,
 superset and order are not part of what a step is compared against. Re-aligning a plan with where
 its follower got to — when a new phase of training starts, after a deload, say — is the AI's to do, by saving the targets
 it read as the new prescriptions through `workout_save_plan`. Nothing does it automatically.
@@ -336,7 +336,7 @@ validate identically and advertise nothing.
 
 ### A plan teaches its own model
 
-An AI wrote "2–3 ramp sets first" in a cue and planned no warm-up sets, and ramped its effort per set
+An AI wrote "2–3 ramp sets first" in a cue and planned no warm-up sets, and ramped its reps in reserve per set
 in a way progression then misjudged: the tools had told it nothing about either. So the plan's model
 is said where the AI meets it, three ways (ADR-0026, ADR-0027):
 

@@ -120,7 +120,8 @@ _Avoid_: measure, metric
 
 **Effort**:
 The dimensions one set carries — prescribed, asked of a person as their target, or done as a log.
-Not how hard it was: that is its reps in reserve.
+Not how hard it was: that is its reps in reserve. Two fixed phrases keep the everyday sense, and
+mean reps in reserve: **held for effort** and **effort drift**.
 _Avoid_: result, performance
 
 **Reps in reserve**:
@@ -130,7 +131,7 @@ prescribed as its bottom, and a set that left fewer than asked was ground out pa
 set may ask its own, so how hard the sets are taken can ramp across them. The one rating of how hard
 a set was — for a person and an AI alike.
 _Avoid_: RPE (the same measure, written as ten minus it — never read or written), reps left in the
-tank, RIR (in what a person reads), intensity, difficulty, exertion
+tank, RIR, intensity, difficulty, exertion
 
 **Working sets per muscle**:
 The work a muscle got: every working set counted toward it by that muscle's share of the
@@ -263,23 +264,24 @@ _Avoid_: stalled, failed. Also not a hold, which is a timed set such as a plank.
 What the author of a plan set an entry's working sets to ask for. Under a progression rule, the
 dimensions the rule moves or judges are shared by every working set, and only the reps in reserve
 may differ from set to set; a manual entry asks each working set for its own. It is where each follower's target
-starts. Changing what it asks, or its rule, starts every follower's target again from it — until it
-is changed back, so long as nobody has trained against the change. How many working sets there are,
-and the warm-ups, are not part of what it asks.
+starts. Changing what it asks, or its rule, starts every follower's target again from it — and
+changing it back restores the target of each follower who has not trained since. How many working
+sets there are, and the warm-ups, are not part of what it asks.
 _Avoid_: target (that is a person's, and moves), target set, template
 
 **Target**:
 What an entry asks of one person in their next session: their latest step, if it was taken against
 the prescription and rule as they stand, and the prescription otherwise. It moves only by the
-entry's progression rule, one step per finished session, or when set by hand — and differs from the
-prescription only in what the rule moves. Two people following one plan each have their own; a
+entry's progression rule, one step per finished session, or when set by hand, and starts again from
+the prescription when that or its rule changes — and differs from the prescription only in what the
+rule moves. Two people following one plan each have their own; a
 manual entry has none.
 _Avoid_: prescription (that is the author's, and stays), goal, next weight
 
 **Step**:
 What one finished session did to a person's target on an entry — advanced it, from what to what, or
 held it, and why — or the person setting it by hand. Each step is taken against the prescription and
-rule of its day, and counts only while they stand. Any change to a finished session takes its steps
+rule as they stood when it was taken, and counts only while they still stand. Any change to a finished session takes its steps
 again, and every session's step after it; a step set by hand stays where it stands.
 _Avoid_: event, change, history entry
 
@@ -291,7 +293,8 @@ _Avoid_: main set, real set
 A lighter ramp-up set before the working sets, prescribed on its own line. It is not judged by
 progression, and counts toward neither working sets per muscle nor weight lifted. Its weight follows
 the working target in proportion — what it asks next session is worked out each time, never kept —
-so changing it restarts no target; with no positive working weight to follow, it asks what it says.
+so changing it restarts no target. On a manual entry, or with no positive working weight to follow,
+it asks what it says.
 _Avoid_: ramp set, prep set
 
 ## Training

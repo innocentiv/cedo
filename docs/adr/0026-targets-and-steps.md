@@ -5,8 +5,10 @@
 - [0012](0012-progression-rules.md): the logger and `workout_progression` "differ only in which
   sessions they read", and the logger's target "carried forward over the sessions that started
   before it" (Decision); "An entry has one weight; its sets never diverge", now true only under a
-  rule; and "the hardest set decides" in "A prescribed RPE is a ceiling", now each set against its
-  own. Its truth tables stand otherwise; its half-point allowance is
+  rule; "the hardest set decides" in "A prescribed RPE is a ceiling", now each set against its
+  own; and in "Why a prescription held is said", the hold for effort "with the hardest set's
+  rating" and "the newest that broke it gives the reason" — a step now says its own session's
+  reason, per set ("held: set 3 did 7 of 10"). Its truth tables stand otherwise; its half-point allowance is
   [0027](0027-reps-in-reserve-whole-everywhere.md)'s.
 - [0024](0024-targets-follow-the-athletes-equipment.md): its amendment's "progression is one step
   from the plan, never accumulated", and its Consequences' "a target is … computed on read …
@@ -53,7 +55,7 @@ Target, Step, Manual).
 - A **step** is written **when a session is finished** — or written finished, by `session_log` —
   once for each entry the session trained under a rule: advanced (from → to) or held (and why), with
   any streak toward `afterSuccesses`, and the prescription and rule it was taken against. It is
-  dated by the session it judged, not by when it was written. A step is also written when a person
+  dated by the start of the session it judged, not by when it was written. A step is also written when a person
   **sets their target by hand**, dated then.
 - The rule runs **once**, on finish, against the target — not on every read against the plan.
 
@@ -61,7 +63,7 @@ Target, Step, Manual).
 
 Editing a prescription, or its rule, writes nothing to anyone's steps. A step simply stops counting
 while what it was taken against has changed, so every follower's target is the new prescription. Put
-the old one back before anyone trains and the steps count again: **a typo fixed loses nothing**, and
+the old one back and the steps count again for every follower who has not trained since: **a typo fixed loses nothing**, and
 the editor needs no confirmation — it says, as information, "your next session restarts from the
 plan (you were at 12 × 40)". Plans stay saved as each change is made ([0022](0022-plans-edited-in-place.md)
 stands).
@@ -83,21 +85,32 @@ warm-ups, rest, cue, superset and order are not — adding a fourth set at 12 ×
 A target set by hand obeys the same limit: under double, reps and weight, reps inside the range;
 under linear, the weight; seconds; distance, and time in proportion. Changing anything else is a
 plan edit. The app sets it through `PUT /workouts/:id/entries/:entryId/target`, MCP through
-`target_set`, both one service function. 0012's truth tables are applied to the target instead of
+`target_set`, both one service function, for any entry the person can see — a reader of the plan
+included. It is not one of the entry-level writes [0022](0022-plans-edited-in-place.md) rejected:
+it writes the person's own step, never the plan. 0012's truth tables are applied to the target instead of
 the plan, unchanged but for its effort table (per set, here; whole, in 0027).
 
 ### Corrections take steps again
 
 Any change to the finished sessions of an entry — a set corrected or removed (#31), a session
 deleted, a finished session logged afterwards with an earlier date (`session_log`) — takes every
-step from the earliest changed session onward again. A step set by hand is kept where it stands in
-time; the sessions after it are judged from it.
+step from the earliest changed session onward again, in the transaction that made the change. A
+step set by hand is kept where it stands in time; the sessions after it are judged from it.
+
+### The streak
+
+A rule that waits for `afterSuccesses` cleared sessions in a row reads the streak from the latest
+step that counts, and the new step carries it on: one more when the session cleared, none when it
+held, none again once it advanced. With no step that counts — none yet, or the prescription or rule
+changed since — and after a step set by hand, the streak is none. Taking steps again re-derives each
+streak in order. The rule's input is therefore the target, the streak, and the one session being
+judged; it never reads a run of past sessions.
 
 ### Two modes, by the rule
 
 - **Under a rule** the dimensions the rule moves or judges are shared by every working set (reps
   and weight under linear and double; seconds; distance and time); **reps in reserve may differ per
-  set** (effort ramps across sets, as both programming sources in use prescribe), and
+  set** (reps in reserve ramp across sets, as both programming sources in use prescribe), and
   **each set is judged against its own**. This fixes the hold described above.
 - **Manual** (no rule) asks each working set for its own numbers — top sets, back-offs, pyramids.
   Nothing moves them but an edit to the plan; there is no target and no step. The logger pre-fills
@@ -178,8 +191,8 @@ what keeps a sub-step increment moving.
 - The rules' maths is unchanged and still pure in the contract; what changes is its input (the
   person's target, not the plan's prescription) and when it runs.
 - Existing data: steps start empty, so every target is its prescription. An entry the contract now
-  refuses — a rule that does not fit its exercise, reps outside its range, a reversed range, moved
-  dimensions that differ across working sets — is turned Manual by the migration, which keeps every
+  refuses — a rule that does not fit its exercise, reps outside its range, a reversed range, moved or
+  judged dimensions that differ across working sets — is turned Manual by the migration, which keeps every
   number it holds; the author picks a rule again.
 - `0012`'s "the logger and `workout_progression` differ only in which sessions they read" no longer
   applies: both read the person's target.
