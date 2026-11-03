@@ -70,7 +70,6 @@ export function ScrollingColumns({
         style={WIDTHS[narrow].main}
         contentContainerStyle={styles.scrolled}
         keyboardShouldPersistTaps="handled"
-        testID="screen-main"
       >
         {main}
       </ScrollView>
@@ -80,7 +79,6 @@ export function ScrollingColumns({
         style={WIDTHS[narrow].side}
         contentContainerStyle={styles.scrolled}
         keyboardShouldPersistTaps="handled"
-        testID="screen-side"
       >
         {side}
       </ScrollView>
