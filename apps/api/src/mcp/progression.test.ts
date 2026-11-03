@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { Exercise, PlanSave, type Progression, Workout } from '@cedo/contract'
+import {
+  Exercise,
+  PLAN_WORDS,
+  PlanSave,
+  type Progression,
+  Workout,
+  WorkoutPlanInput,
+} from '@cedo/contract'
 import { coachedSquad } from '../test/coaching.ts'
 import { expectContract } from '../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../test/harness.ts'
@@ -237,7 +244,9 @@ describe('target_set', () => {
     const p = await planned(alice, DOUBLE)
     const outside = await setTarget(pat, p, { reps: 14 })
     expect(outside.body.result?.isError).toBe(true)
-    expect(textOf(outside.body)).toContain('Double 8–12 asks 8 to 12 reps, not 14')
+    expect(textOf(outside.body)).toContain(
+      'Double 8–12 asks 8 to 12 reps, not 14: set reps inside it, or change the plan’s range',
+    )
     const manual = await setTarget(pat, await planned(alice, { kind: 'none' }), { reps: 10 })
     expect(textOf(manual.body)).toContain('A manual entry has no target')
   })
@@ -259,6 +268,16 @@ describe('target_set', () => {
 })
 
 describe('a plan written from the tool descriptions alone', () => {
+  test('workout_save_plan publishes every description the plan carries', async () => {
+    const { body } = await rpc(pat, 'tools/list')
+    const tool = body.result?.tools?.find((t) => t.name === 'workout_save_plan')
+    const published = JSON.stringify(tool?.inputSchema)
+    const missing = Object.entries(PLAN_WORDS).filter(
+      ([, words]) => !published.includes(JSON.stringify(words).slice(1, -1)),
+    )
+    expect(missing.map(([field]) => field)).toEqual([])
+  })
+
   /**
    * What a model following only the published descriptions writes: warm-ups as their own sets with
    * numbers, a ramp of reps in reserve, a double range around the reps — and no RPE anywhere.
@@ -266,6 +285,12 @@ describe('a plan written from the tool descriptions alone', () => {
   test('round-trips through workout_get_editable as it was written', async () => {
     const bench = await exercise(alice, 'Bench')
     const workout = expectContract(Workout, await post(alice, '/workouts', { name: 'Push' }))
+    // Only what the descriptions ask for: every default left to the plan.
+    const warmup = (targetReps: number, targetWeightG: number) => ({
+      targetReps,
+      targetWeightG,
+      isWarmup: true,
+    })
     const written = {
       days: [
         {
@@ -273,34 +298,16 @@ describe('a plan written from the tool descriptions alone', () => {
           entries: [
             {
               exerciseId: bench.id,
-              supersetGroup: null,
               restSeconds: 180,
               cue: 'Leave 2 in reserve on the first set',
               progression: DOUBLE,
               sets: [
-                {
-                  targetReps: 5,
-                  targetWeightG: 40_000,
-                  targetReserve: null,
-                  targetDurationS: null,
-                  targetDistanceMm: null,
-                  isWarmup: true,
-                },
-                {
-                  targetReps: 3,
-                  targetWeightG: 50_000,
-                  targetReserve: null,
-                  targetDurationS: null,
-                  targetDistanceMm: null,
-                  isWarmup: true,
-                },
+                warmup(5, 40_000),
+                warmup(3, 50_000),
                 ...[2, 1, 0].map((targetReserve) => ({
                   targetReps: 8,
                   targetWeightG: 60_000,
                   targetReserve,
-                  targetDurationS: null,
-                  targetDistanceMm: null,
-                  isWarmup: false,
                 })),
               ],
             },
@@ -310,15 +317,14 @@ describe('a plan written from the tool descriptions alone', () => {
     }
     const saved = await callTool(pat, 'workout_save_plan', { workoutId: workout.id, ...written })
     expect(saved.body.result?.isError).toBeFalsy()
-    const editable = PlanSave.parse(
-      JSON.parse(
-        textOf((await callTool(pat, 'workout_get_editable', { workoutId: workout.id })).body),
-      ),
+    const editableText = textOf(
+      (await callTool(pat, 'workout_get_editable', { workoutId: workout.id })).body,
     )
-    const { version: _version, ...plan } = editable
-    expect(
-      JSON.parse(JSON.stringify(plan, (k, v: unknown) => (k === 'id' ? undefined : v))),
-    ).toEqual(written)
+    const { version: _version, ...plan } = PlanSave.parse(JSON.parse(editableText))
+    const withoutIds = (value: unknown): unknown =>
+      JSON.parse(JSON.stringify(value, (k, v: unknown) => (k === 'id' ? undefined : v)))
+    expect(withoutIds(plan)).toEqual(withoutIds(WorkoutPlanInput.parse(written)))
+    expect(editableText).not.toMatch(/rpe/iu)
     const outline = textOf((await callTool(pat, 'workout_get', { workoutId: workout.id })).body)
     expect(outline).toContain('warm-up: 5 × 40 kg')
     expect(outline).not.toMatch(/RPE/u)
@@ -348,7 +354,14 @@ describe('a plan written from the tool descriptions alone', () => {
         progression: { ...DOUBLE, repRange: [12, 8] },
         sets: [at(10)],
       }),
-    ).toContain('A double range runs from fewer reps to more')
+    ).toContain('A double range runs from fewer reps to more: 8 to 12, not 12 to 8')
+    expect(
+      await save({
+        exerciseId: bench.id,
+        progression: { ...DOUBLE, repRange: [10, 10] },
+        sets: [at(10)],
+      }),
+    ).toContain('for one rep count, use linear')
     expect(
       await save({
         exerciseId: bench.id,
