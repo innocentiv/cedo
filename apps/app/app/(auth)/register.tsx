@@ -1,5 +1,14 @@
 import { useState } from 'react'
-import { Button, Field, FormError, Input, NavButton, Screen, Stack } from '../../src/ui/index.ts'
+import {
+  Button,
+  Field,
+  FormError,
+  FrontDoor,
+  Input,
+  NavButton,
+  Stack,
+  Text,
+} from '../../src/ui/index.ts'
 import { useAuth } from '../../src/auth/auth-provider.tsx'
 import { useSubmit } from '../../src/lib/use-submit.ts'
 
@@ -17,8 +26,11 @@ export default function Register(): React.JSX.Element {
   }
 
   return (
-    <Screen title="Create an account" testID="register-screen">
+    <FrontDoor testID="register-screen">
       <Stack gap="lg">
+        <Text variant="heading" accessibilityRole="header">
+          Create an account
+        </Text>
         <Field
           label="Username"
           error={fieldError('username')}
@@ -55,6 +67,6 @@ export default function Register(): React.JSX.Element {
         <Button title="Create account" onPress={onSubmit} busy={busy} testID="register-submit" />
         <NavButton title="I already have one" href="/login" testID="to-login" />
       </Stack>
-    </Screen>
+    </FrontDoor>
   )
 }

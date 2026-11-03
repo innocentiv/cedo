@@ -1,14 +1,5 @@
 import { useState } from 'react'
-import {
-  Button,
-  Field,
-  FormError,
-  Input,
-  NavButton,
-  Screen,
-  Stack,
-  Text,
-} from '../../src/ui/index.ts'
+import { Button, Field, FormError, FrontDoor, Input, NavButton, Stack } from '../../src/ui/index.ts'
 import { useAuth } from '../../src/auth/auth-provider.tsx'
 import { useSubmit } from '../../src/lib/use-submit.ts'
 
@@ -25,9 +16,8 @@ export default function Login(): React.JSX.Element {
   }
 
   return (
-    <Screen title="cedo" testID="login-screen">
+    <FrontDoor testID="login-screen">
       <Stack gap="lg">
-        <Text tone="muted">Sign in to your instance.</Text>
         <Field label="Username" error={fieldError('username')}>
           <Input
             value={username}
@@ -51,6 +41,6 @@ export default function Login(): React.JSX.Element {
         <Button title="Sign in" onPress={onSubmit} busy={busy} testID="login-submit" />
         <NavButton title="Create an account" href="/register" testID="to-register" />
       </Stack>
-    </Screen>
+    </FrontDoor>
   )
 }
