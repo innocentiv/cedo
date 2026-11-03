@@ -139,3 +139,19 @@ describe("a session's warm-ups", () => {
     expect(asked([stepped(at(75_000))])).toEqual([at(25_000, 5)])
   })
 })
+
+/**
+ * Snapping is not progress (#36): a 22.5 kg plan shown as 22 on 2 kg dumbbells has not moved, so
+ * its warm-ups ask what they say, in a weight the equipment loads — not scaled by 22 ÷ 22.5.
+ */
+describe("a session's warm-ups, against the equipment", () => {
+  test('ask what they say, loadable, while no step moved the target', () => {
+    const sets = [
+      prescribed(20_000, 5, { isWarmup: true }),
+      ...[1, 2, 3].map(() => prescribed(22_500, 8)),
+    ]
+    const loadFor = (exercise: Parameters<typeof loadOf>[0]) => loadOf(exercise, DUMBBELLS, 'kg')
+    const [asked] = targetsFrom([entry()], sets, [], loadFor, new Map())
+    expect(asked?.warmups.map((w) => w.weightG)).toEqual([20_000])
+  })
+})

@@ -72,6 +72,7 @@ function evaluate(
   readonly entry: EntryToEvaluate
   readonly suggestion: ProgressionSuggestion
   readonly limit: LoadLimit | null
+  readonly reached: SetTarget
 }[] {
   const setsByEntry = groupBy(prescribed, (s) => s.entryId)
   const stepByEntry = new Map(steps.map((s) => [s.entryId, s]))
@@ -98,7 +99,8 @@ export function targetsFrom(
     prescribed.filter((s) => s.isWarmup),
     (s) => s.entryId,
   )
-  return evaluate(entries, prescribed, steps, loadFor).map(({ entry, suggestion: s, limit }) => ({
+  const read = evaluate(entries, prescribed, steps, loadFor)
+  return read.map(({ entry, suggestion: s, limit, reached }) => ({
     entryId: s.entryId,
     prescribed: s.current,
     target: s.suggested,
@@ -108,8 +110,9 @@ export function targetsFrom(
     last: lastByExercise.get(s.exerciseId) ?? null,
     warmups: warmupsFor(
       (warmupsByEntry.get(s.entryId) ?? []).map((w) => setTargetOf(w)),
+      // Unsnapped, both: snapping a 22.5 kg plan to 22 is not progress for a warm-up to follow.
       s.current,
-      s.suggested,
+      reached,
       loadFor(entry),
     ),
   }))
@@ -124,7 +127,12 @@ function suggestForEntry(
   prescribed: readonly PrescribedSet[],
   latest: LatestStep | undefined,
   loadFor: LoadFor,
-): { readonly suggestion: ProgressionSuggestion; readonly limit: LoadLimit | null } {
+): {
+  readonly suggestion: ProgressionSuggestion
+  readonly limit: LoadLimit | null
+  /** The target before snapping: the step's, or the plan's — what warm-ups follow. */
+  readonly reached: SetTarget
+} {
   const first = prescriptionOf({ sets: prescribed })
   const current = first === undefined ? NOTHING_PRESCRIBED : setTargetOf(first)
   const now = againstOf(
@@ -151,7 +159,7 @@ function suggestForEntry(
     held: counts ? latest.held : null,
     sessionsConsidered: latest?.sessions ?? 0,
   }
-  return { suggestion, limit: reached.limit }
+  return { suggestion, limit: reached.limit, reached: counts ? latest.target : current }
 }
 
 /** An entry with no working set prescribes nothing — every target null. */
