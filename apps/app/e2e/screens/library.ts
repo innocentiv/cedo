@@ -112,7 +112,7 @@ const detailShown = async (page: Page): Promise<boolean> =>
 /** An exercise, open in the library — reached however the journey reached it. */
 export const exercise = (page: Page) => ({
   /** Which group it is in, and transferring it to another. */
-  placement: placement(page, 'exercise-transfer'),
+  placement: placement(page, 'exercise-transfer', 'toggle-favourite'),
   /** Its progress, as the trend says it: the latest point in words, and a stall when there is one. */
   trend: async (): Promise<{
     first: string | null

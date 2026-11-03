@@ -107,7 +107,7 @@ Two constraints found by building it:
 | `Button`, `NavButton` | actions, and actions that navigate — in the app, or out of it to an absolute URL |
 | `NavItem` | one tab of the shell's tab bar or sidebar — used only by `app/(app)/_layout.tsx` |
 | `ConfirmButton` | every action that cannot be taken back — delete, revoke, remove, leave — and every transfer to another group, which others feel at once. Asked twice, in the app's own UI, never a browser dialog; a refusal shows beside it. Removing a set from a session in progress is not one: it is logged again in a tap |
-| `PinButton` | pinning what you can see, for its list's "Pinned" filter |
+| `PinButton` | pinning what you can see, for its list's "Pinned" filter: a star, filled in the accent while pinned, small on the line saying which group it is in |
 | `ProgressTrend` | an exercise's progress: a bar per session from the contract's `trendOf` — the estimated max of a weight lift, the top set otherwise — and the server's stall as a badge |
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput`. `Input`'s `look` sets a name edited where it reads — a workout's title, a day's heading — with no box |
 | `Card`, `ListRow` | the one row shape every list uses |
@@ -170,8 +170,9 @@ unit-tested beside it, like `retry.ts`. Each is dated after the latest stored se
 clock ahead of the device cannot send the focus back to a set already done.
 
 A composite that reads through a query hook is not presentational, so it lives in `src/lib/`
-instead: the exercise picker, and `GroupPlacement` — which group an exercise or plan is in, and
-Transfer to group, on both detail screens. Where it may go is the server's `canTransferInto`, not a rule
+instead: the exercise picker, and `GroupPlacement` — one quiet line under an exercise's or a
+plan's name, on both detail screens: which group it is in, then its pin and Transfer to group as
+glyphs (★, ⇄), both rarely used, the transfer's choice opening under the line. Where it may go is the server's `canTransferInto`, not a rule
 of its own; a plan the target group could not read is refused by the server, which says why. And
 `DuplicateIntoMyGroup`, which a reader is offered on both detail screens in place of Edit. It makes
 a copy in their own group and opens the copy's editor. A refusal is the server's, shown beside the
@@ -354,8 +355,10 @@ As built (#26):
   elsewhere, and a failed read is a refusal, so the page is never left Saving. A plan read
   meanwhile is taken only when it is newer and nothing is unsaved; a name and notes read again
   with other values start their fields from those.
-- What is done to the workout whole — pin, its group, delete — sits under the outline; a reader
-  sees the same outline with nothing to tap but Start, and Copy into my group under it.
+- Under the name, one quiet line (`GroupPlacement`): which group it is in, a star pinning it, ⇄
+  transferring it — rarely used, so glyphs, not buttons of their own. Delete sits under the
+  outline. A reader sees the same outline with nothing to tap but Start and the star, and Copy into
+  my group under it.
 - `/workouts/:id/edit` redirects to the workout's page, for old links.
 
 ### Finding exercises

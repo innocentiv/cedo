@@ -6,16 +6,7 @@ import {
   useFavouriteExercise,
   useTransferExercise,
 } from '../api/queries.ts'
-import {
-  ConfirmButton,
-  ErrorNotice,
-  NavButton,
-  PinButton,
-  Sheet,
-  Spinner,
-  Stack,
-  Text,
-} from '../ui/index.ts'
+import { ConfirmButton, ErrorNotice, NavButton, Sheet, Spinner, Stack, Text } from '../ui/index.ts'
 import { DuplicateIntoMyGroup } from './duplicate-into-my-group.tsx'
 import { About, RecentHistory } from './exercise-about.tsx'
 import { ownSession } from './addresses.ts'
@@ -45,8 +36,8 @@ export function ExerciseSheet({
 /**
  * One exercise: what it is, its history, and what can be done with it (#29). Where the library
  * opens one: on a desktop a pane beside the list, its title and Edit at its head; on a phone in a
- * sheet over it (`ExerciseSheet`), titled by the sheet, Edit first. `onGone`: where to go once it
- * is deleted.
+ * sheet over it (`ExerciseSheet`), titled by the sheet, Edit under the line saying which group it
+ * is in. `onGone`: where to go once it is deleted.
  */
 export function ExerciseDetailView({
   id,
@@ -94,26 +85,28 @@ export function ExerciseDetailView({
       testID="duplicate-exercise"
     />
   )
-  const contents = (
-    <Stack gap="md">
-      <PinButton
-        pinned={data.isFavourite}
-        busy={pinning.busy}
-        error={pinning.error}
-        onToggle={() => {
+  // Under its name, before anything else: which group it is in, pinning it, moving it.
+  const placement = (
+    <GroupPlacement
+      ownerGroupId={data.ownerGroupId}
+      canEdit={data.canEdit}
+      transfer={async (toGroupId) => await transfer.mutateAsync({ id: data.id, toGroupId })}
+      pin={{
+        pinned: data.isFavourite,
+        busy: pinning.busy,
+        error: pinning.error,
+        onToggle: () => {
           void pinning.submit(async () => {
             await favourite.mutateAsync({ id: data.id, on: !data.isFavourite })
           })
-        }}
-        testID="toggle-favourite"
-      />
-      <GroupPlacement
-        ownerGroupId={data.ownerGroupId}
-        canEdit={data.canEdit}
-        transfer={async (toGroupId) => await transfer.mutateAsync({ id: data.id, toGroupId })}
-        testID="exercise-transfer"
-      />
-
+        },
+        testID: 'toggle-favourite',
+      }}
+      testID="exercise-transfer"
+    />
+  )
+  const contents = (
+    <Stack gap="md">
       {data.description === '' ? null : <Text tone="muted">{data.description}</Text>}
 
       <About exercise={data} />
@@ -140,6 +133,7 @@ export function ExerciseDetailView({
   if (place === 'sheet') {
     return (
       <Stack gap="lg" testID="exercise-detail-sheet">
+        {placement}
         {action}
         {contents}
       </Stack>
@@ -153,6 +147,7 @@ export function ExerciseDetailView({
         </Stack>
         {action}
       </Stack>
+      {placement}
       {contents}
     </Stack>
   )

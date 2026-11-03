@@ -7,6 +7,9 @@ import { CONTROL_HEIGHT, ICON_SIZE, LOG_CONTROL_HEIGHT, color, radius, stroke } 
  * read as a set. Drawn here rather than taken from an icon font: a font is a download for a dozen
  * shapes, and one with a missing glyph falls back to whatever the device has.
  */
+const STAR =
+  'M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01z'
+
 const GLYPHS = {
   back: ['M15 18l-6-6 6-6'],
   close: ['M18 6L6 18', 'M6 6l12 12'],
@@ -39,11 +42,19 @@ const GLYPHS = {
     'M9.964 6.825C8.019 7.977 9.5 13 8 15',
   ],
   equipment: ['M6 12h12', 'M6 7v10', 'M3 9v6', 'M18 7v10', 'M21 9v6'],
+  // Pinned or not, and moved to another group — after Lucide's (ISC), small beside who owns it.
+  star: [STAR],
+  transfer: ['M16 3l4 4-4 4', 'M20 7H4', 'M8 21l-4-4 4-4', 'M4 17h16'],
 } as const
 
-export type IconName = keyof typeof GLYPHS | 'more' | 'play'
+export type IconName = keyof typeof GLYPHS | 'more' | 'play' | 'starred'
 
-const TINT = { default: color.text, muted: color.textMuted, onAccent: color.accentText } as const
+const TINT = {
+  default: color.text,
+  muted: color.textMuted,
+  onAccent: color.accentText,
+  accent: color.accent,
+} as const
 
 /** A glyph's size: a control's, or `small` beside a line of caption text — a list filter's (#52). */
 const SIZE = { regular: ICON_SIZE, small: 16 } as const
@@ -65,6 +76,9 @@ export function Icon({
       ) : name === 'play' ? (
         // Filled, as every player's is: an outline reads as a shape, not as Play.
         <Path d="M8 5v14l11-7z" fill={tint} />
+      ) : name === 'starred' ? (
+        // The star filled: pinned, where the outline is not.
+        <Path d={STAR} fill={tint} stroke={tint} strokeWidth={stroke.bold} strokeLinejoin="round" />
       ) : (
         GLYPHS[name].map((d) => (
           <Path
@@ -85,7 +99,8 @@ export function Icon({
  * A secondary action as a glyph alone — close, undo, remove, back, how to — so it stays out of the way of
  * what the screen is for. Said aloud by its `label`. Its touch area is a full control; `edge` pulls
  * that area out past the content's edge, so the glyph itself lines up with the text beside it.
- * `raised` sits on a disc, for a control used every set: the logger's − and +.
+ * `raised` sits on a disc, for a control used every set: the logger's − and +. `disabled` while
+ * what it did is still in flight, so a second tap does not undo the first.
  */
 export function IconButton({
   name,
@@ -94,6 +109,7 @@ export function IconButton({
   edge,
   raised = false,
   tone = 'muted',
+  disabled = false,
   testID,
 }: {
   readonly name: IconName
@@ -102,12 +118,15 @@ export function IconButton({
   readonly edge?: 'start' | 'end' | undefined
   readonly raised?: boolean
   readonly tone?: keyof typeof TINT
+  readonly disabled?: boolean
   readonly testID?: string | undefined
 }): React.JSX.Element {
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
       testID={testID}
       style={({ pressed }) => [

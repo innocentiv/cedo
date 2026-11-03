@@ -8,7 +8,7 @@ import {
   useStartSession,
   useTransferWorkout,
 } from '../api/queries.ts'
-import { Button, Card, ConfirmButton, PinButton, Stack, Text } from '../ui/index.ts'
+import { Button, Card, ConfirmButton, Stack, Text } from '../ui/index.ts'
 import { DuplicateIntoMyGroup } from './duplicate-into-my-group.tsx'
 import { GroupPlacement } from './group-placement.tsx'
 import { useSubmit } from './use-submit.ts'
@@ -76,59 +76,59 @@ export function CopyFooter({ workoutId }: { readonly workoutId: string }): React
 }
 
 /**
- * What is done to a workout as a whole, under its outline (#26): pinning it, the group it is in, and
- * deleting it — asked twice; the sessions trained from it stay in history, no longer pointing at a
- * plan.
+ * Under a workout's name (#26): which group it is in, then a star pinning it and a transfer to
+ * another group — one quiet line, both rarely used.
  */
-export function WorkoutAdmin({
-  workout,
-  onDeleted,
-}: {
-  readonly workout: Workout
-  readonly onDeleted: () => void
-}): React.JSX.Element {
+export function WorkoutPlacement({ workout }: { readonly workout: Workout }): React.JSX.Element {
   const favourite = useFavouriteWorkout()
   const transfer = useTransferWorkout()
-  const remove = useDeleteWorkout()
-  // One submission each: pinning must not show the delete as busy.
   const pinning = useSubmit()
-  const deleting = useSubmit()
   return (
-    <Stack gap="md" testID="workout-admin">
-      <Text variant="label" tone="muted">
-        Workout
-      </Text>
-      <PinButton
-        pinned={workout.isFavourite}
-        busy={pinning.busy}
-        error={pinning.error}
-        onToggle={() => {
+    <GroupPlacement
+      ownerGroupId={workout.ownerGroupId}
+      canEdit={workout.canEdit}
+      transfer={async (toGroupId) => await transfer.mutateAsync({ id: workout.id, toGroupId })}
+      pin={{
+        pinned: workout.isFavourite,
+        busy: pinning.busy,
+        error: pinning.error,
+        onToggle: () => {
           void pinning.submit(async () => {
             await favourite.mutateAsync({ id: workout.id, on: !workout.isFavourite })
           })
-        }}
-        testID="workout-pin"
-      />
-      <GroupPlacement
-        ownerGroupId={workout.ownerGroupId}
-        canEdit={workout.canEdit}
-        transfer={async (toGroupId) => await transfer.mutateAsync({ id: workout.id, toGroupId })}
-        testID="workout-transfer"
-      />
-      {workout.canEdit ? (
-        <ConfirmButton
-          title="Delete workout"
-          busy={deleting.busy}
-          error={deleting.error}
-          onConfirm={async () => {
-            await deleting.submit(async () => {
-              await remove.mutateAsync(workout.id)
-              onDeleted()
-            })
-          }}
-          testID="workout-delete"
-        />
-      ) : null}
-    </Stack>
+        },
+        testID: 'workout-pin',
+      }}
+      testID="workout-transfer"
+    />
+  )
+}
+
+/**
+ * Deleting a workout, under its outline (#26) — asked twice; the sessions trained from it stay in
+ * history, no longer pointing at a plan. Only for who edits it.
+ */
+export function DeleteWorkout({
+  workoutId,
+  onDeleted,
+}: {
+  readonly workoutId: string
+  readonly onDeleted: () => void
+}): React.JSX.Element {
+  const remove = useDeleteWorkout()
+  const { submit, busy, error } = useSubmit()
+  return (
+    <ConfirmButton
+      title="Delete workout"
+      busy={busy}
+      error={error}
+      onConfirm={async () => {
+        await submit(async () => {
+          await remove.mutateAsync(workoutId)
+          onDeleted()
+        })
+      }}
+      testID="workout-delete"
+    />
   )
 }

@@ -1,36 +1,35 @@
-import { Button } from './button.tsx'
-import { FormError } from './feedback.tsx'
-import { Stack } from './stack.tsx'
+import { IconButton } from './icon.tsx'
 
 export interface PinButtonProps {
   readonly pinned: boolean
   readonly onToggle: () => void
   readonly busy?: boolean
-  readonly error?: string | null
+  readonly edge?: 'start' | 'end' | undefined
   readonly testID: string
 }
 
 /**
- * Pins what you can see, or unpins it — for the "Pinned" filter of the list it is in. Busy while the
- * last tap is in flight, so a double tap does not pin and unpin.
+ * Pins what you can see, or unpins it — for the "Pinned" filter of the list it is in. A star, small
+ * beside which group it is in: rarely used, so it takes no line of its own. Filled in the accent
+ * while pinned, said aloud as what a tap does. Inert while the last tap is in flight, so a double tap
+ * does not pin and unpin. Its refusal is shown by the line it sits in.
  */
 export function PinButton({
   pinned,
   onToggle,
   busy = false,
-  error = null,
+  edge,
   testID,
 }: PinButtonProps): React.JSX.Element {
   return (
-    <Stack gap="xs">
-      <Button
-        title={pinned ? 'Pinned ★' : 'Pin'}
-        variant="secondary"
-        busy={busy}
-        onPress={onToggle}
-        testID={testID}
-      />
-      <FormError message={error} testID={`${testID}-error`} />
-    </Stack>
+    <IconButton
+      name={pinned ? 'starred' : 'star'}
+      label={pinned ? 'Unpin' : 'Pin'}
+      tone={pinned ? 'accent' : 'muted'}
+      disabled={busy}
+      edge={edge}
+      onPress={onToggle}
+      testID={testID}
+    />
   )
 }

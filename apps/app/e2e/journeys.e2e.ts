@@ -2465,7 +2465,9 @@ test(
 
       await page.goto('/workouts')
       await app.workouts.openFirst()
-      await app.workouts.pin()
+      // Where it is and its star, one quiet line under its name — not a button of its own.
+      expect(await app.workouts.placement.oneLine()).toBe(true)
+      await app.workouts.placement.pin()
       expect(await app.workouts.listed('favourites')).toEqual(['Push Day'])
     })
   },
@@ -2576,6 +2578,7 @@ test(
       await page.goto('/exercises')
       await app.library.find(name)
       expect(await app.exercise.placement.owner()).toBe('In your personal group')
+      expect(await app.exercise.placement.oneLine()).toBe(true)
       expect(await app.exercise.placement.targets()).toEqual(['Squad'])
 
       await app.exercise.placement.transferTo('Squad')

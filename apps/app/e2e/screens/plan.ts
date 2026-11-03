@@ -89,7 +89,7 @@ export const workouts = (page: Page) => {
   }
   return {
     /** Which group the open plan is in, and transferring it to another. */
-    placement: placement(page, 'workout-transfer'),
+    placement: placement(page, 'workout-transfer', 'workout-pin'),
     /** Opens the first plan in the list on screen. */
     openFirst: async (): Promise<void> => {
       const row = await page.waitForSelector('[data-testid^="workout-row-"]')
@@ -111,14 +111,6 @@ export const workouts = (page: Page) => {
       await page.waitFor('workout-in-progress')
     },
     canStart: async (day: number): Promise<boolean> => await page.exists(`start-day-${day}`),
-    /** Pins the plan, and waits until it says so. */
-    pin: async (): Promise<void> => {
-      await page.click('[data-testid="workout-pin"]')
-      await page.until(
-        async () => await page.text('workout-pin'),
-        (title) => title?.includes('Pinned') === true,
-      )
-    },
     /** Deletes the plan, asked twice, and waits to be back where it was opened from. */
     delete: async (): Promise<void> => {
       await page.click('[data-testid="workout-delete"]')

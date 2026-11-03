@@ -1,10 +1,10 @@
 import type { Page } from '../harness.ts'
 
 /**
- * Which group a detail screen says its exercise or plan is in, and Transfer to group — the same on
- * both, under the test id `prefix`.
+ * The line under an exercise's or a plan's name: which group it is in, its pin, and Transfer to group
+ * — the same on both, under the test id `prefix`, its pin under `pin`.
  */
-export const placement = (page: Page, prefix: string) => {
+export const placement = (page: Page, prefix: string, pin: string) => {
   const owner = async (): Promise<string | null> => {
     await page.waitFor(`${prefix}-owner`)
     return await page.text(`${prefix}-owner`)
@@ -30,9 +30,32 @@ export const placement = (page: Page, prefix: string) => {
     await page.click(`[data-testid="${chosen.id}"]`)
     await page.click(`[data-testid="${chosen.id}-confirm"]`)
   }
+  /** What a tap on the pin would do, as it says aloud: "Pin", or "Unpin" once pinned. */
+  const pinSays = async (): Promise<unknown> =>
+    await page.evaluate(
+      `document.querySelector('[data-testid="${pin}"]').getAttribute('aria-label')`,
+    )
   return {
     /** "In Squad", or "In your personal group". */
     owner,
+    /** Pins it, and waits until the star says it is pinned. */
+    pin: async (): Promise<void> => {
+      await page.click(`[data-testid="${pin}"]`)
+      await page.until(pinSays, (says) => says === 'Unpin')
+    },
+    /**
+     * Whether where it is, its pin and any transfer share one line — each centred within a few
+     * pixels of the others — rather than each a row of its own.
+     */
+    oneLine: async (): Promise<boolean> => {
+      await owner()
+      const centres = await page.evaluate(
+        `['${prefix}-owner', '${pin}', '${prefix}'].map((id) => document.querySelector('[data-testid="' + id + '"]')).filter((e) => e !== null).map((e) => { const r = e.getBoundingClientRect(); return r.top + r.height / 2 })`,
+      )
+      if (!Array.isArray(centres) || centres.length < 2) return false
+      const ys = centres as number[]
+      return Math.max(...ys) - Math.min(...ys) < 4
+    },
     /** Whether Transfer to group is offered at all — once the screen says where it is. */
     canTransfer: async (): Promise<boolean> => {
       await owner()

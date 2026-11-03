@@ -5,7 +5,13 @@ import { EntrySettings } from './entry-settings.tsx'
 import { ExercisePicker } from './exercise-picker.tsx'
 import { entryAt, withEntriesAdded } from './plan-draft.ts'
 import { usePlanEditor } from './use-plan-editor.ts'
-import { CopyFooter, InProgress, WorkoutAdmin, useStartDay } from './workout-actions.tsx'
+import {
+  CopyFooter,
+  DeleteWorkout,
+  InProgress,
+  WorkoutPlacement,
+  useStartDay,
+} from './workout-actions.tsx'
 import { WorkoutHead, WorkoutTitle } from './workout-head.tsx'
 import { Outline } from './workout-outline.tsx'
 
@@ -71,12 +77,13 @@ export function WorkoutBody({
         onAddEntry={setPicking}
         start={starting.start === null ? null : { onStart: starting.start, busy: starting.busy }}
       />
-      <WorkoutAdmin workout={workout} onDeleted={goBack} />
+      {workout.canEdit ? <DeleteWorkout workoutId={workout.id} onDeleted={goBack} /> : null}
     </>
   )
 
   const page = (
     <Stack gap="lg">
+      <WorkoutPlacement workout={workout} />
       <WorkoutHead
         // Read again with other notes — saved elsewhere — its field starts from those.
         key={workout.notes ?? ''}
