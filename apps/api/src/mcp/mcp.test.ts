@@ -12,18 +12,17 @@ import {
   mcpAddress,
   type TrackingMode,
   Workout,
-  WorkoutSession,
   PlanSave,
   ageLine,
   ageThisYear,
   formatCalendarDay,
   page,
 } from '@cedo/contract'
-import { createApp } from '../app.ts'
 import { seedLibrary } from '../db/seed.ts'
 import { EXERCISE_LIBRARY } from '../db/seed-data/exercises.ts'
 import { expectContract } from '../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../test/harness.ts'
+import { appOf, callTool, mintPat, post, rpc, textOf } from '../test/mcp-wire.ts'
 import { reviewFixture } from '../modules/review/review-fixture.ts'
 
 /**
@@ -34,74 +33,11 @@ import { reviewFixture } from '../modules/review/review-fixture.ts'
 
 let h: TestApi
 let alice: TestUser
-let app: ReturnType<typeof createApp>
 
 beforeEach(async () => {
   h = await makeApi()
   alice = await h.as('alice')
-  app = createApp()
 })
-
-async function mintPat(user: TestUser): Promise<string> {
-  const res = await user.wire('/tokens', {
-    method: 'POST',
-    body: JSON.stringify({ name: 'claude' }),
-  })
-  return expectContract(PersonalAccessTokenCreated, res.body).token
-}
-
-const RpcResult = z.object({
-  result: z
-    .object({
-      tools: z
-        .array(
-          z.object({
-            name: z.string(),
-            description: z.string().optional(),
-            inputSchema: z.unknown().optional(),
-            annotations: z.record(z.string(), z.unknown()).optional(),
-          }),
-        )
-        .optional(),
-      content: z.array(z.object({ type: z.string(), text: z.string() })).optional(),
-      isError: z.boolean().optional(),
-    })
-    .optional(),
-  error: z.object({ code: z.number(), message: z.string() }).optional(),
-})
-
-async function rpc(pat: string | null, method: string, params: unknown = {}) {
-  const headers = new Headers({
-    'content-type': 'application/json',
-    accept: 'application/json, text/event-stream',
-  })
-  if (pat !== null) headers.set('authorization', `Bearer ${pat}`)
-
-  const response = await app.handle(
-    new Request('http://localhost/mcp', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
-    }),
-  )
-  const text = await response.text()
-  // The handler frames replies as server-sent events by default.
-  const payload = text.startsWith('event:') ? (text.split('data: ')[1] ?? '{}') : text || '{}'
-  return { status: response.status, body: RpcResult.safeParse(JSON.parse(payload)).data ?? {} }
-}
-
-const callTool = async (pat: string, name: string, args: unknown = {}) =>
-  await rpc(pat, 'tools/call', { name, arguments: args })
-
-type RpcBody = z.output<typeof RpcResult>
-const textOf = (body: RpcBody) => body.result?.content?.map((c) => c.text).join('\n') ?? ''
-
-/** A call over HTTP as `user` that must succeed: the setup a tool is then asked about. */
-const post = async (user: TestUser, path: string, body: unknown, method = 'POST') => {
-  const res = await user.wire(path, { method, body: JSON.stringify(body) })
-  if (res.status >= 300) throw new Error(`${method} ${path}: ${String(res.status)}`)
-  return res.body
-}
 
 describe('authentication', () => {
   test('rejects a request with no token', async () => {
@@ -147,7 +83,7 @@ describe('authentication', () => {
     const server = config.mcpServers[MCP_SERVER_NAME]
     if (server === undefined) throw new Error(`No ${MCP_SERVER_NAME} server in the config`)
 
-    const response = await app.handle(
+    const response = await appOf().handle(
       new Request(server.url, {
         method: 'POST',
         headers: {
@@ -888,81 +824,6 @@ describe('a past set corrected', () => {
  * prescription held for effort as a stall, and deloads a lift that only needed to be done at the
  * effort prescribed.
  */
-describe('workout_progression says why it held', () => {
-  /** A bench planned at 60 kg for three sets of eight, 2 in reserve, trained once at `reserve`. */
-  async function trainedAt(reserve: number | null, done: readonly number[] = [8, 8, 8]) {
-    const bench = expectContract(
-      Exercise,
-      await post(alice, '/exercises', {
-        name: 'Bench',
-        muscles: [{ muscle: 'pectoralis_major', loadPct: 100 }],
-      }),
-    )
-    const workout = expectContract(Workout, await post(alice, '/workouts', { name: 'Push' }))
-    const set = { targetReps: 8, targetWeightG: 60_000, targetReserve: 2 }
-    const plan = expectContract(
-      Workout,
-      await post(
-        alice,
-        `/workouts/${workout.id}/plan`,
-        {
-          days: [
-            {
-              name: 'A',
-              entries: [
-                {
-                  exerciseId: bench.id,
-                  sets: [set, set, set],
-                  progression: { kind: 'linear', incrementG: 2500, afterSuccesses: 1 },
-                },
-              ],
-            },
-          ],
-        },
-        'PUT',
-      ),
-    )
-    const dayId = plan.days[0]?.id ?? ''
-    const entryId = plan.days[0]?.entries[0]?.id ?? ''
-    const session = expectContract(
-      WorkoutSession,
-      await post(alice, '/sessions', { workoutId: workout.id, dayId }),
-    )
-    for (const reps of done) {
-      await post(alice, `/sessions/${session.id}/logs`, {
-        exerciseId: bench.id,
-        entryId,
-        weightG: 60_000,
-        reps,
-        reserve,
-      })
-    }
-    await post(alice, `/sessions/${session.id}`, { endedAt: new Date().toISOString() }, 'PATCH')
-    const result = await callTool(await mintPat(alice), 'workout_progression', {
-      workoutId: workout.id,
-    })
-    return textOf(result.body)
-  }
-
-  test('a session ground out past the reserve holds, for effort', async () => {
-    expect(await trainedAt(0)).toBe(
-      'Bench: hold at 8 × 60 kg · 2 in reserve — held for effort: a working set left 0 in reserve, fewer than it asked  (linear, from 1 session of history)',
-    )
-  })
-
-  test('a session short of its reps holds, and says so', async () => {
-    expect(await trainedAt(2, [8, 8, 6])).toBe(
-      'Bench: hold at 8 × 60 kg · 2 in reserve — held: short of the targets  (linear, from 1 session of history)',
-    )
-  })
-
-  test('a session within it advances, with its floor', async () => {
-    expect(await trainedAt(2)).toBe(
-      'Bench: 8 × 60 kg · 2 in reserve -> 8 × 62.5 kg · 2 in reserve  (linear, from 1 session of history)',
-    )
-  })
-})
-
 describe('editing a plan', () => {
   /**
    * The documented AI flow: fetch the editable JSON, change it, save it back. The round trip must

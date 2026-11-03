@@ -1,24 +1,8 @@
-import type {
-  AthleteEquipment,
-  Load,
-  ExerciseHistory,
-  ProgressionSuggestion,
-  TrackingMode,
-  WeightUnit,
-  Workout,
-  WorkoutSummary,
-  MuscleWork,
-  TrainingReview,
-} from '@cedo/contract'
+import type { ExerciseHistory, WeightUnit, MuscleWork, TrainingReview } from '@cedo/contract'
 import {
   AT_LEAST_SESSIONS,
-  LOAD_LIMIT_WORDS,
-  loadOf,
-  loadable,
-  MISSING_EQUIPMENT,
   driftLine,
   estimatedMax,
-  formatDuration,
   formatEffort,
   formatStall,
   formatWeight,
@@ -27,7 +11,6 @@ import {
 } from '@cedo/contract'
 import { DRIFT_RESERVE, DRIFT_SESSIONS, FALLING_SESSIONS } from '../modules/review/service.ts'
 import { aboutLine } from './format-file.ts'
-import { type GroupNameOf, ownership } from './format-group.ts'
 
 /**
  * Tool output is TEXT the model reads, and its size is the real cost of an MCP tool — not the
@@ -43,113 +26,6 @@ export const text = (body: string) => ({ content: [{ type: 'text' as const, text
 export const json = (value: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }],
 })
-
-/** A workout's flags, its line's and its outline's alike: `[mine]`, `[library, read-only]` (#47). */
-const flagsOf = (workout: WorkoutSummary, groupNameOf: GroupNameOf): string =>
-  `[${ownership(workout, groupNameOf).join(', ')}]`
-
-export const workoutLine = (workout: WorkoutSummary, groupNameOf: GroupNameOf): string =>
-  `${workout.name} | ${workout.dayCount} day${workout.dayCount === 1 ? '' : 's'}` +
-  ` | ${flagsOf(workout, groupNameOf)} | ${workout.id}`
-
-/**
- * Every effort below goes through the contract's `formatEffort`, so the AI reads a set exactly as
- * the app shows it. Hand-rolled here, a run's target read "no target set" (distance was dropped)
- * while the app said "5 km in 25m 0s".
- */
-const setLine = (
-  set: Workout['days'][number]['entries'][number]['sets'][number],
-  tracking: TrackingMode | null,
-  unit: WeightUnit,
-  load: Load | null,
-): string =>
-  `${set.isWarmup ? 'warm-up' : 'work'}: ${formatEffort(set.target, tracking, unit)}${inReserve(set.target.reserve)}${loadsNote(set.target.weightG, load, unit)}`
-
-/** ` (loads 22 kg)` beside a weight the athlete's equipment cannot load as written (#36). */
-function loadsNote(weightG: number | null, load: Load | null, unit: WeightUnit): string {
-  if (weightG === null) return ''
-  const can = loadable(load, weightG)
-  if (can.weightG === weightG) return ''
-  const end = can.limit === null ? '' : `, ${LOAD_LIMIT_WORDS[can.limit]}`
-  return ` (loads ${formatWeight(can.weightG, unit)}${end})`
-}
-
-/** The whole plan as an outline. A 6-day plan is ~60 short lines rather than ~40 KB of JSON. */
-export function workoutDetail(
-  workout: Workout,
-  unit: WeightUnit,
-  /** What the athlete it is read for has: a weight they cannot load as written says so (#36). */
-  held: AthleteEquipment,
-  groupNameOf: GroupNameOf,
-): string {
-  const header = `${workout.name}  (${workout.id})  ${flagsOf(workout, groupNameOf)}`
-  const notes = workout.notes === null ? [] : [`notes: ${workout.notes}`]
-
-  const days = workout.days.map((day) => {
-    const entries = day.entries.map((entry) => {
-      const superset = entry.supersetGroup === null ? '' : ` (superset ${entry.supersetGroup})`
-      const rest = entry.restSeconds === null ? '' : `, rest ${formatDuration(entry.restSeconds)}`
-      const rule =
-        entry.progression.kind === 'none' ? '' : `, progression: ${entry.progression.kind}`
-      // Null when the caller cannot see the exercise — see the note on WorkoutEntry.exercise.
-      const name = entry.exercise?.name ?? '[unavailable exercise]'
-      // Kept in the plan, still loggable — but the AI is told before it plans around it (#35).
-      const kit = entry.exercise?.doable === false ? ` [${MISSING_EQUIPMENT}]` : ''
-      const load = entry.exercise === null ? null : loadOf(entry.exercise, held, unit)
-      const tracking = entry.exercise?.tracking ?? null
-      return [
-        `  - ${name}${kit}${superset}${rest}${rule}   [entry ${entry.id}]`,
-        ...(entry.cue === null ? [] : [`      cue: ${entry.cue}`]),
-        ...entry.sets.map((set) => `      ${setLine(set, tracking, unit, load)}`),
-      ].join('\n')
-    })
-    // Its name, as the app shows a day: the outline's order is already its position, and a day
-    // named the way people name them — "Day 1 · Push" — was said twice under a number of ours.
-    return [day.name, ...entries].join('\n')
-  })
-
-  return [header, ...notes, '', ...days].join('\n')
-}
-
-export function suggestionLines(
-  suggestions: readonly ProgressionSuggestion[],
-  unit: WeightUnit,
-): string {
-  if (suggestions.length === 0) return 'This workout has no entries yet.'
-
-  return suggestions
-    .map((s) => {
-      const from = describeTarget(s.current, s.tracking, unit)
-      const to = describeTarget(s.suggested, s.tracking, unit)
-      const basis = `${s.sessionsConsidered} session${s.sessionsConsidered === 1 ? '' : 's'} of history`
-      return s.changed
-        ? `${s.exerciseName}: ${from} -> ${to}  (${s.rule.kind}, from ${basis})`
-        : `${s.exerciseName}: hold at ${from}${heldFor(s)}  (${s.rule.kind}, from ${basis})`
-    })
-    .join('\n')
-}
-
-/** A target with its reps in reserve — the floor a set is judged against (#45). */
-function describeTarget(
-  target: ProgressionSuggestion['current'],
-  tracking: TrackingMode,
-  unit: WeightUnit,
-): string {
-  const effort = formatEffort(target, tracking, unit)
-  return effort === '—' ? 'no target set' : `${effort}${inReserve(target.reserve)}`
-}
-
-/**
- * Why it held (#45): ` — held for effort: a working set left 0 in reserve, fewer than it asked`, so
- * the AI does not read a lift done harder than prescribed as a stall — or ` — held: short of the
- * targets`. Nothing when nothing held it: no history yet, or a run of cleared sessions still too
- * short.
- */
-function heldFor({ held }: ProgressionSuggestion): string {
-  if (held === null) return ''
-  if (held.reason === 'targets') return ' — held: short of the targets'
-  return ` — held for effort: a working set left ${String(held.reserve)} in reserve, fewer than it asked`
-}
 
 /**
  * `Bench Press: 4 sessions at 8 × 60 kg` — the top set those sessions share, in its exercise's own

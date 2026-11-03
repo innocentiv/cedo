@@ -6,7 +6,9 @@ import {
   ScopeFields,
   WorkoutCreate,
   PlanSave,
+  type ProgressionSuggestion,
   ReviewQuery,
+  TargetByHand,
   planSaveFrom,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
@@ -15,14 +17,8 @@ import { trainingReview } from '../../modules/review/service.ts'
 import { type PlanRead, planFor, savePlanAndRead } from '../../modules/workout/plan-for.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
-import {
-  json,
-  reviewSummary,
-  suggestionLines,
-  text,
-  workoutDetail,
-  workoutLine,
-} from '../format.ts'
+import { json, reviewSummary, text } from '../format.ts'
+import { suggestionLine, suggestionLines, workoutDetail, workoutLine } from '../format-workout.ts'
 import { groupNamesOf } from '../format-group.ts'
 
 const READ = { readOnlyHint: true, openWorldHint: false } as const
@@ -36,8 +32,10 @@ const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: fals
  * See docs/07-mcp.md.
  */
 export function registerTrainingTools(server: McpServer, caller: Caller): void {
-  const outline = async ({ workout, held }: PlanRead) =>
-    workoutDetail(workout, caller.weightUnit, held, await groupNamesOf(caller))
+  const outline = async (
+    { workout, held }: PlanRead,
+    targets: readonly ProgressionSuggestion[] = [],
+  ) => workoutDetail(workout, caller.weightUnit, held, await groupNamesOf(caller), targets)
 
   server.registerTool(
     'training_review',
@@ -92,14 +90,21 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     {
       title: 'Get a workout plan',
       description:
-        'The full plan as an outline: days, entries, supersets, prescribed sets and progression ' +
-        'rules. Read this before changing a plan. Use `workout_get_editable` if you intend to ' +
-        'rewrite it. An exercise your equipment — or, with `athlete`, theirs — lacks is marked.',
+        'The full plan as an outline: days, entries, supersets, each rule in full and each ' +
+        'prescribed set with its reps in reserve — warm-ups marked. The plan is the PRESCRIPTION, ' +
+        'where each follower starts; under an entry, `next:` is YOUR target where your own ' +
+        'sessions moved it (with `athlete`, no target is shown). Read this before changing a ' +
+        'plan; use `workout_get_editable` to rewrite it. An exercise your equipment — or, with ' +
+        '`athlete`, theirs — lacks is marked.',
       inputSchema: z.object({ workoutId: z.uuid() }).safeExtend(OfAthlete.shape),
       annotations: READ,
     },
     async ({ workoutId, athlete }) => {
-      return text(await outline(await planFor(await ownOrCoached(caller, athlete), workoutId)))
+      const read = await planFor(await ownOrCoached(caller, athlete), workoutId)
+      // The caller's own targets only: a coach reading an athlete's is not offered.
+      const targets =
+        athlete === undefined ? await ProgressionService.suggestForWorkout(caller, workoutId) : []
+      return text(await outline(read, targets))
     },
   )
 
@@ -141,17 +146,14 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       description:
         'Replace the ENTIRE plan atomically — days, entries and sets. Send the complete plan, not ' +
         'a patch: anything omitted is removed. Order comes from array position; never send an ' +
-        'index. Every entry needs at least one non-warm-up set. Weights are in GRAMS; on a ' +
-        'bodyweight exercise a weight is ADDED load, and a negative one is assistance (a band ' +
-        'worth 20 kg is -20000), allowed there only. A `targetReserve` is reps in reserve, whole, ' +
-        'none to five — the FEWEST a set must leave, not an aim: write a range as its bottom ' +
-        '(1-2 in reserve is 1). Each working set may ask its own, and a set that left fewer holds ' +
-        'progression, as a missed rep does. Write cues in reps in reserve, never RPE. Send back ' +
-        'the `id` of each day and entry you keep (from `workout_get_editable`): that keeps its ' +
-        'logged history and progression. An entry with no id, or whose exercise you changed, ' +
-        'starts with no history. Send the `version` workout_get_editable gave: if the plan was ' +
-        'changed since — by its owner, in the app — the save is refused, and you read it again. ' +
-        'Read note_list before changing a plan, and plan around what it says.',
+        'index. Each field says what it means: read them. The plan holds each entry’s ' +
+        'PRESCRIPTION, where every follower starts; each follower’s target then moves on its own ' +
+        'as they train (`workout_progression`), and changing what a rule moves or judges starts ' +
+        'it again from the new prescription. Plan warm-ups as warm-up sets with numbers, and say ' +
+        'effort in reps in reserve, never RPE. Send back the `id` of each day and entry you keep ' +
+        'and the `version`, both from `workout_get_editable`: ids keep logged history and ' +
+        'targets attached, and a save from a stale version is refused — read it again. Read ' +
+        'note_list before changing a plan, and plan around what it says.',
       inputSchema: PlanSave.safeExtend({ workoutId: z.uuid() }),
       annotations: WRITE,
     },
@@ -180,14 +182,17 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
   server.registerTool(
     'workout_progression',
     {
-      title: 'Suggest next targets',
+      title: 'Read your next targets',
       description:
-        "What each entry's next target should be, computed from the caller's own logged history " +
-        'by the same rules the app uses, and why each one that held did: short of its targets, ' +
-        'or a set that left fewer reps in reserve than it asked — that is effort, not a stall, ' +
-        'and no reason to deload. ' +
-        'Read-only: apply them with `workout_save_plan`, ' +
-        'after reading note_list — a sore shoulder outranks a rule.',
+        "Each entry's next target for YOU — what your next session asks, which the app's logger " +
+        'asks too — beside what the plan prescribes, and why your latest session held it, by its ' +
+        'set: `held: set 3 did 7 of 10`, short of the target, or `held for effort: set 3 left 0 ' +
+        'in reserve, asked 2` — effort, not a stall, and no reason to deload. Targets move by ' +
+        'themselves as sessions are finished; the plan is never rewritten. Reps in reserve are ' +
+        'not part of a target: each set asks the plan’s own (`workout_get`). Read-only. To set your ' +
+        'own target, `target_set`. To change where every follower starts — a new phase, after a ' +
+        'deload — save the new prescriptions with `workout_save_plan`, after reading note_list: ' +
+        'that restarts each follower’s target from them.',
       inputSchema: z.object({ workoutId: z.uuid() }),
       annotations: READ,
     },
@@ -198,5 +203,25 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
           caller.weightUnit,
         ),
       ),
+  )
+
+  server.registerTool(
+    'target_set',
+    {
+      title: 'Set your own target',
+      description:
+        'Set YOUR target on one entry by hand — where your next session starts — when the rule ' +
+        'has it wrong for you: after time off, on new equipment. Only what the entry’s rule ' +
+        'moves: double, reps inside its range and weight; linear, weight; linear_duration, ' +
+        'seconds; linear_distance, distance (time follows at the plan’s pace). Anything else is a ' +
+        'plan edit (`workout_save_plan`), and a Manual entry has no target: its numbers are the ' +
+        'plan’s. The plan is not changed. Your own target only — never an athlete’s.',
+      inputSchema: TargetByHand.safeExtend({ workoutId: z.uuid(), entryId: z.uuid() }),
+      annotations: WRITE,
+    },
+    async ({ workoutId, entryId, ...target }) => {
+      const set = await ProgressionService.setTargetByHand(caller, workoutId, entryId, target)
+      return text(`Set.\n\n${suggestionLine(set, caller.weightUnit)}`)
+    },
   )
 }

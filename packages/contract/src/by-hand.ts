@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 import type { Progression, SetTarget } from './progression.ts'
+import { PLAN_WORDS } from './plan-words.ts'
 import { unhandledKind } from './stored-rule.ts'
 
 /**
@@ -9,10 +10,16 @@ import { unhandledKind } from './stored-rule.ts'
  * reps in reserve are the plan's, which no rule moves.
  */
 export const TargetByHand = z.strictObject({
-  reps: TargetReps.optional(),
-  weightG: TargetWeightG.optional(),
-  durationS: TargetDurationS.optional(),
-  distanceMm: TargetDistanceMm.optional(),
+  reps: TargetReps.optional().describe(
+    'Reps your next session asks. Under double, inside its range.',
+  ),
+  weightG: TargetWeightG.optional().describe(PLAN_WORDS.targetWeightG),
+  durationS: TargetDurationS.optional().describe(
+    'Seconds your next session holds, under linear_duration.',
+  ),
+  distanceMm: TargetDistanceMm.optional().describe(
+    'Distance in millimetres your next session covers, under linear_distance — its time follows at the plan’s pace.',
+  ),
 })
 export type TargetByHand = z.output<typeof TargetByHand>
 

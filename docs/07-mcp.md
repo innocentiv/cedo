@@ -360,7 +360,9 @@ is said where the AI meets it, three ways (ADR-0026, ADR-0027):
 
 **How hard a set was is reps in reserve, everywhere.** Tools take it whole, none to five, and every line they
 print says it the same way: `8 × 55 kg · 2 in reserve`. RPE is how the column stores it, and no tool
-reads or writes it — the AI and the athlete read the same number by the same name.
+reads or writes it — the AI and the athlete read the same number by the same name. A target says
+none: each set asks the plan's own, which no rule moves, so `next: 9 × 60 kg` beside a ramp of 2, 1
+and 0 does not read as 2 for every set.
 
 ### Nothing can be deleted
 
