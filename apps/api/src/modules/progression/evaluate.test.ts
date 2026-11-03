@@ -6,7 +6,13 @@ import {
   againstOf,
   loadOf,
 } from '@cedo/contract'
-import { type EntryToEvaluate, type LatestStep, type PrescribedSet, suggest } from './evaluate.ts'
+import {
+  type EntryToEvaluate,
+  type LatestStep,
+  type PrescribedSet,
+  suggest,
+  targetsFrom,
+} from './evaluate.ts'
 
 /**
  * Reading a target, without a database (ADR-0026): the latest step while it still counts against
@@ -121,5 +127,15 @@ describe('reading a target', () => {
     expect(none?.suggested.weightG).toBe(22_000)
     expect(none?.changed).toBe(false)
     expect(read(sets, [stepped(at(24_000), sets)], DUMBBELLS)?.suggested.weightG).toBe(24_000)
+  })
+})
+
+/** What a session asks of each warm-up (ADR-0026): following the working target, worked out here. */
+describe("a session's warm-ups", () => {
+  test('follow the working target in proportion, and ask as planned before any step', () => {
+    const asked = (steps: LatestStep[]) =>
+      targetsFrom([entry()], plan(), steps, () => null, new Map())[0]?.warmups
+    expect(asked([])).toEqual([at(20_000, 5)])
+    expect(asked([stepped(at(75_000))])).toEqual([at(25_000, 5)])
   })
 })

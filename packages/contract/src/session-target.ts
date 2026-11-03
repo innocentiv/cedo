@@ -39,6 +39,11 @@ export const EntryTarget = z.object({
    * other, or none — in the order they were logged. Null when there is none.
    */
   last: z.array(LoggedEffort).nullable(),
+  /**
+   * What each warm-up asks, in set order: its own line, its weight following the working target in
+   * proportion (`warmupsFor`, ADR-0026) — worked out as it is read, never kept.
+   */
+  warmups: z.array(SetTarget),
 })
 export type EntryTarget = z.output<typeof EntryTarget>
 

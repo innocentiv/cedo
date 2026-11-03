@@ -16,6 +16,7 @@ import {
   prescriptionOf,
   setTargetOf,
   stillCounts,
+  warmupsFor,
 } from '@cedo/contract'
 import { groupBy } from '../../lib/keyset.ts'
 
@@ -67,11 +68,18 @@ function evaluate(
   prescribed: readonly PrescribedSet[],
   steps: readonly LatestStep[],
   loadFor: LoadFor,
-): { readonly suggestion: ProgressionSuggestion; readonly limit: LoadLimit | null }[] {
+): {
+  readonly entry: EntryToEvaluate
+  readonly suggestion: ProgressionSuggestion
+  readonly limit: LoadLimit | null
+}[] {
   const setsByEntry = groupBy(prescribed, (s) => s.entryId)
   const stepByEntry = new Map(steps.map((s) => [s.entryId, s]))
   return entries.map((entry) =>
-    suggestForEntry(entry, setsByEntry.get(entry.id) ?? [], stepByEntry.get(entry.id), loadFor),
+    Object.assign(
+      suggestForEntry(entry, setsByEntry.get(entry.id) ?? [], stepByEntry.get(entry.id), loadFor),
+      { entry },
+    ),
   )
 }
 
@@ -86,7 +94,11 @@ export function targetsFrom(
   loadFor: LoadFor,
   lastByExercise: ReadonlyMap<string, LoggedEffort[]>,
 ): EntryTarget[] {
-  return evaluate(entries, prescribed, steps, loadFor).map(({ suggestion: s, limit }) => ({
+  const warmupsByEntry = groupBy(
+    prescribed.filter((s) => s.isWarmup),
+    (s) => s.entryId,
+  )
+  return evaluate(entries, prescribed, steps, loadFor).map(({ entry, suggestion: s, limit }) => ({
     entryId: s.entryId,
     prescribed: s.current,
     target: s.suggested,
@@ -94,6 +106,12 @@ export function targetsFrom(
     held: s.held,
     limit,
     last: lastByExercise.get(s.exerciseId) ?? null,
+    warmups: warmupsFor(
+      (warmupsByEntry.get(s.entryId) ?? []).map((w) => setTargetOf(w)),
+      s.current,
+      s.suggested,
+      loadFor(entry),
+    ),
   }))
 }
 
