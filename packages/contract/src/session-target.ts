@@ -65,13 +65,17 @@ export function targetLine(
   asked: EntryTarget,
   tracking: TrackingMode,
   unit: WeightUnit,
-  /** The set it is said for: on Manual each asks its own. The entry's target when not given. */
-  set: Effort = asked.target,
+  /**
+   * The set it is said for: on Manual each working set asks its own. A warm-up is never judged, so
+   * on one — or none given — the line says the entry's target.
+   */
+  set?: { readonly isWarmup: boolean; readonly target: Effort },
 ): string {
+  const said = set === undefined || set.isWarmup ? asked.target : set.target
   const limit = asked.limit === null ? '' : ` · ${LOAD_LIMIT_WORDS[asked.limit]}`
   const target = `${formatEffort(asked.target, tracking, unit)}${limit}`
   const moved = asked.changed
     ? `Progressed to ${target} · the plan says ${formatEffort(asked.prescribed, tracking, unit)}`
-    : `Prescribed ${formatEffort(set, tracking, unit)}${limit}`
+    : `Prescribed ${formatEffort(said, tracking, unit)}${limit}`
   return asked.held === null ? moved : `${moved} · ${heldWords(asked.held, tracking, unit)}`
 }

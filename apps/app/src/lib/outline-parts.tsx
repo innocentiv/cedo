@@ -112,8 +112,8 @@ export function EntryLine({
 }: {
   readonly entry: EntryDraft
   readonly exercise: Exercise | undefined
-  /** The viewer's own target on it: said after the plan, only where it differs (ADR-0026). */
-  readonly target: SetTarget | undefined
+  /** The viewer's own target on it: said after the plan, only where it moved (ADR-0026). */
+  readonly target: { readonly suggested: SetTarget; readonly changed: boolean } | undefined
   readonly current: boolean
   readonly onPress: (() => void) | undefined
   /** None for a reader: the plan is not theirs to change. */

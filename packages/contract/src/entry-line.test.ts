@@ -12,6 +12,10 @@ const at = (reps: number, kg: number, reserve: number | null = null): SetTarget 
 const working = (...targets: SetTarget[]) => targets.map((target) => ({ isWarmup: false, target }))
 const warmup = (target: SetTarget) => ({ isWarmup: true, target })
 
+/** The viewer's target, as the server reads it: moved off the plan by their steps, or not. */
+const moved = (suggested: SetTarget) => ({ suggested, changed: true })
+const unmoved = (suggested: SetTarget) => ({ suggested, changed: false })
+
 const DOUBLE: Progression = { kind: 'double', repRange: [8, 12], incrementG: 5000 }
 const MANUAL: Progression = { kind: 'none' }
 
@@ -29,18 +33,29 @@ describe('entryLine', () => {
 
   test('the target after it, only when it differs from the plan', () => {
     const sets = working(at(10, 20), at(10, 20), at(10, 20))
-    expect(entryLine(sets, DOUBLE, 'weight_reps', 'kg', at(12, 40))).toBe(
+    expect(entryLine(sets, DOUBLE, 'weight_reps', 'kg', moved(at(12, 40)))).toBe(
       '3 sets · 10 × 20 kg · Double 8–12, +5 kg · next 12 × 40 kg',
     )
-    expect(entryLine(sets, DOUBLE, 'weight_reps', 'kg', at(10, 20))).toBe(
+    expect(entryLine(sets, DOUBLE, 'weight_reps', 'kg', unmoved(at(10, 20)))).toBe(
       '3 sets · 10 × 20 kg · Double 8–12, +5 kg',
     )
   })
 
   test('reps in reserve neither split a run nor make a target differ', () => {
     const ramp = working(at(10, 20, 2), at(10, 20, 1), at(10, 20, 0))
-    expect(entryLine(ramp, DOUBLE, 'weight_reps', 'kg', at(10, 20, 2))).toBe(
+    expect(entryLine(ramp, DOUBLE, 'weight_reps', 'kg', unmoved(at(10, 20, 2)))).toBe(
       '3 sets · 10 × 20 kg · Double 8–12, +5 kg',
+    )
+  })
+
+  /**
+   * Snapping is not progress (#36): a 22.5 kg plan the athlete's dumbbells load as 22 reads the
+   * same, though the target says 22 — the server's `changed` says whether it moved.
+   */
+  test('a target only snapped to the equipment is no next', () => {
+    const sets = working(at(10, 22.5), at(10, 22.5))
+    expect(entryLine(sets, DOUBLE, 'weight_reps', 'kg', unmoved(at(10, 22)))).toBe(
+      '2 sets · 10 × 22.5 kg · Double 8–12, +5 kg',
     )
   })
 
@@ -53,7 +68,7 @@ describe('entryLine', () => {
 
   test('a manual entry says no target: its numbers are the plan’s', () => {
     const sets = working(at(8, 60), at(8, 60))
-    expect(entryLine(sets, MANUAL, 'weight_reps', 'kg', at(9, 60))).toBe(
+    expect(entryLine(sets, MANUAL, 'weight_reps', 'kg', moved(at(9, 60)))).toBe(
       '2 sets · 8 × 60 kg · Manual',
     )
   })

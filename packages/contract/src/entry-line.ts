@@ -37,20 +37,20 @@ export function workingRuns(
 /**
  * An entry as its outline line says it (docs/08-frontend.md, "Editing a workout"): its working sets,
  * its rule in full — Manual too — and, under a rule, the viewer's own target after it, only when it
- * differs from what the plan asks: `3 sets · 10 × 20 kg · Double 8–12, +5 kg · next 12 × 40 kg`.
- * A target says no reps in reserve: each set asks the plan's own.
+ * moved off the plan: `3 sets · 10 × 20 kg · Double 8–12, +5 kg · next 12 × 40 kg`. Whether it
+ * moved is the server's `changed`, not a comparison here: its target is in a weight the equipment
+ * loads (#36), the plan as written — 22.5 kg read as 22 has not progressed. A target says no reps
+ * in reserve: each set asks the plan's own.
  */
 export function entryLine(
   sets: readonly LineSet[],
   rule: Progression,
   tracking: TrackingMode | null,
   unit: WeightUnit,
-  target: Effort | null,
+  target: { readonly suggested: Effort; readonly changed: boolean } | null,
 ): string {
   const words = describeProgression(rule, (grams) => formatWeight(grams, unit))
   const line = `${workingRuns(sets, tracking, unit)} · ${words}`
-  const plan = sets.find((s) => !s.isWarmup)
-  if (rule.kind === 'none' || target === null || plan === undefined) return line
-  const next = formatEffort(target, tracking, unit)
-  return next === formatEffort(plan.target, tracking, unit) ? line : `${line} · next ${next}`
+  if (rule.kind === 'none' || target === null || !target.changed) return line
+  return `${line} · next ${formatEffort(target.suggested, tracking, unit)}`
 }

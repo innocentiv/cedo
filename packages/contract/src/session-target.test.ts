@@ -69,7 +69,17 @@ describe('targetLine', () => {
 
   /** On Manual each set asks its own: the line says the one being logged, not set 1's. */
   test('as prescribed, of the set it is said for', () => {
-    expect(targetLine(asked({}), 'weight_reps', 'kg', at(80_000))).toBe('Prescribed 8 × 80 kg')
+    const set = { isWarmup: false, target: at(80_000) }
+    expect(targetLine(asked({}), 'weight_reps', 'kg', set)).toBe('Prescribed 8 × 80 kg')
+  })
+
+  /** A warm-up is never judged: the line says the entry's target, and why it held, not its own. */
+  test('on a warm-up, the entry’s target — not the warm-up’s numbers beside a working set’s hold', () => {
+    const held = asked({ held: { reason: 'effort', set: 3, reserve: 0, asked: 2 } })
+    const warmup = { isWarmup: true, target: at(30_000) }
+    expect(targetLine(held, 'weight_reps', 'kg', warmup)).toBe(
+      'Prescribed 8 × 60 kg · held for effort: set 3 left 0 in reserve, asked 2',
+    )
   })
 
   test("where the athlete's equipment stopped it", () => {
