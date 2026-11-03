@@ -32,3 +32,4 @@ export async function suggestForWorkout(
   const loadFor = await loadsOf(caller.userId, caller.weightUnit)
   return suggest(loaded.entries, loaded.prescribed, loaded.steps, loadFor)
 }
+export { setTargetByHand } from './by-hand.ts'

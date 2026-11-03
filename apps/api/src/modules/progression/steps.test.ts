@@ -233,3 +233,42 @@ describe('a correction takes the steps after it again', () => {
     expect((await suggested(p))?.sessionsConsidered).toBe(1)
   })
 })
+
+/** A target set by hand anchors what follows (ADR-0026): a step of its own, by the same rules. */
+describe('a target set by hand', () => {
+  const setBy = (p: Plan, target: unknown) =>
+    alice.wire(`/workouts/${p.workoutId}/entries/${p.entryId}/target`, {
+      method: 'PUT',
+      body: JSON.stringify(target),
+    })
+
+  test('is where the next session is judged from', async () => {
+    const p = await planned()
+    await trained(p, 8)
+    const set = await setBy(p, { reps: 11 })
+    expect(expectContract(ProgressionSuggestion, set.body).suggested).toMatchObject({
+      reps: 11,
+      weightG: 55_000,
+    })
+    await trained(p, 11)
+    expect((await suggested(p))?.suggested).toMatchObject({ reps: 12, weightG: 55_000 })
+  })
+
+  test('is refused for what the rule does not move, saying why — and nothing is set', async () => {
+    const p = await planned()
+    const res = await setBy(p, { reps: 14 })
+    expect(res.status).toBe(422)
+    expect(JSON.stringify(res.body)).toContain('Double 8–12 asks 8 to 12 reps, not 14')
+    expect((await suggested(p))?.suggested).toMatchObject({ reps: 8, weightG: 55_000 })
+  })
+
+  test('is not anyone else’s to set', async () => {
+    const p = await planned()
+    const bob = await (await makeApi()).as('bob')
+    const res = await bob.wire(`/workouts/${p.workoutId}/entries/${p.entryId}/target`, {
+      method: 'PUT',
+      body: JSON.stringify({ reps: 10 }),
+    })
+    expect(res.status).toBe(404)
+  })
+})

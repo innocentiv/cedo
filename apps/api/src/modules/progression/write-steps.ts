@@ -34,9 +34,7 @@ export async function retakeSteps(
   loadFor: LoadFor,
 ): Promise<void> {
   if (entryIds.length === 0) return
-  await tx.execute(
-    sql`select pg_advisory_xact_lock(hashtextextended(${`steps:${caller.userId}`}, 0))`,
-  )
+  await lockSteps(tx, caller)
 
   const entries = await ruledEntries(tx, caller, entryIds)
   if (entries.length === 0) return
@@ -72,6 +70,38 @@ export async function retakeSteps(
   await tx
     .insert(progressionSteps)
     .values(taken.map((s) => Object.assign(s, { userId: caller.userId, kind: 'session' as const })))
+}
+
+/**
+ * A target set by hand: a step of its own, dated now, anchoring every session after it. Under the
+ * caller's step lock, as every step is taken.
+ */
+export async function writeByHand(
+  tx: Transaction,
+  caller: Caller,
+  step: {
+    readonly entryId: string
+    readonly from: SetTarget
+    readonly target: SetTarget
+    readonly against: Against
+  },
+): Promise<void> {
+  await lockSteps(tx, caller)
+  await tx.insert(progressionSteps).values({
+    ...step,
+    userId: caller.userId,
+    kind: 'by_hand',
+    takenAt: sql`now()`,
+    held: null,
+    streak: 0,
+  })
+}
+
+/** A person's steps are taken one write at a time: a correction and a finish cannot interleave. */
+const lockSteps = async (tx: Transaction, caller: Caller): Promise<void> => {
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended(${`steps:${caller.userId}`}, 0))`,
+  )
 }
 
 /** Which entries a session of the caller's trained, and when it started: what its steps cover. */
