@@ -24,13 +24,20 @@ export default function Register(): React.JSX.Element {
           error={fieldError('username')}
           hint="Letters, numbers, dot, underscore, hyphen."
         >
-          <Input value={username} onChangeText={setUsername} autoFocus testID="register-username" />
+          <Input
+            value={username}
+            onChangeText={setUsername}
+            autoComplete="username"
+            autoFocus
+            testID="register-username"
+          />
         </Field>
         <Field label="Display name" error={fieldError('displayName')}>
           <Input
             value={displayName}
             onChangeText={setDisplayName}
             autoCapitalize="sentences"
+            autoComplete="name"
             testID="register-display-name"
           />
         </Field>
@@ -39,6 +46,7 @@ export default function Register(): React.JSX.Element {
             value={password}
             onChangeText={setPassword}
             secure
+            autoComplete="new-password"
             onSubmitEditing={onSubmit}
             testID="register-password"
           />

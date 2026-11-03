@@ -32,7 +32,7 @@ export default function Login(): React.JSX.Element {
           <Input
             value={username}
             onChangeText={setUsername}
-            placeholder="valerio"
+            autoComplete="username"
             autoFocus
             testID="login-username"
           />
@@ -42,6 +42,7 @@ export default function Login(): React.JSX.Element {
             value={password}
             onChangeText={setPassword}
             secure
+            autoComplete="current-password"
             onSubmitEditing={onSubmit}
             testID="login-password"
           />

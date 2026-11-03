@@ -72,6 +72,12 @@ export interface InputProps {
   readonly secure?: boolean
   readonly autoFocus?: boolean
   readonly autoCapitalize?: 'none' | 'sentences'
+  /**
+   * What the field holds, for the password manager: an account's `username`, the password it
+   * signs in with, or a `new-password` it is about to have — so the iOS Keychain offers to fill
+   * the one and save the other.
+   */
+  readonly autoComplete?: 'username' | 'current-password' | 'new-password' | 'name' | undefined
   readonly multiline?: boolean
   readonly invalid?: boolean
   readonly onSubmitEditing?: (() => void) | undefined
@@ -92,6 +98,7 @@ export function Input({
   secure = false,
   autoFocus = false,
   autoCapitalize = 'none',
+  autoComplete,
   multiline = false,
   invalid = false,
   onSubmitEditing,
@@ -109,6 +116,7 @@ export function Input({
       secureTextEntry={secure}
       autoFocus={autoFocus}
       autoCapitalize={autoCapitalize}
+      autoComplete={autoComplete}
       autoCorrect={false}
       multiline={multiline}
       onSubmitEditing={onSubmitEditing}
