@@ -2,7 +2,8 @@ import { Pressable, StyleSheet, View } from 'react-native'
 import { RESERVE_CHOICES, formatReserve, reserveOf, rpeOf } from '@cedo/contract'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
-import { CONTROL_HEIGHT, color, radius, stroke } from './tokens.ts'
+import { segmented } from './segmented.ts'
+import { CONTROL_HEIGHT, color } from './tokens.ts'
 
 /**
  * Reps in reserve — the question RPE is asked as (`rpe.ts`): none to five, whole, as one row of
@@ -27,7 +28,7 @@ export function ReserveChips({
       <Text variant="caption" tone="muted">
         {label}
       </Text>
-      <View style={styles.row} testID={testID}>
+      <View style={[segmented.bar, styles.row]} testID={testID}>
         {RESERVE_CHOICES.map((reserve, i) => (
           <Pressable
             key={reserve}
@@ -40,7 +41,7 @@ export function ReserveChips({
             testID={`${testID}-${String(reserve)}`}
             style={({ pressed }) => [
               styles.segment,
-              i > 0 ? styles.divided : null,
+              i > 0 ? segmented.divided : null,
               reserve === chosen ? styles.chosen : null,
               pressed ? styles.pressed : null,
             ]}
@@ -56,16 +57,8 @@ export function ReserveChips({
 }
 
 const styles = StyleSheet.create({
-  row: {
-    flexDirection: 'row',
-    height: CONTROL_HEIGHT,
-    borderRadius: radius.md,
-    borderWidth: stroke.hairline,
-    borderColor: color.border,
-    overflow: 'hidden',
-  },
+  row: { height: CONTROL_HEIGHT },
   segment: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  divided: { borderLeftWidth: stroke.hairline, borderLeftColor: color.border },
   chosen: { backgroundColor: color.surfaceRaised },
   pressed: { backgroundColor: color.border },
 })

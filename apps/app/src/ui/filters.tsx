@@ -3,7 +3,8 @@ import { Pressable, StyleSheet, View } from 'react-native'
 import { Icon, IconButton, type IconName } from './icon.tsx'
 import { Sheet } from './sheet.tsx'
 import { Text } from './text.tsx'
-import { color, radius, space, stroke } from './tokens.ts'
+import { segmented } from './segmented.ts'
+import { color, space, stroke } from './tokens.ts'
 
 /**
  * How a list is narrowed (#52): one look for every filter, wherever a list is filtered. Each is a
@@ -29,7 +30,7 @@ export function FilterRow({
 }): React.JSX.Element {
   return (
     <View style={styles.line}>
-      <View style={styles.bar} testID={testID}>
+      <View style={[segmented.bar, styles.bar]} testID={testID}>
         {children}
       </View>
       {onClear === undefined ? null : (
@@ -124,6 +125,7 @@ export function FilterTrigger({
       testID={testID}
       style={({ pressed }) => [
         styles.segment,
+        segmented.divided,
         active ? styles.active : null,
         pressed ? styles.pressed : null,
       ]}
@@ -146,18 +148,12 @@ export function FilterTrigger({
 
 const styles = StyleSheet.create({
   line: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
-  bar: {
-    flex: 1,
-    flexDirection: 'row',
-    borderRadius: radius.md,
-    borderWidth: stroke.hairline,
-    borderColor: color.border,
-    overflow: 'hidden',
-  },
+  bar: { flex: 1 },
   /**
    * Each as wide as what it says, then an equal share of what is left — so a short "All" leaves room
    * for "My Equipment"; past the bar's width, each value is cut short. Each draws the line before it
-   * — the first's falls under the bar's own edge, clipped, so no segment needs to know it is first.
+   * (`segmented.divided`) — the first's falls under the bar's own edge, clipped, so no segment needs
+   * to know it is first.
    */
   segment: {
     flexGrow: 1,
@@ -169,8 +165,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.sm,
     paddingVertical: space.sm,
     marginLeft: -stroke.hairline,
-    borderLeftWidth: stroke.hairline,
-    borderLeftColor: color.border,
   },
   active: { backgroundColor: color.accent },
   value: { flexShrink: 1 },
