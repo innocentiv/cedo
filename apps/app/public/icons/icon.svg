@@ -1,15 +1,17 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
   <!--
-    The app icon: a barbell on the app's background, colours from src/ui/tokens.ts. Full bleed, with
-    the barbell inside the maskable safe zone (a circle of 40% radius), so one image serves as both
-    the plain and the maskable icon. The PNGs beside it are rendered from this file:
+    The mark (#61): a yellow plate face on, its steel insert at the hub, and a wedge of shadow across
+    its right side that opens it into the c of cedo. Drawn again for the app by `Mark`
+    (src/ui/mark.tsx), colours from src/ui/tokens.ts (`brand`). Full bleed on the floor, with the
+    plate inside the maskable safe zone (a circle of 40% radius), so one image serves as both the
+    plain and the maskable icon. The PNGs beside it are rendered from this file:
       for s in 192 512; do rsvg-convert -w $s -h $s icon.svg -o icon-$s.png; done
       rsvg-convert -w 180 -h 180 icon.svg -o apple-touch-icon.png
   -->
-  <rect width="512" height="512" fill="#0b0d10"/>
-  <rect x="112" y="246" width="288" height="20" rx="10" fill="#9aa4b2"/>
-  <rect x="136" y="196" width="28" height="120" rx="8" fill="#4c8dff"/>
-  <rect x="168" y="166" width="36" height="180" rx="10" fill="#4c8dff"/>
-  <rect x="308" y="166" width="36" height="180" rx="10" fill="#4c8dff"/>
-  <rect x="348" y="196" width="28" height="120" rx="8" fill="#4c8dff"/>
+  <rect width="512" height="512" fill="#1b1c1e"/>
+  <circle cx="256" cy="256" r="180" fill="#f2b90f"/>
+  <path d="M256 256 L393.9 140.3 A180 180 0 0 1 393.9 371.7 Z" fill="#a87f0a"/>
+  <circle cx="256" cy="256" r="138" fill="none" stroke="#1b1c1e" stroke-opacity="0.22" stroke-width="8"/>
+  <circle cx="256" cy="256" r="50" fill="#ece8e1"/>
+  <circle cx="256" cy="256" r="30" fill="#1b1c1e"/>
 </svg>

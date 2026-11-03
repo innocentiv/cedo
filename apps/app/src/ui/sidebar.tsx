@@ -1,15 +1,14 @@
 import { Pressable, StyleSheet } from 'react-native'
+import { BrandHeading } from './brand.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 import { space } from './tokens.ts'
 
-/** The product's name, at the head of a desktop's sidebar (#29). */
+/** The product's name and its mark, at the head of a desktop's sidebar (#29, #61). */
 export function SidebarName({ name }: { readonly name: string }): React.JSX.Element {
   return (
     <Stack style={styles.name}>
-      <Text variant="title" testID="sidebar-name">
-        {name}
-      </Text>
+      <BrandHeading text={name} testID="sidebar-name" />
     </Stack>
   )
 }

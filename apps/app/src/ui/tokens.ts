@@ -59,6 +59,20 @@ export const color = {
   danger: plate.red,
 } as const
 
+/**
+ * The mark's own colours (#61), and nothing else's: a yellow plate, the wedge of shadow that opens
+ * it into a c, and its steel insert. Yellow here is the product's name, not a state — which is why
+ * it is spelled apart from `color.accent`, though it is the same plate.
+ */
+export const brand = {
+  plate: plate.yellow,
+  /** The plate in shadow: its yellow, a quarter of the light gone. */
+  shadow: '#a87f0a',
+  insert: plate.white,
+  /** Through the hub, and the raised rim's line: the floor showing through. */
+  floor: color.bg,
+} as const
+
 /** A four-point scale. Anything between two steps is a design decision nobody made on purpose. */
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const
 
@@ -80,6 +94,13 @@ export const font = {
   numeralBold: 'BarlowCondensed_700Bold',
 } as const
 
+/**
+ * Barlow Condensed's vertical metrics, per em, from the font itself (hhea; OS/2 cap height): where
+ * its capitals sit inside a line box, so something drawn beside a title can centre on the letters
+ * rather than on a box that keeps room for descenders below them (#61).
+ */
+export const NUMERAL_METRICS = { ascent: 1, descent: 0.2, capHeight: 0.7 } as const
+
 const tabular = ['tabular-nums'] as const
 
 export const type = {
@@ -87,6 +108,8 @@ export const type = {
   display: { fontSize: 64, lineHeight: 68, fontFamily: font.numeralBold, fontVariant: tabular },
   /** A number that is read at a glance: a rest, a set in a list. */
   number: { fontSize: 28, lineHeight: 32, fontFamily: font.numeral, fontVariant: tabular },
+  /** The product's name, under its mark where you come in (#61). */
+  wordmark: { fontSize: 44, lineHeight: 44, fontFamily: font.numeralBold },
   title: { fontSize: 32, lineHeight: 36, fontFamily: font.numeralBold },
   heading: { fontSize: 20, lineHeight: 26, fontFamily: font.semibold },
   body: { fontSize: 16, lineHeight: 22, fontFamily: font.regular },
@@ -145,3 +168,12 @@ export const CONTENT_MAX_WIDTH = 720
  * column still narrower than one column alone.
  */
 export const WIDE_CONTENT_MAX_WIDTH = 1120
+
+/**
+ * The mark (#61): large where you come in — signing in, registering — every detail of the plate
+ * showing; beside a title, a heading's height.
+ */
+export const BRAND_MARK_SIZE = { door: 128, heading: 36 } as const
+
+/** The way in — signing in, registering: one narrow column, on a phone and a desktop alike. */
+export const DOOR_MAX_WIDTH = 400

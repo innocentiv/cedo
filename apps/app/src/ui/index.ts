@@ -3,6 +3,7 @@
  * nowhere else that renders. See docs/08-frontend.md.
  */
 export { Button, type ButtonVariant } from './button.tsx'
+export { BrandHeading, BrandMark, FrontDoor } from './brand.tsx'
 export { Card, ListRow } from './card.tsx'
 export { Columns } from './columns.tsx'
 export { Chip } from './chips.tsx'
