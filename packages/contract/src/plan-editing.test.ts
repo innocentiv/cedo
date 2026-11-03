@@ -290,6 +290,16 @@ describe('a prescription in one line', () => {
     expect(formatPrescription(sets, null, 'kg')).toBe('2 sets · 6 × 20 kg')
   })
 
+  /** A top set and its back-offs (ADR-0026): each run of equal sets, as the outline says them. */
+  test('working sets that differ are said as their runs', () => {
+    const sets = [
+      { isWarmup: false, target: target(6, 90_000) },
+      { isWarmup: false, target: target(8, 80_000) },
+      { isWarmup: false, target: target(8, 80_000) },
+    ]
+    expect(formatPrescription(sets, 'weight_reps', 'kg')).toBe('1 set 6 × 90 kg · 2 sets 8 × 80 kg')
+  })
+
   test('one set is a set, and warm-ups alone prescribe nothing', () => {
     expect(formatPrescription([{ isWarmup: false, target: target(5, null) }], null, 'kg')).toBe(
       '1 set · 5 reps',

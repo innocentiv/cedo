@@ -6,6 +6,7 @@ import {
   sameReserveForAll,
   startAtChoices,
   switchRule,
+  withRange,
 } from './entry-editing.ts'
 import type { WorkoutSetInput } from './plan-set.ts'
 import type { Progression } from './progression.ts'
@@ -138,5 +139,29 @@ describe('restartsTarget', () => {
     expect(restartsTarget(plan, prescribeAt(plan, 0, { targetWeightG: 30_000 }))).toBe(false)
     expect(restartsTarget(plan, { ...plan, sets: [...plan.sets, set(10, 60, 2)] })).toBe(false)
     expect(restartsTarget(plan, { ...plan, restSeconds: 180, cue: 'Pause' })).toBe(false)
+  })
+})
+
+/** A double's range edited: the reps it starts at stay inside it, so none is left outside. */
+describe('withRange', () => {
+  const tens = entry(DOUBLE, set(5, 40, null, true), set(10, 60, 2), set(10, 60, 1))
+
+  test('reps the new range still holds are kept', () => {
+    expect(withRange(tens, [6, 10]).sets).toEqual(tens.sets)
+    expect(withRange(tens, [6, 10]).progression).toEqual({ ...DOUBLE, repRange: [6, 10] })
+  })
+
+  test('reps outside it move to its nearest end — warm-ups and reserves as they were', () => {
+    expect(withRange(tens, [12, 15]).sets).toEqual([
+      set(5, 40, null, true),
+      set(12, 60, 2),
+      set(12, 60, 1),
+    ])
+    expect(withRange(tens, [5, 8]).sets.map((s) => s.targetReps)).toEqual([5, 8, 8])
+  })
+
+  test('only a double has a range', () => {
+    const linear = entry(LINEAR, set(10, 60))
+    expect(withRange(linear, [6, 8])).toBe(linear)
   })
 })

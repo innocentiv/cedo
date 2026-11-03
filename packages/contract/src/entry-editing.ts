@@ -75,3 +75,24 @@ export const restartsTarget = (before: WorkoutEntryInput, after: WorkoutEntryInp
     againstOf(before.progression, workingOf(before)),
     againstOf(after.progression, workingOf(after)),
   )
+
+/**
+ * A double's range edited: the working sets' reps move to its nearest end when it no longer holds
+ * them, so "Start at" never shows reps outside it. A range whose `from` is not below its `to` is
+ * kept as typed — the schema refuses it, and the plan's line says so (`planIssues`).
+ */
+export function withRange<E extends WorkoutEntryInput>(
+  entry: E,
+  repRange: readonly [number, number],
+): E {
+  const rule = entry.progression
+  if (rule.kind !== 'double') return entry
+  const [from, to] = repRange
+  const inside = (reps: number | null) =>
+    reps === null || from > to ? reps : Math.min(Math.max(reps, from), to)
+  return {
+    ...entry,
+    progression: { ...rule, repRange: [from, to] },
+    sets: entry.sets.map((s) => (s.isWarmup ? s : { ...s, targetReps: inside(s.targetReps) })),
+  }
+}

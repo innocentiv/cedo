@@ -523,7 +523,7 @@ describe("a rule fits its exercise's tracking mode", () => {
     )
     expect(res.status).toBe(422)
     expect(JSON.stringify(expectContract(ApiError, res.body))).toContain(
-      'A timed exercise takes Manual or linear duration (adds seconds), not double',
+      'A timed exercise takes linear duration (adds seconds) or Manual, not double',
     )
   })
 

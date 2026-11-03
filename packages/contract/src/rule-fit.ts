@@ -9,10 +9,10 @@ type Kind = Progression['kind']
  * The one answer the plan save, the editor and MCP all ask; in the order the editor offers them.
  */
 const RULES: Record<TrackingMode, readonly Kind[]> = {
-  weight_reps: ['none', 'linear', 'double'],
-  bodyweight_reps: ['none', 'linear', 'double'],
-  duration: ['none', 'linear_duration'],
-  distance_duration: ['none', 'linear_distance'],
+  weight_reps: ['double', 'linear', 'none'],
+  bodyweight_reps: ['double', 'linear', 'none'],
+  duration: ['linear_duration', 'none'],
+  distance_duration: ['linear_distance', 'none'],
 }
 
 /** What an exercise of each mode is called, in a refusal. */

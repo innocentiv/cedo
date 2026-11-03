@@ -17,7 +17,11 @@ const count = (n: number): string => `${n} set${n === 1 ? '' : 's'}`
  * any rule: `3 sets · 10 × 20 kg`, or a top set and its back-offs, `1 set 6 × 90 kg · 2 sets 8 ×
  * 80 kg`. Under a rule every working set asks the same (ADR-0026), so it is one run.
  */
-function runs(sets: readonly LineSet[], tracking: TrackingMode | null, unit: WeightUnit): string {
+export function workingRuns(
+  sets: readonly LineSet[],
+  tracking: TrackingMode | null,
+  unit: WeightUnit,
+): string {
   const efforts = sets.filter((s) => !s.isWarmup).map((s) => formatEffort(s.target, tracking, unit))
   if (efforts.length === 0) return 'no working sets'
   const grouped: { effort: string; n: number }[] = []
@@ -44,7 +48,7 @@ export function entryLine(
   target: Effort | null,
 ): string {
   const words = describeProgression(rule, (grams) => formatWeight(grams, unit))
-  const line = `${runs(sets, tracking, unit)} · ${words}`
+  const line = `${workingRuns(sets, tracking, unit)} · ${words}`
   const plan = sets.find((s) => !s.isWarmup)
   if (rule.kind === 'none' || target === null || plan === undefined) return line
   const next = formatEffort(target, tracking, unit)

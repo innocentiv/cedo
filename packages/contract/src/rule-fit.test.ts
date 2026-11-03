@@ -7,25 +7,25 @@ import { ruleMisfit, rulesFor } from './rule-fit.ts'
  * editor and MCP alike.
  */
 describe('the rules that fit a tracking mode', () => {
-  test('a lift, weighted or bodyweight, takes manual, linear or double', () => {
-    expect(rulesFor('weight_reps')).toEqual(['none', 'linear', 'double'])
-    expect(rulesFor('bodyweight_reps')).toEqual(['none', 'linear', 'double'])
+  test('a lift, weighted or bodyweight, takes double, linear or manual — the editor’s order', () => {
+    expect(rulesFor('weight_reps')).toEqual(['double', 'linear', 'none'])
+    expect(rulesFor('bodyweight_reps')).toEqual(['double', 'linear', 'none'])
   })
 
-  test('a hold takes manual or linear duration; a run, manual or distance', () => {
-    expect(rulesFor('duration')).toEqual(['none', 'linear_duration'])
-    expect(rulesFor('distance_duration')).toEqual(['none', 'linear_distance'])
+  test('a hold takes linear duration or manual; a run, distance or manual', () => {
+    expect(rulesFor('duration')).toEqual(['linear_duration', 'none'])
+    expect(rulesFor('distance_duration')).toEqual(['linear_distance', 'none'])
   })
 
   test('a rule that does not fit says which do', () => {
     expect(ruleMisfit('double', 'duration')).toBe(
-      'A timed exercise takes Manual or linear duration (adds seconds), not double',
+      'A timed exercise takes linear duration (adds seconds) or Manual, not double',
     )
     expect(ruleMisfit('linear_distance', 'weight_reps')).toBe(
-      'A weight lift takes Manual, linear (adds weight) or double, not distance',
+      'A weight lift takes double, linear (adds weight) or Manual, not distance',
     )
     expect(ruleMisfit('linear', 'distance_duration')).toBe(
-      'A distance exercise takes Manual or distance (further, at the same pace), not linear',
+      'A distance exercise takes distance (further, at the same pace) or Manual, not linear',
     )
   })
 
