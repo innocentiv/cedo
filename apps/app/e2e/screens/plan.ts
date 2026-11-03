@@ -1,6 +1,6 @@
 import type { OwnableScope } from '@cedo/contract'
 import type { Page } from '../harness.ts'
-import { paneInView } from './desk.ts'
+import { inView } from './desk.ts'
 import { chooseOption } from './lines.ts'
 import { picker } from './picker.ts'
 import { placement } from './placement.ts'
@@ -254,7 +254,10 @@ export const planEditor = (page: Page) => {
     },
     entry: (day: number, index: number) => planEntry(page, day, index),
     /** On a desktop, whether the entry's pane is in view, beside however far down the outline is. */
-    paneInView: async (): Promise<boolean> => await paneInView(page, 'entry-panel'),
+    paneInView: async (): Promise<boolean> => await inView(page, 'entry-panel'),
+    /** Whether the plan's name, beside Back, is in view, however far down the outline is. */
+    nameInView: async (): Promise<boolean> =>
+      (await inView(page, 'workout-name-edit')) && (await inView(page, 'workout-back')),
     /** Taps a day's name: a plain text input, so the caret lands where the tap did. */
     focusDayName: async (day: number): Promise<void> => {
       await closeSettings()

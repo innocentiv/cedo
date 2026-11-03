@@ -126,6 +126,7 @@ Two constraints found by building it:
 | `Sheet` | something looked at without leaving where you are — a session's menu, how to do an exercise. From the bottom on a phone, in the middle on a desktop |
 | `Icon`, `IconButton` | a secondary action as a glyph alone — back, menu, close, undo, how to — named aloud by its label |
 | `Screen` `onBack` | a way back beside the title, on a screen reached from another with no other way out |
+| `Screen` `heading` | a heading of the screen's own in place of its title and Back — a workout's name, edited where it is read — laid out where a title is: pinned over both columns on a desktop |
 | `Screen` `columns` | a screen whose whole body is two columns — `{ main, side, narrow? }`, or `{ main, pane, narrow?, chosen? }`: on a desktop side by side under the title, each its own scroll, so a pane stays beside whatever the other is scrolled to (#50); on a phone the main then the side in one scroll, but never a pane — a phone opens what it holds elsewhere, a screen of its own or a sheet, so a screen does not branch on the layout to leave it out. Either `null`: the main alone. `chosen` is what the pane shows when it is one thing chosen — another opens at the pane's top. `children` still render: the sheets the screen opens |
 | `Columns` | two columns that are a part of a page, not the whole of it — a review, with more above and below it: one column on a phone, side by side on a desktop, both in the page's one scroll. The side the narrow one, or the main when it is a list leading to the side. A screen whose body is the two columns uses `Screen` `columns` instead |
 | `Thumbnail` | a picture of a movement: a video's thumbnail, an uploaded image |
@@ -325,8 +326,9 @@ workout is renamed and its notes edited where they are shown.
 
 As built (#26):
 
-- **The head** — back, the name set as the title it is and edited there, the notes under it, each
-  kept as its field is left; then one line on the plan: Saved, Saving…, or Not saved and why.
+- **The head** — back, the name set as the title it is and edited there (`WorkoutTitle`, the
+  screen's own `heading`), the notes under it, each kept as its field is left; then one line on
+  the plan: Saved, Saving…, or Not saved and why.
 - **The outline** — each day its name (edited where it reads, kept as the field is left and put
   back if left empty — no day is nameless), Start, ↑ ↓ and the bin; each entry one line, `5 sets · 5 × 100 kg · Linear, +2.5 kg`, a superset's letter before its name; Add exercise
   at the foot of a day, Add day at the foot of the plan. An unavailable exercise's line says so,
@@ -336,8 +338,10 @@ As built (#26):
   beside the outline (`Screen` `columns`), which waits with a line until an entry is chosen. Kept
   open by the entry's key, so it follows the entry as it moves and closes once it is gone. The
   outline and the pane scroll each on their own (#50): an entry on the fifth day opens beside it,
-  not at the top of a page scrolled past them, and another chosen opens at the pane's top. The
-  head scrolls with the outline, so a long note takes no height from the pane.
+  not at the top of a page scrolled past them, and another chosen opens at the pane's top. Back
+  and the name are pinned across both, as any screen's title is — in the outline's column they
+  were cut to its width, and scrolled away; the notes and the plan's line scroll with the outline,
+  so a long note takes no height from the pane.
 - **Removing** a day or an entry is asked twice (`RemoveButton`, `ConfirmButton`'s rule as a
   glyph): it is saved at once, its id with it, and cannot be taken back. A plan keeps one day
   (`canRemoveDay`).

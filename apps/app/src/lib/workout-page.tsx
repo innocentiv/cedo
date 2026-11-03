@@ -6,7 +6,7 @@ import { ExercisePicker } from './exercise-picker.tsx'
 import { entryAt, withEntriesAdded } from './plan-draft.ts'
 import { usePlanEditor } from './use-plan-editor.ts'
 import { CopyFooter, InProgress, WorkoutAdmin, useStartDay } from './workout-actions.tsx'
-import { WorkoutHead } from './workout-head.tsx'
+import { WorkoutHead, WorkoutTitle } from './workout-head.tsx'
 import { Outline } from './workout-outline.tsx'
 
 /**
@@ -78,11 +78,10 @@ export function WorkoutBody({
   const page = (
     <Stack gap="lg">
       <WorkoutHead
-        // Read again with another name or notes — saved elsewhere — its fields start from those.
-        key={`${workout.name}\n${workout.notes ?? ''}`}
+        // Read again with other notes — saved elsewhere — its field starts from those.
+        key={workout.notes ?? ''}
         workout={workout}
         status={workout.canEdit ? editor.status : null}
-        onBack={goBack}
       />
       <Stack gap="xxl">{outline}</Stack>
     </Stack>
@@ -90,10 +89,20 @@ export function WorkoutBody({
   return (
     <Screen
       testID="workout-detail-screen"
+      heading={
+        <WorkoutTitle
+          // Read again with another name — saved elsewhere — its field starts from that.
+          key={workout.name}
+          workout={workout}
+          canEdit={workout.canEdit}
+          onBack={goBack}
+        />
+      }
       footer={workout.canEdit ? undefined : <CopyFooter workoutId={workout.id} />}
       // On a desktop the entry's pane beside the outline, each its own scroll: an entry on the last
-      // day opens beside it, not at the top of the page (#50). The head scrolls with the outline.
-      // A workout only read has nothing to set, so no pane.
+      // day opens beside it, not at the top of the page (#50). The name and Back are the screen's
+      // heading, pinned over both; the notes scroll with the outline, so a long note takes no
+      // height from the pane. A workout only read has nothing to set, so no pane.
       columns={{
         main: page,
         pane: workout.canEdit ? <EntryPane name={exercise?.name}>{settings}</EntryPane> : null,

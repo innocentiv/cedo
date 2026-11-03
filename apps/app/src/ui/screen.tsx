@@ -19,6 +19,12 @@ export interface ScreenProps {
    * installed app on a desktop has no browser Back.
    */
   readonly onBack?: (() => void) | undefined
+  /**
+   * A heading of the screen's own, in place of its title and Back — a name edited where it is read.
+   * Laid out where a title is: atop the page's scroll on a phone, pinned over both columns on a
+   * desktop.
+   */
+  readonly heading?: React.ReactNode | undefined
   readonly scroll?: boolean
   /** Room for two `Columns` side by side on a desktop; one column on a phone either way. */
   readonly wide?: boolean
@@ -62,6 +68,7 @@ export function Screen({
   footer,
   header,
   onBack,
+  heading: ownHeading,
   scroll = true,
   wide: wideAsked = false,
   columns,
@@ -80,7 +87,8 @@ export function Screen({
           : null
         : columns.side) ?? null
   const heading =
-    onBack === undefined ? (
+    ownHeading ??
+    (onBack === undefined ? (
       title === undefined ? null : (
         <Text variant="title">{title}</Text>
       )
@@ -99,7 +107,7 @@ export function Screen({
           <Text variant="title">{title ?? ''}</Text>
         </Stack>
       </Stack>
-    )
+    ))
   const body = (
     <Stack gap="lg" grow>
       {heading}

@@ -5,33 +5,41 @@ import { IconButton, Input, Stack, Text } from '../ui/index.ts'
 import type { PlanEditor } from './use-plan-editor.ts'
 import { useSubmit } from './use-submit.ts'
 
+/** Keeps a change to a workout's name or notes, and says why when it is refused. */
+function useKeep(workoutId: string): {
+  readonly keep: (patch: WorkoutUpdate) => void
+  readonly error: string | null
+} {
+  const update = useUpdateWorkout(workoutId)
+  const { submit, error } = useSubmit()
+  return {
+    keep: (patch) => {
+      void submit(async () => {
+        await update.mutateAsync(patch)
+      })
+    },
+    error,
+  }
+}
+
 /**
- * The head of a workout's page (#26): back, its name and notes — edited where they are read, kept
- * as each field is left — and what is true of the plan below: saved, saving, or why not.
+ * A workout's page's heading (#26): back, and its name — edited where it is read, kept as the field
+ * is left. The screen's heading, as any screen's title is: on a desktop across both columns, pinned
+ * above them, never cut to the width of the outline.
  */
-export function WorkoutHead({
+export function WorkoutTitle({
   workout,
-  status,
+  canEdit,
   onBack,
 }: {
   readonly workout: Workout
-  /** Null for a reader: nothing they do is saved. */
-  readonly status: PlanEditor['status'] | null
+  readonly canEdit: boolean
   readonly onBack: () => void
 }): React.JSX.Element {
-  const update = useUpdateWorkout(workout.id)
-  const { submit, error } = useSubmit()
+  const { keep, error } = useKeep(workout.id)
   const [name, setName] = useState(workout.name)
-  const [notes, setNotes] = useState(workout.notes ?? '')
-  const keep = (patch: WorkoutUpdate) => {
-    void submit(async () => {
-      await update.mutateAsync(patch)
-    })
-  }
-  const canEdit = status !== null
-
   return (
-    <Stack gap="sm">
+    <Stack gap="xs">
       <Stack direction="row" align="center" gap="sm">
         <IconButton
           name="back"
@@ -60,6 +68,33 @@ export function WorkoutHead({
           )}
         </Stack>
       </Stack>
+      {error === null ? null : (
+        <Text variant="caption" tone="danger" testID="workout-name-error">
+          {error}
+        </Text>
+      )}
+    </Stack>
+  )
+}
+
+/**
+ * The head of a workout's outline (#26): its notes — edited where they are read, kept as the field
+ * is left — and what is true of the plan below: saved, saving, or why not.
+ */
+export function WorkoutHead({
+  workout,
+  status,
+}: {
+  readonly workout: Workout
+  /** Null for a reader: nothing they do is saved. */
+  readonly status: PlanEditor['status'] | null
+}): React.JSX.Element {
+  const { keep, error } = useKeep(workout.id)
+  const [notes, setNotes] = useState(workout.notes ?? '')
+  const canEdit = status !== null
+
+  return (
+    <Stack gap="sm">
       {canEdit ? (
         <Input
           value={notes}

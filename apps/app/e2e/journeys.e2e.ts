@@ -628,8 +628,9 @@ test(
 
 /**
  * On a desktop a pane stays beside what it was chosen from (#50): an entry on the last day of a
- * five-day plan opens its settings in view, not at the top of a page scrolled down past them — and
- * the exercise last on the library's first page opens in view beside the list, likewise.
+ * five-day plan opens its settings in view, not at the top of a page scrolled down past them, under
+ * the plan's name — and the exercise last on the library's first page opens in view beside the
+ * list, likewise.
  */
 test(
   'on a desktop a pane opens in view beside an entry far down a plan, or an exercise far down the library',
@@ -660,6 +661,8 @@ test(
         await app.planEditor.open(plan.id)
         await app.planEditor.entry(4, lifts.length - 1).open()
         expect(await app.planEditor.paneInView()).toBe(true)
+        // The plan's name and Back are its heading, pinned over both, as the library's title is.
+        expect(await app.planEditor.nameInView()).toBe(true)
 
         const last = await app.library.chooseLast()
         expect(await app.desk.pane()).toContain(last)
