@@ -102,9 +102,9 @@ Two constraints found by building it:
 
 | Primitive | For |
 | --- | --- |
-| `Screen` | the outermost element of every route: safe area, background, padding, optional footer |
+| `Screen` | the outermost element of every route: safe area, background, padding, optional footer. A page that is one scroll runs under the status bar behind a band of the floor (`color.statusBar`), its title just below the bar at rest (#61) |
 | `Stack` | every layout. There is no other container |
-| `Text` | all text. Variants `title` / `heading` / `body` / `label` / `caption` / `mono` |
+| `Text` | all text. Variants `title` / `heading` / `body` / `label` / `caption` / `mono`, and `wordmark` — the product's name, under its mark |
 | `Button`, `NavButton` | actions, and actions that navigate — in the app, or out of it to an absolute URL |
 | `NavItem` | one tab of the shell's tab bar or sidebar — used only by `app/(app)/_layout.tsx` |
 | `ConfirmButton` | every action that cannot be taken back — delete, revoke, remove, leave — and every transfer to another group, which others feel at once. Asked twice, in the app's own UI, never a browser dialog; a refusal shows beside it. Removing a set from a session in progress is not one: it is logged again in a tap |
@@ -123,7 +123,8 @@ Two constraints found by building it:
 | `ErrorBoundary` | the last line of defence |
 | `ExerciseRow`, `MuscleFilter` | an exercise in a list — picture, name, main muscles — and narrowing a list to one muscle, chosen from a grid by region |
 | `VideoPlayer` | an exercise's video, played in place once tapped, never fetched before |
-| `SidebarName`, `SidebarAccount` | a desktop sidebar's head — the product's name — and foot — who is signed in |
+| `SidebarName`, `SidebarAccount` | a desktop sidebar's head — the mark and the product's name — and foot — who is signed in |
+| `BrandMark`, `BrandHeading`, `FrontDoor` | the mark (#61) — a yellow plate opened into a c by a wedge of shadow; a title with the mark beside it, centred on its capitals — Today's date on a phone; the way in — signing in, registering — the mark large, the name, a line of what cedo is, the form beneath in one narrow column |
 | `Meter` | how much against the most — a muscle's sets — chalk, or red where it declined |
 | `RemoveButton` | removing a day or an entry from a plan edited in place: the bin, asked twice |
 | `Sheet` | something looked at without leaving where you are — a session's menu, how to do an exercise. From the bottom on a phone, in the middle on a desktop |
@@ -309,7 +310,9 @@ What to do next: the **next day** of the **current workout** (`GLOSSARY.md`) and
 session in progress is the whole first screen. History is grouped by week, each session its
 duration, sets and personal bests; tapping one opens its summary, its sets by exercise, and its
 notes, which stay editable. The screen reads `GET /today` — the session in progress, the current
-workout and its next day, the week — rather than joining reads to decide them.
+workout and its next day, the week — rather than joining reads to decide them. It is headed by the
+day itself — "Tuesday 3 November" — not "Today", which the tab already says; on a phone the mark
+stands beside it, the one place inside the app it does (#61).
 
 As built (#25), on a phone top to bottom, on a desktop in two columns (`Screen` `columns`):
 
@@ -630,6 +633,12 @@ full control, pulled past the content's edge so the glyph lines up with the text
 the screen is for keeps its words: Log set 2, Finish session, Add exercise. Every value is in `src/ui/tokens.ts`; the primitives are the
 only thing that reads them.
 
+**The mark** (#61) is a yellow plate face on, its steel insert at the hub, with a wedge of shadow
+across its right side that opens it into the c of cedo — chosen over a barbell, the five plates edge
+on, and a bare letter for reading at 16px as well as at 128. Its yellow is the product's name, not a
+state: `brand` in the tokens, apart from `color.accent`. It stands large where you come in, on a
+desktop's sidebar beside the name, and on a phone beside Today's date — nowhere else.
+
 ## The API client
 
 A hand-written typed `fetch` client, not Eden Treaty. See `docs/adr/0015-no-eden-treaty.md`.
@@ -829,6 +838,17 @@ from arrival.
 and carries the manifest link and the tags iOS reads instead of a manifest. `manifest.webmanifest`
 and the icons sit beside it. The icons are rendered from `public/icons/icon.svg`; its comment gives
 the command.
+
+**Installed on an iPhone, the page is sized by hand** (#61). With `black-translucent` the app draws
+under the status bar, but iOS 26 sizes its page one status bar short: `100%`, `dvh` and `svh` all
+left ~59pt of the body showing under the tab bar, and every sheet and its scrim stopped as high.
+`index.html` gives the page, in standalone only, the short height plus the top inset it lost,
+capped at `100lvh`; once the page is the screen's height iOS gives it the whole viewport, and what is
+fixed to the bottom follows. Anywhere nothing draws under a status bar the inset is 0 and it changes
+nothing. It can be seen only on a device — neither a desktop browser nor the e2e WebView is
+standalone — so a change to it is proved on a phone, installed, opened twice (the first opening runs
+the shell it kept). Inside that page the tab bar sits over the home indicator, its padding the inset
+less 12pt, as a native one does.
 
 The service worker keeps the **app shell**, and nothing else: the one document, and the bundle it
 names. It is authored in TypeScript (`src/pwa/`), and `bun run export` bundles it on its own into
