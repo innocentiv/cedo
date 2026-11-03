@@ -3,7 +3,7 @@ import type { SessionLogInput, WorkoutSession } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { retakeStepsOf } from '../progression/write-steps.ts'
+import { takeStepsOf } from './write-session.ts'
 import { assertLoggable } from './loggable.ts'
 import { numberedInOrder } from './numbering.ts'
 import { readOwn, rethrowMissingEntry } from './service.ts'
@@ -37,7 +37,7 @@ export async function logWhole(caller: Caller, input: SessionLogInput): Promise<
     )
     await tx.insert(setLogs).values(rows).catch(rethrowMissingEntry)
     // Logged whole, it is finished: it takes its steps as a finish does (ADR-0026).
-    await retakeStepsOf(tx, caller, created.id)
+    await takeStepsOf(tx, caller, created.id)
     return created.id
   })
 

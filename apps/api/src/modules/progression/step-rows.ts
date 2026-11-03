@@ -64,7 +64,7 @@ export async function stepsOf(tx: Transaction, caller: Caller, entryIds: readonl
 }
 
 /** The caller's sets against these entries in FINISHED sessions started from `from`, in order. */
-export async function finishedLogs(
+export async function finishedSets(
   tx: Transaction,
   caller: Caller,
   entryIds: readonly string[],

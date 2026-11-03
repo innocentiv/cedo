@@ -6,7 +6,7 @@ import {
   type WeightUnit,
   loadOf,
 } from '@cedo/contract'
-import { db } from '../../db/client.ts'
+import { type Database, type Transaction, db } from '../../db/client.ts'
 import { athleteEquipment, users } from '../../db/schema.ts'
 
 /**
@@ -15,8 +15,12 @@ import { athleteEquipment, users } from '../../db/schema.ts'
  * is doable (#35) — so none can read it differently. By id: whose it may be is the caller's to
  * decide (`Training`), before it gets here.
  */
-export async function heldBy(userId: string): Promise<AthleteEquipment> {
-  const rows = await db
+export async function heldBy(
+  userId: string,
+  /** A write's transaction, when one is reading: its connection, not a second from the pool. */
+  on: Database | Transaction = db,
+): Promise<AthleteEquipment> {
+  const rows = await on
     .select({
       describedAt: users.equipmentDescribedAt,
       slug: athleteEquipment.item,
@@ -54,7 +58,11 @@ export const columnsOf = (weights: ItemWeights | null) => ({
  * What someone can load on any exercise (#36), in the unit they read: read once, for a whole plan's
  * targets or progression.
  */
-export async function loadsOf(userId: string, unit: WeightUnit): Promise<LoadFor> {
-  const held = await heldBy(userId)
+export async function loadsOf(
+  userId: string,
+  unit: WeightUnit,
+  on: Database | Transaction = db,
+): Promise<LoadFor> {
+  const held = await heldBy(userId, on)
   return (exercise) => loadOf(exercise, held, unit)
 }

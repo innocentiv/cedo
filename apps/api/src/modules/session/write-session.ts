@@ -1,10 +1,10 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, isNotNull, sql } from 'drizzle-orm'
 import type { SessionUpdate, WorkoutSession } from '@cedo/contract'
 import { type Transaction, db } from '../../db/client.ts'
-import { workoutSessions } from '../../db/schema.ts'
+import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { retakeStepsIn, retakeStepsOf, stepScopeOf } from '../progression/write-steps.ts'
+import { type StepScope, retakeSteps } from '../progression/service.ts'
 import { keepRest } from './rest.ts'
 import { NO_REST, lockInProgress, lockOwn, ownedBy, readOwn } from './service.ts'
 
@@ -52,7 +52,7 @@ export async function update(
       .returning({ id: workoutSessions.id })
     if (written.length === 0) throw notFound('session')
     // Finishing is what takes the session's steps (ADR-0026), under the same lock.
-    if (patch.endedAt !== undefined) await retakeStepsOf(tx, caller, id)
+    if (patch.endedAt !== undefined) await takeStepsOf(tx, caller, id)
   })
 
   return await readOwn(caller, id)
@@ -65,15 +65,43 @@ export async function update(
  */
 export async function remove(caller: Caller, id: string): Promise<void> {
   await db.transaction(async (tx) => {
-    // What its steps covered, read before they go with it: the steps after it are taken again.
-    const scope = await stepScopeOf(tx, caller, id)
+    // Locked first, then read: a finished session's steps go with it, and those after it are
+    // taken again — read before they go. One in progress took none.
+    const { finished } = await lockOwn(tx, caller, id)
+    const scope = finished ? await stepScopeOf(tx, caller, id) : null
     const deleted = await tx
       .delete(workoutSessions)
       .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
       .returning({ id: workoutSessions.id })
     if (deleted.length === 0) throw notFound('session')
-    await retakeStepsIn(tx, caller, scope)
+    await retakeSteps(tx, caller, scope)
   })
+}
+
+/**
+ * Which entries a session of the caller's trained, and when it started: what its steps cover. The
+ * session's to say — its tables — and progression's to take (ADR-0026).
+ */
+async function stepScopeOf(tx: Transaction, caller: Caller, id: string): Promise<StepScope | null> {
+  const [session] = await tx
+    .select({ startedAt: workoutSessions.startedAt })
+    .from(workoutSessions)
+    .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
+    .limit(1)
+  if (session === undefined) return null
+  const trained = await tx
+    .selectDistinct({ entryId: setLogs.entryId })
+    .from(setLogs)
+    .where(and(eq(setLogs.sessionId, id), isNotNull(setLogs.entryId)))
+  return {
+    entryIds: trained.flatMap((t) => (t.entryId === null ? [] : [t.entryId])),
+    startedAt: session.startedAt,
+  }
+}
+
+/** A session's steps, taken: when it is finished, or logged whole — in that write's transaction. */
+export async function takeStepsOf(tx: Transaction, caller: Caller, id: string): Promise<void> {
+  await retakeSteps(tx, caller, await stepScopeOf(tx, caller, id))
 }
 
 /**
@@ -102,7 +130,7 @@ export async function writeSessionSets<T>(
     const { finished } = await lockOwn(tx, caller, sessionId)
     const scope = finished ? await stepScopeOf(tx, caller, sessionId) : null
     const result = await write(tx)
-    await retakeStepsIn(tx, caller, scope)
+    await retakeSteps(tx, caller, scope)
     return result
   })
   await keepRest(caller, sessionId)

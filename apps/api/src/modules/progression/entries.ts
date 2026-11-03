@@ -1,7 +1,7 @@
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
-import { db } from '../../db/client.ts'
+import { type Database, type Transaction, db } from '../../db/client.ts'
 import { progressionSteps } from '../../db/schema.ts'
-import { visibleExercises, visibleWorkoutSets } from '../../db/visible.ts'
+import { visibleExercises, visibleWorkoutEntries, visibleWorkoutSets } from '../../db/visible.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { planEntries } from '../workout/plan.ts'
 import type { LatestStep } from './evaluate.ts'
@@ -15,10 +15,16 @@ import type { LatestStep } from './evaluate.ts'
  * The entries to evaluate — of one day when `dayId` names one — their prescribed sets, and the
  * caller's latest step on each. Null when there is no entry the caller can see.
  */
-export async function loadEntries(caller: Caller, workoutId: string, dayId: string | null) {
+export async function loadEntries(
+  caller: Caller,
+  workoutId: string,
+  dayId: string | null,
+  /** A write's transaction, when one reads: its connection, and what it has written. */
+  on: Database | Transaction = db,
+) {
   const plan = planEntries(caller, workoutId)
   const exercises = visibleExercises(caller)
-  const entries = await db
+  const entries = await on
     .select({
       id: plan.id,
       exerciseId: plan.exerciseId,
@@ -41,13 +47,13 @@ export async function loadEntries(caller: Caller, workoutId: string, dayId: stri
   const entryIds = entries.map((e) => e.id)
 
   const sets = visibleWorkoutSets(caller)
-  const prescribed = await db
+  const prescribed = await on
     .select()
     .from(sets)
     .where(inArray(sets.entryId, entryIds))
     .orderBy(asc(sets.index))
 
-  return { entries, prescribed, steps: await latestSteps(caller, entryIds) }
+  return { entries, prescribed, steps: await latestSteps(caller, entryIds, on) }
 }
 
 /**
@@ -55,7 +61,13 @@ export async function loadEntries(caller: Caller, workoutId: string, dayId: stri
  * query for a whole plan, walking `progression_steps_target_idx`. Only the CALLER's own: steps are
  * personal, so one person's progress never moves another's target on a shared plan.
  */
-async function latestSteps(caller: Caller, entryIds: readonly string[]): Promise<LatestStep[]> {
+async function latestSteps(
+  caller: Caller,
+  entryIds: readonly string[],
+  on: Database | Transaction,
+): Promise<LatestStep[]> {
+  // Through the visible entries (ADR-0019): a target is advice about an entry the caller can see.
+  const visible = visibleWorkoutEntries(caller)
   const ranked = db
     .select({
       entryId: progressionSteps.entryId,
@@ -71,6 +83,7 @@ async function latestSteps(caller: Caller, entryIds: readonly string[]): Promise
           .as('sessions'),
     })
     .from(progressionSteps)
+    .innerJoin(visible, eq(visible.id, progressionSteps.entryId))
     .where(
       and(
         eq(progressionSteps.userId, caller.userId),
@@ -78,7 +91,7 @@ async function latestSteps(caller: Caller, entryIds: readonly string[]): Promise
       ),
     )
     .as('ranked_steps')
-  return await db
+  return await on
     .select({
       entryId: ranked.entryId,
       target: ranked.target,

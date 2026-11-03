@@ -32,4 +32,10 @@ export async function suggestForWorkout(
   const loadFor = await loadsOf(caller.userId, caller.weightUnit)
   return suggest(loaded.entries, loaded.prescribed, loaded.steps, loadFor)
 }
+
+/**
+ * Progression's service, as other modules reach it: a person sets a target by hand, and the
+ * session module takes and re-takes steps — always through here (docs/02-conventions.md).
+ */
 export { setTargetByHand } from './by-hand.ts'
+export { type StepScope, retakeSteps } from './write-steps.ts'
