@@ -5,7 +5,7 @@ import type { Caller } from '../../plugins/auth.ts'
 import { ownOrCoached } from '../../modules/coaching/training.ts'
 import { history } from '../../modules/session/history.ts'
 import { amendLog } from '../../modules/session/set-writes.ts'
-import { logWhole } from '../../modules/session/start.ts'
+import { logWhole } from '../../modules/session/log-whole.ts'
 import { historyLines, text } from '../format.ts'
 import { setLine } from '../format-coaching.ts'
 

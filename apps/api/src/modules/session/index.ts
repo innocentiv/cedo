@@ -31,6 +31,7 @@ import { get as getSession } from './plan.ts'
 import { today } from './today.ts'
 import * as SessionService from './service.ts'
 import { amendLog, logSet, removeLog } from './set-writes.ts'
+import { remove as removeSession, update as updateSession } from './write-session.ts'
 
 const params = z.object({ id: Id })
 const logParams = z.object({ id: Id, logId: Id })
@@ -61,7 +62,7 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
         "What the session asks of each entry of its day — the plan carried forward by its rule over the sessions before this one — and last time's sets",
     },
   })
-  .patch('/:id', ({ caller, params: { id }, body }) => SessionService.update(caller, id, body), {
+  .patch('/:id', ({ caller, params: { id }, body }) => updateSession(caller, id, body), {
     params,
     body: SessionUpdate,
     response: WorkoutSession,
@@ -70,7 +71,7 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
   .delete(
     '/:id',
     async ({ caller, params: { id } }) => {
-      await SessionService.remove(caller, id)
+      await removeSession(caller, id)
       return { ok: true }
     },
     { params, detail: { summary: 'Delete a session and its sets, in progress or finished' } },

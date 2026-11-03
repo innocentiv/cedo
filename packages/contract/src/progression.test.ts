@@ -1,11 +1,6 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  type Progression,
-  type ProgressionInput,
-  type SessionAttempts,
-  type SetTarget,
-  progress,
-} from './progression.ts'
+import type { Progression, SessionAttempts, SetTarget } from './progression.ts'
+import { type ProgressionInput, progress } from './step.ts'
 import { MAX_DURATION_S, MAX_WEIGHT_G } from './measurement.ts'
 import { formatWeight, kgToG, mToMm } from './units.ts'
 
@@ -48,6 +43,17 @@ const LINEAR: Progression = { kind: 'linear', incrementG: kgToG(2.5), afterSucce
 describe('progress — double progression (3 sets of 8-12, +2.5kg)', () => {
   const run = (t: SetTarget, ...sessions: SessionAttempts[]) =>
     targetOf({ rule: DOUBLE, target: t, workingSets: 3, sessions })
+
+  /**
+   * Steps accumulate (ADR-0026): each session is judged against the target the last one left, not
+   * against the plan — which left 8, 9, 10 asking 9 for ever.
+   */
+  test('a run of sessions climbs a rep each, from where the last one left it', () => {
+    expect(run(target(8, 60), at60(10, 10, 10), at60(9, 9, 9), at60(8, 8, 8))).toEqual(
+      target(11, 60),
+    )
+    expect(run(target(11, 60), at60(12, 12, 12), at60(11, 11, 11))).toEqual(target(8, 62.5))
+  })
 
   // These four cases are the agreed truth table. See docs/adr/0012-progression-rules.md.
   test('all sets clear the top of the range -> add weight, restart at the bottom', () => {
@@ -328,16 +334,18 @@ describe('progress — why a prescription held', () => {
     })
   })
 
-  test('over a run, the newest session that broke it — none while only waiting for more', () => {
+  /** Each step says its own session's reason (ADR-0026): a cleared one, waiting on a run, has none. */
+  test('over a run, the newest session says why — none while it only waits for more', () => {
     const rule: Progression = { kind: 'linear', incrementG: kgToG(2.5), afterSuccesses: 2 }
     const t = { ...target(5, 100), reserve: 2 }
     const at100 = (reserve: number, ...reps: number[]): SessionAttempts =>
       reps.map((r) => ({ weightG: kgToG(100), reps: r, reserve }))
-    expect(why(rule, t, at100(2, 5, 5, 5), at100(0, 5, 5, 5))).toEqual({
+    expect(why(rule, t, at100(0, 5, 5, 5), at100(2, 5, 5, 5))).toEqual({
       reason: 'effort',
       reserve: 0,
     })
     expect(why(rule, t, at100(0, 5, 5, 4), at100(0, 5, 5, 5))).toEqual({ reason: 'targets' })
+    expect(why(rule, t, at100(2, 5, 5, 5), at100(0, 5, 5, 5))).toBeNull()
     expect(why(rule, t, at100(2, 5, 5, 5))).toBeNull()
   })
 

@@ -1,13 +1,11 @@
-import { and, eq, isNull, sql } from 'drizzle-orm'
-import type { SessionLogInput, SessionStart, WorkoutSession } from '@cedo/contract'
+import { and, eq, isNull } from 'drizzle-orm'
+import type { SessionStart, WorkoutSession } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { setLogs, workoutSessions } from '../../db/schema.ts'
+import { workoutSessions } from '../../db/schema.ts'
 import { visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
 import { conflict, invalid, isUniqueViolation, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { assertLoggable } from './loggable.ts'
-import { numberedInOrder } from './numbering.ts'
-import { ownedBy, readOwn, rethrowMissingEntry, toSession } from './service.ts'
+import { ownedBy, toSession } from './service.ts'
 
 /**
  * How a session comes to be: started, to be trained — one in progress at a time — or logged whole
@@ -49,7 +47,7 @@ export async function start(caller: Caller, input: SessionStart): Promise<Workou
  * same tables and feeds the same history. When they ARE given, both must be visible and the day
  * must belong to the workout — otherwise a session could reference someone else's plan.
  */
-async function assertStartable(caller: Caller, input: SessionStart): Promise<void> {
+export async function assertStartable(caller: Caller, input: SessionStart): Promise<void> {
   if (input.dayId !== null && input.workoutId === null) {
     throw invalid('A dayId without a workoutId does not identify a plan')
   }
@@ -77,35 +75,3 @@ async function assertStartable(caller: Caller, input: SessionStart): Promise<voi
 
 // One INSERT shares one `now()`, and `read` orders logs by `logged_at` then `set_index`, so equal
 // timestamps read back interleaved — squat 1, bench 1, squat 2. `logWhole` spaces them instead.
-const nowPlusMicros = (n: number) => sql<Date>`now() + ${n}::integer * interval '1 microsecond'`
-
-/**
- * A whole, finished session in ONE transaction — `session_log` over MCP. Everything is validated
- * before anything is written, so one bad set logs nothing and a retry cannot duplicate the rest.
- * The statement count does not grow with the number of sets. Sets keep the order sent.
- */
-export async function logWhole(caller: Caller, input: SessionLogInput): Promise<WorkoutSession> {
-  await assertStartable(caller, input)
-  await assertLoggable(caller, input.workoutId, input.sets)
-
-  const id = await db.transaction(async (tx) => {
-    const [created] = await tx
-      .insert(workoutSessions)
-      .values({
-        userId: caller.userId,
-        workoutId: input.workoutId,
-        dayId: input.dayId,
-        notes: input.notes,
-        endedAt: nowPlusMicros(input.sets.length),
-      })
-      .returning({ id: workoutSessions.id })
-    if (created === undefined) throw new Error('Could not record the session')
-    const rows = numberedInOrder(input.sets).map((set, i) =>
-      Object.assign(set, { sessionId: created.id, loggedAt: nowPlusMicros(i) }),
-    )
-    await tx.insert(setLogs).values(rows).catch(rethrowMissingEntry)
-    return created.id
-  })
-
-  return await readOwn(caller, id)
-}

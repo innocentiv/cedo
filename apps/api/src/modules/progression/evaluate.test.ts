@@ -1,189 +1,125 @@
 import { describe, expect, test } from 'bun:test'
-import { type AthleteEquipment, type Progression, loadOf } from '@cedo/contract'
-import { type EntryToEvaluate, type LoggedSet, type PrescribedSet, suggest } from './evaluate.ts'
+import {
+  type AthleteEquipment,
+  type Progression,
+  type SetTarget,
+  againstOf,
+  loadOf,
+} from '@cedo/contract'
+import { type EntryToEvaluate, type LatestStep, type PrescribedSet, suggest } from './evaluate.ts'
 
 /**
- * The wiring around `progress`, without a database: which sets count, what the prescription is,
- * which sessions are read and in what order. The maths itself is tested in the contract.
+ * Reading a target, without a database (ADR-0026): the latest step while it still counts against
+ * the plan as it stands, else the prescription — in weights the athlete can load. Taking steps is
+ * tested in the contract (`step`) and through the routes (`steps.test.ts`).
  */
 
 const LINEAR: Progression = { kind: 'linear', incrementG: 2500, afterSuccesses: 1 }
 
-const entry = (progression: Progression, id = 'bench'): EntryToEvaluate => ({
-  id,
-  exerciseId: `${id}-exercise`,
+const entry = (progression: Progression = LINEAR): EntryToEvaluate => ({
+  id: 'bench',
+  exerciseId: 'bench-exercise',
   exerciseName: 'Bench Press',
   tracking: 'weight_reps',
-  equipment: ['barbell', 'rack', 'flat_bench'],
+  equipment: ['dumbbells', 'flat_bench'],
   progression,
 })
 
 /** Someone who has not said what they train with: nothing is snapped (#36). */
 const UNDESCRIBED: AthleteEquipment = { described: false, items: [] }
+const DUMBBELLS: AthleteEquipment = {
+  described: true,
+  items: [{ slug: 'dumbbells', weights: { stepG: 2000, minG: 2000, maxG: 30_000 } }],
+}
 
-const suggestFor = (
-  entries: readonly EntryToEvaluate[],
-  sets: readonly PrescribedSet[],
-  logs: readonly LoggedSet[],
-  held: AthleteEquipment = UNDESCRIBED,
-) => suggest(entries, sets, logs, (exercise) => loadOf(exercise, held, 'kg'))
-
-const prescribed = (weightG: number, reps: number, isWarmup = false): PrescribedSet => ({
+const prescribed = (
+  weightG: number,
+  reps: number,
+  more: Partial<PrescribedSet> = {},
+): PrescribedSet => ({
   entryId: 'bench',
   targetReps: reps,
   targetWeightG: weightG,
-  targetReserve: null,
+  targetReserve: 2,
   targetDurationS: null,
   targetDistanceMm: null,
-  isWarmup,
-})
-
-const logged = (
-  sessionId: string,
-  weightG: number,
-  reps: number,
-  more: Partial<LoggedSet> = {},
-): LoggedSet => ({
-  entryId: 'bench',
-  sessionId,
-  weightG,
-  reps,
-  durationS: null,
-  distanceMm: null,
-  reserve: null,
   isWarmup: false,
   ...more,
 })
 
-const threeWorkingAt60 = [prescribed(60_000, 8), prescribed(60_000, 8), prescribed(60_000, 8)]
+const plan = (weightG = 60_000) => [
+  prescribed(20_000, 5, { isWarmup: true }),
+  ...[1, 2, 3].map(() => prescribed(weightG, 8)),
+]
 
-describe('suggesting the next prescription', () => {
-  /**
-   * A warm-up is neither the prescription nor a working set, in the plan or in the log. Read as
-   * the prescription, the target would be the 20 kg ramp; counted as a working set, a session with
-   * every working set done would read as one set short, and never advance.
-   */
-  test('warm-ups count for nothing, prescribed or logged', () => {
-    const [suggestion] = suggestFor(
-      [entry(LINEAR)],
-      [prescribed(20_000, 5, true), ...threeWorkingAt60],
-      [
-        logged('monday', 20_000, 3, { isWarmup: true }),
-        logged('monday', 60_000, 8),
-        logged('monday', 60_000, 8),
-        logged('monday', 60_000, 8),
-      ],
-    )
-    expect(suggestion?.current).toMatchObject({ weightG: 60_000, reps: 8 })
-    expect(suggestion?.suggested).toMatchObject({ weightG: 62_500, reps: 8 })
-    expect(suggestion?.changed).toBe(true)
-    expect(suggestion?.sessionsConsidered).toBe(1)
-  })
-
-  /**
-   * The FIRST working set, not any of them — what the plan editor shows as the prescription. Every
-   * working set shares one prescription when saved through the editor; the rows need not.
-   */
-  test('the prescription is the first working set, when the working sets differ', () => {
-    const [suggestion] = suggestFor(
-      [entry({ kind: 'none' })],
-      [prescribed(20_000, 5, true), prescribed(60_000, 8), prescribed(70_000, 6)],
-      [],
-    )
-    expect(suggestion?.current).toMatchObject({ weightG: 60_000, reps: 8 })
-  })
-
-  /** A logged reserve reaches the rule (#45), and the suggestion says what held it. */
-  test('a session ground out past the prescribed reserve holds, for effort', () => {
-    const plan = threeWorkingAt60.map((s) => ({ ...s, targetReserve: 2 }))
-    const ground = [1, 2, 3].map(() => logged('monday', 60_000, 8, { reserve: 0 }))
-    const [suggestion] = suggestFor([entry(LINEAR)], plan, ground)
-    expect(suggestion?.changed).toBe(false)
-    expect(suggestion?.held).toEqual({ reason: 'effort', reserve: 0 })
-
-    const [missed] = suggestFor([entry(LINEAR)], plan, [logged('monday', 60_000, 8)])
-    expect(missed?.held).toEqual({ reason: 'targets' })
-  })
-
-  /**
-   * Each working set's own reserve reaches the rule (ADR-0026): a plan whose last set may go to failure
-   * was judged against set 1's, and held for effort every session.
-   */
-  test('a ramp to failure done as prescribed advances', () => {
-    const plan = threeWorkingAt60.map((s, i) => ({ ...s, targetReserve: [2, 1, 0][i] ?? null }))
-    const ramp = [2, 1, 0].map((reserve) => logged('monday', 60_000, 8, { reserve }))
-    const [suggestion] = suggestFor([entry(LINEAR)], plan, ramp)
-    expect(suggestion?.held).toBeNull()
-    expect(suggestion?.suggested).toMatchObject({ weightG: 62_500, reps: 8 })
-  })
-
-  /** The loader sends sessions newest first; the evaluator must keep them in that order. */
-  test('the session that arrives first is read as the most recent', () => {
-    const missedToday = [1, 2, 3].map(() => logged('today', 60_000, 6))
-    const clearedLastWeek = [1, 2, 3].map(() => logged('last-week', 60_000, 8))
-    const [suggestion] = suggestFor([entry(LINEAR)], threeWorkingAt60, [
-      ...missedToday,
-      ...clearedLastWeek,
-    ])
-    expect(suggestion?.changed).toBe(false)
-    expect(suggestion?.sessionsConsidered).toBe(2)
-  })
-
-  /** Progression reads logs by entry: an ad-hoc set, or another entry's, is not this one's history. */
-  test('reads only the logs of its own entry', () => {
-    const cleared = (entryId: string | null) =>
-      [1, 2, 3].map(() => logged('elsewhere', 60_000, 8, { entryId }))
-    const [suggestion] = suggestFor([entry(LINEAR)], threeWorkingAt60, [
-      ...cleared(null),
-      ...cleared('squat'),
-    ])
-    expect(suggestion?.sessionsConsidered).toBe(0)
-    expect(suggestion?.changed).toBe(false)
-  })
-
-  test('one suggestion per entry, in the order the entries arrive', () => {
-    const suggestions = suggestFor(
-      [entry({ kind: 'none' }, 'squat'), entry({ kind: 'none' }, 'bench')],
-      threeWorkingAt60,
-      [],
-    )
-    expect(suggestions.map((s) => s.entryId)).toEqual(['squat', 'bench'])
-    // The squat has no prescribed set here: it prescribes nothing, and holds at nothing.
-    expect(suggestions[0]?.current).toEqual({
-      reps: null,
-      weightG: null,
-      reserve: null,
-      durationS: null,
-      distanceMm: null,
-    })
-    expect(suggestions.every((s) => !s.changed)).toBe(true)
-  })
+const at = (weightG: number, reps = 8): SetTarget => ({
+  reps,
+  weightG,
+  reserve: 2,
+  durationS: null,
+  distanceMm: null,
 })
 
-/** What the athlete can load (#36): judged against, and answered in, the weights they have. */
-describe('against the weights an athlete can load', () => {
-  test('22 kg logged on a 22.5 kg plan meets it on 2 kg dumbbells, and 24 is next', () => {
-    const press = { ...entry(LINEAR), equipment: ['dumbbells' as const] }
-    const plan = [prescribed(22_500, 8), prescribed(22_500, 8), prescribed(22_500, 8)]
-    const monday = [
-      logged('monday', 22_000, 8),
-      logged('monday', 22_000, 8),
-      logged('monday', 22_000, 8),
-    ]
-    const dumbbells: AthleteEquipment = {
-      described: true,
-      items: [{ slug: 'dumbbells', weights: { stepG: 2000, minG: 2000, maxG: 30_000 } }],
-    }
+/** The latest step, taken against `sets` — the plan as it stood then. */
+const stepped = (target: SetTarget, sets = plan(), more: Partial<LatestStep> = {}): LatestStep => ({
+  entryId: 'bench',
+  target,
+  held: null,
+  against: againstOf(
+    LINEAR,
+    sets.filter((s) => !s.isWarmup),
+  ),
+  sessions: 1,
+  ...more,
+})
 
-    const [mine] = suggestFor([press], plan, monday, dumbbells)
-    expect(mine?.suggested.weightG).toBe(24_000)
-    expect(mine?.changed).toBe(true)
-    // The plan keeps what it says.
-    expect(mine?.current.weightG).toBe(22_500)
+const read = (sets: PrescribedSet[], steps: LatestStep[], held = UNDESCRIBED) => {
+  const [suggestion] = suggest([entry()], sets, steps, (exercise) => loadOf(exercise, held, 'kg'))
+  return suggestion
+}
 
-    // Without the dumbbells' weights known, 22 is short of 22.5, as it always was.
-    const [unknown] = suggestFor([press], plan, monday)
-    expect(unknown?.suggested.weightG).toBe(22_500)
-    expect(unknown?.changed).toBe(false)
+describe('reading a target', () => {
+  test('with no step yet, the prescription — its first working set, never a warm-up', () => {
+    const suggestion = read(plan(), [])
+    expect(suggestion?.current).toMatchObject({ weightG: 60_000, reps: 8 })
+    expect(suggestion?.suggested).toEqual(suggestion?.current)
+    expect(suggestion?.changed).toBe(false)
+    expect(suggestion?.sessionsConsidered).toBe(0)
+  })
+
+  test('the latest step, while the plan stands as it was taken against', () => {
+    const suggestion = read(plan(), [stepped(at(65_000), plan(), { sessions: 3 })])
+    expect(suggestion?.suggested).toMatchObject({ weightG: 65_000, reps: 8 })
+    expect(suggestion?.changed).toBe(true)
+    expect(suggestion?.sessionsConsidered).toBe(3)
+  })
+
+  test('says why the latest step held', () => {
+    const held = { reason: 'effort', reserve: 0 } as const
+    expect(read(plan(), [stepped(at(60_000), plan(), { held })])?.held).toEqual(held)
+  })
+
+  /** Resets are derived, never written: nothing changed but the plan, and back again. */
+  test('the prescription once the plan moved under the step — and the step once it is put back', () => {
+    const step = stepped(at(65_000))
+    const typo = read(plan(6_000), [step])
+    expect(typo?.suggested).toMatchObject({ weightG: 6_000 })
+    expect(typo?.changed).toBe(false)
+    expect(typo?.held).toBeNull()
+    expect(read(plan(), [step])?.suggested).toMatchObject({ weightG: 65_000 })
+  })
+
+  test('asks the reserve the plan asks, which no rule moves', () => {
+    const step = stepped({ ...at(65_000), reserve: 4 })
+    expect(read(plan(), [step])?.suggested.reserve).toBe(2)
+  })
+
+  /** #36: shown in a weight the athlete can load, the prescription and the step alike. */
+  test('in weights the athlete can load: 22.5 is 22, and a step at 24 stays 24', () => {
+    const sets = plan(22_500)
+    const none = read(sets, [], DUMBBELLS)
+    expect(none?.suggested.weightG).toBe(22_000)
+    expect(none?.changed).toBe(false)
+    expect(read(sets, [stepped(at(24_000), sets)], DUMBBELLS)?.suggested.weightG).toBe(24_000)
   })
 })

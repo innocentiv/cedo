@@ -1,28 +1,29 @@
 import {
-  type Effort,
+  type Against,
   type EntryTarget,
   type EquipmentSlug,
+  type Held,
   type LoadFor,
   type LoadLimit,
   type LoggedEffort,
   type Progression,
   type ProgressionSuggestion,
-  type SessionAttempts,
-  type SetAttempt,
   type SetTarget,
   type TrackingMode,
   type WorkoutSetInput,
-  nextLoadableTarget,
+  againstOf,
+  loadableTarget,
   prescriptionOf,
   setTargetOf,
+  stillCounts,
 } from '@cedo/contract'
 import { groupBy } from '../../lib/keyset.ts'
 
 /**
- * Progression's evaluation, apart from its loading: rows in, suggestions out, no database. The
- * rules' maths is `progress` in the contract and tested there; what is tested HERE is the wiring
- * around it — which sets count, what the prescription is, which sessions are read and in what
- * order, and when a suggestion is a change. See docs/adr/0012-progression-rules.md.
+ * Progression's reading, apart from its loading: rows in, targets out, no database (ADR-0026). A
+ * person's target is their latest step, while what it was taken against stands as the plan does
+ * now — else the plan's prescription; either is shown in a weight they can load (#36). The rules'
+ * maths runs when a step is taken (`write-steps.ts`), never here.
  */
 
 /** An entry whose exercise the caller can see — the only kind there is anything to advise about. */
@@ -41,64 +42,51 @@ export interface PrescribedSet extends WorkoutSetInput {
   readonly entryId: string
 }
 
-/** One of the caller's logged sets. A set logged outside a plan names no entry, and is not read. */
-export interface LoggedSet extends Effort {
-  readonly entryId: string | null
-  readonly sessionId: string
-  readonly isWarmup: boolean
-  /** Judged against the reserve its set asked, a floor (#45). */
-  readonly reserve: number | null
+/** The caller's latest step on an entry, and how many finished sessions have taken one. */
+export interface LatestStep {
+  readonly entryId: string
+  readonly target: SetTarget
+  readonly held: Held | null
+  readonly against: Against
+  readonly sessions: number
 }
 
-/**
- * One suggestion per entry, in the order the entries arrive. `prescribed` is in set order, and
- * `logs` newest session first, already capped to the depth a rule may read — that is the loader's
- * job, and it is done in SQL, where the rows are selected.
- */
+/** One suggestion per entry, in the order the entries arrive. `prescribed` is in set order. */
 export function suggest(
   entries: readonly EntryToEvaluate[],
   prescribed: readonly PrescribedSet[],
-  logs: readonly LoggedSet[],
+  steps: readonly LatestStep[],
   loadFor: LoadFor,
 ): ProgressionSuggestion[] {
-  return evaluate(entries, prescribed, logs, loadFor).map((e) => e.suggestion)
+  return evaluate(entries, prescribed, steps, loadFor).map((e) => e.suggestion)
 }
 
 /** Each entry's suggestion, and where the athlete's equipment stopped its weight, if it did. */
 function evaluate(
   entries: readonly EntryToEvaluate[],
   prescribed: readonly PrescribedSet[],
-  logs: readonly LoggedSet[],
+  steps: readonly LatestStep[],
   loadFor: LoadFor,
 ): { readonly suggestion: ProgressionSuggestion; readonly limit: LoadLimit | null }[] {
   const setsByEntry = groupBy(prescribed, (s) => s.entryId)
-  const logsByEntry = groupBy(
-    logs.filter((l): l is LoggedSet & { entryId: string } => l.entryId !== null),
-    (l) => l.entryId,
-  )
+  const stepByEntry = new Map(steps.map((s) => [s.entryId, s]))
   return entries.map((entry) =>
-    suggestForEntry(
-      entry,
-      setsByEntry.get(entry.id) ?? [],
-      logsByEntry.get(entry.id) ?? [],
-      loadFor,
-    ),
+    suggestForEntry(entry, setsByEntry.get(entry.id) ?? [], stepByEntry.get(entry.id), loadFor),
   )
 }
 
 /**
- * What a session asks of each entry — `EntryTarget` — from the same evaluation as `suggest`, over
- * logs the loader has already limited to the sessions before it; and last time's working sets of
- * each entry's exercise, by exercise.
+ * What a session asks of each entry — `EntryTarget` — from the same reading as `suggest`; and last
+ * time's working sets of each entry's exercise, by exercise.
  */
 export function targetsFrom(
   entries: readonly EntryToEvaluate[],
   prescribed: readonly PrescribedSet[],
-  logs: readonly LoggedSet[],
+  steps: readonly LatestStep[],
   loadFor: LoadFor,
   lastByExercise: ReadonlyMap<string, LoggedEffort[]>,
 ): EntryTarget[] {
-  return evaluate(entries, prescribed, logs, loadFor).map(({ suggestion: s, limit }) => ({
+  return evaluate(entries, prescribed, steps, loadFor).map(({ suggestion: s, limit }) => ({
     entryId: s.entryId,
     prescribed: s.current,
     target: s.suggested,
@@ -110,31 +98,28 @@ export function targetsFrom(
 }
 
 /**
- * Judged, and answered, in weights the athlete can load (#36): `changed` is the rule moving the
- * prescription as shown, never the snapping alone — 22.5 kg shown as 22 has not progressed.
+ * In weights the athlete can load (#36): `changed` is the target moved off the prescription as
+ * shown, never the snapping alone — 22.5 kg shown as 22 has not progressed.
  */
 function suggestForEntry(
   entry: EntryToEvaluate,
   prescribed: readonly PrescribedSet[],
-  logs: readonly LoggedSet[],
+  latest: LatestStep | undefined,
   loadFor: LoadFor,
 ): { readonly suggestion: ProgressionSuggestion; readonly limit: LoadLimit | null } {
   const first = prescriptionOf({ sets: prescribed })
   const current = first === undefined ? NOTHING_PRESCRIBED : setTargetOf(first)
-  const sessions = toSessions(logs)
-  const working = prescribed.filter((s) => !s.isWarmup)
-
-  const next = nextLoadableTarget(
-    {
-      rule: entry.progression,
-      target: current,
-      workingSets: working.length,
-      // Each working set is judged against the reserve it asks itself (ADR-0026): effort ramps.
-      reserves: working.map((s) => s.targetReserve),
-      sessions,
-    },
-    loadFor(entry),
+  const now = againstOf(
+    entry.progression,
+    prescribed.filter((s) => !s.isWarmup),
   )
+  const counts = latest !== undefined && stillCounts(latest.against, now)
+  const load = loadFor(entry)
+  const shown = loadableTarget(load, current)
+  // The rule never moves reps in reserve: the target asks what the plan asks of it.
+  const reached = counts
+    ? loadableTarget(load, { ...latest.target, reserve: current.reserve })
+    : shown
 
   const suggestion = {
     entryId: entry.id,
@@ -143,12 +128,12 @@ function suggestForEntry(
     tracking: entry.tracking,
     rule: entry.progression,
     current,
-    suggested: next.target,
-    changed: !sameTarget(next.shown, next.target),
-    held: next.held,
-    sessionsConsidered: sessions.length,
+    suggested: reached.target,
+    changed: !sameTarget(shown.target, reached.target),
+    held: counts ? latest.held : null,
+    sessionsConsidered: latest?.sessions ?? 0,
   }
-  return { suggestion, limit: next.limit }
+  return { suggestion, limit: reached.limit }
 }
 
 /** An entry with no working set prescribes nothing — every target null. */
@@ -158,24 +143,6 @@ const NOTHING_PRESCRIBED: SetTarget = {
   reserve: null,
   durationS: null,
   distanceMm: null,
-}
-
-/** Flat log rows into per-session attempts, keeping the order the sessions arrive in. */
-function toSessions(rows: readonly LoggedSet[]): SessionAttempts[] {
-  const bySession = new Map<string, SetAttempt[]>()
-  for (const row of rows) {
-    const list = bySession.get(row.sessionId) ?? []
-    list.push({
-      weightG: row.weightG,
-      reps: row.reps,
-      durationS: row.durationS,
-      distanceMm: row.distanceMm,
-      reserve: row.reserve,
-      isWarmup: row.isWarmup,
-    })
-    bySession.set(row.sessionId, list)
-  }
-  return [...bySession.values()]
 }
 
 const sameTarget = (a: SetTarget, b: SetTarget): boolean =>

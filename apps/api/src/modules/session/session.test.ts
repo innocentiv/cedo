@@ -26,7 +26,7 @@ import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 import { logSet } from './set-writes.ts'
-import { logWhole } from './start.ts'
+import { logWhole } from './log-whole.ts'
 
 const Page = page(WorkoutSessionSummary)
 
@@ -647,6 +647,11 @@ describe('progression suggestions', () => {
         }),
       })
     }
+    // Finished: a session takes its step when it is finished (ADR-0026).
+    await user.wire(`/sessions/${session.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ endedAt: new Date().toISOString() }),
+    })
   }
 
   test('with no history at all, it holds and says so', async () => {
@@ -743,6 +748,10 @@ describe('progression suggestions', () => {
         distanceMm: 5_000_000,
         durationS: 1770,
       }),
+    })
+    await alice.wire(`/sessions/${session.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ endedAt: new Date().toISOString() }),
     })
 
     const [suggestion] = expectContract(

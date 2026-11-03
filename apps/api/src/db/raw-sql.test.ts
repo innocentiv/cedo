@@ -174,3 +174,33 @@ describe('no sql template outside their own modules names an athlete record tabl
     expect(offences).toEqual([])
   })
 })
+
+/**
+ * Progression steps are personal, as athlete records are, and progression's own (ADR-0026): the
+ * lint keeps the table out of every other module's imports; this keeps it out of their raw SQL.
+ */
+const STEPS = /\bprogression_steps\b/iu
+const STEPS_ALLOWED = [/^db\//u, /^modules\/progression\//u, /^test\//u, /\.test\.ts$/u]
+
+describe('no sql template outside progression names the steps table', () => {
+  const root = new URL('..', import.meta.url).pathname
+  const files = [...new Glob('**/*.ts').scanSync(root)].filter(
+    (file) => !STEPS_ALLOWED.some((allowed) => allowed.test(file)),
+  )
+
+  test('the scan reaches the modules it is meant to guard', () => {
+    expect(files).toContain('modules/session/service.ts')
+    expect(files).not.toContain('modules/progression/write-steps.ts')
+  })
+
+  test('every file', async () => {
+    const offences: string[] = []
+    for (const file of files) {
+      const source = await Bun.file(`${root}${file}`).text()
+      for (const literal of sqlLiterals(source)) {
+        if (STEPS.test(literal)) offences.push(`${file}: names "progression_steps" in raw SQL`)
+      }
+    }
+    expect(offences).toEqual([])
+  })
+})
