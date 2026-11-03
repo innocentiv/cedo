@@ -17,9 +17,16 @@ describe('a target set by hand', () => {
     })
   })
 
-  test('under double, reps outside the range are refused, saying the range', () => {
+  test('under double, reps outside the range are refused, saying the range and what to do', () => {
     expect(targetByHand(DOUBLE, plan, { reps: 14 })).toEqual({
-      refused: 'Double 8–12 asks 8 to 12 reps, not 14',
+      refused:
+        'Double 8–12 asks 8 to 12 reps, not 14: set reps inside it, or change the plan’s range',
+    })
+  })
+
+  test('under double, anything but reps and weight is refused, saying what to do', () => {
+    expect(targetByHand(DOUBLE, plan, { durationS: 30 })).toEqual({
+      refused: 'Double moves only reps and weight: change the plan for anything else',
     })
   })
 

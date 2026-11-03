@@ -258,7 +258,9 @@ describe('a target set by hand', () => {
     const p = await planned()
     const res = await setBy(p, { reps: 14 })
     expect(res.status).toBe(422)
-    expect(JSON.stringify(res.body)).toContain('Double 8–12 asks 8 to 12 reps, not 14')
+    expect(JSON.stringify(res.body)).toContain(
+      'Double 8–12 asks 8 to 12 reps, not 14: set reps inside it',
+    )
     expect((await suggested(p))?.suggested).toMatchObject({ reps: 8, weightG: 55_000 })
   })
 

@@ -50,7 +50,9 @@ export function targetByHand(
   if (rule.kind === 'double' && input.reps !== undefined) {
     const [low, high] = rule.repRange
     if (input.reps < low || input.reps > high) {
-      return { refused: `Double ${low}–${high} asks ${low} to ${high} reps, not ${input.reps}` }
+      return {
+        refused: `Double ${low}–${high} asks ${low} to ${high} reps, not ${input.reps}: set reps inside it, or change the plan’s range`,
+      }
     }
   }
   const target: SetTarget = {
@@ -77,7 +79,10 @@ function movedBy(
         refusal: 'Linear moves only the weight: change the plan to ask other reps',
       }
     case 'double':
-      return { dimensions: ['reps', 'weightG'], refusal: 'Double moves only reps and weight' }
+      return {
+        dimensions: ['reps', 'weightG'],
+        refusal: 'Double moves only reps and weight: change the plan for anything else',
+      }
     case 'linear_duration':
       return {
         dimensions: ['durationS'],
