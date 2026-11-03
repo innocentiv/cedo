@@ -426,11 +426,9 @@ Two panes where reading side by side helps: a workout's outline beside the entry
 exercise list beside the exercise, Today's next session and week beside the history — and the
 session: what was just done and the exercise in focus, beside the day and its sets (`Screen`
 `columns`). One column 700 points wide made the Log button the loudest thing on a desk, which it is
-not there. A
-session left open is the same yellow band as on a phone, at the foot of the sidebar — a line with a
-yellow dot was tried and read as too little; a sheet opens in the middle of the screen, not from
-its bottom edge. The sidebar carries the product's name and the
-account.
+not there. A session left open is the same yellow band as on a phone, at the foot of the sidebar —
+a line with a yellow dot was tried and read as too little; a sheet opens in the middle of the
+screen, not from its bottom edge. The sidebar carries the product's name and the account.
 
 **Each column its own scroll (#50).** The page does not scroll on a desktop screen of two columns:
 the title stays above them, the footer below, and each column scrolls between — so a pane stays
@@ -782,9 +780,10 @@ route renders. It seeds an athlete three weeks into a block — a four-day plan,
 session half done with rest running, an exercise with a video, a coach's club — and photographs
 every screen and the states inside them (the picker open, a set mid-rest) at a phone's width and a
 laptop's, each down to its end, a frame per viewport — every scroller on screen scrolled together,
-so a desktop's two columns read side by side as they are laid out. `.artifacts/gallery/index.html` lays mobile
-and desktop side by side. `--only <state>` and `--layout mobile|desktop` narrow it. An empty
-account cut at the fold hid every problem in `docs/ux/2026-10-ui-review.md`; this is what found them.
+so a desktop's two columns read side by side as they are laid out. `.artifacts/gallery/index.html`
+lays mobile and desktop side by side. `--only <state>` and `--layout mobile|desktop` narrow it. An
+empty account cut at the fold hid every problem in `docs/ux/2026-10-ui-review.md`; this is what
+found them.
 
 The harness reveals a target before touching it (`scrollIntoView`, then click) and can wait for a
 selector whose id is not known ahead of time. Both exist because their absence produced failures
