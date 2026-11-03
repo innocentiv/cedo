@@ -87,26 +87,19 @@ export function WorkoutBody({
       <Stack gap="xxl">{outline}</Stack>
     </Stack>
   )
-  const beside = desk && workout.canEdit
-
   return (
     <Screen
-      wide
       testID="workout-detail-screen"
       footer={workout.canEdit ? undefined : <CopyFooter workoutId={workout.id} />}
       // On a desktop the entry's pane beside the outline, each its own scroll: an entry on the last
       // day opens beside it, not at the top of the page (#50). The head scrolls with the outline.
-      columns={
-        beside
-          ? {
-              main: page,
-              side: <EntryPane name={exercise?.name}>{settings}</EntryPane>,
-              chosen: selected,
-            }
-          : undefined
-      }
+      // A workout only read has nothing to set, so no pane.
+      columns={{
+        main: page,
+        pane: workout.canEdit ? <EntryPane name={exercise?.name}>{settings}</EntryPane> : null,
+        chosen: selected,
+      }}
     >
-      {beside ? null : page}
       {desk ? null : (
         <Sheet
           open={settings !== null}

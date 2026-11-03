@@ -88,7 +88,6 @@ export default function ExerciseList(): React.JSX.Element {
   return (
     <Screen
       title="Exercises"
-      wide
       testID="exercises-screen"
       footer={
         <NavButton
@@ -99,32 +98,26 @@ export default function ExerciseList(): React.JSX.Element {
         />
       }
       // Beside the list, each its own scroll: the exercise chosen low in it opens in view (#50).
-      columns={
-        desk
-          ? {
-              main: list,
-              side: (
-                <Card testID="exercise-pane">
-                  {open === null ? (
-                    <Text tone="muted">Choose an exercise to see it here.</Text>
-                  ) : (
-                    <ExerciseDetailView
-                      key={open}
-                      id={open}
-                      pane
-                      onGone={() => {
-                        setOpen(null)
-                      }}
-                    />
-                  )}
-                </Card>
-              ),
-              chosen: open,
-            }
-          : undefined
-      }
-    >
-      {desk ? null : list}
-    </Screen>
+      columns={{
+        main: list,
+        pane: (
+          <Card testID="exercise-pane">
+            {open === null ? (
+              <Text tone="muted">Choose an exercise to see it here.</Text>
+            ) : (
+              <ExerciseDetailView
+                key={open}
+                id={open}
+                pane
+                onGone={() => {
+                  setOpen(null)
+                }}
+              />
+            )}
+          </Card>
+        ),
+        chosen: open,
+      }}
+    />
   )
 }

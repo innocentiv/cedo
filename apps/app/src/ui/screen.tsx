@@ -24,24 +24,33 @@ export interface ScreenProps {
   readonly wide?: boolean
   /**
    * The screen's body as two columns (#50): on a desktop side by side under the title, each its own
-   * scroll; on a phone the main then the side, one scroll as any screen. Wide, either way.
+   * scroll; on a phone the main then any side, one scroll as any screen. Wide, either way.
    * `children` still render — the sheets a screen opens, which take no place on it.
    */
   readonly columns?: ScreenColumns | undefined
   readonly testID?: string | undefined
 }
 
-/** A screen's body as its two columns — see `Columns` for which is which. */
-export interface ScreenColumns {
+/**
+ * A screen's body as its two columns — see `Columns` for which is which. Beside the main, a `side`
+ * that a phone shows under it, or a `pane` that only a desktop shows: a phone opens what it holds
+ * elsewhere — a screen of its own, a sheet. Either `null`: nothing beside, the main alone in the
+ * page's one scroll.
+ */
+export type ScreenColumns = {
   readonly main: React.ReactNode
-  readonly side: React.ReactNode
   readonly narrow?: Narrow | undefined
-  /**
-   * What the side shows, when it shows one thing chosen — an entry, an exercise, an athlete: another
-   * chosen opens at the top of the side, not wherever the last was scrolled to.
-   */
-  readonly chosen?: string | null | undefined
-}
+} & (
+  | { readonly side: React.ReactNode }
+  | {
+      readonly pane: React.ReactNode
+      /**
+       * What the pane shows, when it shows one thing chosen — an entry, an exercise, an athlete:
+       * another chosen opens at the top of the pane, not wherever the last was scrolled to.
+       */
+      readonly chosen?: string | null | undefined
+    }
+)
 
 /**
  * The outermost element of every route. Owns safe-area insets, the page background and the one
@@ -61,6 +70,15 @@ export function Screen({
   const insets = useSafeAreaInsets()
   const desk = useLayout() === 'tablet'
   const wide = wideAsked || columns !== undefined
+  // What stands beside the main column here, if anything.
+  const beside =
+    (columns === undefined
+      ? null
+      : 'pane' in columns
+        ? desk
+          ? columns.pane
+          : null
+        : columns.side) ?? null
   const heading =
     onBack === undefined ? (
       title === undefined ? null : (
@@ -85,8 +103,10 @@ export function Screen({
   const body = (
     <Stack gap="lg" grow>
       {heading}
-      {columns === undefined ? null : (
-        <Columns main={columns.main} side={columns.side} narrow={columns.narrow} />
+      {columns === undefined ? null : beside === null ? (
+        columns.main
+      ) : (
+        <Columns main={columns.main} side={beside} narrow={columns.narrow} />
       )}
       {children}
     </Stack>
@@ -98,15 +118,15 @@ export function Screen({
       style={[styles.page, { paddingTop: header === undefined ? insets.top : 0 }]}
     >
       {header}
-      {desk && columns !== undefined ? (
+      {desk && columns !== undefined && beside !== null ? (
         // Two scrolls, not one: the page stays put, its title pinned above them (#50).
         <View style={styles.split}>
           {heading === null ? null : <View style={styles.heading}>{heading}</View>}
           <ScrollingColumns
             main={columns.main}
-            side={columns.side}
+            side={beside}
             narrow={columns.narrow}
-            chosen={columns.chosen}
+            chosen={'pane' in columns ? columns.chosen : undefined}
           />
           {children}
         </View>

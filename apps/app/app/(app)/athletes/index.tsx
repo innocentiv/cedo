@@ -46,29 +46,22 @@ export default function Athletes(): React.JSX.Element {
   return (
     <Screen
       title="Athletes"
-      wide
       testID="athletes-screen"
       // Beside the list, each its own scroll (#50): their whole training is long.
-      columns={
-        desk
-          ? {
-              narrow: 'main',
-              main: list,
-              side: (
-                <Card testID="athlete-pane-card">
-                  {open === null ? (
-                    <Text tone="muted">Choose an athlete to read their training here.</Text>
-                  ) : (
-                    <AthleteView key={open} id={open} pane />
-                  )}
-                </Card>
-              ),
-              chosen: open,
-            }
-          : undefined
-      }
-    >
-      {desk ? null : list}
-    </Screen>
+      columns={{
+        narrow: 'main',
+        main: list,
+        pane: (
+          <Card testID="athlete-pane-card">
+            {open === null ? (
+              <Text tone="muted">Choose an athlete to read their training here.</Text>
+            ) : (
+              <AthleteView key={open} id={open} pane />
+            )}
+          </Card>
+        ),
+        chosen: open,
+      }}
+    />
   )
 }
