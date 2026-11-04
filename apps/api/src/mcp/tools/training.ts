@@ -158,7 +158,8 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'send all you keep. The notes say how the workout is run — effort, block structure, ' +
         'deload, what to do on a bad day — so change them when the plan changes. What is true ' +
         'of the person, such as their equipment or an injury, is theirs, not the workout’s: ' +
-        '`equipment_set` or `note_create`. Every follower of a shared workout sees the change. ' +
+        '`equipment_set` or `note_create`. Every follower of a shared or library workout sees the ' +
+        'change. ' +
         'The plan is not touched; to change it, `workout_save_plan`.',
       inputSchema: WorkoutUpdate.safeExtend({ workoutId: z.uuid() }),
       annotations: REWORD,

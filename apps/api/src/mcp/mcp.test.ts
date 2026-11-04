@@ -513,6 +513,19 @@ describe('workout_update', () => {
     expect((await stored(bob, shared.id)).notes).toBe('RIR 2 on everything')
   })
 
+  /** Bob's own workout, which alice cannot see: not found, and nothing says it exists. */
+  test("never someone else's: a workout you cannot see is not found", async () => {
+    const bob = await h.as('bob')
+    const theirs = await aWorkout(bob)
+    const { body } = await callTool(await mintPat(alice), 'workout_update', {
+      workoutId: theirs.id,
+      name: 'Mine now',
+    })
+    expect(body.result?.isError).toBe(true)
+    expect(textOf(body)).toContain('No such workout')
+    expect((await stored(bob, theirs.id)).name).toBe('Push')
+  })
+
   /** The notes are the workout's, not its plan's: a plan read before them still saves (ADR-0022). */
   test('leaves the plan’s version alone', async () => {
     const workout = await aWorkout(alice)
