@@ -113,6 +113,31 @@ const lift = (
   ],
 })
 
+const PLAN_NOTES = `Four days a week: Lower A, Upper A, rest, Lower B, Upper B. **Block 2 of 3**, five weeks.
+
+## Effort
+- Main lifts stop with **2 reps in reserve**; accessories may go to 1.
+- Never to failure on squat or bench.
+
+## Progression
+1. Squat and bench add 2.5 kg after two sessions running at every target.
+2. Accessories climb reps to the top of the range, then add the smallest step.
+
+## Supersets
+Rest after the round, not between the pair.
+
+| Week | Sets | Reserve |
+| --- | --- | --- |
+| 1–2 | 3 | 2 |
+| 3–4 | 4 | 1 |
+| 5 | 2 | 3 |
+
+## Bad day
+If the first working set of squat feels two reps harder than it should, drop 10% and finish the day. Do not chase it.
+
+## Cardio
+Two 30-minute easy rides on rest days; never the day before Lower A.`
+
 async function seed(): Promise<World> {
   const username = unique('sam')
   const { api, user: sam } = await signUp(username, 'Sam Rivera')
@@ -167,7 +192,8 @@ async function seed(): Promise<World> {
 
   const created = await api.workouts.create({
     name: 'Upper / Lower — Block 2',
-    notes: 'Four days a week. Add weight when every set hits the top of the range.',
+    // As an AI writes them over MCP (#51): long, sectioned, in Markdown.
+    notes: PLAN_NOTES,
   })
   const plan: Workout = await api.workouts.replacePlan(
     created.id,
@@ -180,7 +206,7 @@ async function seed(): Promise<World> {
               warmups: 2,
               linear: 2.5,
               rest: 180,
-              cue: 'Brace before you unrack. Hips and shoulders rise together.',
+              cue: 'Brace before you unrack. Hips and shoulders rise together; knees track over the toes all the way down.',
             }),
             lift(at('Romanian Deadlift'), 3, 8, 80, { reserves: [2, 1, 0] }),
             lift(at('Leg Press'), 3, 12, 160, { rest: 90 }),

@@ -9,6 +9,17 @@ describe('an entry’s cue', () => {
     expect(EntryCue.parse(null)).toBeNull()
   })
 
+  test('is one line: every run of whitespace, newlines included, is one space', () => {
+    expect(EntryCue.parse('Brace.\nDrive through\t\tthe heels.\r\n')).toBe(
+      'Brace. Drive through the heels.',
+    )
+  })
+
+  test('is measured once folded, so blank lines cost nothing', () => {
+    const words = 'x'.repeat(MAX_CUE_LENGTH - 2)
+    expect(EntryCue.safeParse(`${words}\n\n\n\nx`).success).toBe(true)
+  })
+
   test(`holds at most ${MAX_CUE_LENGTH} characters`, () => {
     expect(EntryCue.safeParse('x'.repeat(MAX_CUE_LENGTH)).success).toBe(true)
     expect(EntryCue.safeParse('x'.repeat(MAX_CUE_LENGTH + 1)).success).toBe(false)

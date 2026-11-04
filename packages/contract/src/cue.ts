@@ -7,9 +7,13 @@ import { z } from 'zod'
 
 export const MAX_CUE_LENGTH = 200
 
-/** Trimmed; blank is none. */
+/**
+ * One line, whoever wrote it: every run of whitespace — a newline from a paste or an AI included —
+ * is one space, before it is measured. Trimmed; blank is none.
+ */
 export const EntryCue = z
   .string()
+  .overwrite((cue) => cue.replaceAll(/\s+/gu, ' '))
   .trim()
   .max(MAX_CUE_LENGTH, `A cue is at most ${MAX_CUE_LENGTH} characters`)
   .nullable()

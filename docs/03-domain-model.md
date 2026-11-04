@@ -283,7 +283,7 @@ An entry also tells the athlete two things beyond its numbers: `rest_seconds` (`
 minutes when not said, 0 or null for "straight on" — which the logger counts down from each
 working set's `logged_at`, never longer than prescribed, as the server's clock and the device's
 disagree; and `cue` (`cue.ts`), one line ("pause 1 s at the chest") of at most 200 characters,
-blank stored as null.
+every run of whitespace — a newline included — one space, blank stored as null (#51).
 
 A superset rests after the round, never within it, whatever its earlier entries say
 (`restingAfter`): the rest is that of the entry that ends the round — its last, or an earlier one

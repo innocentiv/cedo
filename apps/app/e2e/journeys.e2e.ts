@@ -2931,7 +2931,9 @@ test(
       await app.planEditor.create()
       const entry = app.planEditor.entry(0, 0)
       await entry.rest('5')
-      await entry.cue('Pause 1 s at the chest')
+      // A cue is one line (#51): Enter, pressed at its end, starts no second.
+      await entry.cueKeys(['Pause 1 s at the chest', 'Enter'])
+      expect(await entry.cueWritten()).not.toContain('\n')
       await app.planEditor.saveAndStart()
 
       const bench = app.session.entry(0)

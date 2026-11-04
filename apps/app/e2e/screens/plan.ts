@@ -67,6 +67,14 @@ const planEntry = (page: Page, day: number, index: number) => {
       await open()
       await page.fill(`${id}-cue`, text)
     },
+    /** The cue typed key by key — `Enter` included, as a thumb would press it. */
+    cueKeys: async (keys: readonly string[]): Promise<void> => {
+      await open()
+      await page.click(`[data-testid="${id}-cue"]`)
+      await page.keys(keys)
+    },
+    /** The cue as it stands in its field, while it is written. */
+    cueWritten: async (): Promise<string> => String(await page.value(`${id}-cue`)),
     /** The reps to leave in reserve, as offered: `0` to `5`. */
     reserve: async (reps: string): Promise<void> => {
       await open()
