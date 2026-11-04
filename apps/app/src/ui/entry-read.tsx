@@ -1,10 +1,11 @@
 import {
+  type RestPlace,
   type TrackingMode,
   describeProgression,
-  formatDuration,
   formatWeight,
   formatWithReserve,
   hasTarget,
+  restTitle,
   ruleSentence,
   setNames,
   setTargetOf,
@@ -24,12 +25,15 @@ import { Text } from './text.tsx'
  */
 export function EntryRead({
   entry,
+  rest,
   tracking,
   target,
   change,
   testID,
 }: {
   readonly entry: EntryDraft
+  /** Where its rest falls in its day — see `restPlace`. */
+  readonly rest: RestPlace
   readonly tracking: TrackingMode
   readonly target: EntryTargetView | null
   readonly change: ChangeTarget | null
@@ -72,9 +76,9 @@ export function EntryRead({
         ) : null}
       </Section>
       <Section title="Rest & superset">
-        <Text>
+        <Text testID={`${testID}-rest-said`}>
           {[
-            entry.restSeconds === null ? 'No rest' : `Rest ${formatDuration(entry.restSeconds)}`,
+            restTitle(entry.restSeconds, rest),
             entry.supersetGroup === null ? null : `superset ${entry.supersetGroup}`,
           ]
             .filter((part) => part !== null)

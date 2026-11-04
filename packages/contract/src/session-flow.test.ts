@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import type { SetTarget } from './progression.ts'
+import { restPlace } from './rest.ts'
 import {
   type FlowEntry,
   type FlowLog,
@@ -365,5 +366,40 @@ describe('the rest running', () => {
     const swap = log(null)
     expect(restOf(day, [squat, swap])).toEqual({ since: swap.loggedAt, seconds: 120 })
     expect(restOf(null, [swap])).toEqual({ since: swap.loggedAt, seconds: 120 })
+  })
+})
+
+/**
+ * What the plan says of a superset's rest (`restPlace`, #48) is what the logger keeps
+ * (`restingAfter`): walked set by set through a day whose superset of three runs out unevenly, an
+ * earlier entry's rest runs exactly when it ends the round — no entry after it with sets left — and
+ * a last entry's, or one out of a superset, after every set.
+ */
+describe('a superset’s rest, as the plan says it', () => {
+  test('runs where restPlace says it does, set by set through an uneven round of three', () => {
+    const day = {
+      entries: [
+        entry('squat', 0, { working: 2 }),
+        entry('press', 1, { working: 3 }, 'A'),
+        entry('row', 2, { working: 3 }, 'A'),
+        entry('fly', 3, { working: 1 }, 'A'),
+      ],
+    }
+    const open = (e: FlowEntry, logs: readonly FlowLog[]) => nextSet(setsOf(e, logs, null)) !== null
+    const logs: FlowLog[] = []
+    for (let next = focusOf(day, logs); next !== null; next = focusOf(day, logs)) {
+      logs.push(log(next.id))
+      const at = day.entries.indexOf(next)
+      const endsRound = !day.entries.some(
+        (e, i) => i > at && e.supersetGroup === next.supersetGroup && open(e, logs),
+      )
+      const place = restPlace(day.entries, at)
+      const rests = restingAfter(day, logs)?.id === next.id
+      expect({ id: next.id, rests }).toEqual({
+        id: next.id,
+        rests: place === 'earlier' ? endsRound : true,
+      })
+    }
+    expect(logs).toHaveLength(9)
   })
 })

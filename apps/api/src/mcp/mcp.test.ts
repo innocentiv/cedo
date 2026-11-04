@@ -1086,6 +1086,66 @@ describe('editing a plan', () => {
     expect(lines).toContain('Pull')
     expect(lines.filter((line) => line.includes('Day 1'))).toHaveLength(1)
   })
+
+  /**
+   * Each rest where the logger counts it (#48): a superset rests after the round — its last
+   * entry's rest — and an earlier entry's only when it ends the round. A model reading `rest 1:30`
+   * on A1 took it to run within the round, which it never does.
+   */
+  test('a rest reads where it falls: after the round, when it ends it, or straight on', async () => {
+    const pat = await mintPat(alice)
+    const named = async (name: string) =>
+      expectContract(
+        Exercise,
+        (
+          await alice.wire('/exercises', {
+            method: 'POST',
+            body: JSON.stringify({ name, muscles: [{ muscle: 'pectoralis_major', loadPct: 100 }] }),
+          })
+        ).body,
+      ).id
+    const workout = expectContract(
+      Workout,
+      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Upper' }) }))
+        .body,
+    )
+    const entry = (
+      exerciseId: string,
+      supersetGroup: string | null,
+      restSeconds: number | null,
+    ) => ({
+      exerciseId,
+      supersetGroup,
+      restSeconds,
+      sets: [{ targetReps: 5 }],
+    })
+    await callTool(pat, 'workout_save_plan', {
+      workoutId: workout.id,
+      days: [
+        {
+          name: 'Upper',
+          entries: [
+            entry(await named('Squat'), null, 180),
+            entry(await named('Bench'), 'A', 90),
+            entry(await named('Pulldown'), 'A', 90),
+            entry(await named('Curl'), null, 0),
+            entry(await named('Plank'), null, null),
+          ],
+        },
+      ],
+    })
+
+    const lines = textOf((await callTool(pat, 'workout_get', { workoutId: workout.id })).body)
+      .split('\n')
+      .filter((line) => line.startsWith('  - '))
+    expect(lines.map((line) => line.split(', progression')[0])).toEqual([
+      '  - Squat, rest 3:00',
+      '  - Bench (superset A), rest 1:30 when it ends the round',
+      '  - Pulldown (superset A), rest 1:30 after the round',
+      '  - Curl, straight on',
+      '  - Plank, straight on',
+    ])
+  })
 })
 
 /**

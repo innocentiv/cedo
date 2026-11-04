@@ -3492,6 +3492,62 @@ test(
 )
 
 /**
+ * A superset rests after the round (#48): its earlier entry's rest counts only when it ends the
+ * round, which its editor says beside the field, and a reader is told where each rest falls.
+ */
+test(
+  'a superset’s rest reads where it falls: edited, and read only',
+  async () => {
+    const athlete = unique('ssr')
+    await withApp('superset-rest-words', async (page) => {
+      const app = screens(page)
+      await app.auth.register(athlete)
+      const coach = await signUp(`${athlete}c`)
+      const squad = await coach.api.groups.create({ name: 'Squad' })
+      await coach.api.groups.addMember(squad.id, { username: athlete, role: 'reader' })
+      const [first, second] = (await coach.api.exercises.list({ limit: 50 })).items.filter(
+        (exercise) => exercise.tracking === 'weight_reps',
+      )
+      if (first === undefined || second === undefined) throw new Error('Too few lifts seeded')
+      const sets = [{ targetReps: 10, targetWeightG: 20_000 }]
+      const superset = WorkoutPlanInput.parse({
+        days: [
+          {
+            name: 'Pairs',
+            entries: [
+              { exerciseId: first.id, sets, supersetGroup: 'A', restSeconds: 90 },
+              { exerciseId: second.id, sets, supersetGroup: 'A', restSeconds: 90 },
+            ],
+          },
+        ],
+      })
+      const mine = await page.client()
+      const own = await mine.workouts.create({ name: 'Mine', notes: null })
+      await mine.workouts.replacePlan(own.id, superset)
+      const coached = await coach.api.workouts.create({ name: 'Coached', notes: null })
+      await coach.api.workouts.replacePlan(coached.id, superset)
+      await coach.api.workouts.transfer(coached.id, { toGroupId: squad.id })
+
+      await app.planEditor.open(own.id)
+      expect(await app.planEditor.entry(0, 1).restNote()).toBeNull()
+      expect(await app.planEditor.entry(0, 0).restNote()).toContain(
+        'Counts only when this entry ends the round',
+      )
+      await page.screenshot('superset-rest-note')
+
+      await app.planEditor.open(coached.id)
+      expect(await app.planEditor.entry(0, 0).restSaid()).toBe(
+        'Rest 1:30 when it ends the round · superset A',
+      )
+      expect(await app.planEditor.entry(0, 1).restSaid()).toBe(
+        'Rest 1:30 after the round · superset A',
+      )
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * A target is its person's, not the plan's (ADR-0026): a reader of a coach's plan opens an entry
  * read only — the plan said, nothing of it to change — and still sets their own next session,
  * which leaves the coach's own as it was.

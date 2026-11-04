@@ -27,8 +27,14 @@ export const PLAN_WORDS = {
     'each follower’s target stay attached. Omitted, or with its exercise changed, it starts ' +
     'with none.',
   exerciseId: 'The exercise, by id (`exercise_search`).',
-  supersetGroup: 'One capital letter shared by the entries done alternating; null when done alone.',
-  restSeconds: 'Rest after each set, in seconds. Omitted, 120; null or 0, none.',
+  supersetGroup:
+    'One capital letter shared by the entries done alternating, in the day’s order; null when ' +
+    'done alone. No rest within a round: see restSeconds.',
+  restSeconds:
+    'Rest after each working set, in seconds. Omitted, 120; null or 0, none: straight on to ' +
+    'the next. In a superset the rest comes after the round, and it is the LAST entry’s rest. ' +
+    'An earlier entry’s rest never counts between partners; it counts only when that entry ' +
+    'ends the round, because the entries after it have no sets left.',
   cue:
     'One short line for the athlete — technique, tempo, setup. Say effort in reps in reserve, ' +
     'never RPE. Warm-ups are sets, not a cue.',

@@ -11,6 +11,16 @@ import { session } from './session.ts'
 /** A numeric field of a plan entry: a dimension, or `sets` / `warmups`. */
 type EntryField = 'weight' | 'reps' | 'duration' | 'distance' | 'sets' | 'warmups'
 
+/** Puts an entry's settings away: they cover the outline on a phone. */
+const closeEntrySettings = async (page: Page): Promise<void> => {
+  if (!(await page.shown('entry-sheet'))) return
+  await page.click('[data-testid="entry-sheet-close"]')
+  await page.until(
+    async () => await page.shown('entry-sheet'),
+    (open) => !open,
+  )
+}
+
 /**
  * A plan entry, by its place: its line in the outline, and its settings — opened from the line, in
  * a sheet on a phone (#26). Every field action opens them first, as an athlete would.
@@ -19,6 +29,8 @@ const planEntry = (page: Page, day: number, index: number) => {
   const id = `plan-entry-${String(day)}-${String(index)}`
   const open = async (): Promise<void> => {
     if (await page.shown(id)) return
+    // Another entry's settings, in a sheet on a phone, cover this one's line.
+    await closeEntrySettings(page)
     await page.click(`[data-testid="plan-line-${String(day)}-${String(index)}"]`)
     await page.waitFor(id)
   }
@@ -129,6 +141,16 @@ const planEntry = (page: Page, day: number, index: number) => {
     readOnly: async (): Promise<boolean> => {
       await open()
       return await page.exists(`${id}-rule`)
+    },
+    /** Its rest, read only, where it falls (#48): `Rest 1:30 after the round · superset A`. */
+    restSaid: async (): Promise<string | null> => {
+      await open()
+      return await page.text(`${id}-rest-said`)
+    },
+    /** What its rest field says of when it counts — a superset's earlier entry's; null elsewhere. */
+    restNote: async (): Promise<string | null> => {
+      await open()
+      return await page.text(`${id}-rest-note`)
     },
     /** The viewer's own next session, as its column reads it: `9 × 60 kg`. */
     next: async (): Promise<string | null> => {
@@ -287,18 +309,9 @@ export const workouts = (page: Page) => {
  * `save` waits for the page to say so, then goes back where it came from, as Save used to.
  */
 export const planEditor = (page: Page) => {
-  /** Puts an entry's settings away: they cover the outline on a phone. */
-  const closeSettings = async (): Promise<void> => {
-    if (!(await page.shown('entry-sheet'))) return
-    await page.click('[data-testid="entry-sheet-close"]')
-    await page.until(
-      async () => await page.shown('entry-sheet'),
-      (open) => !open,
-    )
-  }
   /** Waits until the page says the plan is saved — failing with why, if it was refused. */
   const saved = async (): Promise<void> => {
-    await closeSettings()
+    await closeEntrySettings(page)
     const status = await page.until(
       async () =>
         (await page.shown('plan-said'))
@@ -349,7 +362,7 @@ export const planEditor = (page: Page) => {
       (await inView(page, 'workout-name-edit')) && (await inView(page, 'workout-back')),
     /** Taps a day's name: a plain text input, so the caret lands where the tap did. */
     focusDayName: async (day: number): Promise<void> => {
-      await closeSettings()
+      await closeEntrySettings(page)
       await page.click(`[data-testid="day-name-${String(day)}"]`)
     },
     /** Leaves the field being typed in, as a tap on the page around it would: it is kept. */
@@ -360,7 +373,7 @@ export const planEditor = (page: Page) => {
     dayName: async (day: number): Promise<unknown> => await page.value(`day-name-${String(day)}`),
     /** Opens the picker to add exercises to a day (#27). */
     addTo: async (day: number): Promise<void> => {
-      await closeSettings()
+      await closeEntrySettings(page)
       await page.click(`[data-testid="add-entry-${String(day)}"]`)
       await page.waitFor('exercise-picker')
     },
@@ -373,7 +386,7 @@ export const planEditor = (page: Page) => {
     },
     /** Adds a day at the foot of the outline. */
     addDay: async (): Promise<void> => {
-      await closeSettings()
+      await closeEntrySettings(page)
       await page.click('[data-testid="add-day"]')
     },
     /** What the page said of a save it put back, or a plan it read again; null when nothing. */

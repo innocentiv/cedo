@@ -14,11 +14,12 @@ import {
   loadable,
   MISSING_EQUIPMENT,
   describeProgression,
-  formatDuration,
   formatEffort,
   formatWeight,
   formatWithReserve,
   heldWords,
+  restPlace,
+  restWords,
 } from '@cedo/contract'
 import { type GroupNameOf, ownership } from './format-group.ts'
 
@@ -79,9 +80,10 @@ export function workoutDetail(
   const targetOf = new Map(targets.map((t) => [t.entryId, t]))
 
   const days = workout.days.map((day) => {
-    const entries = day.entries.map((entry) => {
+    const entries = day.entries.map((entry, at) => {
       const superset = entry.supersetGroup === null ? '' : ` (superset ${entry.supersetGroup})`
-      const rest = entry.restSeconds === null ? '' : `, rest ${formatDuration(entry.restSeconds)}`
+      // Where the logger counts it, not the bare field: A1's rest never runs within a round (#48).
+      const rest = `, ${restWords(entry.restSeconds, restPlace(day.entries, at))}`
       const rule = `, progression: ${ruleWords(entry.progression, unit)}`
       // Null when the caller cannot see the exercise — see the note on WorkoutEntry.exercise.
       const name = entry.exercise?.name ?? '[unavailable exercise]'

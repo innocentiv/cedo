@@ -1,4 +1,4 @@
-import type { Load, TrackingMode } from '@cedo/contract'
+import { type Load, type RestPlace, type TrackingMode, restNote } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
 import { Choice } from './choice.tsx'
 import { DimensionInput } from './dimension-input.tsx'
@@ -17,6 +17,8 @@ const SUPERSET_OPTIONS = ['-', 'A', 'B', 'C', 'D'].map((value) => ({
 
 export interface EntryEditorProps {
   readonly entry: EntryDraft
+  /** Where its rest falls in its day — see `restPlace`. */
+  readonly rest: RestPlace
   /** Decides which target inputs exist, and which rules fit. A plank has no kilograms. */
   readonly tracking: TrackingMode
   /** What the athlete can load on its exercise, when their equipment says (#36). */
@@ -39,6 +41,8 @@ export interface EntryEditorProps {
  */
 export function EntryEditor(props: EntryEditorProps): React.JSX.Element {
   const { entry, tracking, load, onChange, testID } = props
+  // When an earlier superset entry's rest counts: only when it ends the round (#48).
+  const note = restNote(entry.restSeconds, props.rest)
   return (
     <Stack gap="xxl" testID={testID}>
       <Section title="Progression">
@@ -73,6 +77,7 @@ export function EntryEditor(props: EntryEditorProps): React.JSX.Element {
             testID={`${testID}-rest`}
           />
         </Stack>
+        {note === null ? null : <Help testID={`${testID}-rest-note`}>{note}</Help>}
         <Stack gap="xs">
           <Label>Superset</Label>
           <Choice
