@@ -13,7 +13,7 @@ import {
   startingEffort,
 } from '@cedo/contract'
 import { Card } from './card.tsx'
-import { IconButton } from './icon.tsx'
+import { FocusHeading } from './focus-heading.tsx'
 import { type JustDone, LogSlot } from './rest-control.tsx'
 import { ReserveSegments } from './reserve-segments.tsx'
 import { SetMarks } from './set-marks.tsx'
@@ -100,29 +100,7 @@ export function FocusLogger({
   const asked = asksReserveOf(next, tracking)
   return (
     <Stack gap="lg" testID={testID}>
-      <Stack gap="sm">
-        <Stack direction="row" align="center" gap="sm">
-          <Stack grow>
-            <Text variant="title" testID={`${testID}-name`}>
-              {name}
-            </Text>
-          </Stack>
-          {onHowTo === undefined ? null : (
-            <IconButton
-              name="info"
-              label="How to do it"
-              edge="end"
-              onPress={onHowTo}
-              testID={`${testID}-how-to`}
-            />
-          )}
-        </Stack>
-        {cue === null ? null : (
-          <Text tone="muted" testID={`${testID}-cue`}>
-            {cue}
-          </Text>
-        )}
-      </Stack>
+      <FocusHeading name={name} cue={cue} onHowTo={onHowTo} testID={testID} />
       <SetMarks sets={sets} testID={`${testID}-sets`} />
 
       <Card>

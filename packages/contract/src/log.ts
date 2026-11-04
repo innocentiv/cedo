@@ -5,6 +5,7 @@ import { Reserve } from './rpe.ts'
 import { Exercise } from './exercise.ts'
 import { Id, PaginationQuery, Timestamp, patchOf } from './primitives.ts'
 import { WorkoutDay, WorkoutEntry } from './workout.ts'
+import { PROSE_WORDS } from './prose.ts'
 
 /**
  * What actually happened, as opposed to what was prescribed.
@@ -150,6 +151,9 @@ export const SessionStart = z.strictObject({
 })
 export type SessionStart = z.output<typeof SessionStart>
 
+/** A session's notes, as written: a journal of how it went. */
+const SessionNotes = z.string().max(4000).describe(`How it went, what to change. ${PROSE_WORDS}`)
+
 /**
  * Finishing is final: `endedAt` is set once, on a session in progress, and never cleared — there is
  * no reopening a session, and it takes no more sets. What it holds can still be fixed: a set
@@ -158,7 +162,7 @@ export type SessionStart = z.output<typeof SessionStart>
  */
 export const SessionUpdate = z.strictObject({
   endedAt: Timestamp.optional(),
-  notes: z.string().max(4000).nullable().optional(),
+  notes: SessionNotes.nullable().optional(),
 })
 export type SessionUpdate = z.output<typeof SessionUpdate>
 
@@ -220,7 +224,7 @@ export type LogSetHeaders = z.output<typeof LogSetHeaders>
 export const SessionLogInput = z.strictObject({
   workoutId: Id.nullable().default(null),
   dayId: Id.nullable().default(null),
-  notes: z.string().max(4000).nullable().default(null),
+  notes: SessionNotes.nullable().default(null),
   sets: z.array(LogSetInput).min(1).max(200),
 })
 export type SessionLogInput = z.output<typeof SessionLogInput>

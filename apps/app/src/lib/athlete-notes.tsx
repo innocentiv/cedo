@@ -1,6 +1,16 @@
 import { useState } from 'react'
 import { type AthleteNote, noteByline } from '@cedo/contract'
-import { Button, Card, ConfirmButton, FormError, Input, Loaded, Stack, Text } from '../ui/index.ts'
+import {
+  Button,
+  Card,
+  ConfirmButton,
+  FormError,
+  Input,
+  Loaded,
+  Prose,
+  Stack,
+  Text,
+} from '../ui/index.ts'
 import { useNotes, useRemoveNote, useRewordNote, useWriteNote } from '../api/note-queries.ts'
 import { useAuth } from '../auth/auth-provider.tsx'
 import { useSubmit } from './use-submit.ts'
@@ -116,7 +126,7 @@ function Note({
         />
       ) : (
         <>
-          <Text testID={`${testID}-text`}>{note.text}</Text>
+          <Prose text={note.text} testID={`${testID}-text`} />
           <Stack direction="row" gap="sm">
             {note.canEdit ? (
               <Button

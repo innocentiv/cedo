@@ -6,7 +6,7 @@ import { Progression, SetTarget } from './progression.ts'
 import { ruleIssues } from './rule-issues.ts'
 import { OwnableQuery, ownableFields } from './ownable.ts'
 import { Id, NonEmptyString, OrderIndex, patchOf } from './primitives.ts'
-import { PLAN_WORDS } from './plan-words.ts'
+import { PLAN_WORDS, WORKOUT_WORDS } from './plan-words.ts'
 import { WorkoutSetInput, targetFieldsOf } from './plan-set.ts'
 
 /**
@@ -167,7 +167,7 @@ export type WorkoutDay = z.output<typeof WorkoutDay>
 
 const workoutFields = {
   name: NonEmptyString.max(120),
-  notes: z.string().max(4000).nullable().default(null),
+  notes: z.string().max(4000).nullable().default(null).describe(WORKOUT_WORDS.notes),
 }
 
 export const WorkoutCreate = z.strictObject(workoutFields)

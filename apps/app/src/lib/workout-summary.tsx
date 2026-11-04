@@ -6,7 +6,7 @@ import {
   personalBestsLabel,
   sessionSummary,
 } from '@cedo/contract'
-import { Card, Stack, Text } from '../ui/index.ts'
+import { Card, Prose, Stack, Text } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
 import { useWeightUnit } from './weight-unit.ts'
 import { WrittenNotes } from './written-notes.tsx'
@@ -73,7 +73,7 @@ export function ReadNotes({ notes }: { readonly notes: string | null }): React.J
       <Text variant="label" tone="muted">
         Notes
       </Text>
-      <Text testID="session-notes-read">{notes}</Text>
+      <Prose text={notes} testID="session-notes-read" />
     </Stack>
   )
 }

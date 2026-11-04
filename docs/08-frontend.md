@@ -112,6 +112,7 @@ Two constraints found by building it:
 | `ProgressTrend` | an exercise's progress: a bar per session from the contract's `trendOf` — the estimated max of a weight lift, the top set otherwise — and the server's stall as a badge |
 | `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput`. `Input`'s `look` sets a name edited where it reads — a workout's title, a day's heading — with no box. `multiline` grows with its text to twelve lines, then scrolls; `wraps` is one line that wraps, for a cue, and takes no newline (`GrowingInput`, #51) |
 | `Folded` | long text kept to its first lines, measured as laid out, with Show all only when something is hidden (#51) |
+| `Prose`, `InlineProse` | long text drawn as the contract's `prose` reads it — bold, italic, headings, lists, tables, links; anything else as written, and nothing runs (ADR-0028). `InlineProse` is one line — a cue — with bold, italic and links only |
 | `Card`, `ListRow` | the one row shape every list uses |
 | `Choice` | one choice among alternatives, as `Segmented` or `Select` by what its options need — the screen never decides which |
 | `Segmented` | one choice whose options all fit one line — a few short ones, or many tiny ones: the progression rule, a superset's letter or none, a day of five, reps in reserve. One bar of equal segments (`segmented`, the look reps in reserve set) |

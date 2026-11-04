@@ -1,4 +1,6 @@
 import { Text as RNText, StyleSheet, TextInput, View } from 'react-native'
+import { Stack } from './stack.tsx'
+import { Text } from './text.tsx'
 import { CONTROL_HEIGHT, color, radius, space, type } from './tokens.ts'
 
 /**
@@ -80,8 +82,19 @@ export function GrowingInput({
       </View>
     </View>
   )
-  return field
+  if (line) return field
+  // Text in paragraphs is drawn as prose (`Prose`, #51): what a person can mark, said once, briefly.
+  return (
+    <Stack gap="xs">
+      {field}
+      <Text variant="caption" tone="faint">
+        {PROSE_HINT}
+      </Text>
+    </Stack>
+  )
 }
+
+const PROSE_HINT = '**bold**  *italic*  # heading  - list'
 
 const styles = StyleSheet.create({
   /** The input and its unseen twin, laid out alike so the one sizes the other. */

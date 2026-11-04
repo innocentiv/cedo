@@ -1,3 +1,5 @@
+import { INLINE_PROSE_WORDS, PROSE_WORDS } from './prose.ts'
+
 /**
  * What each field of a plan says to the model that writes one (docs/07-mcp.md, "A plan teaches its
  * own model"): the descriptions `workout_save_plan` publishes in its JSON Schema, which is all a
@@ -37,7 +39,7 @@ export const PLAN_WORDS = {
     'ends the round, because the entries after it have no sets left.',
   cue:
     'One short line for the athlete — technique, tempo, setup. Say effort in reps in reserve, ' +
-    'never RPE. Warm-ups are sets, not a cue.',
+    `never RPE. Warm-ups are sets, not a cue. ${INLINE_PROSE_WORDS}`,
   incrementG: 'Weight added at each advance, in grams (2.5 kg is 2500).',
   afterSuccesses:
     'Cleared sessions in a row an advance waits for. Default 1: every cleared session advances.',
@@ -62,3 +64,8 @@ export const PLAN_WORDS = {
     'The `version` `workout_get_editable` gave. If the plan changed since, the save is refused: ' +
     'read it again. Omit only when writing a plan whole, from nothing.',
 } as const
+
+/** What the workout's own fields say to the model — beside its plan, not part of it. */
+export const WORKOUT_WORDS = {
+  notes: `How the workout is run — effort, progression, deload, a bad day; not its plan. ${PROSE_WORDS}`,
+}

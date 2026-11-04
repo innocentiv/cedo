@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { type Exercise, musclesByLoad, notesToKeep } from '@cedo/contract'
-import { ConfirmButton, Field, Input, Sheet, Stack, Text } from '../ui/index.ts'
+import { ConfirmButton, Field, InlineProse, Input, Prose, Sheet, Stack, Text } from '../ui/index.ts'
 import { ExerciseVideo } from './exercise-media.tsx'
 
 /**
@@ -23,14 +23,14 @@ export function HowTo({
   const instructions = exercise?.instructions?.trim() ?? ''
   return (
     <Sheet open={exercise !== null} onClose={onClose} title={exercise?.name ?? ''} testID="how-to">
-      {cue === null ? null : <Text variant="label">{cue}</Text>}
-      {description === '' ? null : <Text tone="muted">{description}</Text>}
+      {cue === null ? null : <InlineProse text={cue} variant="label" />}
+      {description === '' ? null : <Prose text={description} tone="muted" />}
       {instructions === '' ? null : (
         <Stack gap="xs">
           <Text variant="label" tone="muted">
             How to
           </Text>
-          <Text>{instructions}</Text>
+          <Prose text={instructions} />
         </Stack>
       )}
       <Text variant="caption" tone="muted" testID="how-to-muscles">
@@ -95,7 +95,7 @@ export function WorkoutMenu({
           <Text variant="label" tone="muted">
             Workout notes
           </Text>
-          <Text testID="session-workout-notes">{workoutNotes}</Text>
+          <Prose text={workoutNotes} testID="session-workout-notes" />
         </Stack>
       )}
       <Field label="Notes">

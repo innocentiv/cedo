@@ -6,7 +6,16 @@ import {
   useFavouriteExercise,
   useTransferExercise,
 } from '../api/queries.ts'
-import { ConfirmButton, ErrorNotice, NavButton, Sheet, Spinner, Stack, Text } from '../ui/index.ts'
+import {
+  ConfirmButton,
+  ErrorNotice,
+  NavButton,
+  Prose,
+  Sheet,
+  Spinner,
+  Stack,
+  Text,
+} from '../ui/index.ts'
 import { DuplicateIntoMyGroup } from './duplicate-into-my-group.tsx'
 import { About, RecentHistory } from './exercise-about.tsx'
 import { ownSession } from './addresses.ts'
@@ -100,7 +109,7 @@ export function ExerciseDetailView({
   )
   const contents = (
     <Stack gap="md">
-      {data.description === '' ? null : <Text tone="muted">{data.description}</Text>}
+      {data.description === '' ? null : <Prose text={data.description} tone="muted" />}
 
       <About exercise={data} />
 

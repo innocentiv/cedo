@@ -14,6 +14,7 @@ import type { EntryDraft } from '../lib/plan-draft.ts'
 import { useWeightUnit } from '../lib/weight-unit.ts'
 import { Help, Label, Section } from './entry-section.tsx'
 import type { EntryTargetView } from './sets-field.tsx'
+import { InlineProse } from './prose.tsx'
 import { Stack } from './stack.tsx'
 import { type ChangeTarget, NextSession } from './target-change.tsx'
 import { Text } from './text.tsx'
@@ -87,7 +88,7 @@ export function EntryRead({
       </Section>
       {entry.cue === null || entry.cue === '' ? null : (
         <Section title="Cue">
-          <Text>{entry.cue}</Text>
+          <InlineProse text={entry.cue} />
         </Section>
       )}
     </Stack>

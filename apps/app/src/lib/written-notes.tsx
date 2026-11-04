@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { notesToKeep } from '@cedo/contract'
-import { Button, Folded, Input, Text } from '../ui/index.ts'
+import { Button, Folded, Input, Prose } from '../ui/index.ts'
 
 /**
  * Notes read first, and written on request (#51): whoever may change them sees them as everyone
@@ -75,7 +75,7 @@ export function WrittenNotes({
       actions={canEdit ? edit('Edit', 'edit') : undefined}
       testID={testID}
     >
-      <Text testID={`${testID}-read`}>{shown}</Text>
+      <Prose text={shown} testID={`${testID}-read`} />
     </Folded>
   )
 }
