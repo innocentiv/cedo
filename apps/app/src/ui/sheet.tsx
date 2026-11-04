@@ -36,7 +36,7 @@ export function Sheet({ open, onClose, title, children, testID }: SheetProps): R
           testID={testID}
           style={[styles.sheet, desk ? styles.dialog : { paddingBottom: insets.bottom + space.lg }]}
         >
-          <Stack direction="row" align="center" gap="md">
+          <Stack direction="row" align="center" gap="md" style={styles.gutter}>
             <Stack grow>
               <Text variant="heading">{title}</Text>
             </Stack>
@@ -48,7 +48,7 @@ export function Sheet({ open, onClose, title, children, testID }: SheetProps): R
               testID={`${testID}-close`}
             />
           </Stack>
-          <ScrollView contentContainerStyle={styles.body}>{children}</ScrollView>
+          <ScrollView contentContainerStyle={[styles.gutter, styles.body]}>{children}</ScrollView>
         </View>
       </View>
     </Modal>
@@ -67,9 +67,13 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: radius.lg,
     borderTopRightRadius: radius.lg,
     paddingTop: space.md,
-    paddingHorizontal: space.lg,
     gap: space.md,
   },
+  /**
+   * The side padding, on the title and inside the scroll — not on the sheet — so the scroll runs to
+   * the sheet's edge and its bar sits in the gutter, not over the content (#61).
+   */
+  gutter: { paddingHorizontal: space.lg },
   dialog: { borderRadius: radius.lg, paddingBottom: space.lg },
   body: { gap: space.lg, paddingBottom: space.md },
 })
