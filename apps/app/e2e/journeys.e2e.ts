@@ -930,7 +930,7 @@ test(
 )
 
 test(
-  'undoing a set in the middle and logging again does not reuse its number',
+  'removing a set in the middle and logging again does not reuse its number',
   async () => {
     await withApp('undo-then-log', async (page) => {
       const app = screens(page)
@@ -950,10 +950,11 @@ test(
       await log(2)
       await log(3)
 
-      // Undo set 2 — the second row — then log once more.
+      // Remove set 2 — the second row, fixed in the list (#63) — then log once more.
       const second = (await app.session.loggedIds())[1]
       if (second === undefined) throw new Error('expected three logged rows')
-      await app.session.undo(second)
+      await app.fix.open(second)
+      await app.fix.remove()
       await page.until(rows, (n) => n === 2)
       await log(3)
 
@@ -1941,7 +1942,8 @@ test(
       const [typo, twice] = await app.session.loggedIds()
       if (typo === undefined || twice === undefined) throw new Error('The summary shows no sets')
       await app.fix.open(typo)
-      expect(await app.fix.title()).toBe(`${squat.name} · Set 1`)
+      expect(await app.fix.under()).toBe(typo)
+      expect(await app.fix.value('weight')).toBe('100')
       await app.fix.fill('weight', '80')
       await app.fix.save()
       await app.fix.open(twice)
@@ -2270,7 +2272,7 @@ test(
   E2E_TIMEOUT_MS,
 )
 
-/** Undoing a set ends what was picked, as it ends any choice: the day has its focus back. */
+/** Undoing a set chooses its own entry over what was picked (#63): the day has its focus back. */
 test(
   'an exercise picked mid-plan gives the day back its focus once a set is undone',
   async () => {
@@ -2286,9 +2288,8 @@ test(
       const pushUp = await app.session.addExercise('Push-Up')
       expect(await app.session.inFocus()).toBe(`adhoc ${pushUp}`)
 
-      const [logged] = await app.session.loggedIds()
-      if (logged === undefined) throw new Error('The bench set is not among those logged')
-      await app.session.undo(logged)
+      // Its rest still runs, in Push-Up's Log's place: Undo there takes the bench set back.
+      await app.session.undoJustLogged()
       await page.until(
         async () => (await app.session.loggedIds()).length,
         (rows) => rows === 0,
@@ -2961,6 +2962,44 @@ test(
       const mine = await page.client()
       const logs = (await mine.sessions.get(await app.session.id())).logs
       expect(logs.map((l) => [l.reps, l.weightG, l.reserve])).toEqual([[8, 62_500, 2]])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * A set fixed in the session's list (#63), right below its row: apart from the set being logged and
+ * its rest, which run on untouched.
+ */
+test(
+  'a set is fixed right below its row in progress, while the rest runs on',
+  async () => {
+    await withApp('fix-in-progress', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('fip'))
+      await app.planEditor.create()
+      await app.planEditor.saveAndStart()
+
+      const bench = app.session.entry(0)
+      // The plan prescribes no weight: each set is given its own.
+      await bench.fill('weight', '60')
+      await bench.log()
+      await bench.fill('weight', '60')
+      await bench.log()
+      const [first] = await app.session.loggedIds()
+      if (first === undefined) throw new Error('The first set is not among those logged')
+
+      await app.fix.open(first)
+      expect(await app.fix.under()).toBe(first)
+      await app.fix.fill('weight', '65')
+      await app.fix.save()
+      await page.until(
+        async () => await app.session.loggedLines(),
+        (lines) => lines.includes('8 × 65 kg') && lines.includes('8 × 60 kg'),
+      )
+      expect(await bench.rest()).toMatch(/^Rest \d:\d\d$/u)
+      expect(await app.session.canUndoJustLogged()).toBe(true)
+      expect(await app.session.lastSetText()).toBe('8 × 60 kg')
     })
   },
   E2E_TIMEOUT_MS,

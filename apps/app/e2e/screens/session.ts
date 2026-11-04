@@ -370,10 +370,6 @@ export const session = (page: Page) => {
         (rows) => rows === 0,
       )
     },
-    /** Undoes a logged set by its row's id, with the row's undo. */
-    undo: async (rowId: string): Promise<void> => {
-      await page.click(`[data-testid="${rowId.replace(/^logged-set-/u, 'undo-set-')}"]`)
-    },
 
     /** Whether Finish is offered: in the day's place once all is logged, else in the menu. */
     canFinish: async (): Promise<boolean> => {

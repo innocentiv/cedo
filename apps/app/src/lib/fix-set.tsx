@@ -1,57 +1,40 @@
 import { useState } from 'react'
-import {
-  type Effort,
-  type SetLog,
-  type SetLogUpdate,
-  asksReserve,
-  fieldsOf,
-  loggedTitle,
-} from '@cedo/contract'
+import { type Effort, type SetLog, type SetLogUpdate, asksReserve, fieldsOf } from '@cedo/contract'
 import { useCorrectSet, useRemoveSet } from '../api/session-queries.ts'
 import {
   Button,
+  Card,
   Choice,
   ConfirmButton,
   FormError,
   ReserveSegments,
-  Sheet,
   Stack,
   Stepper,
 } from '../ui/index.ts'
-import { exerciseName } from './exercise-name.ts'
 import { useSubmit } from './use-submit.ts'
 
 /**
- * A past mistake fixed (#31): a set of a finished session, opened from its summary — its numbers on
- * the logger's own steppers, how hard it was, whether a warm-up — and Save, or Remove, asked twice.
- * Never its exercise: a set of another one is removed here and logged again. A set of an exercise
- * out of reach has no measures to show, so only how hard and whether a warm-up are offered.
+ * A set fixed (#31), right below its row in the session's list (#63) — in progress or finished
+ * alike, one way everywhere: its numbers on the logger's own steppers, how hard it was, whether a
+ * warm-up — and Save, or Remove, asked twice. Never over the set being logged or its rest: fixing
+ * one set is apart from what is done next. Never its exercise: a set of another one is removed here
+ * and logged again. A set of an exercise out of reach has no measures to show, so only how hard and
+ * whether a warm-up are offered. Keyed by the set, so the numbers start again from each set opened.
  */
 export function FixSet({
   sessionId,
   log,
-  logs,
-  onClose,
+  onDone,
 }: {
   readonly sessionId: string
-  /** The set open, or none: the sheet is put away. */
-  readonly log: SetLog | null
-  /** Every set of the session, which says what this one is called — "Set 2", "Warm-up 1". */
-  readonly logs: readonly SetLog[]
-  readonly onClose: () => void
+  readonly log: SetLog
+  /** Saved, or removed: the row closes. */
+  readonly onDone: () => void
 }): React.JSX.Element {
   return (
-    <Sheet
-      open={log !== null}
-      onClose={onClose}
-      title={log === null ? '' : `${exerciseName(log.exercise)} · ${loggedTitle(log, logs)}`}
-      testID="fix-set"
-    >
-      {/* Keyed by the set, so the numbers start again from each set opened. */}
-      {log === null ? null : (
-        <FixSetForm key={log.id} sessionId={sessionId} log={log} onDone={onClose} />
-      )}
-    </Sheet>
+    <Card testID="fix-set">
+      <FixSetForm key={log.id} sessionId={sessionId} log={log} onDone={onDone} />
+    </Card>
   )
 }
 

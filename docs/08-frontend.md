@@ -337,8 +337,10 @@ As built (#25), on a phone top to bottom, on a desktop in two columns (`Screen` 
 - **A finished session** — its date, time, working sets and bests; its notes written in place, kept
   as the field is left; its sets by exercise, a best marked `PB`. The menu is gone once finished:
   what it held is on the page, or done.
-- **A past mistake fixed** (#31) — a set of a finished session tapped opens a `Sheet`
-  (`fix-set.tsx`): its numbers on the logger's own `Stepper`s, how hard it was, Working set or
+- **A set fixed** (#31) — a set of the session's list tapped, in progress or finished alike, opens
+  right below its own row (#63, `fix-set.tsx`) — never over the set being logged or its rest, which
+  run on: fixing one set is apart from what is done next. One open at a time; tapping it again
+  closes it. Its numbers on the logger's own `Stepper`s, how hard it was, Working set or
   Warm-up, Save — and Remove set, asked twice. Never its exercise: that set is removed and logged
   again. Delete session is last, under the sets, asked twice, and goes back to where it was opened
   from. A set of an exercise out of reach shows no measures, so offers only how hard and which

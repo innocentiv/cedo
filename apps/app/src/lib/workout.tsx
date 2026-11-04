@@ -46,7 +46,7 @@ export function sessionColumns(w: Workout): ScreenColumns | undefined {
   const record = (
     <>
       <UnsentSets sessionId={w.id} day={day} adHoc={w.adHocExercises} />
-      <LoggedSets logs={w.sets.server} onRemove={w.undo} />
+      <LoggedSets sessionId={w.id} logs={w.sets.server} />
     </>
   )
   const rest = {

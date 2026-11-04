@@ -1,10 +1,12 @@
+import { Fragment, useState } from 'react'
 import { useRouter } from 'expo-router'
 import type { LoggedExercise, SessionDay, SessionExercise, SetLog } from '@cedo/contract'
 import { byExercise, formatWithReserve, loggedLabel, loggedTitle } from '@cedo/contract'
 import { useUnsentSets } from '../api/session-queries.ts'
 import { useWeightUnit } from './weight-unit.ts'
 import { exerciseName } from './exercise-name.ts'
-import { Card, IconButton, ListRow, Stack, Text } from '../ui/index.ts'
+import { Card, ListRow, Stack, Text } from '../ui/index.ts'
+import { FixSet } from './fix-set.tsx'
 
 /** The pieces the live session screen is assembled from, so the route itself stays control flow. */
 
@@ -71,46 +73,66 @@ export function UnsentSets({
 }
 
 /**
- * What has actually been done this session in progress, and the only way to take a mistake back.
- * Once finished, its sets read back by exercise instead (`SetsByExercise`).
+ * Which set of a list is open to be fixed, below its row (#63): one at a time, by id — so it shows
+ * the set as read again after a fix, and closes once the set is removed. Tapping it again closes it.
+ */
+function useOpenSet() {
+  const [open, setOpen] = useState<string | null>(null)
+  return {
+    isOpen: (log: SetLog) => open === log.id,
+    toggle: (log: SetLog) => {
+      setOpen((now) => (now === log.id ? null : log.id))
+    },
+    close: () => {
+      setOpen(null)
+    },
+  }
+}
+
+/**
+ * What has actually been done this session in progress, and where any of it is fixed (#63): a set
+ * tapped opens right below itself to be corrected or removed — apart from the set being logged and
+ * its rest, which take back only the set just logged. Once finished, its sets read back by exercise
+ * instead (`SetsByExercise`), and are fixed the same way.
  */
 export function LoggedSets({
+  sessionId,
   logs,
-  onRemove,
 }: {
+  readonly sessionId: string
   /**
    * Each log names its exercise and how it is measured, as far as the caller can still see it —
    * so a weighted pull-up's "+20 kg" reads as added weight even after a reload, or once its plan is
    * out of reach, where the screen used to fall back to a 20 kg lift.
    */
   readonly logs: readonly SetLog[]
-  readonly onRemove: (log: SetLog) => void
 }): React.JSX.Element | null {
   const unit = useWeightUnit()
+  const fixing = useOpenSet()
   if (logs.length === 0) return null
   return (
     <Stack gap="xs" testID="session-logs">
       <Text variant="label" tone="muted">
         This session
       </Text>
+      <Text variant="caption" tone="faint">
+        Tap a set to correct or remove it.
+      </Text>
       {logs.map((log) => (
-        <ListRow
-          key={log.id}
-          title={`${exerciseName(log.exercise)} · ${loggedLabel(log, logs)}`}
-          subtitle={formatWithReserve(log, log.exercise?.tracking ?? null, unit)}
-          accessory={
-            <IconButton
-              name="undo"
-              label="Undo this set"
-              edge="end"
-              onPress={() => {
-                onRemove(log)
-              }}
-              testID={`undo-set-${log.id}`}
-            />
-          }
-          testID={`logged-set-${log.id}`}
-        />
+        <Fragment key={log.id}>
+          <ListRow
+            title={`${exerciseName(log.exercise)} · ${loggedLabel(log, logs)}`}
+            subtitle={formatWithReserve(log, log.exercise?.tracking ?? null, unit)}
+            selected={fixing.isOpen(log)}
+            onPress={() => {
+              fixing.toggle(log)
+            }}
+            testID={`logged-set-${log.id}`}
+          />
+          {fixing.isOpen(log) ? (
+            <FixSet sessionId={sessionId} log={log} onDone={fixing.close} />
+          ) : null}
+        </Fragment>
       ))}
     </Stack>
   )
@@ -118,16 +140,18 @@ export function LoggedSets({
 
 /**
  * A finished session's sets by exercise (#25), each exercise once in the order first done: how it
- * is read back. Its personal bests marked green, as they are judged now. Each set opens to be fixed
- * (#31) where the reader may fix it — their own; a coach's view reads them only.
+ * is read back. Its personal bests marked green, as they are judged now. Each set opens right below
+ * itself to be fixed (#31, #63) where the reader may fix it — their own, `sessionId` given; a
+ * coach's view reads them only.
  */
 export function SetsByExercise({
   logs,
   historyHref,
-  onOpen,
+  sessionId,
 }: {
   readonly logs: readonly SetLog[]
-  readonly onOpen?: (log: SetLog) => void
+  /** The session whose sets these are, when the reader may fix them. */
+  readonly sessionId?: string
   /**
    * Where an exercise's history is, opened from its name — read by a coach (#30), whose session page
    * is the way into an athlete's history. Never for an exercise the reader cannot see: no name.
@@ -136,6 +160,7 @@ export function SetsByExercise({
 }): React.JSX.Element {
   const unit = useWeightUnit()
   const router = useRouter()
+  const fixing = useOpenSet()
   return (
     <Stack gap="xl" testID="session-logs">
       {byExercise(logs).map((sets) => (
@@ -155,26 +180,31 @@ export function SetsByExercise({
             />
           )}
           {sets.map((log) => (
-            <ListRow
-              key={log.id}
-              title={loggedTitle(log, logs)}
-              subtitle={formatWithReserve(log, log.exercise?.tracking ?? null, unit)}
-              accessory={
-                log.personalBest ? (
-                  <Text variant="label" tone="best">
-                    PB
-                  </Text>
-                ) : undefined
-              }
-              onPress={
-                onOpen === undefined
-                  ? undefined
-                  : () => {
-                      onOpen(log)
-                    }
-              }
-              testID={`logged-set-${log.id}`}
-            />
+            <Fragment key={log.id}>
+              <ListRow
+                title={loggedTitle(log, logs)}
+                subtitle={formatWithReserve(log, log.exercise?.tracking ?? null, unit)}
+                accessory={
+                  log.personalBest ? (
+                    <Text variant="label" tone="best">
+                      PB
+                    </Text>
+                  ) : undefined
+                }
+                selected={fixing.isOpen(log)}
+                onPress={
+                  sessionId === undefined
+                    ? undefined
+                    : () => {
+                        fixing.toggle(log)
+                      }
+                }
+                testID={`logged-set-${log.id}`}
+              />
+              {sessionId !== undefined && fixing.isOpen(log) ? (
+                <FixSet sessionId={sessionId} log={log} onDone={fixing.close} />
+              ) : null}
+            </Fragment>
           ))}
         </Stack>
       ))}

@@ -14,6 +14,9 @@ import {
 } from './harness.ts'
 import { unique } from './screens/auth.ts'
 
+/** The first set of the session's list shown — tapped, it opens below itself to be fixed (#63). */
+const FIRST_SET = `[...document.querySelectorAll('[data-testid^="logged-set-"]')].filter((e) => e.offsetParent != null)[0]`
+
 /**
  * `bun run gallery [--only <state>] [--layout mobile|desktop]` — every screen, in the states a
  * person actually meets, at a phone's width and a laptop's, to `.artifacts/gallery/`.
@@ -477,6 +480,11 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await page.waitFor('how-to')
   await snap('03c-session-how-to')
   await page.click('[data-testid="how-to-close"]')
+  // A set fixed right below its row in the list (#63), apart from the rest running in Log's place.
+  await page.evaluate(`${FIRST_SET}.click()`)
+  await page.waitFor('fix-set')
+  await snap('03d-session-fix-set')
+  await page.evaluate(`${FIRST_SET}.click()`)
 
   await show(page, '/workouts', 'workouts-screen')
   await snap('04-workouts')
@@ -572,13 +580,11 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await page.click('[data-testid="finish-session-confirm"]')
   await page.waitFor('session-finished')
   await snap('18-session-finished')
-  // A past mistake fixed (#31): a set tapped on the summary opens to be corrected or removed.
-  await page.evaluate(
-    `[...document.querySelectorAll('[data-testid^="logged-set-"]')].filter((e) => e.offsetParent != null)[0].click()`,
-  )
+  // A past mistake fixed (#31): a set tapped on the summary opens below itself (#63).
+  await page.evaluate(`${FIRST_SET}.click()`)
   await page.waitFor('fix-set')
   await snap('18b-session-fix-set')
-  await page.click('[data-testid="fix-set-close"]')
+  await page.evaluate(`${FIRST_SET}.click()`)
 
   // Sam back at it, and their coach reading along (#30).
   await startToday(page, world)
