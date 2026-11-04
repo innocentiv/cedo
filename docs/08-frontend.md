@@ -102,7 +102,7 @@ Two constraints found by building it:
 
 | Primitive | For |
 | --- | --- |
-| `Screen` | the outermost element of every route: safe area, background, padding, optional footer. A page that is one scroll runs under the status bar behind a band of the floor (`color.statusBar`), its title just below the bar at rest (#61) |
+| `Screen` | the outermost element of every route: safe area, background, padding, optional footer. Under a status bar its title sits just below it; nothing scrolls under the clock, where iOS 26 blurs the page (#61) |
 | `Stack` | every layout. There is no other container |
 | `Text` | all text. Variants `title` / `heading` / `body` / `label` / `caption` / `mono`, and `wordmark` — the product's name, under its mark |
 | `Button`, `NavButton` | actions, and actions that navigate — in the app, or out of it to an absolute URL |
@@ -848,7 +848,10 @@ capped at `100lvh`; once the page is the screen's height iOS gives it the whole 
 fixed to the bottom follows. Anywhere nothing draws under a status bar the inset is 0 and it changes
 nothing. It can be seen only on a device — neither a desktop browser nor the e2e WebView is
 standalone — so a change to it is proved on a phone, installed, opened twice (the first opening runs
-the shell it kept). Inside that page the tab bar sits over the home indicator, its padding the inset
+the shell it kept). Its top edge is a solid bar of the floor behind the clock (`body::before`, fixed):
+iOS 26 blurs an installed app's page some 40pt down from the top unless a fixed, opaque, full-width
+box covers that edge, and with the page scrolling under the clock the blur fell on every title.
+Inside that page the tab bar sits over the home indicator, its padding the inset
 less 12pt (`HOME_INDICATOR_OVERLAP`), as a native one does.
 
 The service worker keeps the **app shell**, and nothing else: the one document, and the bundle it

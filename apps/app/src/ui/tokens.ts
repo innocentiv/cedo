@@ -32,11 +32,6 @@ export const color = {
   border: '#3a3b40',
   /** Over the screen behind a sheet: dimmed, still there. */
   scrim: 'rgba(0, 0, 0, 0.55)',
-  /**
-   * Behind the clock and battery, where a page scrolls under the status bar: the floor, most of
-   * the way, so what passes beneath shows faintly and the clock stays readable over it (#61).
-   */
-  statusBar: `${floor}e0`,
 
   /** Chalk, and two dustings of it. */
   text: plate.white,

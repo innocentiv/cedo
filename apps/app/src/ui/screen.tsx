@@ -121,16 +121,15 @@ export function Screen({
   )
 
   const split = desk && columns !== undefined && beside !== null
-  // A page that is one scroll runs under the status bar, as a native one does (#61): the room the
-  // clock takes is the page's own once it scrolls. At rest the title sits just below the bar.
-  const underBar = header === undefined && scroll && !split
-  // Only where something is drawn under the status bar at all: an installed iPhone.
-  const band = underBar && insets.top > 0
+  // Under a status bar — an installed iPhone — the title sits just below it, not a full step down
+  // (#61). The page itself starts below the bar: nothing scrolls under the clock, where iOS 26
+  // blurs whatever page it finds (index.html keeps that edge solid).
+  const underBar = header === undefined && insets.top > 0
 
   return (
     <View
       testID={testID}
-      style={[styles.page, { paddingTop: header === undefined && !underBar ? insets.top : 0 }]}
+      style={[styles.page, { paddingTop: header === undefined ? insets.top : 0 }]}
     >
       {header}
       {split ? (
@@ -150,7 +149,7 @@ export function Screen({
           contentContainerStyle={[
             styles.content,
             wide ? styles.wide : null,
-            band ? { paddingTop: insets.top + space.sm } : null,
+            underBar ? { paddingTop: space.sm } : null,
           ]}
           keyboardShouldPersistTaps="handled"
           testID="screen-scroll"
@@ -171,7 +170,6 @@ export function Screen({
           {footer}
         </View>
       )}
-      {band ? <View style={[styles.statusBar, { height: insets.top }]} /> : null}
     </View>
   )
 }
@@ -193,15 +191,6 @@ const styles = StyleSheet.create({
    */
   split: { ...centred, flex: 1, maxWidth: WIDE_CONTENT_MAX_WIDTH },
   heading: { paddingHorizontal: space.lg, paddingTop: space.lg },
-  /** Over what scrolls beneath the clock; a tap there reaches the page, as if it were not there. */
-  statusBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: color.statusBar,
-    pointerEvents: 'none',
-  },
   footer: {
     ...centred,
     paddingHorizontal: space.lg,

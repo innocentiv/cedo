@@ -59,6 +59,20 @@
         html {
           height: min(100lvh, calc(100% + env(safe-area-inset-top)));
         }
+        /* iOS 26 blurs the top of an installed app's page — a fade some 40pt down from the edge,
+           over the title — unless a fixed, full-width, opaque box covers that edge. This is that
+           box: the floor, behind the clock, the status bar's height. The page starts below it
+           (`Screen`), so it hides nothing; 0 tall wherever there is no status bar to draw under. */
+        body::before {
+          content: '';
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: env(safe-area-inset-top);
+          background-color: #1b1c1e;
+          z-index: 1;
+        }
       }
     </style>
   </head>
