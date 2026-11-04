@@ -18,7 +18,7 @@ import { trainingReview } from '../../modules/review/service.ts'
 import { type PlanRead, planFor, savePlanAndRead } from '../../modules/workout/plan-for.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
-import { json, reviewSummary, text } from '../format.ts'
+import { READ, REPLACES, WRITE, json, reviewSummary, text } from '../format.ts'
 import {
   suggestionLine,
   suggestionLines,
@@ -27,11 +27,6 @@ import {
   workoutUpdated,
 } from '../format-workout.ts'
 import { groupNamesOf } from '../format-group.ts'
-
-const READ = { readOnlyHint: true, openWorldHint: false } as const
-const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const
-/** It replaces what the notes said, so a client asks — as for an athlete note reworded. */
-const REWORD = { ...WRITE, destructiveHint: true, idempotentHint: true } as const
 
 /**
  * OBJECTIVE 2 — reviewing and adjusting someone's training.
@@ -162,7 +157,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'change. ' +
         'The plan is not touched; to change it, `workout_save_plan`.',
       inputSchema: WorkoutUpdate.safeExtend({ workoutId: z.uuid() }),
-      annotations: REWORD,
+      annotations: REPLACES,
     },
     async ({ workoutId, ...patch }) =>
       text(workoutUpdated(await WorkoutService.update(caller, workoutId, patch))),

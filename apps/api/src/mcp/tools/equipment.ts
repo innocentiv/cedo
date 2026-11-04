@@ -4,20 +4,8 @@ import { AthleteEquipmentInput, OfAthlete } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import { ownOrCoached } from '../../modules/coaching/training.ts'
 import * as EquipmentService from '../../modules/equipment/service.ts'
-import { text } from '../format.ts'
+import { READ, REPLACES, text } from '../format.ts'
 import { equipmentLines } from '../format-library.ts'
-
-const READ = { readOnlyHint: true, openWorldHint: false } as const
-/**
- * It replaces the list WHOLE: an item left out is gone, with its weights — so a client that asks
- * before a destructive write asks here. Said twice, it is said once.
- */
-const REPLACE = {
-  readOnlyHint: false,
-  destructiveHint: true,
-  idempotentHint: true,
-  openWorldHint: false,
-} as const
 
 /**
  * What someone has to train with (#34), so a plan asks only for what their gym has. Your own is
@@ -54,7 +42,8 @@ export function registerEquipmentTools(server: McpServer, caller: Caller): void 
         'you do not have. Weights in GRAMS — "dumbbells from 2 to 30 kg, 2 kg apart" is ' +
         '{ minG: 2000, stepG: 2000, maxG: 30000 }; a barbell starts from the bar. Your own only.',
       inputSchema: AthleteEquipmentInput,
-      annotations: REPLACE,
+      // The list WHOLE: an item left out is gone, with its weights.
+      annotations: REPLACES,
     },
     async (input) =>
       text(

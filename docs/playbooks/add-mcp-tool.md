@@ -24,8 +24,8 @@ server.registerTool(
     title: 'Create an exercise',
     description: '…what it does, and when NOT to use it',
     inputSchema: ExerciseCreateRequest,   // the contract schema the route takes, never a new shape
-    // WRITE is `{ readOnlyHint: false, destructiveHint: false, openWorldHint: false }`, at the top of
-    // each tools file. Spell `destructiveHint` out: MCP takes a write as destructive unless told.
+    // READ, WRITE or REPLACES, from apps/api/src/mcp/format.ts — never a new object here.
+    // REPLACES is for a write that replaces what was there, so a client asks first.
     annotations: WRITE,
   },
   // `text` and the formatters (`exerciseDetail`, `workoutDetail`, …) live in apps/api/src/mcp/format*.ts

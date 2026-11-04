@@ -387,7 +387,10 @@ So `session_fix_set` (#31) corrects a set and never removes one: the app removes
 a session, behind a person's tap. A correction is still a write that replaces what was logged, so
 it takes only your own sets, each by the id `session_get` shows beside it.
 
-Every tool carries `readOnlyHint` so a client can gate writes.
+Every tool carries one of the three annotations in `mcp/format.ts`, so a client can gate
+writes: `READ`; `WRITE`, which adds and replaces nothing; and `REPLACES`, destructive and
+idempotent, for a write that replaces what was there — a set corrected, a note reworded, that
+day's weigh-in, the equipment list, a workout's notes.
 
 ## Adding a tool
 

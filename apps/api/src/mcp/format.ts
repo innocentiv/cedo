@@ -27,6 +27,26 @@ export const json = (value: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }],
 })
 
+/*
+ * What a tool declares of itself, beside what it answers: every tool carries one of these, so a
+ * client can decide when to ask first (docs/07-mcp.md). Here, not in a module of their own, because
+ * every tools file imports this one already and most are at their limit of imports.
+ * `destructiveHint` is always spelled out: MCP takes a write as destructive unless told.
+ */
+
+/** Reads, and changes nothing. */
+export const READ = { readOnlyHint: true, openWorldHint: false } as const
+
+/** Adds, and replaces nothing that was there. */
+export const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const
+
+/**
+ * Replaces what was there — a set as logged, a note's words, that day's weigh-in, the equipment
+ * list whole, a workout's notes — so a client that asks before a destructive write asks here.
+ * Sent twice, it leaves what the first left.
+ */
+export const REPLACES = { ...WRITE, destructiveHint: true, idempotentHint: true } as const
+
 /**
  * `Bench Press: 4 sessions at 8 × 60 kg` — the top set those sessions share, in its exercise's own
  * terms, like every other effort here: no unit arithmetic of its own.

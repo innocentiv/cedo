@@ -6,10 +6,8 @@ import { athletes } from '../../modules/coaching/athletes.ts'
 import { ownOrCoached } from '../../modules/coaching/training.ts'
 import { list as listSessions } from '../../modules/session/list.ts'
 import { get as getSession } from '../../modules/session/plan.ts'
-import { text } from '../format.ts'
+import { READ, text } from '../format.ts'
 import { athleteLines, sessionDetail, sessionLines } from '../format-coaching.ts'
-
-const READ = { readOnlyHint: true, openWorldHint: false } as const
 
 /**
  * OBJECTIVE 2, for someone else — a coach's AI reading the athletes who share their training (#11).

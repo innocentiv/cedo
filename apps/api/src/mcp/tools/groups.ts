@@ -2,10 +2,8 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import type { Caller } from '../../plugins/auth.ts'
 import * as GroupService from '../../modules/group/service.ts'
-import { text } from '../format.ts'
+import { READ, text } from '../format.ts'
 import { groupLine } from '../format-group.ts'
-
-const READ = { readOnlyHint: true, openWorldHint: false } as const
 
 /**
  * The groups you belong to (#52), for the tools that take a group id: a search narrowed to one
