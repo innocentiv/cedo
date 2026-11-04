@@ -48,6 +48,12 @@ export const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHin
 export const REPLACES = { ...WRITE, destructiveHint: true, idempotentHint: true } as const
 
 /**
+ * Rewrites the whole of something — a plan, where a day or entry left out is gone — so a client
+ * that asks before a destructive write asks here. Not idempotent: each send is written anew.
+ */
+export const REWRITES = { ...WRITE, destructiveHint: true, idempotentHint: false } as const
+
+/**
  * `Bench Press: 4 sessions at 8 × 60 kg` — the top set those sessions share, in its exercise's own
  * terms, like every other effort here: no unit arithmetic of its own.
  */

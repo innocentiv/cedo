@@ -993,6 +993,17 @@ describe('editing a plan', () => {
   })
 
   /**
+   * It replaces the whole plan — a day or entry left out is gone — so a client that asks before a
+   * destructive write asks here. Not idempotent: each save raises the version, and a day sent
+   * without its id is made anew.
+   */
+  test('workout_save_plan is announced as destructive, and not idempotent', async () => {
+    const tool = await publishedTool(await mintPat(alice), 'workout_save_plan')
+    expect(tool?.annotations?.['destructiveHint']).toBe(true)
+    expect(tool?.annotations?.['idempotentHint']).not.toBe(true)
+  })
+
+  /**
    * A half written by the AI is refused, saying what to send instead (ADR-0027); a whole target is
    * read back in its outline as written.
    */

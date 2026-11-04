@@ -387,10 +387,13 @@ So `session_fix_set` (#31) corrects a set and never removes one: the app removes
 a session, behind a person's tap. A correction is still a write that replaces what was logged, so
 it takes only your own sets, each by the id `session_get` shows beside it.
 
-Every tool carries one of the three annotations in `mcp/format.ts`, so a client can gate
-writes: `READ`; `WRITE`, which adds and replaces nothing; and `REPLACES`, destructive and
+Every tool carries one of the four annotations in `mcp/format.ts`, so a client can gate
+writes: `READ`; `WRITE`, which adds and replaces nothing; `REPLACES`, destructive and
 idempotent, for a write that replaces what was there — a set corrected, a note reworded, that
-day's weigh-in, the equipment list, a workout's notes.
+day's weigh-in, the equipment list, a workout's notes; and `REWRITES`, destructive and not
+idempotent, for `workout_save_plan`, which replaces the whole plan — a day or entry left out is
+gone — and raises its version each time. A client that asks before a destructive write asks
+at every plan save; that is the price of a save that can drop half a plan.
 
 ## Adding a tool
 

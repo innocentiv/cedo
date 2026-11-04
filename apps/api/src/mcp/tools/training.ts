@@ -18,7 +18,7 @@ import { trainingReview } from '../../modules/review/service.ts'
 import { type PlanRead, planFor, savePlanAndRead } from '../../modules/workout/plan-for.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
-import { READ, REPLACES, WRITE, json, reviewSummary, text } from '../format.ts'
+import { READ, REPLACES, REWRITES, WRITE, json, reviewSummary, text } from '../format.ts'
 import {
   suggestionLine,
   suggestionLines,
@@ -179,7 +179,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'targets attached, and a save from a stale version is refused — read it again. Read ' +
         'note_list before changing a plan, and plan around what it says.',
       inputSchema: PlanSave.safeExtend({ workoutId: z.uuid() }),
-      annotations: WRITE,
+      annotations: REWRITES,
     },
     async ({ workoutId, ...plan }) => {
       return text(`Saved.\n\n${await outline(await savePlanAndRead(caller, workoutId, plan))}`)
