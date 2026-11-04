@@ -5,6 +5,7 @@ import {
   OfAthlete,
   ScopeFields,
   WorkoutCreate,
+  WorkoutUpdate,
   PlanSave,
   type ProgressionSuggestion,
   ReviewQuery,
@@ -17,12 +18,15 @@ import { trainingReview } from '../../modules/review/service.ts'
 import { type PlanRead, planFor, savePlanAndRead } from '../../modules/workout/plan-for.ts'
 import * as ProgressionService from '../../modules/progression/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
-import { json, reviewSummary, text } from '../format.ts'
-import { suggestionLine, suggestionLines, workoutDetail, workoutLine } from '../format-workout.ts'
+import { READ, REPLACES, REWRITES, WRITE, json, reviewSummary, text } from '../format.ts'
+import {
+  suggestionLine,
+  suggestionLines,
+  workoutDetail,
+  workoutLine,
+  workoutUpdated,
+} from '../format-workout.ts'
 import { groupNamesOf } from '../format-group.ts'
-
-const READ = { readOnlyHint: true, openWorldHint: false } as const
-const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const
 
 /**
  * OBJECTIVE 2 — reviewing and adjusting someone's training.
@@ -140,6 +144,26 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
   )
 
   server.registerTool(
+    'workout_update',
+    {
+      title: 'Rename a workout or change its notes',
+      description:
+        'Change the name or notes of a workout you edit; an omitted field is left alone, and ' +
+        '`notes: null` clears them. `notes` REPLACES the whole text: read `workout_get` first and ' +
+        'send all you keep. The notes say how the workout is run — effort, block structure, ' +
+        'deload, what to do on a bad day — so change them when the plan changes. What is true ' +
+        'of the person, such as their equipment or an injury, is theirs, not the workout’s: ' +
+        '`equipment_set` or `note_create`. Every follower of a shared or library workout sees the ' +
+        'change. ' +
+        'The plan is not touched; to change it, `workout_save_plan`.',
+      inputSchema: WorkoutUpdate.safeExtend({ workoutId: z.uuid() }),
+      annotations: REPLACES,
+    },
+    async ({ workoutId, ...patch }) =>
+      text(workoutUpdated(await WorkoutService.update(caller, workoutId, patch))),
+  )
+
+  server.registerTool(
     'workout_save_plan',
     {
       title: 'Save a whole workout plan',
@@ -155,7 +179,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
         'targets attached, and a save from a stale version is refused — read it again. Read ' +
         'note_list before changing a plan, and plan around what it says.',
       inputSchema: PlanSave.safeExtend({ workoutId: z.uuid() }),
-      annotations: WRITE,
+      annotations: REWRITES,
     },
     async ({ workoutId, ...plan }) => {
       return text(`Saved.\n\n${await outline(await savePlanAndRead(caller, workoutId, plan))}`)

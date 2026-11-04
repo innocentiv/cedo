@@ -15,15 +15,12 @@ import { ownOrCoached } from '../../modules/coaching/training.ts'
 import * as ExerciseService from '../../modules/exercise/service.ts'
 import * as MediaService from '../../modules/media/service.ts'
 import { libraryAudit, sharedGroupId } from '../../modules/review/curation.ts'
-import { text } from '../format.ts'
+import { READ, WRITE, text } from '../format.ts'
 import { groupNamesOf } from '../format-group.ts'
 import { exerciseDetail, exerciseLine } from '../format-library.ts'
 
-const READ = { readOnlyHint: true, openWorldHint: false } as const
-
 const section = (title: string, lines: readonly string[]) =>
   lines.length === 0 ? `${title}: none` : `${title} (${lines.length}):\n  ${lines.join('\n  ')}`
-const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const
 
 /**
  * OBJECTIVE 1 — curating the shared exercise library from reliable sources.

@@ -22,7 +22,7 @@ import { seedLibrary } from '../db/seed.ts'
 import { EXERCISE_LIBRARY } from '../db/seed-data/exercises.ts'
 import { expectContract } from '../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../test/harness.ts'
-import { appOf, callTool, mintPat, post, rpc, textOf } from '../test/mcp-wire.ts'
+import { appOf, callTool, mintPat, post, publishedTool, rpc, textOf } from '../test/mcp-wire.ts'
 import { reviewFixture } from '../modules/review/review-fixture.ts'
 
 /**
@@ -120,9 +120,7 @@ describe('the published tool list', () => {
   })
 
   test('advertises the valid muscle slugs, so the model need not guess', async () => {
-    const pat = await mintPat(alice)
-    const { body } = await rpc(pat, 'tools/list')
-    const search = (body.result?.tools ?? []).find((t) => t.name === 'exercise_search')
+    const search = await publishedTool(await mintPat(alice), 'exercise_search')
     expect(JSON.stringify(search)).toContain('quadriceps')
   })
 })
@@ -447,6 +445,113 @@ describe('workout_duplicate', () => {
     })
     expect(body.result?.isError).toBe(true)
     expect(textOf(body)).toContain('No such group')
+  })
+})
+
+/**
+ * A workout's name and notes (#44). The notes say how it is run, so they change as the plan does —
+ * and without this the athlete retyped them in the app from text the AI pasted.
+ */
+describe('workout_update', () => {
+  const aWorkout = async (user: TestUser, notes: string | null = 'RIR 2 on everything') =>
+    expectContract(Workout, await post(user, '/workouts', { name: 'Push', notes }))
+  const stored = async (user: TestUser, id: string) =>
+    expectContract(Workout, (await user.wire(`/workouts/${id}`)).body)
+
+  test('renames it, and says so', async () => {
+    const workout = await aWorkout(alice)
+    const { body } = await callTool(await mintPat(alice), 'workout_update', {
+      workoutId: workout.id,
+      name: 'Push B',
+    })
+    expect(textOf(body)).toBe(
+      `Updated workout ${workout.id} — "Push B"\nnotes: RIR 2 on everything`,
+    )
+    expect((await stored(alice, workout.id)).name).toBe('Push B')
+  })
+
+  test('replaces the notes whole', async () => {
+    const workout = await aWorkout(alice)
+    await callTool(await mintPat(alice), 'workout_update', {
+      workoutId: workout.id,
+      notes: 'Deload every fifth week',
+    })
+    expect((await stored(alice, workout.id)).notes).toBe('Deload every fifth week')
+  })
+
+  test('keeps the notes when only the name is sent', async () => {
+    const workout = await aWorkout(alice)
+    await callTool(await mintPat(alice), 'workout_update', { workoutId: workout.id, name: 'B' })
+    expect((await stored(alice, workout.id)).notes).toBe('RIR 2 on everything')
+  })
+
+  test('clears the notes with an explicit null', async () => {
+    const workout = await aWorkout(alice)
+    const { body } = await callTool(await mintPat(alice), 'workout_update', {
+      workoutId: workout.id,
+      notes: null,
+    })
+    expect(textOf(body)).toBe(`Updated workout ${workout.id} — "Push"\nno notes`)
+    expect((await stored(alice, workout.id)).notes).toBeNull()
+  })
+
+  /** A library workout alice follows but does not edit: seen, and still refused. */
+  test('refuses a workout you can read but not edit', async () => {
+    const bob = await h.as('bob')
+    await h.curator(bob)
+    const shared = await aWorkout(bob)
+    await post(bob, `/workouts/${shared.id}/transfer`, { toGroupId: h.groupId })
+    expect((await stored(alice, shared.id)).name).toBe('Push')
+
+    const { body } = await callTool(await mintPat(alice), 'workout_update', {
+      workoutId: shared.id,
+      notes: 'Mine now',
+    })
+    expect(body.result?.isError).toBe(true)
+    expect((await stored(bob, shared.id)).notes).toBe('RIR 2 on everything')
+  })
+
+  /** Bob's own workout, which alice cannot see: not found, and nothing says it exists. */
+  test("never someone else's: a workout you cannot see is not found", async () => {
+    const bob = await h.as('bob')
+    const theirs = await aWorkout(bob)
+    const { body } = await callTool(await mintPat(alice), 'workout_update', {
+      workoutId: theirs.id,
+      name: 'Mine now',
+    })
+    expect(body.result?.isError).toBe(true)
+    expect(textOf(body)).toContain('No such workout')
+    expect((await stored(bob, theirs.id)).name).toBe('Push')
+  })
+
+  /** The notes are the workout's, not its plan's: a plan read before them still saves (ADR-0022). */
+  test('leaves the plan’s version alone', async () => {
+    const workout = await aWorkout(alice)
+    const pat = await mintPat(alice)
+    const first = await callTool(pat, 'workout_save_plan', {
+      workoutId: workout.id,
+      days: [{ name: 'A', entries: [] }],
+    })
+    expect(first.body.result?.isError).toBeUndefined()
+    const editable = PlanSave.parse(
+      JSON.parse(
+        textOf((await callTool(pat, 'workout_get_editable', { workoutId: workout.id })).body),
+      ),
+    )
+
+    if (editable.version === undefined) throw new Error('no version to send back')
+    await callTool(pat, 'workout_update', { workoutId: workout.id, notes: 'HIIT after legs' })
+    expect((await stored(alice, workout.id)).version).toBe(editable.version)
+
+    const saved = await callTool(pat, 'workout_save_plan', { workoutId: workout.id, ...editable })
+    expect(saved.body.result?.isError).toBeUndefined()
+    expect(textOf(saved.body)).toStartWith('Saved.')
+  })
+
+  /** It replaces what the notes said: a client that asks before a destructive write asks here. */
+  test('is announced as destructive', async () => {
+    const tool = await publishedTool(await mintPat(alice), 'workout_update')
+    expect(tool?.annotations?.['destructiveHint']).toBe(true)
   })
 })
 
@@ -786,8 +891,7 @@ describe('a past set corrected', () => {
 
   /** It replaces what was logged: a client that asks before a destructive write asks here. */
   test('is announced as destructive', async () => {
-    const { body } = await rpc(await mintPat(alice), 'tools/list')
-    const tool = (body.result?.tools ?? []).find((t) => t.name === 'session_fix_set')
+    const tool = await publishedTool(await mintPat(alice), 'session_fix_set')
     expect(tool?.annotations?.['destructiveHint']).toBe(true)
   })
 
@@ -886,6 +990,17 @@ describe('editing a plan', () => {
     expect(after.days[0]?.entries[0]?.id).toBe(before.days[0]?.entries[0]?.id)
     // What the AI did not touch, it did not lose: the cue came back in the editable plan.
     expect(after.days[0]?.entries[0]?.cue).toBe('Chest up')
+  })
+
+  /**
+   * It replaces the whole plan — a day or entry left out is gone — so a client that asks before a
+   * destructive write asks here. Not idempotent: each save raises the version, and a day sent
+   * without its id is made anew.
+   */
+  test('workout_save_plan is announced as destructive, and not idempotent', async () => {
+    const tool = await publishedTool(await mintPat(alice), 'workout_save_plan')
+    expect(tool?.annotations?.['destructiveHint']).toBe(true)
+    expect(tool?.annotations?.['idempotentHint']).not.toBe(true)
   })
 
   /**
@@ -1033,8 +1148,7 @@ describe('equipment', () => {
 
   /** It replaces the list whole: an item left out is gone, so a client that asks first asks here. */
   test('equipment_set is announced as destructive', async () => {
-    const { body } = await rpc(await mintPat(alice), 'tools/list')
-    const tool = (body.result?.tools ?? []).find((t) => t.name === 'equipment_set')
+    const tool = await publishedTool(await mintPat(alice), 'equipment_set')
     expect(tool?.annotations?.['destructiveHint']).toBe(true)
   })
 
@@ -1442,8 +1556,7 @@ describe('weigh-ins and the year of birth', () => {
   })
 
   test('taking a weigh-in is announced as replacing that day’s', async () => {
-    const { body } = await rpc(await mintPat(alice), 'tools/list')
-    const tool = (body.result?.tools ?? []).find((t) => t.name === 'weigh_in_create')
+    const tool = await publishedTool(await mintPat(alice), 'weigh_in_create')
     expect(tool?.annotations?.['destructiveHint']).toBe(true)
   })
 })

@@ -6,13 +6,8 @@ import * as AuthService from '../../modules/auth/service.ts'
 import { ownOrCoached } from '../../modules/coaching/training.ts'
 import * as NoteService from '../../modules/note/service.ts'
 import * as WeighInService from '../../modules/weigh-in/service.ts'
-import { text } from '../format.ts'
+import { READ, REPLACES, WRITE, text } from '../format.ts'
 import { noteLines, profileLine, weighInLine, weighInLines } from '../format-file.ts'
-
-const READ = { readOnlyHint: true, openWorldHint: false } as const
-const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const
-/** It replaces a note's words, so a client that asks before a destructive write asks here. */
-const REWORD = { ...WRITE, destructiveHint: true, idempotentHint: true } as const
 
 /**
  * Athlete notes (#41): what is known about someone, kept for planning their training — yours, or
@@ -64,7 +59,7 @@ export function registerNoteTools(server: McpServer, caller: Caller): void {
         'Replace the words of a note you wrote, by the id note_list shows — when what it says ' +
         'is no longer quite true. Only your own notes; an athlete’s needs `athlete`.',
       inputSchema: AthleteNoteInput.safeExtend({ noteId: z.uuid() }).safeExtend(OfAthlete.shape),
-      annotations: REWORD,
+      annotations: REPLACES,
     },
     async ({ athlete, noteId, ...input }) =>
       text(
@@ -75,14 +70,6 @@ export function registerNoteTools(server: McpServer, caller: Caller): void {
       ),
   )
 }
-
-/** It replaces what was there — that day's weigh-in, the year said before — so a client asks. */
-const REPLACE = {
-  readOnlyHint: false,
-  destructiveHint: true,
-  idempotentHint: true,
-  openWorldHint: false,
-} as const
 
 /**
  * Weigh-ins and the year someone was born (#42): what a plan is weighed against. Weigh-ins are
@@ -119,7 +106,7 @@ export function registerWeighInTools(server: McpServer, caller: Caller): void {
         'it. In GRAMS: 82.4 kg is 82400, 180 lb is 81647. One a day: it REPLACES one already ' +
         'taken that day.',
       inputSchema: WeighInInput.safeExtend(OfAthlete.shape),
-      annotations: REPLACE,
+      annotations: REPLACES,
     },
     async ({ athlete, ...input }) =>
       text(
@@ -135,7 +122,7 @@ export function registerWeighInTools(server: McpServer, caller: Caller): void {
         'Set the year you were born, when you say it — null forgets it. Yours only: an athlete ' +
         'sets their own. Whoever coaches you reads it as an age, in training_review.',
       inputSchema: MeUpdate.pick({ birthYear: true }).required(),
-      annotations: REPLACE,
+      annotations: REPLACES,
     },
     async (patch) =>
       text(profileLine((await AuthService.updateMe(caller, patch)).user, new Date())),

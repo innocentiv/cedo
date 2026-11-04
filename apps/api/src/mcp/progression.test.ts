@@ -10,7 +10,7 @@ import {
 import { coachedSquad } from '../test/coaching.ts'
 import { expectContract } from '../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../test/harness.ts'
-import { callTool, mintPat, post, rpc, textOf } from '../test/mcp-wire.ts'
+import { callTool, mintPat, post, publishedTool, textOf } from '../test/mcp-wire.ts'
 
 /**
  * The progression model as a model meets it (#58, docs/07-mcp.md "A plan teaches its own model"):
@@ -260,8 +260,7 @@ describe('target_set', () => {
   })
 
   test('is published as a write, its fields described', async () => {
-    const { body } = await rpc(pat, 'tools/list')
-    const tool = body.result?.tools?.find((t) => t.name === 'target_set')
+    const tool = await publishedTool(pat, 'target_set')
     expect(tool?.annotations?.['readOnlyHint']).toBe(false)
     expect(JSON.stringify(tool?.inputSchema)).toContain('Weight in GRAMS')
   })
@@ -269,8 +268,7 @@ describe('target_set', () => {
 
 describe('a plan written from the tool descriptions alone', () => {
   test('workout_save_plan publishes every description the plan carries', async () => {
-    const { body } = await rpc(pat, 'tools/list')
-    const tool = body.result?.tools?.find((t) => t.name === 'workout_save_plan')
+    const tool = await publishedTool(pat, 'workout_save_plan')
     const published = JSON.stringify(tool?.inputSchema)
     const missing = Object.entries(PLAN_WORDS).filter(
       ([, words]) => !published.includes(JSON.stringify(words).slice(1, -1)),

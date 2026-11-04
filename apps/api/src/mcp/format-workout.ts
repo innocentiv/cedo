@@ -58,6 +58,12 @@ function loadsNote(weightG: number | null, load: Load | null, unit: WeightUnit):
   return ` (loads ${formatWeight(can.weightG, unit)}${end})`
 }
 
+/** A name or notes changed: the two lines that changed, not the whole plan, which did not. */
+export function workoutUpdated(workout: Workout): string {
+  const notes = workout.notes === null ? 'no notes' : `notes: ${workout.notes}`
+  return `Updated workout ${workout.id} — "${workout.name}"\n${notes}`
+}
+
 /** The whole plan as an outline. A 6-day plan is ~60 short lines rather than ~40 KB of JSON. */
 export function workoutDetail(
   workout: Workout,

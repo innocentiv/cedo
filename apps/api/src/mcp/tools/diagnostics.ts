@@ -3,9 +3,7 @@ import { z } from 'zod'
 import { DomainError } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { platformStatus, slowQueries } from '../../modules/review/diagnostics.ts'
-import { text } from '../format.ts'
-
-const READ = { readOnlyHint: true, openWorldHint: false } as const
+import { READ, text } from '../format.ts'
 
 /**
  * OBJECTIVE 3 — telling an AI what is actually happening inside a running instance.

@@ -116,7 +116,7 @@ without them: a copy in a group they edit, as `workout_duplicate` is for a share
 ### 2. Reviewing someone's training
 
 `training_review` · `workout_list` · `workout_get` · `workout_get_editable` · `workout_create` ·
-`workout_save_plan` · `workout_duplicate` · `workout_progression` · `target_set` ·
+`workout_update` · `workout_save_plan` · `workout_duplicate` · `workout_progression` · `target_set` ·
 `exercise_history` · `session_log` · `session_fix_set` · `note_list` · `note_create` · `note_update` · `weigh_in_list` ·
 `weigh_in_create` · `athlete_profile_set`
 
@@ -126,6 +126,17 @@ preference, what they said of a plan. Each takes the coaching tools' `athlete`: 
 too (ADR-0021, amended). `training_review` and the plan-writing tools say to read them first; the
 review does not carry them, so a plan made without asking is the model's omission, not a stale
 payload. Only the author rewords one, and none is removed here — the app does that, behind a tap.
+
+`workout_update` changes a workout's name and notes (#44) — `PATCH /workouts/:id`, through the
+same `WorkoutService.update`: an omitted field is left alone, `notes: null` clears them. The notes
+are the **workout's**, not its plan's (`GLOSSARY.md`): how it is run — effort, block structure,
+deload, the bad-day rule — so they change when the plan does. They are not versioned with the
+plan: an edit neither checks nor raises its version (ADR-0022 guards the plan), so a save from
+an earlier `workout_get_editable` still lands, and the last edit to the notes wins. It replaces
+the whole text, so it is announced destructive and idempotent, as `note_update` is, and says to
+read `workout_get` first. It takes no `athlete`: who may change it is whoever edits its group,
+and what is true of the person following it — their equipment, an injury — goes to
+`equipment_set` or an athlete note instead.
 
 `weigh_in_list` and `weigh_in_create` (the same file) are **weigh-ins** (#42): a bodyweight a day,
 in grams, read over the review's weeks with the latest before them — yours, or an athlete's with
@@ -376,7 +387,13 @@ So `session_fix_set` (#31) corrects a set and never removes one: the app removes
 a session, behind a person's tap. A correction is still a write that replaces what was logged, so
 it takes only your own sets, each by the id `session_get` shows beside it.
 
-Every tool carries `readOnlyHint` so a client can gate writes.
+Every tool carries one of the four annotations in `mcp/format.ts`, so a client can gate
+writes: `READ`; `WRITE`, which adds and replaces nothing; `REPLACES`, destructive and
+idempotent, for a write that replaces what was there — a set corrected, a note reworded, that
+day's weigh-in, the equipment list, a workout's notes; and `REWRITES`, destructive and not
+idempotent, for `workout_save_plan`, which replaces the whole plan — a day or entry left out is
+gone — and raises its version each time. A client that asks before a destructive write asks
+at every plan save; that is the price of a save that can drop half a plan.
 
 ## Adding a tool
 
@@ -386,6 +403,9 @@ Every tool carries `readOnlyHint` so a client can gate writes.
    `coaching.ts`, `athlete-file.ts` or `diagnostics.ts` with a contract schema,
    an annotation, and a description written for a model: say when to use it, and what NOT to do. A
    new file must also be wired into `mcp/tools/index.ts`, or its tools never load.
-3. Format the output for reading (`mcp/format.ts`), not for machines.
+3. Format the output for reading (`mcp/format.ts`), not for machines. A write answers with what
+   it changed: the whole of it when that is small — `exercise_update` prints the exercise — and
+   only the part that changed when the rest is large and untouched — `workout_update` prints the
+   name and notes, not the plan beneath them.
 4. Add a case to `mcp/mcp.test.ts`, which drives real JSON-RPC over HTTP rather than calling the
    handler directly — auth, framing and schema publication are exactly what a direct call skips.

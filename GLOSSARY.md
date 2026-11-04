@@ -215,7 +215,9 @@ _Avoid_: available, in reach (those are about who can see an exercise)
 
 **Workout**:
 A named course of training someone follows — Push/Pull/Legs, a five-week block. It is an ownable: shared,
-transferred, duplicated, favourited as one.
+transferred, duplicated, favourited as one. Its notes say how it is run — effort, block structure,
+deload, what to do on a bad day — and are not part of its plan. What is true of the person following
+it, such as their equipment or an injury, is theirs to keep, not the workout's.
 _Avoid_: routine, program, programme, template
 
 **Plan**:
