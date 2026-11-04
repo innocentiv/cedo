@@ -3006,6 +3006,59 @@ test(
 )
 
 /**
+ * A superset rests after the pair, not between (#63): its first set has no rest after it, so Undo
+ * sits beside the partner's Log — the focus goes straight to it — and the pair's last starts the
+ * rest in Log's place.
+ */
+test(
+  'a superset’s first set keeps Undo beside the partner’s Log; the pair’s last rests',
+  async () => {
+    await withApp('undo-superset', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('uss'))
+      const mine = await page.client()
+      const [first, second] = (await mine.exercises.list({ limit: 50 })).items.filter(
+        (exercise) => exercise.tracking === 'weight_reps',
+      )
+      if (first === undefined || second === undefined) throw new Error('Too few lifts seeded')
+      const sets = [
+        { targetReps: 10, targetWeightG: 20_000 },
+        { targetReps: 10, targetWeightG: 20_000 },
+      ]
+      const plan = await mine.workouts.create({ name: 'Pairs', notes: null })
+      await mine.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [
+            {
+              name: 'A',
+              entries: [
+                { exerciseId: first.id, sets, supersetGroup: 'A', restSeconds: 0 },
+                { exerciseId: second.id, sets, supersetGroup: 'A', restSeconds: 60 },
+              ],
+            },
+          ],
+        }),
+      )
+
+      await app.planEditor.open(plan.id)
+      await app.workouts.startDay(0)
+      await app.session.entry(0).log()
+      expect(await app.session.inFocus()).toBe('entry 1')
+      const partner = app.session.entry(1)
+      expect(await partner.rest()).toBeNull()
+      expect(await partner.canLog()).toBe(true)
+      expect(await app.session.canUndoJustLogged()).toBe(true)
+
+      await partner.log()
+      expect(await partner.rest()).toMatch(/^Rest (1:00|0:5\d)$/u)
+      expect(await app.session.canUndoJustLogged()).toBe(true)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * A set with no rest after it — straight on, as in a superset's first — keeps Undo beside Log until
  * the next set is logged (#63).
  */

@@ -392,6 +392,27 @@ async function startToday(page: Page, world: World): Promise<string> {
   return session.id
 }
 
+/**
+ * One more warm-up of today's squat, logged now: no rest follows a warm-up, so Undo sits beside Log
+ * until the next set (#63).
+ */
+async function logWarmup(page: Page, world: World, sessionId: string): Promise<void> {
+  const api = await page.client()
+  const squat = (await api.workouts.get(world.planId)).days[0]?.entries[0]
+  const warmup = squat?.sets.find((set) => set.isWarmup)
+  if (squat === undefined || warmup === undefined) throw new Error('The squat has no warm-up')
+  await api.sessions.logSet(sessionId, {
+    exerciseId: squat.exerciseId,
+    entryId: squat.id,
+    weightG: warmup.target.weightG,
+    reps: warmup.target.reps,
+    reserve: null,
+    durationS: null,
+    distanceMm: null,
+    isWarmup: true,
+  })
+}
+
 // ---------------------------------------------------------------------------------------------
 // Photographing
 // ---------------------------------------------------------------------------------------------
@@ -572,6 +593,12 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await snap('16-tokens')
   await show(page, '/settings/connect', 'connect-screen')
   await snap('17-connect')
+
+  // A warm-up just logged has no rest after it: Undo beside Log, until the next set (#63).
+  await logWarmup(page, world, sessionId)
+  await show(page, `/today/session/${sessionId}`, 'session-screen')
+  await page.waitFor('rest-control-undo')
+  await snap('17b-session-undo-beside-log')
 
   // Last, as it ends the session every screen above showed in progress.
   await show(page, `/today/session/${sessionId}`, 'session-screen')
