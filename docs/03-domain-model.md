@@ -286,10 +286,10 @@ disagree; and `cue` (`cue.ts`), one line ("pause 1 s at the chest") of at most 2
 blank stored as null.
 
 A superset rests after the round, never within it, whatever its earlier entries say
-(`restingAfter`): the round's rest is its last entry's, and an earlier entry's counts only when it
-is done alone, its partners' sets used up. The plan says each rest where it falls (`restPlace`,
-`restWords`) — `rest 1:30 after the round`, `rest 1:30 when done alone`, `straight on` — alike in
-the MCP outline and the app (#48).
+(`restingAfter`): the rest is that of the entry that ends the round — its last, or an earlier one
+once the entries after it have no sets left. The plan says each rest where it sits (`restPlace`,
+`restWords`) — `rest 1:30 after the round`, `rest 1:30 when it ends the round`, `straight on` —
+alike in the MCP outline and the app (#48).
 
 Ordering uses `(parent_id, index)` unique indexes. **API inputs carry no indices** — order is array
 position and the server assigns them, which removes duplicate/gap indices and reorder endpoints

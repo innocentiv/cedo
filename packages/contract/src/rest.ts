@@ -8,20 +8,24 @@ import { formatDuration } from './units.ts'
  * Two minutes unless the plan says otherwise: the evidence leans, with wide uncertainty, toward
  * longer rest for growth, and a minute or less on a compound lift is a known pitfall (Singer et al.,
  * Front Sports Act Living 2024). A rest of 0 — or null — is "straight on". A superset rests after
- * the round, never within it, whatever its earlier entries say (`restingAfter`): the round's rest
- * is its last entry's, and an earlier entry's counts only when it is done alone (#48).
+ * the round, never within it, whatever its earlier entries say (`restingAfter`): the rest is that
+ * of the entry that ends the round — its last, or an earlier one once the entries after it have no
+ * sets left (#48).
  */
 
 export const DEFAULT_REST_S = 120
 
 /**
- * Where an entry's rest falls in its day (#48), by the day's order: its own after each set; a
- * superset's last entry's after the round; a superset's earlier entry's only when it is done alone
- * — its partners' sets used up — as between partners the round runs straight on. A letter no other
- * entry shares makes no round: the rest is its own.
+ * Where an entry sits for its rest (#48): out of a superset — or alone on its letter, which makes
+ * no round — `own`; a superset's `last` entry, in the day's order; or an `earlier` one.
  */
-export type RestPlace = 'own' | 'round' | 'alone'
+export type RestPlace = 'own' | 'last' | 'earlier'
 
+/**
+ * Where the entry `at` sits for its rest, by the day's order. A `last` entry's rest runs after each
+ * round; an `earlier` one's only when it ends the round — once the entries after it have no sets
+ * left — as between partners the round runs straight on. `restingAfter` is what keeps it.
+ */
 export function restPlace(
   entries: readonly { readonly supersetGroup: string | null }[],
   at: number,
@@ -30,15 +34,30 @@ export function restPlace(
   if (letter === null) return 'own'
   const partners = entries.flatMap((e, i) => (i !== at && e.supersetGroup === letter ? [i] : []))
   if (partners.length === 0) return 'own'
-  return partners.some((i) => i > at) ? 'alone' : 'round'
+  return partners.some((i) => i > at) ? 'earlier' : 'last'
 }
 
 /** An entry's rest as a plan says it, alike to the AI and in the app: `rest 1:30 after the round`. */
 export function restWords(restSeconds: number | null, place: RestPlace): string {
   if (restSeconds === null || restSeconds === 0) return 'straight on'
   const rest = `rest ${formatDuration(restSeconds)}`
-  if (place === 'round') return `${rest} after the round`
-  return place === 'alone' ? `${rest} when done alone` : rest
+  if (place === 'last') return `${rest} after the round`
+  return place === 'earlier' ? `${rest} when it ends the round` : rest
+}
+
+/** `Rest 1:30 after the round`: `restWords` opening a line of its own, as the app shows it. */
+export function restTitle(restSeconds: number | null, place: RestPlace): string {
+  const words = restWords(restSeconds, place)
+  return `${words.charAt(0).toUpperCase()}${words.slice(1)}`
+}
+
+/**
+ * What the editor says beside an earlier superset entry's rest: when it counts. Nothing for one with
+ * no rest, nor out of a superset, nor on its last entry — there the rest says itself.
+ */
+export function restNote(restSeconds: number | null, place: RestPlace): string | null {
+  if (place !== 'earlier' || restSeconds === null || restSeconds === 0) return null
+  return 'Counts only when this entry ends the round, once the entries after it have no sets left. Between partners the round runs straight on.'
 }
 
 /**

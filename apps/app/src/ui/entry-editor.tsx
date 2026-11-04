@@ -1,4 +1,4 @@
-import type { Load, RestPlace, TrackingMode } from '@cedo/contract'
+import { type Load, type RestPlace, type TrackingMode, restNote } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
 import { Choice } from './choice.tsx'
 import { DimensionInput } from './dimension-input.tsx'
@@ -41,6 +41,8 @@ export interface EntryEditorProps {
  */
 export function EntryEditor(props: EntryEditorProps): React.JSX.Element {
   const { entry, tracking, load, onChange, testID } = props
+  // When an earlier superset entry's rest counts: only when it ends the round (#48).
+  const note = restNote(entry.restSeconds, props.rest)
   return (
     <Stack gap="xxl" testID={testID}>
       <Section title="Progression">
@@ -75,11 +77,7 @@ export function EntryEditor(props: EntryEditorProps): React.JSX.Element {
             testID={`${testID}-rest`}
           />
         </Stack>
-        {props.rest === 'alone' ? (
-          <Help testID={`${testID}-rest-alone`}>
-            Counts only when done alone: between partners the round runs straight on.
-          </Help>
-        ) : null}
+        {note === null ? null : <Help testID={`${testID}-rest-note`}>{note}</Help>}
         <Stack gap="xs">
           <Label>Superset</Label>
           <Choice

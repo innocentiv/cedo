@@ -34,7 +34,7 @@ export const PLAN_WORDS = {
     'Rest after each working set, in seconds. Omitted, 120; null or 0, none: straight on to ' +
     'the next. In a superset the rest comes after the round, and it is the LAST entry’s rest. ' +
     'An earlier entry’s rest never counts between partners; it counts only when that entry ' +
-    'is done alone, because its partners have no sets left.',
+    'ends the round, because the entries after it have no sets left.',
   cue:
     'One short line for the athlete — technique, tempo, setup. Say effort in reps in reserve, ' +
     'never RPE. Warm-ups are sets, not a cue.',

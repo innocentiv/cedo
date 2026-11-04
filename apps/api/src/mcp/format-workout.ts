@@ -82,7 +82,7 @@ export function workoutDetail(
   const days = workout.days.map((day) => {
     const entries = day.entries.map((entry, at) => {
       const superset = entry.supersetGroup === null ? '' : ` (superset ${entry.supersetGroup})`
-      // Where the logger counts it, not the bare field: A1's rest is never between the pair (#48).
+      // Where the logger counts it, not the bare field: A1's rest never runs within a round (#48).
       const rest = `, ${restWords(entry.restSeconds, restPlace(day.entries, at))}`
       const rule = `, progression: ${ruleWords(entry.progression, unit)}`
       // Null when the caller cannot see the exercise — see the note on WorkoutEntry.exercise.

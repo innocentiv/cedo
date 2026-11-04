@@ -1089,10 +1089,10 @@ describe('editing a plan', () => {
 
   /**
    * Each rest where the logger counts it (#48): a superset rests after the round — its last
-   * entry's rest — and an earlier entry's only when done alone. A model reading `rest 1:30` on A1
-   * took it to count between the pair, which it never does.
+   * entry's rest — and an earlier entry's only when it ends the round. A model reading `rest 1:30`
+   * on A1 took it to run within the round, which it never does.
    */
-  test('a rest reads where it falls: after the round, when done alone, or straight on', async () => {
+  test('a rest reads where it falls: after the round, when it ends it, or straight on', async () => {
     const pat = await mintPat(alice)
     const named = async (name: string) =>
       expectContract(
@@ -1140,7 +1140,7 @@ describe('editing a plan', () => {
       .filter((line) => line.startsWith('  - '))
     expect(lines.map((line) => line.split(', progression')[0])).toEqual([
       '  - Squat, rest 3:00',
-      '  - Bench (superset A), rest 1:30 when done alone',
+      '  - Bench (superset A), rest 1:30 when it ends the round',
       '  - Pulldown (superset A), rest 1:30 after the round',
       '  - Curl, straight on',
       '  - Plank, straight on',

@@ -5,7 +5,7 @@ import {
   formatWeight,
   formatWithReserve,
   hasTarget,
-  restWords,
+  restTitle,
   ruleSentence,
   setNames,
   setTargetOf,
@@ -17,9 +17,6 @@ import type { EntryTargetView } from './sets-field.tsx'
 import { Stack } from './stack.tsx'
 import { type ChangeTarget, NextSession } from './target-change.tsx'
 import { Text } from './text.tsx'
-
-/** `Rest 1:30 after the round`: the plan's words, opening the section's line. */
-const restTitle = (words: string): string => `${words.charAt(0).toUpperCase()}${words.slice(1)}`
 
 /**
  * An entry of a plan the viewer only reads (docs/08-frontend.md, "Editing a workout"): the same
@@ -81,7 +78,7 @@ export function EntryRead({
       <Section title="Rest & superset">
         <Text testID={`${testID}-rest-said`}>
           {[
-            restTitle(restWords(entry.restSeconds, rest)),
+            restTitle(entry.restSeconds, rest),
             entry.supersetGroup === null ? null : `superset ${entry.supersetGroup}`,
           ]
             .filter((part) => part !== null)

@@ -91,7 +91,7 @@ function Placed({
   const load = useLoads()(exercise)
   const own = useEntryTarget(workoutId, entry, suggestion)
   const id = `plan-entry-${String(at.day)}-${String(at.entry)}`
-  // Where the logger counts its rest: a superset's earlier entry rests only when done alone (#48).
+  // Where the logger counts its rest: a superset's earlier entry's only when it ends the round (#48).
   const rest = restPlace(day.entries, at.entry)
   const withEntries = (entries: DayDraft['entries']) => replaceAt(days, at.day, { ...day, entries })
   const move = (to: number) => () => {

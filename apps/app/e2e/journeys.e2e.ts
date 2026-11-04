@@ -3492,8 +3492,8 @@ test(
 )
 
 /**
- * A superset rests after the round (#48): its earlier entry's rest counts only when done alone,
- * which its editor says beside the field, and a reader is told where each rest falls.
+ * A superset rests after the round (#48): its earlier entry's rest counts only when it ends the
+ * round, which its editor says beside the field, and a reader is told where each rest falls.
  */
 test(
   'a superset’s rest reads where it falls: edited, and read only',
@@ -3510,7 +3510,7 @@ test(
       )
       if (first === undefined || second === undefined) throw new Error('Too few lifts seeded')
       const sets = [{ targetReps: 10, targetWeightG: 20_000 }]
-      const pair = WorkoutPlanInput.parse({
+      const superset = WorkoutPlanInput.parse({
         days: [
           {
             name: 'Pairs',
@@ -3523,19 +3523,21 @@ test(
       })
       const mine = await page.client()
       const own = await mine.workouts.create({ name: 'Mine', notes: null })
-      await mine.workouts.replacePlan(own.id, pair)
+      await mine.workouts.replacePlan(own.id, superset)
       const coached = await coach.api.workouts.create({ name: 'Coached', notes: null })
-      await coach.api.workouts.replacePlan(coached.id, pair)
+      await coach.api.workouts.replacePlan(coached.id, superset)
       await coach.api.workouts.transfer(coached.id, { toGroupId: squad.id })
 
       await app.planEditor.open(own.id)
-      expect(await app.planEditor.entry(0, 1).restOnlyAlone()).toBe(false)
-      expect(await app.planEditor.entry(0, 0).restOnlyAlone()).toBe(true)
-      await page.screenshot('superset-rest-alone')
+      expect(await app.planEditor.entry(0, 1).restNote()).toBeNull()
+      expect(await app.planEditor.entry(0, 0).restNote()).toContain(
+        'Counts only when this entry ends the round',
+      )
+      await page.screenshot('superset-rest-note')
 
       await app.planEditor.open(coached.id)
       expect(await app.planEditor.entry(0, 0).restSaid()).toBe(
-        'Rest 1:30 when done alone · superset A',
+        'Rest 1:30 when it ends the round · superset A',
       )
       expect(await app.planEditor.entry(0, 1).restSaid()).toBe(
         'Rest 1:30 after the round · superset A',

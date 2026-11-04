@@ -284,7 +284,7 @@ there (#63).
   number is fixed and the set logged again. The choices are the screen's own (`useWorkout`); what
   they put in focus is the contract's `workoutView`.
 - **Logging moves the focus** to the entry's next set, then to the next entry in day order with
-  sets left. Entries of a superset alternate, and rest starts after the pair.
+  sets left. Entries of a superset alternate, and rest starts after the round.
 - **The rest takes Log's place** (#63) when a set is logged: **Undo · countdown · Skip**, a tap on
   the countdown adding 30 s, with the set just logged right under it — its effort, a personal best,
   "+ set" once its entry has all it asked for. The next set's numbers stay above, ready to change

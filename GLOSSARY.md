@@ -238,8 +238,8 @@ Entries of one day performed alternating, marked by a shared letter.
 _Avoid_: circuit, pairing
 
 **Round**:
-One pass through a superset's entries, each done once, in the day's order. The rest comes after
-it, not within it.
+One pass through a superset's entries that still have sets, each done once, in the day's order.
+The rest comes after it, not within it.
 _Avoid_: pair (a superset may hold more than two), cycle, lap
 
 **Progression rule**:
@@ -371,8 +371,8 @@ _Avoid_: current exercise, active entry, selected entry
 
 **Rest**:
 The pause after a set, before the next. It starts when a set is logged, and ends when its time is
-up, when it is skipped, or when its set is undone. A superset rests after the round, not between: the rest of its last entry. An earlier entry's
-rest counts only when it is done alone.
+up, when it is skipped, or when its set is undone. A superset rests after the round, not within
+it: the rest of the entry that ends it.
 _Avoid_: timer, break, recovery
 
 **Undo**:
