@@ -65,6 +65,10 @@ export async function rpc(pat: string | null, method: string, params: unknown = 
 export const callTool = async (pat: string, name: string, args: unknown = {}) =>
   await rpc(pat, 'tools/call', { name, arguments: args })
 
+/** One tool as `tools/list` publishes it to a client — its annotations, schema and description. */
+export const publishedTool = async (pat: string, name: string) =>
+  (await rpc(pat, 'tools/list')).body.result?.tools?.find((t) => t.name === name)
+
 export type RpcBody = z.output<typeof RpcResult>
 export const textOf = (body: RpcBody) => body.result?.content?.map((c) => c.text).join('\n') ?? ''
 
