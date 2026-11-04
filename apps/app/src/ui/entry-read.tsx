@@ -1,10 +1,11 @@
 import {
+  type RestPlace,
   type TrackingMode,
   describeProgression,
-  formatDuration,
   formatWeight,
   formatWithReserve,
   hasTarget,
+  restWords,
   ruleSentence,
   setNames,
   setTargetOf,
@@ -17,6 +18,9 @@ import { Stack } from './stack.tsx'
 import { type ChangeTarget, NextSession } from './target-change.tsx'
 import { Text } from './text.tsx'
 
+/** `Rest 1:30 after the round`: the plan's words, opening the section's line. */
+const restTitle = (words: string): string => `${words.charAt(0).toUpperCase()}${words.slice(1)}`
+
 /**
  * An entry of a plan the viewer only reads (docs/08-frontend.md, "Editing a workout"): the same
  * sections, said rather than edited — but **Your next session** and **Change** are still theirs: a
@@ -24,12 +28,15 @@ import { Text } from './text.tsx'
  */
 export function EntryRead({
   entry,
+  rest,
   tracking,
   target,
   change,
   testID,
 }: {
   readonly entry: EntryDraft
+  /** Where its rest falls in its day — see `restPlace`. */
+  readonly rest: RestPlace
   readonly tracking: TrackingMode
   readonly target: EntryTargetView | null
   readonly change: ChangeTarget | null
@@ -72,9 +79,9 @@ export function EntryRead({
         ) : null}
       </Section>
       <Section title="Rest & superset">
-        <Text>
+        <Text testID={`${testID}-rest-said`}>
           {[
-            entry.restSeconds === null ? 'No rest' : `Rest ${formatDuration(entry.restSeconds)}`,
+            restTitle(restWords(entry.restSeconds, rest)),
             entry.supersetGroup === null ? null : `superset ${entry.supersetGroup}`,
           ]
             .filter((part) => part !== null)

@@ -1,4 +1,4 @@
-import type { Exercise, ProgressionSuggestion } from '@cedo/contract'
+import { type Exercise, type ProgressionSuggestion, restPlace } from '@cedo/contract'
 import {
   Choice,
   EntryEditor,
@@ -91,6 +91,8 @@ function Placed({
   const load = useLoads()(exercise)
   const own = useEntryTarget(workoutId, entry, suggestion)
   const id = `plan-entry-${String(at.day)}-${String(at.entry)}`
+  // Where the logger counts its rest: a superset's earlier entry rests only when done alone (#48).
+  const rest = restPlace(day.entries, at.entry)
   const withEntries = (entries: DayDraft['entries']) => replaceAt(days, at.day, { ...day, entries })
   const move = (to: number) => () => {
     onChange(withEntries(moveItem(day.entries, at.entry, to)))
@@ -100,6 +102,7 @@ function Placed({
     return (
       <EntryRead
         entry={entry}
+        rest={rest}
         tracking={exercise.tracking}
         target={own.target}
         change={own.change}
@@ -111,6 +114,7 @@ function Placed({
     <Stack gap="xxl">
       <EntryEditor
         entry={entry}
+        rest={rest}
         tracking={exercise.tracking}
         load={load}
         onChange={(next) => {

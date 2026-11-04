@@ -15,10 +15,22 @@ type EntryField = 'weight' | 'reps' | 'duration' | 'distance' | 'sets' | 'warmup
  * A plan entry, by its place: its line in the outline, and its settings — opened from the line, in
  * a sheet on a phone (#26). Every field action opens them first, as an athlete would.
  */
+/** Puts an entry's settings away: they cover the outline on a phone. */
+const closeEntrySettings = async (page: Page): Promise<void> => {
+  if (!(await page.shown('entry-sheet'))) return
+  await page.click('[data-testid="entry-sheet-close"]')
+  await page.until(
+    async () => await page.shown('entry-sheet'),
+    (open) => !open,
+  )
+}
+
 const planEntry = (page: Page, day: number, index: number) => {
   const id = `plan-entry-${String(day)}-${String(index)}`
   const open = async (): Promise<void> => {
     if (await page.shown(id)) return
+    // Another entry's settings, in a sheet on a phone, cover this one's line.
+    await closeEntrySettings(page)
     await page.click(`[data-testid="plan-line-${String(day)}-${String(index)}"]`)
     await page.waitFor(id)
   }
@@ -129,6 +141,16 @@ const planEntry = (page: Page, day: number, index: number) => {
     readOnly: async (): Promise<boolean> => {
       await open()
       return await page.exists(`${id}-rule`)
+    },
+    /** Its rest, read only, where it falls (#48): `Rest 1:30 after the round · superset A`. */
+    restSaid: async (): Promise<string | null> => {
+      await open()
+      return await page.text(`${id}-rest-said`)
+    },
+    /** Whether its rest field says it counts only when done alone — a superset's earlier entry. */
+    restOnlyAlone: async (): Promise<boolean> => {
+      await open()
+      return await page.exists(`${id}-rest-alone`)
     },
     /** The viewer's own next session, as its column reads it: `9 × 60 kg`. */
     next: async (): Promise<string | null> => {
@@ -287,14 +309,8 @@ export const workouts = (page: Page) => {
  * `save` waits for the page to say so, then goes back where it came from, as Save used to.
  */
 export const planEditor = (page: Page) => {
-  /** Puts an entry's settings away: they cover the outline on a phone. */
   const closeSettings = async (): Promise<void> => {
-    if (!(await page.shown('entry-sheet'))) return
-    await page.click('[data-testid="entry-sheet-close"]')
-    await page.until(
-      async () => await page.shown('entry-sheet'),
-      (open) => !open,
-    )
+    await closeEntrySettings(page)
   }
   /** Waits until the page says the plan is saved — failing with why, if it was refused. */
   const saved = async (): Promise<void> => {
