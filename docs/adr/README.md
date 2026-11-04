@@ -26,6 +26,7 @@ that says so and links back.
 | [0025](0025-rest-kept-by-the-server.md) | The rest is kept by the server, and its end is pushed | Accepted, amended: not pushed |
 | [0026](0026-targets-and-steps.md) | A person's target is stored as steps; a plan only says where it starts | Accepted |
 | [0027](0027-reps-in-reserve-whole-everywhere.md) | How hard a set was is reps in reserve, whole, for people and AI alike | Accepted |
+| [0028](0028-prose-parsed-in-the-contract.md) | Long text is Markdown, read in the contract and drawn by the app | Accepted |
 
 The numbering has gaps: decisions that were planned an ADR (such as 0005, the three-container
 deployment shape) are recorded in the relevant doc instead — `docs/01-architecture.md` for that

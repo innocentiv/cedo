@@ -14,6 +14,7 @@ import {
   ListRow,
   Loaded,
   ProgressTrend,
+  Prose,
   type QueryLike,
   Stack,
   Text,
@@ -105,7 +106,7 @@ export function About({ exercise }: { readonly exercise: Exercise }): React.JSX.
             <Text variant="label" tone="muted">
               How to
             </Text>
-            <Text>{exercise.instructions}</Text>
+            <Prose text={exercise.instructions} />
           </Stack>
         </Card>
       )}

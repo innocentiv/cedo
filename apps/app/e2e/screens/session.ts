@@ -306,11 +306,27 @@ export const session = (page: Page) => {
       await page.fill('session-notes', text)
       await page.click('[data-testid="session-menu-close"]')
     },
-    /** Writes a finished session's note on its summary, and leaves the field: nothing to save (#25). */
+    /**
+     * Writes a finished session's note on its summary — read first, so Add or Edit opens it (#51) —
+     * and leaves the field: nothing to save (#25).
+     */
     noteOnSummary: async (text: string): Promise<void> => {
       await page.waitFor('session-finished')
+      const opens = (await page.shown('session-notes-add')) ? 'add' : 'edit'
+      await page.click(`[data-testid="session-notes-${opens}"]`)
       await page.fill('session-notes', text)
       await page.click('[data-testid="session-finished"]')
+      await page.waitFor('session-notes-read')
+    },
+    /** The finished session's note, as its summary reads it. */
+    noteRead: async (): Promise<string | null> => await page.text('session-notes-read'),
+    /** The workout's notes, as its menu shows them mid-session (#51) — null for none. */
+    workoutNotes: async (): Promise<string | null> => {
+      await page.click('[data-testid="session-header-menu"]')
+      await page.waitFor('session-menu')
+      const notes = await page.text('session-workout-notes')
+      await page.click('[data-testid="session-menu-close"]')
+      return notes
     },
     /** Navigates to the session by its URL — a reload, a shared link, coming back to the tab. */
     reopen: async (): Promise<void> => {

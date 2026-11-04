@@ -140,6 +140,10 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   whose clock ran ahead of the browser's: a 5-second rest first counted down from 0:06. Anything
   timed from `logged_at` clamps where it can — `restLeft` never exceeds the rest — and a server
   clock behind the device still shortens it, unseen.
+- **The WebView's `press('Enter')` sends no `keydown`**, only the `insertLineBreak` it would type,
+  so a key handler is never reached in a journey: dispatch the `keydown` from the screen
+  (`cueKeyboardEnter` in `e2e/screens/plan.ts`). And react-native-web reads no `submitBehavior`; a
+  multiline field's Enter cancelled in `onKeyPress` also skips its submit and blur — do both by hand.
 - **A WebView cancels a file picker at once.** With no dialog to show, WebKit answers a synthetic
   click on a file input with `cancel`, which Expo's picker reads as nothing picked — and removes the
   input before a test can find it. Hand the input its file as it is appended, before the click:

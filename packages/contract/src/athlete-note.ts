@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { RecordAuthorship } from './athlete-record.ts'
 import { Id, NonEmptyString, Timestamp } from './primitives.ts'
 import { formatDay } from './week.ts'
+import { PROSE_WORDS } from './prose.ts'
 
 /**
  * What is known about a person, written down to be remembered when their training is planned
@@ -16,7 +17,7 @@ export const NOTES_PER_ATHLETE = 100
 /** `POST` and `PATCH` alike: a note is its words, and nothing else. */
 export const AthleteNoteInput = z.strictObject({
   text: NonEmptyString.max(4000).describe(
-    'One fact worth remembering when their training is planned, in plain words',
+    `One fact worth remembering when their training is planned. ${PROSE_WORDS}`,
   ),
 })
 export type AthleteNoteInput = z.output<typeof AthleteNoteInput>

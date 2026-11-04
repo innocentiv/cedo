@@ -183,9 +183,9 @@ Either way a rejected replace leaves the previous plan exactly as it was. A test
 When a screen needs several resources to decide one thing, the API decides it, once, from the
 visible relations: a screen cannot tell "out of reach" from "failed to load", and the server never
 has to. `GET /sessions/:id` answers `SessionDetail` — the session with the plan it follows, `null`,
-`{ reachable: false }`, or the day with each entry's exercise and working sets done — from the same
-relations its logs are numbered by. Writes still answer the plain `WorkoutSession`: the session's
-cache entry is invalidated after them, not overwritten. The day costs a fixed seven queries
+`{ reachable: false }`, or the day with each entry's exercise and working sets done, and the
+workout's notes to read mid-session (#51) — from the same relations its logs are numbered by. Writes still answer the plain `WorkoutSession`: the session's
+cache entry is invalidated after them, not overwritten. The day, with the workout's notes, costs a fixed nine queries
 whatever the plan's size (`n1.test.ts`, and the perf hot path).
 
 `GET /today` (#25) answers the first screen the same way: the session in progress, the next day of

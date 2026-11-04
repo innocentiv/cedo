@@ -110,7 +110,9 @@ Two constraints found by building it:
 | `ConfirmButton` | every action that cannot be taken back — delete, revoke, remove, leave — and every transfer to another group, which others feel at once. Asked twice, in the app's own UI, never a browser dialog; a refusal shows beside it. Removing a set from a session in progress is not one: it is logged again in a tap |
 | `PinButton` | pinning what you can see, for its list's "Pinned" filter: a star, filled in the accent while pinned, small on the line saying which group it is in |
 | `ProgressTrend` | an exercise's progress: a bar per session from the contract's `trendOf` — the estimated max of a weight lift, the top set otherwise — and the server's stall as a badge |
-| `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput`. `Input`'s `look` sets a name edited where it reads — a workout's title, a day's heading — with no box |
+| `Field`, `Input`, `NumberInput`, `DimensionInput`, `CompactField` | forms. `NumberInput` is a count; a measured quantity is a `DimensionInput`. `Input`'s `look` sets a name edited where it reads — a workout's title, a day's heading — with no box. `multiline` grows with its text to twelve lines, then scrolls; `wraps` is one line that wraps, for a cue, and takes no newline (`GrowingInput`, #51) |
+| `Folded` | long text kept to its first lines, measured as laid out, with Show all only when something is hidden (#51) |
+| `Prose`, `InlineProse` | long text drawn as the contract's `prose` reads it — bold, italic, headings, lists, tables, links; anything else as written, and nothing runs (ADR-0028). `InlineProse` is one line — a cue — with bold, italic and links only |
 | `Card`, `ListRow` | the one row shape every list uses |
 | `Choice` | one choice among alternatives, as `Segmented` or `Select` by what its options need — the screen never decides which |
 | `Segmented` | one choice whose options all fit one line — a few short ones, or many tiny ones: the progression rule, a superset's letter or none, a day of five, reps in reserve. One bar of equal segments (`segmented`, the look reps in reserve set) |
@@ -311,7 +313,8 @@ there (#63).
 - **A session in progress takes over the app**: its own header — back, the day, the time since it
   started, the menu, on one line — in place of the tab bar. Back leaves it in progress, and a bar on
   every screen returns to it; only Finish ends it. Notes and Finish are in the menu, Finish asked
-  twice, and notes kept as the menu closes — no Save; once every prescribed set is logged, Finish takes the Log
+  twice, and notes kept as the menu closes — no Save; above them, the workout's own notes, read
+  only, so a bad day's rule is found on the bad day (#51); once every prescribed set is logged, Finish takes the Log
   button's place, and finishing shows the session's summary. A personal best is marked on the set as
   it is logged.
 - **A session without a plan** opens on the picker; each exercise added becomes the focus.
@@ -339,8 +342,8 @@ As built (#25), on a phone top to bottom, on a desktop in two columns (`Screen` 
 - **History** — by week ("This week", "Last week", "Week of 6 Oct"), each row its day, `Thu 23 Oct ·
   52 min · 18 sets`, and its personal bests in green as the gym says them, `PB` or `3 PBs`. Twenty
   at a time; Show older sessions asks for the next page.
-- **A finished session** — its date, time, working sets and bests; its notes written in place, kept
-  as the field is left; its sets by exercise, a best marked `PB`. The menu is gone once finished:
+- **A finished session** — its date, time, working sets and bests; its notes read first, with
+  Edit (#51), and kept as the field is left; its sets by exercise, a best marked `PB`. The menu is gone once finished:
   what it held is on the page, or done.
 - **A set fixed** (#31) — a set of the session's list tapped, in progress or finished alike, opens
   right below its own row (#63, `fix-set.tsx`) — never over the set being logged or its rest, which
@@ -362,7 +365,8 @@ The workout's page is its outline: days, and each entry one line — "Barbell Ba
 5 × 100 kg · Linear, +2.5 kg". Tapping a line opens the entry's settings in a sheet, or a pane beside
 the outline on a wide screen. Each change is saved as it is made, and there is no edit mode: see
 `docs/adr/0022-plans-edited-in-place.md`. Days and entries reorder, entries move between days, and a
-workout is renamed and its notes edited where they are shown.
+workout is renamed where its name is shown, and its notes are read first and edited on request
+(#51).
 
 What an entry asks is two things, kept apart on screen (ADR-0026): the **prescription**, what the
 plan's author set and where everyone following it starts, and the viewer's own **target**, what
@@ -373,7 +377,8 @@ and what the logs did to it are read side by side.
 As built (#26):
 
 - **The head** — back, the name set as the title it is and edited there (`WorkoutTitle`, the
-  screen's `ownHeading`), the notes under it, each kept as its field is left; then one line on
+  screen's `ownHeading`), the notes under it — read first, as a reader sees them, folded to six lines with Show all and
+  written with Edit (`WrittenNotes`, #51) — each kept as its field is left; then one line on
   the plan: Saved, Saving…, or Not saved and why.
 - **The outline** — each day its name (edited where it reads, kept as the field is left and put
   back if left empty — no day is nameless), Start, ↑ ↓ and the bin; each entry one line, `3 sets · 10 × 20 kg · Double 8–12, +5 kg`, and the viewer's target after it — `· next 12 × 40 kg` — only when it differs from the plan; a manual entry whose sets differ says each run of equal sets, `1 set 6 × 90 kg · 2 sets 8 × 80 kg · Manual`; a superset's letter before its name; Add exercise

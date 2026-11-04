@@ -38,7 +38,7 @@ This is why we do not use Eden Treaty, despite it being Elysia's headline featur
 
 | Workspace | Runtime | TypeScript | Purpose |
 | --- | --- | --- | --- |
-| `packages/contract` | any | 7.0.2 | Zod schemas, units, pure domain functions, and what each read is built from. Only dependency: `zod`. |
+| `packages/contract` | any | 7.0.2 | Zod schemas, units, pure domain functions, and what each read is built from. Dependencies: `zod`, and `marked` to read prose (ADR-0028). |
 | `apps/api` | Bun | 7.0.2 | Elysia HTTP API, Drizzle/Postgres, MCP server. |
 | `apps/app` | Expo | 6.0.3 | React Native, built for web. Native builds are not configured yet (#10). |
 

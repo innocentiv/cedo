@@ -47,10 +47,14 @@ describe('the contract package stays isomorphic', () => {
     expect(offences).toEqual([])
   })
 
-  test('the only runtime dependency is zod', async () => {
+  /**
+   * zod, and `marked` — which reads prose (`prose.ts`, ADR-0028): ESM with no dependencies and no
+   * runtime globals, so it runs wherever this package does. Anything more is a new decision.
+   */
+  test('the only runtime dependencies are zod and marked', async () => {
     const pkg = z
       .object({ dependencies: z.record(z.string(), z.string()) })
       .parse(await Bun.file(join(SRC, '..', 'package.json')).json())
-    expect(Object.keys(pkg.dependencies)).toEqual(['zod'])
+    expect(Object.keys(pkg.dependencies).toSorted()).toEqual(['marked', 'zod'])
   })
 })

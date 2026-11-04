@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { type Exercise, musclesByLoad, notesToKeep } from '@cedo/contract'
-import { ConfirmButton, Field, Input, Sheet, Stack, Text } from '../ui/index.ts'
+import { ConfirmButton, Field, InlineProse, Input, Prose, Sheet, Stack, Text } from '../ui/index.ts'
 import { ExerciseVideo } from './exercise-media.tsx'
 
 /**
@@ -23,14 +23,14 @@ export function HowTo({
   const instructions = exercise?.instructions?.trim() ?? ''
   return (
     <Sheet open={exercise !== null} onClose={onClose} title={exercise?.name ?? ''} testID="how-to">
-      {cue === null ? null : <Text variant="label">{cue}</Text>}
-      {description === '' ? null : <Text tone="muted">{description}</Text>}
+      {cue === null ? null : <InlineProse text={cue} variant="label" />}
+      {description === '' ? null : <Prose text={description} tone="muted" />}
       {instructions === '' ? null : (
         <Stack gap="xs">
           <Text variant="label" tone="muted">
             How to
           </Text>
-          <Text>{instructions}</Text>
+          <Prose text={instructions} />
         </Stack>
       )}
       <Text variant="caption" tone="muted" testID="how-to-muscles">
@@ -60,6 +60,7 @@ export function WorkoutMenu({
   open,
   onClose,
   ended,
+  workoutNotes,
   notes,
   onSaveNotes,
   onFinish,
@@ -69,6 +70,11 @@ export function WorkoutMenu({
   readonly open: boolean
   readonly onClose: () => void
   readonly ended: boolean
+  /**
+   * How the workout followed is run — effort, a bad day's rule — to read on the day it is needed
+   * (#51); never written here. Null when it has none, or the session follows none.
+   */
+  readonly workoutNotes: string | null
   readonly notes: string | null
   readonly onSaveNotes: (notes: string | null) => Promise<void>
   readonly onFinish: () => Promise<void>
@@ -84,6 +90,14 @@ export function WorkoutMenu({
   }
   return (
     <Sheet open={open} onClose={close} title="Session" testID="session-menu">
+      {workoutNotes === null ? null : (
+        <Stack gap="xs">
+          <Text variant="label" tone="muted">
+            Workout notes
+          </Text>
+          <Prose text={workoutNotes} testID="session-workout-notes" />
+        </Stack>
+      )}
       <Field label="Notes">
         <Input
           value={draft}

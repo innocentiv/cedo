@@ -67,6 +67,30 @@ const planEntry = (page: Page, day: number, index: number) => {
       await open()
       await page.fill(`${id}-cue`, text)
     },
+    /** The cue typed key by key — `Enter` included, as a thumb would press it. */
+    cueKeys: async (keys: readonly string[]): Promise<void> => {
+      await open()
+      await page.click(`[data-testid="${id}-cue"]`)
+      await page.keys(keys)
+    },
+    /**
+     * Enter, from a keyboard, in the cue: the `keydown` a browser sends — the WebView's own `press`
+     * sends none, only the newline it would type.
+     */
+    cueKeyboardEnter: async (): Promise<void> => {
+      await open()
+      await page.click(`[data-testid="${id}-cue"]`)
+      await page.evaluate(
+        `document.querySelector('[data-testid="${id}-cue"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`,
+      )
+    },
+    /** Whether the cue's field is the one being typed in. */
+    cueFocused: async (): Promise<boolean> =>
+      (await page.evaluate(
+        `document.activeElement?.getAttribute('data-testid') === '${id}-cue'`,
+      )) === true,
+    /** The cue as it stands in its field, while it is written. */
+    cueWritten: async (): Promise<string> => String(await page.value(`${id}-cue`)),
     /** The reps to leave in reserve, as offered: `0` to `5`. */
     reserve: async (reps: string): Promise<void> => {
       await open()
@@ -371,6 +395,33 @@ export const planEditor = (page: Page) => {
     },
     /** A day's name, as its field holds it. */
     dayName: async (day: number): Promise<unknown> => await page.value(`day-name-${String(day)}`),
+    /**
+     * Writes the workout's notes as an editor would (#51): Add, or Edit once there are some — they
+     * are read first — then typed, and the field left. Kept with no Save.
+     */
+    notes: async (text: string): Promise<void> => {
+      // An entry's settings, in a sheet on a phone, cover them.
+      await closeEntrySettings(page)
+      const opens = (await page.shown('workout-notes-add')) ? 'add' : 'edit'
+      await page.click(`[data-testid="workout-notes-${opens}"]`)
+      await page.fill('workout-notes', text)
+      await page.click('[data-testid="plan-status"]')
+      await page.waitFor('workout-notes-read')
+    },
+    /** The workout's notes as they read, folded or not: all of their text is laid out. */
+    notesRead: async (): Promise<string | null> => await page.text('workout-notes-read'),
+    /** What the notes' fold offers — `Show all`, `Show less` — or null, when nothing is folded. */
+    notesFold: async (): Promise<string | null> => await page.text('workout-notes-fold'),
+    toggleNotesFold: async (): Promise<void> => {
+      await page.click('[data-testid="workout-notes-fold"]')
+    },
+    /** Whether the notes' text is taller than what shows of it: cut off by their fold. */
+    notesCut: async (): Promise<boolean> =>
+      (await page.evaluate(`(() => {
+        const text = document.querySelector('[data-testid="workout-notes-read"]')
+        const shown = text.parentElement.parentElement
+        return text.getBoundingClientRect().height > shown.getBoundingClientRect().height + 1
+      })()`)) === true,
     /** Opens the picker to add exercises to a day (#27). */
     addTo: async (day: number): Promise<void> => {
       await closeEntrySettings(page)

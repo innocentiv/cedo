@@ -304,6 +304,12 @@ so changing it restarts no target. On a manual entry, or with no positive workin
 it asks what it says.
 _Avoid_: ramp set, prep set
 
+**Cue**:
+What an entry tells the athlete about doing it, in a line — "pause 1 s at the chest" — shown under
+the exercise as they log it. Not how the entry progresses or how hard to go: that is its progression
+rule and reps in reserve, or the workout's notes.
+_Avoid_: note, tip, instruction (that is the exercise's, the same in every plan)
+
 ## Training
 
 **Session**:

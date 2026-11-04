@@ -96,6 +96,21 @@ describe('the plan a session follows', () => {
     expect((await read(alice, id)).plan).toMatchObject({ reachable: true, day: { name: 'Push' } })
   })
 
+  test("carries the workout's notes, to be read while it is trained (#51)", async () => {
+    const workout = await aPlan(alice, [await anExercise(alice, 'Bench Press')])
+    const id = await startFrom(alice, workout)
+    expect((await read(alice, id)).plan).toMatchObject({ reachable: true, workoutNotes: null })
+
+    await alice.wire(`/workouts/${workout.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ notes: 'On a bad day, drop 10% and finish.' }),
+    })
+    expect((await read(alice, id)).plan).toMatchObject({
+      reachable: true,
+      workoutNotes: 'On a bad day, drop 10% and finish.',
+    })
+  })
+
   test('is none for a session started without one', async () => {
     const { id } = expectContract(WorkoutSession, (await post(alice, '/sessions', {})).body)
     expect((await read(alice, id)).plan).toBeNull()

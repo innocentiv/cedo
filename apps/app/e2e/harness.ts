@@ -208,8 +208,8 @@ export interface Page {
   /** One key, such as `Backspace` — for emptying a field the way a thumb does, not by select-all. */
   readonly press: (key: string) => Promise<void>
   /**
-   * Keys one at a time, the way a thumb types, into whatever has focus — a character, or
-   * `Backspace`. Never re-click a focused field to continue: the click moves the caret to where it
+   * Keys one at a time, the way a thumb types, into whatever has focus — characters, `Backspace`,
+   * or `Enter`. Never re-click a focused field to continue: the click moves the caret to where it
    * landed.
    */
   readonly keys: (keys: readonly string[]) => Promise<void>
@@ -369,7 +369,7 @@ function makePage(view: Bun.WebView, site: StaticServer, errors: string[]): Page
     keys: async (keys) => {
       for (const key of keys) {
         // oxlint-disable-next-line no-await-in-loop -- one key at a time is what is under test.
-        if (key === 'Backspace') await view.press(key)
+        if (key === 'Backspace' || key === 'Enter') await view.press(key)
         // oxlint-disable-next-line no-await-in-loop -- one key at a time is what is under test.
         else await view.type(key)
       }

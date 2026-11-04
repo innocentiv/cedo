@@ -5,6 +5,7 @@ import { Reserve } from './rpe.ts'
 import { Exercise } from './exercise.ts'
 import { Id, PaginationQuery, Timestamp, patchOf } from './primitives.ts'
 import { WorkoutDay, WorkoutEntry } from './workout.ts'
+import { PROSE_WORDS } from './prose.ts'
 
 /**
  * What actually happened, as opposed to what was prescribed.
@@ -109,7 +110,8 @@ export type SessionDay = z.output<typeof SessionDay>
  * - `null`: it follows no day — started without one, or its day has since been removed;
  * - `reachable: false`: it follows a day the reader can no longer see — they left the group it
  *   lives in. Its sets count as logged without a plan, and the session goes on as one;
- * - `reachable: true`: the day, each entry with its exercise (null when unavailable) and done count.
+ * - `reachable: true`: the day, each entry with its exercise (null when unavailable) and done count;
+ *   and the workout's notes — how it is run, a bad day's rule — to be read while it is (#51).
  *
  * Decided here, not by a screen joining its own reads: a screen that failed to FETCH the plan took
  * that for a plan out of reach, and logged the next set into the wrong series.
@@ -117,7 +119,7 @@ export type SessionDay = z.output<typeof SessionDay>
 export const SessionPlan = z
   .discriminatedUnion('reachable', [
     z.object({ reachable: z.literal(false) }),
-    z.object({ reachable: z.literal(true), day: SessionDay }),
+    z.object({ reachable: z.literal(true), day: SessionDay, workoutNotes: z.string().nullable() }),
   ])
   .nullable()
 export type SessionPlan = z.output<typeof SessionPlan>
@@ -149,6 +151,9 @@ export const SessionStart = z.strictObject({
 })
 export type SessionStart = z.output<typeof SessionStart>
 
+/** A session's notes, as written: a journal of how it went. */
+const SessionNotes = z.string().max(4000).describe(`How it went, what to change. ${PROSE_WORDS}`)
+
 /**
  * Finishing is final: `endedAt` is set once, on a session in progress, and never cleared — there is
  * no reopening a session, and it takes no more sets. What it holds can still be fixed: a set
@@ -157,7 +162,7 @@ export type SessionStart = z.output<typeof SessionStart>
  */
 export const SessionUpdate = z.strictObject({
   endedAt: Timestamp.optional(),
-  notes: z.string().max(4000).nullable().optional(),
+  notes: SessionNotes.nullable().optional(),
 })
 export type SessionUpdate = z.output<typeof SessionUpdate>
 
@@ -219,7 +224,7 @@ export type LogSetHeaders = z.output<typeof LogSetHeaders>
 export const SessionLogInput = z.strictObject({
   workoutId: Id.nullable().default(null),
   dayId: Id.nullable().default(null),
-  notes: z.string().max(4000).nullable().default(null),
+  notes: SessionNotes.nullable().default(null),
   sets: z.array(LogSetInput).min(1).max(200),
 })
 export type SessionLogInput = z.output<typeof SessionLogInput>

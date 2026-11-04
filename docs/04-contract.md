@@ -3,7 +3,8 @@
 `packages/contract` is the only surface shared between the API and the app. Everything either side
 knows about the other, it knows from here.
 
-Its only dependency is `zod`. It must stay **isomorphic** — the same code runs in a browser, in Bun
+Its dependencies are `zod`, and `marked` to read long text as prose
+([adr/0028](adr/0028-prose-parsed-in-the-contract.md)). It must stay **isomorphic** — the same code runs in a browser, in Bun
 on the server, and in React Native on a phone — and must compile under both TypeScript 7 and
 TypeScript 6 (see [adr/0007](adr/0007-typescript-version-split.md)).
 

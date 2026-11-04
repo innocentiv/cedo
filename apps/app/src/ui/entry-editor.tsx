@@ -101,6 +101,7 @@ export function EntryEditor(props: EntryEditorProps): React.JSX.Element {
               onChange({ ...entry, cue })
             }}
             placeholder="Pause 1 s at the chest"
+            wraps
             testID={`${testID}-cue`}
           />
         </CompactField>

@@ -358,6 +358,9 @@ is said where the AI meets it, three ways (ADR-0026, ADR-0027):
   parameters mean; that the plan holds the prescription, where each follower starts, and never
   their target; and that reps in reserve is a floor each working set may ask for itself. And they
   say to write cues and notes in reps in reserve, never RPE.
+- **Every long-text field says it is Markdown, and what of it is drawn** (`PROSE_WORDS`, ADR-0028):
+  workout, session and athlete notes, an exercise's description and instructions. A cue says it is
+  one line, with bold, italic and links only (`INLINE_PROSE_WORDS`).
 - **Every state the contract refuses is refused with what to do instead**: under double, reps
   outside the range, or a range whose `from` is not below its `to`; under a rule, working sets that
   differ in what the rule moves or judges (reps in reserve may differ); an exercise's tracking mode

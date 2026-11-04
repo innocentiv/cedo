@@ -55,6 +55,7 @@ export default function LiveSession(): React.JSX.Element {
         open={w.menu.open}
         onClose={w.menu.hide}
         ended={w.ended}
+        workoutNotes={w.plan?.reachable === true ? w.plan.workoutNotes : null}
         notes={session.data.notes}
         onSaveNotes={w.saveNotes}
         onFinish={w.finish}

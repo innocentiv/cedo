@@ -4,6 +4,7 @@ import { Media } from './media.ts'
 import { MuscleSlug } from './muscle.ts'
 import { OwnableQueryFields, ownableFields, withGroupRule } from './ownable.ts'
 import { Id, NonEmptyString, patchOf } from './primitives.ts'
+import { PROSE_WORDS } from './prose.ts'
 
 /** How much of a movement's load a given muscle carries, as a percentage of the total. */
 export const MuscleLoad = z.object({
@@ -105,8 +106,16 @@ const exerciseFields = {
    * Documented here because it is the only place the convention lives.
    */
   tracking: TrackingMode.default('weight_reps'),
-  description: z.string().max(4000).default(''),
-  instructions: z.string().max(8000).default(''),
+  description: z
+    .string()
+    .max(4000)
+    .default('')
+    .describe(`What it is, in a line or two. ${PROSE_WORDS}`),
+  instructions: z
+    .string()
+    .max(8000)
+    .default('')
+    .describe(`How it is done, step by step. ${PROSE_WORDS}`),
   /** What it needs, all of it (#32) — `null` undescribed, `[]` nothing. See equipment.ts. */
   equipment: ExerciseEquipment.default(null),
   /** Performed one limb at a time, so logged weight is per side. */

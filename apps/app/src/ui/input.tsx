@@ -9,6 +9,7 @@ import {
   fieldText,
 } from '@cedo/contract'
 import { CONTROL_HEIGHT, color, radius, space, type } from './tokens.ts'
+import { GrowingInput } from './growing-input.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
@@ -78,7 +79,16 @@ export interface InputProps {
    * the one and save the other.
    */
   readonly autoComplete?: 'username' | 'current-password' | 'new-password' | 'name' | undefined
+  /**
+   * Text in paragraphs: the box grows with what is written, to a dozen lines, then scrolls
+   * inside — so long notes are read whole while they are written, not through two lines (#51).
+   */
   readonly multiline?: boolean
+  /**
+   * One line that wraps, for a cue (#51): all of it shows while it is written, and Enter submits
+   * rather than starting a second line. Ignored when `multiline`.
+   */
+  readonly wraps?: boolean
   readonly invalid?: boolean
   readonly onSubmitEditing?: (() => void) | undefined
   /** When the field is left: where a text kept as it is written is saved. */
@@ -100,12 +110,29 @@ export function Input({
   autoCapitalize = 'none',
   autoComplete,
   multiline = false,
+  wraps = false,
   invalid = false,
   onSubmitEditing,
   onBlur,
   look = 'field',
   testID,
 }: InputProps): React.JSX.Element {
+  if (multiline || wraps) {
+    return (
+      <GrowingInput
+        value={value}
+        onChangeText={onChangeText}
+        shape={multiline ? 'paragraphs' : 'line'}
+        placeholder={placeholder}
+        autoFocus={autoFocus}
+        autoCapitalize={autoCapitalize}
+        invalid={invalid}
+        onSubmitEditing={onSubmitEditing}
+        onBlur={onBlur}
+        testID={testID}
+      />
+    )
+  }
   return (
     <TextInput
       testID={testID}
@@ -118,13 +145,11 @@ export function Input({
       autoCapitalize={autoCapitalize}
       autoComplete={autoComplete}
       autoCorrect={false}
-      multiline={multiline}
       onSubmitEditing={onSubmitEditing}
       onBlur={onBlur}
-      submitBehavior={multiline ? 'newline' : 'blurAndSubmit'}
+      submitBehavior="blurAndSubmit"
       style={[
         styles.input,
-        multiline ? styles.multiline : null,
         look === 'field' ? null : [styles.inline, type[look]],
         invalid ? styles.invalid : null,
       ]}
@@ -243,7 +268,6 @@ const styles = StyleSheet.create({
     fontSize: type.body.fontSize,
     fontFamily: type.body.fontFamily,
   },
-  multiline: { minHeight: CONTROL_HEIGHT * 2, paddingTop: space.md, textAlignVertical: 'top' },
   numeric: {
     textAlign: 'center',
     fontVariant: ['tabular-nums'],
