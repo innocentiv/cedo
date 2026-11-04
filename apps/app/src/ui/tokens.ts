@@ -59,7 +59,7 @@ export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 } as const
 
 export const radius = { sm: 6, md: 10, lg: 16, pill: 999 } as const
 
-/** Lines: a hairline divides, a bold one marks — the next set, a set re-opened, a superset. */
+/** Lines: a hairline divides, a bold one marks — the next set, a superset. */
 export const stroke = { hairline: 1, bold: 2 } as const
 
 /**

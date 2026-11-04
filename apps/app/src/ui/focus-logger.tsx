@@ -6,13 +6,14 @@ import {
   type MarkedSet,
   type SetTarget,
   type TrackingMode,
+  type Undone,
   asksReserveOf,
   fieldsOf,
   formatReserve,
 } from '@cedo/contract'
-import { Button } from './button.tsx'
 import { Card } from './card.tsx'
 import { IconButton } from './icon.tsx'
+import { type JustDone, LogSlot } from './rest-control.tsx'
 import { ReserveSegments } from './reserve-segments.tsx'
 import { SetMarks } from './set-marks.tsx'
 import { Stack } from './stack.tsx'
@@ -40,9 +41,11 @@ export interface FocusLoggerProps {
   readonly cue: string | null
   readonly tracking: TrackingMode
   readonly sets: readonly MarkedSet[]
-  readonly selected: string | null
-  readonly onSelect: (key: string) => void
   readonly next: NextSet
+  /** The set just undone, of this entry: the numbers start from what it said, not the target (#63). */
+  readonly from: Undone | null
+  /** The set just logged, while it can be taken back: shown in Log's place (#63). */
+  readonly after: JustDone | null
   /** When progression moved this session's target off the plan's, what the plan says. */
   readonly progressed: string | null
   /** Last time's working sets, as read. */
@@ -60,7 +63,8 @@ export interface FocusLoggerProps {
 /**
  * The exercise the session is on (#24): its sets as marks, the next one's numbers — as large as the
  * screen allows, with − / + — and one button to log it, under the thumb. The numbers start from what
- * the next set asks, and start again when the next set changes: the screen keys it by that set.
+ * the next set asks — or what a set just undone said — and start again when the next set changes:
+ * the screen keys it by that set. Once a set is logged, its rest takes Log's place, with Undo (#63).
  * Which inputs appear is the contract's `fieldsOf`; reserve is asked here too, before the set is
  * logged (#37), of the sets the contract's `asksReserveOf` names.
  */
@@ -69,9 +73,9 @@ export function FocusLogger({
   cue,
   tracking,
   sets,
-  selected,
-  onSelect,
   next,
+  from,
+  after,
   progressed,
   last,
   busy,
@@ -81,16 +85,19 @@ export function FocusLogger({
   testID,
 }: FocusLoggerProps): React.JSX.Element {
   // In base units throughout: the fields convert for display, so nothing here does arithmetic.
-  const [effort, setEffort] = useState<Effort>({
-    weightG: next.target.weightG,
-    reps: next.target.reps,
-    durationS: next.target.durationS,
-    distanceMm: next.target.distanceMm,
-  })
+  const [effort, setEffort] = useState<Effort>(
+    from?.effort ?? {
+      weightG: next.target.weightG,
+      reps: next.target.reps,
+      durationS: next.target.durationS,
+      distanceMm: next.target.distanceMm,
+    },
+  )
   // Asked before the set is logged, of a working set counted in reps (the contract's
   // `asksReserveOf`), and never pre-filled — not even from the plan's reserve: the answer is the
-  // athlete's (#37). Empty for each set because the screen keys this logger by the set it logs.
-  const [reserve, setReserve] = useState<number | null>(null)
+  // athlete's (#37). Empty for each set because the screen keys this logger by the set it logs —
+  // but for a set just undone, whose answer was given.
+  const [reserve, setReserve] = useState<number | null>(from?.reserve ?? null)
   const asked = asksReserveOf(next, tracking)
   return (
     <Stack gap="lg" testID={testID}>
@@ -117,7 +124,7 @@ export function FocusLogger({
           </Text>
         )}
       </Stack>
-      <SetMarks sets={sets} selected={selected} onSelect={onSelect} testID={`${testID}-sets`} />
+      <SetMarks sets={sets} testID={`${testID}-sets`} />
 
       <Card>
         <Stack gap="lg">
@@ -161,11 +168,11 @@ export function FocusLogger({
             />
           ) : null}
           <Stack gap="sm">
-            <Button
-              title={next.action}
-              size="large"
+            <LogSlot
+              after={after}
+              action={next.action}
               busy={busy}
-              onPress={() => {
+              onLog={() => {
                 onLog({ effort, isWarmup: next.isWarmup, reserve: asked ? reserve : null })
               }}
               testID={`${testID}-log`}

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { DEFAULT_REST_S, restCounted, restLeft, restRemaining } from './rest.ts'
+import { DEFAULT_REST_S, restCounted, restLeft, restPhase, restRemaining } from './rest.ts'
 
 /** What the logger counts down after a working set: the entry's rest, from when it was logged. */
 describe('rest left', () => {
@@ -103,5 +103,37 @@ describe('the rest counted', () => {
 
   test('what the server keeps of an earlier rest is not this one', () => {
     expect(restCounted(counted, 0, kept(300, '2026-10-26T17:55:00.000Z'))?.seconds).toBe(90)
+  })
+})
+
+/**
+ * Where the rest after the latest set stands (#63): what the workout shows in Log's place. While it
+ * runs, or when none follows the set, the set just logged can still be undone there.
+ */
+describe('the rest’s phase', () => {
+  const since = '2026-10-26T18:00:00.000Z'
+  const rest = { since, seconds: 90 }
+  const at = (seconds: number) => Date.parse(since) + seconds * 1000
+
+  test('none follows a set the sets give no rest after: a warm-up, a superset’s first, a 0', () => {
+    expect(restPhase(null, 0, null, false, at(10))).toEqual({ phase: 'none' })
+  })
+
+  test('runs, with what is left of it — +30 s counted', () => {
+    expect(restPhase(rest, 0, null, false, at(30))).toEqual({ phase: 'running', left: 60 })
+    expect(restPhase(rest, 1, null, false, at(100))).toEqual({ phase: 'running', left: 20 })
+  })
+
+  test('is over once it has run out', () => {
+    expect(restPhase(rest, 0, null, false, at(90))).toEqual({ phase: 'over', skipped: false })
+  })
+
+  test('is over once skipped — here, or on another device', () => {
+    expect(restPhase(rest, 0, null, true, at(10))).toEqual({ phase: 'over', skipped: true })
+    const skippedThere = { since, endsAt: since }
+    expect(restPhase(rest, 0, skippedThere, false, at(10))).toEqual({
+      phase: 'over',
+      skipped: true,
+    })
   })
 })

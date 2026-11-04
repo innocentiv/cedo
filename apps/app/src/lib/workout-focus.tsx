@@ -2,7 +2,6 @@ import {
   type EntryTarget,
   type Exercise,
   NO_TARGET,
-  type Reopened,
   type SessionEntry,
   type WeightUnit,
   formatEffort,
@@ -13,15 +12,15 @@ import {
   prescriptionOf,
   targetLine,
 } from '@cedo/contract'
-import { ConfirmButton, FocusLogger, Stack, Text } from '../ui/index.ts'
+import { AfterSet, ConfirmButton, FocusLogger, type JustDone, Stack, Text } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
 import { useLoads } from './use-loads.ts'
 import { AdHocFocus } from './workout-adhoc.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
 /**
- * What a planned day has in focus (#24), and how it shows. Which it is — and which of its sets is
- * re-opened — is the contract's `workoutView`; this renders it.
+ * What a planned day has in focus (#24), and how it shows — the set just logged in Log's place
+ * (#63). Which it is is the contract's `workoutView`; this renders it.
  */
 
 /** An entry whose exercise the reader can no longer see: what it asked, and nothing to log. */
@@ -53,8 +52,8 @@ function Focus({
   sets,
   entrySets,
   asked,
-  selected,
-  onSelect,
+  from,
+  after,
   onHowTo,
   unit,
 }: {
@@ -63,8 +62,8 @@ function Focus({
   readonly sets: WorkoutSets
   readonly entrySets: Extract<WorkoutShown['focus'], { kind: 'entry' }>['sets']
   readonly asked: EntryTarget | undefined
-  readonly selected: string | null
-  readonly onSelect: (key: string) => void
+  readonly from: Extract<WorkoutShown['focus'], { kind: 'entry' }>['undone']
+  readonly after: JustDone | null
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
   readonly unit: WeightUnit
 }): React.JSX.Element {
@@ -83,9 +82,9 @@ function Focus({
       cue={entry.cue}
       tracking={tracking}
       sets={markedSets(entrySets, sets.waiting)}
-      selected={selected}
-      onSelect={onSelect}
       next={{ target, isWarmup: next?.isWarmup ?? false, title: words.title, action: words.action }}
+      from={from}
+      after={after}
       progressed={asked === undefined ? null : targetLine(asked, tracking, unit, next ?? undefined)}
       last={asked?.last == null ? null : `Last time ${formatSets(asked.last, tracking, unit)}`}
       busy={sets.record.busy}
@@ -101,12 +100,15 @@ function Focus({
   )
 }
 
-/** What is in focus: an unavailable entry, an added exercise, the entry, or — all done — Finish. */
+/**
+ * What is in focus: an unavailable entry, an added exercise, the entry, or — all done — Finish. Where
+ * nothing is logged — the day done, an entry out of reach — the set just logged is said above it.
+ */
 export function InFocus({
   focus,
   sets,
   full,
-  onReopen,
+  after,
   onHowTo,
   onFinish,
   finishing,
@@ -115,13 +117,21 @@ export function InFocus({
   readonly focus: WorkoutShown['focus']
   readonly sets: WorkoutSets
   readonly full: readonly Exercise[]
-  readonly onReopen: (reopened: Reopened) => void
+  readonly after: JustDone | null
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
   readonly onFinish: () => Promise<void>
   readonly finishing: boolean
   readonly unit: WeightUnit
 }): React.JSX.Element | null {
-  if (focus.kind === 'unavailable') return <Unavailable entry={focus.entry} unit={unit} />
+  const justDone = after === null ? null : <AfterSet after={after} log={null} />
+  if (focus.kind === 'unavailable') {
+    return (
+      <>
+        {justDone}
+        <Unavailable entry={focus.entry} unit={unit} />
+      </>
+    )
+  }
   if (focus.kind === 'added') {
     const { exercise } = focus
     return (
@@ -130,10 +140,8 @@ export function InFocus({
         marks={focus.sets}
         whole={full.find((e) => e.id === exercise.id)}
         sets={sets}
-        selected={focus.selected}
-        onSelect={(key) => {
-          onReopen({ entryId: null, exerciseId: exercise.id, key })
-        }}
+        from={focus.undone}
+        after={after}
         onHowTo={(whole) => {
           onHowTo(whole, null)
         }}
@@ -144,6 +152,7 @@ export function InFocus({
     return (
       <Stack gap="md" testID="day-done">
         <Text variant="heading">Every set of the day is logged.</Text>
+        {justDone}
         <ConfirmButton
           title="Finish session"
           busy={finishing}
@@ -163,10 +172,8 @@ export function InFocus({
       sets={sets}
       entrySets={focus.sets}
       asked={focus.asked}
-      selected={focus.selected}
-      onSelect={(key) => {
-        onReopen({ entryId: entry.id, exerciseId: entry.exerciseId, key })
-      }}
+      from={focus.undone}
+      after={after}
       onHowTo={onHowTo}
       unit={unit}
     />

@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 import type { MarkedSet, SetMark } from '@cedo/contract'
 import { MARK_SIZE, color, radius, space, stroke } from './tokens.ts'
 import { Text } from './text.tsx'
@@ -6,48 +6,31 @@ import { Text } from './text.tsx'
 /**
  * An entry's sets at a glance, in order (#24). The colours are the plates', one meaning each: the
  * next ringed yellow — act now; a personal best green; a warm-up white, a step smaller. A working set
- * done is grey; one waiting for a signal, dashed. A done set is a button — tapping it re-opens it,
- * to undo it or say its reserve — and the set re-opened is ringed in chalk, never yellow, so it is
- * not taken for the next.
+ * done is grey; one waiting for a signal, dashed. Progress only, never a button (#63): the set just
+ * logged is taken back where it was logged, and any other is fixed in the session's list.
  */
 export function SetMarks({
   sets,
-  selected,
-  onSelect,
   testID,
 }: {
   readonly sets: readonly MarkedSet[]
-  readonly selected: string | null
-  readonly onSelect: (key: string) => void
   readonly testID: string
 }): React.JSX.Element {
   return (
     <View style={styles.row} testID={testID}>
       {sets.map((set) => {
-        const logged = set.mark === 'done' || set.mark === 'best' || set.mark === 'waiting'
         const look = set.isWarmup && set.mark === 'done' ? 'warmupDone' : set.mark
         return (
-          <Pressable
+          <View
             key={set.key}
-            disabled={!logged}
-            accessibilityRole="button"
             accessibilityLabel={`${set.isWarmup ? 'Warm-up' : 'Set'} ${set.label}, ${set.mark}`}
-            aria-selected={selected === set.key}
-            onPress={() => {
-              onSelect(set.key)
-            }}
             testID={`${testID}-${set.key}`}
-            style={[
-              styles.mark,
-              set.isWarmup ? styles.warmup : null,
-              LOOK[look],
-              selected === set.key ? styles.selected : null,
-            ]}
+            style={[styles.mark, set.isWarmup ? styles.warmup : null, LOOK[look]]}
           >
             <Text variant="caption" tone={TONE[look]}>
               {set.label}
             </Text>
-          </Pressable>
+          </View>
         )
       })}
     </View>
@@ -85,5 +68,4 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   warmup: { width: MARK_SIZE - space.sm, height: MARK_SIZE - space.sm, alignSelf: 'center' },
-  selected: { borderColor: color.text, borderWidth: stroke.bold },
 })

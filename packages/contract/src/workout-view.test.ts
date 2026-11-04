@@ -104,13 +104,13 @@ describe('what the workout shows', () => {
   })
 
   test('an entry chosen takes the focus from the day’s order, and is the row marked', () => {
-    const v = view([], { choices: { chosen: { entry: 'rdl' }, reopened: null } })
+    const v = view([], { choices: { chosen: { entry: 'rdl' }, undone: null } })
     expect(focusId(v)).toBe('rdl')
     expect(v.current.upNext?.id).toBe('rdl')
   })
 
   test('an entry chosen that the reader cannot see says so, logs nothing, and is the row marked', () => {
-    const v = view([], { choices: { chosen: { entry: 'gone' }, reopened: null } })
+    const v = view([], { choices: { chosen: { entry: 'gone' }, undone: null } })
     expect(v.focus).toEqual({ kind: 'unavailable', entry: gone })
     expect(v.current.upNext).toBe(gone)
   })
@@ -123,7 +123,7 @@ describe('what the workout shows', () => {
 
   // That picking chooses is the app's, proven by the journeys: here, only what a choice does.
   test('an exercise added and chosen takes the focus from the day', () => {
-    const choices = { chosen: { added: 'curl' }, reopened: null }
+    const choices = { chosen: { added: 'curl' }, undone: null }
     expect(focusId(view([set('squat')], { added, choices }))).toBe('curl')
   })
 
@@ -144,50 +144,51 @@ describe('what the workout shows', () => {
     expect(view([]).shown).toBeNull()
   })
 
-  test('a set re-opened from its mark is shown instead, and marked on the focus', () => {
-    const sets = [set('squat')]
-    const reopened = { entryId: 'squat', exerciseId: 'squat', key: 's0' }
-    const v = view(sets, { choices: { chosen: null, reopened } })
-    expect(v.shown?.log).toBe(sets[0])
-    if (v.focus.kind !== 'entry') throw new Error(v.focus.kind)
-    expect(v.focus.selected).toBe('s0')
-    // Of another entry than the focus, nothing is marked on it.
-    const other = view(sets, { choices: { chosen: { entry: 'rdl' }, reopened } })
-    expect(other.focus.kind === 'entry' && other.focus.selected).toBeNull()
+  /** Undo puts back what the set said (#63): one wrong number is fixed, and the set logged again. */
+  const undone = (entryId: string | null, exerciseId = entryId ?? 'curl') => ({
+    entryId,
+    exerciseId,
+    effort: { reps: 6, weightG: 95_000, durationS: null, distanceMm: null },
+    reserve: 2,
   })
 
-  test('a swap’s set re-opened is shown, as its exercise', () => {
-    const sets = [set(null, 'dip'), set(null, 'dip')]
-    const reopened = { entryId: null, exerciseId: 'dip', key: 's0' }
-    const v = view(sets, { added, choices: { chosen: null, reopened } })
-    expect(v.shown).toEqual({ log: sets[0]!, exercise: { id: 'dip' } })
-    expect(v.focus.kind === 'added' && v.focus.selected).toBe('s0')
+  test('a set undone takes the focus to its entry, which starts from what the set said', () => {
+    // Squat has a set left, so the day's own focus is squat: the set undone was rdl's.
+    const choices = { chosen: null, undone: undone('rdl') }
+    const v = view([set('squat')], { choices })
+    expect(focusId(v)).toBe('rdl')
+    expect(v.focus.kind === 'entry' && v.focus.undone).toEqual(undone('rdl'))
+    expect(v.current.upNext?.id).toBe('rdl')
   })
 
-  test('a swap’s set re-opened after an entry’s is shown as the swap’s exercise', () => {
-    const sets = [set(null, 'dip'), set('squat')]
-    const reopened = { entryId: null, exerciseId: 'dip', key: 's0' }
-    const v = view(sets, { added, choices: { chosen: null, reopened } })
-    expect(v.shown).toEqual({ log: sets[0]!, exercise: { id: 'dip' } })
-    expect(v.another).toBeNull()
+  test('a swap’s set undone takes the focus to its exercise, which starts from it', () => {
+    const v = view([set('squat')], {
+      added,
+      choices: { chosen: null, undone: undone(null, 'dip') },
+    })
+    expect(focusId(v)).toBe('dip')
+    expect(v.focus.kind === 'added' && v.focus.undone).toEqual(undone(null, 'dip'))
   })
 
-  test('a set re-opened on an entry is not marked on the same exercise added to the day', () => {
-    // The squat both prescribed and added: its entry's first set is no set of the one added.
-    const reopened = { entryId: 'squat', exerciseId: 'squat', key: 's0' }
-    const choices = { chosen: { added: 'squat' }, reopened }
+  test('a choice made after a set is undone takes the focus, and starts from its own target', () => {
+    const choices = { chosen: { entry: 'squat' }, undone: undone('rdl') }
+    const v = view([set('squat')], { choices })
+    expect(focusId(v)).toBe('squat')
+    expect(v.focus.kind === 'entry' && v.focus.undone).toBeNull()
+  })
+
+  test('a set undone of an entry does not fill the same exercise added to the day', () => {
+    const choices = { chosen: { added: 'squat' }, undone: undone('squat') }
     const v = view([set('squat')], { added: [{ id: 'squat' }], choices })
     expect(focusId(v)).toBe('squat')
-    expect(v.focus.kind === 'added' && v.focus.selected).toBeNull()
+    expect(v.focus.kind === 'added' && v.focus.undone).toBeNull()
   })
 
   test('"+ set" goes to the entry of the set shown once it has all it asked, and only then', () => {
     expect(view([set('squat')]).another).toBeNull()
     expect(view([set('squat'), set('squat')]).another).toBe('squat')
-    // Re-opened, a set of an entry done offers it while the focus is elsewhere.
-    const sets = [set('rdl'), set('squat')]
-    const reopened = { entryId: 'rdl', exerciseId: 'rdl', key: 's0' }
-    expect(view(sets, { choices: { chosen: null, reopened } }).another).toBe('rdl')
+    // The day's last set — its focus done — still offers one more of its entry.
+    expect(view([set('squat'), set('squat'), set('rdl')]).another).toBe('rdl')
     // A swap's set shown offers nothing: there is no prescription to go beyond.
     expect(view([set('squat'), set('squat'), set(null)], { added }).another).toBeNull()
   })
@@ -204,7 +205,7 @@ describe('what the workout shows', () => {
 
     test('the focus: chosen, else logged last, else the last', () => {
       const curl = [set(null, 'curl')]
-      expect(focusId(adHoc(curl, { choices: { chosen: { added: 'dip' }, reopened: null } }))).toBe(
+      expect(focusId(adHoc(curl, { choices: { chosen: { added: 'dip' }, undone: null } }))).toBe(
         'dip',
       )
       expect(focusId(adHoc([set(null, 'dip'), ...curl]))).toBe('curl')
@@ -212,22 +213,26 @@ describe('what the workout shows', () => {
       expect(adHoc(curl).current.addedToday).toBe('curl')
     })
 
-    test('the set shown: re-opened, else the last logged; never "+ set"', () => {
+    test('the set shown: the last logged; never "+ set"', () => {
       const sets = [set(null, 'curl'), set(null, 'dip')]
       expect(adHoc(sets).shown).toEqual({ log: sets[1]!, exercise: { id: 'dip' } })
-      const reopened = { entryId: null, exerciseId: 'curl', key: 's0' }
-      const v = adHoc(sets, { choices: { chosen: null, reopened } })
-      expect(v.shown?.log).toBe(sets[0])
-      expect(v.another).toBeNull()
+      expect(adHoc(sets).another).toBeNull()
     })
 
-    /** The plan gone out of reach mid-session: a set re-opened on one of its entries is no set here. */
-    test('a set re-opened on a plan entry is not one of an exercise logged with none', () => {
-      const sets = [set(null, 'curl'), set(null, 'curl')]
-      const reopened = { entryId: 'squat', exerciseId: 'curl', key: 's0' }
-      const v = adHoc(sets, { choices: { chosen: null, reopened } })
-      expect(v.shown?.log).toBe(sets[1])
-      expect(v.focus.kind === 'added' && v.focus.selected).toBeNull()
+    test('a set undone takes the focus to its exercise, which starts from it', () => {
+      const v = adHoc([set(null, 'dip')], {
+        choices: { chosen: null, undone: undone(null, 'curl') },
+      })
+      expect(focusId(v)).toBe('curl')
+      expect(v.focus.kind === 'added' && v.focus.undone).toEqual(undone(null, 'curl'))
+    })
+
+    /** The plan gone out of reach mid-session: a set undone on one of its entries is no set here. */
+    test('a set undone on a plan entry is not one of an exercise logged with none', () => {
+      const v = adHoc([set(null, 'curl')], {
+        choices: { chosen: null, undone: undone('squat', 'curl') },
+      })
+      expect(v.focus.kind === 'added' && v.focus.undone).toBeNull()
     })
   })
 })

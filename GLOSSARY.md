@@ -361,6 +361,11 @@ with none. The one the athlete chose, else where the day's order leads; a choice
 log or undo a set, or add an exercise, which then takes the focus.
 _Avoid_: current exercise, active entry, selected entry
 
+**Rest**:
+The pause after a set, before the next. It starts when a set is logged, and ends when its time is
+up, when it is skipped, or when its set is undone. A superset rests after the pair, not between.
+_Avoid_: timer, break, recovery
+
 **Swap**:
 An exercise done in a session that follows a plan without being an entry of its day, in place of
 one or beside them. Its sets are logged with no plan entry, so they are a series of their own.

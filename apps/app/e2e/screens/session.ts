@@ -20,6 +20,16 @@ async function loggedIds(page: Page): Promise<string[]> {
   return ids
 }
 
+/**
+ * Skips the rest running, if one is: once a set is logged, its rest takes Log's place (#63), and an
+ * athlete logging again before it is over skips it first.
+ */
+async function skipAnyRest(page: Page, log: string): Promise<void> {
+  if (!(await page.shown('rest-control-skip'))) return
+  await page.click('[data-testid="rest-control-skip"]')
+  await page.waitFor(log)
+}
+
 /** A working set's mark that is logged: done, a personal best, or waiting for a signal. */
 const LOGGED_MARK = /, (done|best|waiting)$/u
 
@@ -89,13 +99,12 @@ const logger = (page: Page, id: string, choose: string) => {
       return await page.text(`${id}-cue`)
     },
     /**
-     * "Rest 1:28", or "Rest over — ready for the next set"; null when no rest runs. The band is the
-     * session's, across the top: the rest of the set logged last.
+     * "Rest 1:28" — the rest after the set logged last, in Log's place (#63); null when none runs:
+     * none follows the set, or it is over, and Log is back.
      */
     rest: async (): Promise<string | null> => {
-      if (!(await page.shown('rest-band'))) return null
-      const left = await page.text('rest-band-left')
-      return left === 'Next set' ? 'Rest over — ready for the next set' : `Rest ${left ?? ''}`
+      if (!(await page.shown('rest-control-left'))) return null
+      return `Rest ${(await page.text('rest-control-left')) ?? ''}`
     },
     /** "Last time 5, 5, 5 × 60 kg" — null when the exercise was never done before. */
     last: async (): Promise<string | null> => {
@@ -109,16 +118,17 @@ const logger = (page: Page, id: string, choose: string) => {
       await page.until(reserveChosen, (chosen) => chosen === reps)
     },
     reserveChosen,
-    /** Whether it offers a Log button at all. */
+    /** Whether it offers a Log button now — not while a rest runs in its place (#63). */
     canLog: async (): Promise<boolean> => {
       await current()
-      return await page.exists(`${id}-log`)
+      return await page.shown(`${id}-log`)
     },
     /** Whether it is shown as an unavailable exercise. */
     unavailable: async (): Promise<boolean> => await page.exists(`${id}-unavailable`),
     /** Taps Log for a set the server will refuse: the screen says why (`session.error`). */
     attemptLog: async (): Promise<void> => {
       await current()
+      await skipAnyRest(page, `${id}-log`)
       await page.click(`[data-testid="${id}-log"]`)
     },
     /** "2 done": its working sets logged, as its marks show them. */
@@ -135,10 +145,11 @@ const logger = (page: Page, id: string, choose: string) => {
     /**
      * Logs a set, and waits until it is a row: the next one is numbered from the refreshed logs. The
      * rows before are counted from the same session read the logger is drawn from, so a logger on
-     * screen has its rows on screen too.
+     * screen has its rows on screen too. A rest still running is skipped first, as an athlete would.
      */
     log: async (): Promise<void> => {
       await current()
+      await skipAnyRest(page, `${id}-log`)
       const before = (await loggedIds(page)).length
       await page.click(`[data-testid="${id}-log"]`)
       await page.until(
@@ -149,6 +160,7 @@ const logger = (page: Page, id: string, choose: string) => {
     /** Logs a set with no signal: it shows at once, as waiting to be sent (#9). */
     logWhileOffline: async (): Promise<void> => {
       await current()
+      await skipAnyRest(page, `${id}-log`)
       const before = await waitingCount(page)
       await page.click(`[data-testid="${id}-log"]`)
       await page.until(
@@ -239,6 +251,29 @@ export const session = (page: Page) => {
       await openPicker(page)
     },
 
+    /**
+     * Undo in Log's place (#63): takes back the set just logged, while its rest runs — or, none
+     * following it, until the next set.
+     */
+    undoJustLogged: async (): Promise<void> => {
+      await page.click('[data-testid="rest-control-undo"]')
+    },
+    /** Whether the set just logged can still be taken back where it was logged. */
+    canUndoJustLogged: async (): Promise<boolean> => await page.shown('rest-control-undo'),
+    /** Skips the rest running in Log's place: Log is back at once. */
+    skipRest: async (): Promise<void> => {
+      await page.click('[data-testid="rest-control-skip"]')
+      await page.until(
+        async () => await page.shown('rest-control-left'),
+        (running) => !running,
+      )
+    },
+    /** +30 s, by a tap on the countdown. */
+    extendRest: async (): Promise<void> => {
+      await page.click('[data-testid="rest-control-more"]')
+    },
+    /** Whether the set just logged is said under the control: from the log until its rest is over. */
+    justLogged: async (): Promise<boolean> => await page.shown('last-set'),
     /** "+ set" on the set just logged: one more beyond its entry's prescription (#24). */
     another: async (): Promise<void> => {
       await page.click('[data-testid="last-set-another"]')

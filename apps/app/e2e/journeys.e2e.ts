@@ -2881,10 +2881,12 @@ test(
 
 /**
  * What the plan tells the athlete beyond its numbers: the rest after a working set, counted down
- * from when the set was logged, and a cue under the exercise — both written in the editor.
+ * from when the set was logged, and a cue under the exercise — both written in the editor. The rest
+ * runs in Log's place (#63), with the set just logged under it and Undo; once it is over all of it
+ * goes, and Log is back — the chime is the cue, nothing stays on screen to say so.
  */
 test(
-  "a working set starts the entry's rest, and the plan's cue is shown with the exercise",
+  "a working set's rest takes Log's place, and goes once over; the plan's cue is shown",
   async () => {
     await withApp('rest-and-cue', async (page) => {
       const app = screens(page)
@@ -2900,11 +2902,100 @@ test(
       expect(await bench.rest()).toBeNull()
       await bench.log()
       expect(await bench.rest()).toMatch(/^Rest 0:0[1-5]$/u)
-      await page.until(bench.rest, (said) => said === 'Rest over — ready for the next set', 8000)
-      // The clock stood still once it was over; the next set starts it again, from the full rest.
+      expect(await bench.canLog()).toBe(false)
+      expect(await app.session.canUndoJustLogged()).toBe(true)
+      expect(await app.session.justLogged()).toBe(true)
+      await page.until(bench.rest, (said) => said === null, 8000)
+      expect(await bench.canLog()).toBe(true)
+      expect(await app.session.canUndoJustLogged()).toBe(false)
+      expect(await app.session.justLogged()).toBe(false)
+      // The next set starts it again, from the full rest.
       await bench.log()
       expect(await bench.rest()).toMatch(/^Rest 0:0[1-5]$/u)
-      await page.until(bench.rest, (said) => said === 'Rest over — ready for the next set', 8000)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * A mistake caught as the set is logged (#63): Undo, in Log's place, takes it back and ends its rest,
+ * and the logger holds what the set said — one wrong number is fixed, not the whole set typed again.
+ * Skip ends a rest early, and +30 s — a tap on the countdown — lengthens it.
+ */
+test(
+  'Undo in Log’s place takes the set back, holding what it said; Skip and +30 s',
+  async () => {
+    await withApp('undo-in-place', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('uip'))
+      await app.planEditor.create()
+      await app.planEditor.saveAndStart()
+
+      const bench = app.session.entry(0)
+      await bench.fill('weight', '62.5')
+      await bench.fill('reps', '6')
+      await bench.reserve('2')
+      await bench.log()
+      expect(await bench.rest()).toMatch(/^Rest (2:00|1:5\d)$/u)
+      expect(await app.session.lastSetText()).toBe('6 × 62.5 kg · 2 in reserve')
+
+      await app.session.undoJustLogged()
+      await page.until(
+        async () => (await app.session.loggedIds()).length,
+        (rows) => rows === 0,
+      )
+      expect(await bench.rest()).toBeNull()
+      expect(await bench.canLog()).toBe(true)
+      expect(await bench.value('weight')).toBe('62.5')
+      expect(await bench.value('reps')).toBe('6')
+      expect(await bench.reserveChosen()).toBe('2')
+
+      await bench.fill('reps', '8')
+      await bench.log()
+      await app.session.extendRest()
+      await page.until(bench.rest, (said) => /^Rest 2:[23]\d$/u.test(said ?? ''))
+      await app.session.skipRest()
+      expect(await bench.canLog()).toBe(true)
+      expect(await app.session.justLogged()).toBe(false)
+
+      const mine = await page.client()
+      const logs = (await mine.sessions.get(await app.session.id())).logs
+      expect(logs.map((l) => [l.reps, l.weightG, l.reserve])).toEqual([[8, 62_500, 2]])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * A set with no rest after it — straight on, as in a superset's first — keeps Undo beside Log until
+ * the next set is logged (#63).
+ */
+test(
+  'with no rest after a set, Undo sits beside Log until the next set',
+  async () => {
+    await withApp('undo-no-rest', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('unr'))
+      await app.planEditor.create()
+      await app.planEditor.entry(0, 0).rest('0')
+      await app.planEditor.saveAndStart()
+
+      const bench = app.session.entry(0)
+      await bench.fill('weight', '60')
+      await bench.log()
+      expect(await bench.rest()).toBeNull()
+      expect(await bench.canLog()).toBe(true)
+      expect(await app.session.canUndoJustLogged()).toBe(true)
+      expect(await app.session.lastSetText()).toBe('8 × 60 kg')
+
+      await bench.log()
+      await app.session.undoJustLogged()
+      await page.until(
+        async () => (await app.session.loggedIds()).length,
+        (rows) => rows === 1,
+      )
+      // The first set's Undo is back: it is again the set just logged, with no rest after it.
+      expect(await app.session.canUndoJustLogged()).toBe(true)
     })
   },
   E2E_TIMEOUT_MS,

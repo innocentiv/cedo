@@ -1,9 +1,9 @@
 import {
   type Exercise,
   NO_TARGET,
-  type Reopened,
   type SessionExercise,
   type SessionSet,
+  type Undone,
   type WorkoutChoices,
   adHocSetsOf,
   markedSets,
@@ -12,14 +12,14 @@ import {
   progressOf,
 } from '@cedo/contract'
 import type { PendingLog } from '../api/pending.ts'
-import { AddRow, FocusLogger, Stack, UpNext } from '../ui/index.ts'
-import { JustDone, type RestShown, ShownSet } from './shown-set.tsx'
+import { AddRow, FocusLogger, type JustDone, Stack, UpNext } from '../ui/index.ts'
+import { type RestShown, useJustDone } from './just-done.ts'
 import { useLoads } from './use-loads.ts'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
 /*
- * A session with no plan behind it (#24): what was just done and the exercise in focus
- * (`AdHocMain`), then the others, Add exercise, and every set (`AdHocSide`) — the screen's two
+ * A session with no plan behind it (#24): the exercise in focus, with what was just done in its Log's
+ * place (`AdHocMain`, #63), then the others, Add exercise, and every set (`AdHocSide`) — the screen's two
  * columns, side by side on a desktop. Nothing was prescribed, so there is always a next set until
  * the athlete moves on. What shows is the contract's `workoutView`.
  */
@@ -31,39 +31,30 @@ export interface AdHocMainProps {
   readonly sets: WorkoutSets
   readonly rest: RestShown
   readonly view: WorkoutShown
-  readonly onReopen: (reopened: Reopened) => void
   readonly onHowTo: (exercise: Exercise) => void
 }
 
-/** What was just done, and the exercise in focus — one more set from the last. */
+/** The exercise in focus — one more set from the last — and what was just done in Log's place. */
 export function AdHocMain({
   full,
   sets,
   rest,
   view,
-  onReopen,
   onHowTo,
-}: AdHocMainProps): React.JSX.Element {
+}: AdHocMainProps): React.JSX.Element | null {
   const { focus, shown } = view
+  const after = useJustDone({ rest, shown, sets })
+  if (focus.kind !== 'added') return null
   return (
-    <>
-      <JustDone rest={rest}>
-        {shown === null ? null : <ShownSet log={shown.log} exercise={shown.exercise} sets={sets} />}
-      </JustDone>
-      {focus.kind === 'added' ? (
-        <AdHocFocus
-          exercise={focus.exercise}
-          marks={focus.sets}
-          whole={full.find((e) => e.id === focus.exercise.id)}
-          sets={sets}
-          selected={focus.selected}
-          onSelect={(key) => {
-            onReopen({ entryId: null, exerciseId: focus.exercise.id, key })
-          }}
-          onHowTo={onHowTo}
-        />
-      ) : null}
-    </>
+    <AdHocFocus
+      exercise={focus.exercise}
+      marks={focus.sets}
+      whole={full.find((e) => e.id === focus.exercise.id)}
+      sets={sets}
+      from={focus.undone}
+      after={after}
+      onHowTo={onHowTo}
+    />
   )
 }
 
@@ -150,8 +141,8 @@ export function AdHocFocus({
   marks,
   whole,
   sets,
-  selected,
-  onSelect,
+  from,
+  after,
   onHowTo,
 }: {
   readonly exercise: SessionExercise
@@ -160,8 +151,10 @@ export function AdHocFocus({
   /** The whole exercise, when it was picked this open: how to do it can be shown. */
   readonly whole: Exercise | undefined
   readonly sets: WorkoutSets
-  readonly selected: string | null
-  readonly onSelect: (key: string) => void
+  /** Its set just undone: the numbers start from what it said (#63). */
+  readonly from: Undone | null
+  /** The set just logged, while it can be taken back: in Log's place (#63). */
+  readonly after: JustDone | null
   readonly onHowTo: (exercise: Exercise) => void
 }): React.JSX.Element {
   // Its weights as the athlete can load them, when the whole exercise is at hand (#36).
@@ -176,8 +169,8 @@ export function AdHocFocus({
       cue={null}
       tracking={exercise.tracking}
       sets={markedSets(marks, sets.waiting)}
-      selected={selected}
-      onSelect={onSelect}
+      from={from}
+      after={after}
       next={{
         target: next?.target ?? NO_TARGET,
         isWarmup: false,

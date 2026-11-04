@@ -3,7 +3,6 @@ import {
   type EntryTarget,
   type Exercise,
   NO_CHOICES,
-  type Reopened,
   type SessionEntry,
   type SessionExercise,
   type SessionPlan,
@@ -36,7 +35,8 @@ export interface WorkoutSets {
   readonly all: readonly PendingLog[]
   readonly waiting: ReadonlySet<string>
   readonly record: ReturnType<typeof useRecordSet>
-  readonly undo: (logId: string) => void
+  /** Takes back a set the server has: its entry takes the focus, from what it said (#63). */
+  readonly undo: (log: SetLog) => void
 }
 
 /**
@@ -55,7 +55,7 @@ export function useWorkout(id: string) {
   const [howTo, setHowTo] = useState<{ exercise: Exercise; cue: string | null } | null>(null)
   const serverLogs = session.data?.logs ?? NO_LOGS
   const choices = useChoices()
-  const writes = useSessionWrites(id, submission.submit, menu.hide, choices.forget)
+  const writes = useSessionWrites(id, submission.submit, menu.hide, choices.undone)
   const picks = useAdHocPicks(serverLogs, choices)
   const ended = session.data?.endedAt != null
   const sets = workoutSets(serverLogs, unsent.sets, record, writes.undo, choices.forget)
@@ -98,7 +98,7 @@ export type Workout = ReturnType<typeof useWorkout>
 
 /**
  * The sets as the server has them and as the workout counts them — those waiting included. Logging
- * or undoing one forgets what the athlete chose: the next set is what ends a choice.
+ * one forgets what the athlete chose: the next set is what ends a choice. Undoing one chooses it.
  */
 const workoutSets = (
   server: readonly SetLog[],
@@ -123,10 +123,10 @@ const workoutSets = (
 
 /**
  * What the athlete chose to look at (GLOSSARY.md, "Focus"): an entry or an exercise added, tapped
- * or picked to put in focus, and a set re-opened from its mark. Held until this device logs or
- * undoes a set, or goes to pick an exercise — by what was done, not by which set is latest: a set
- * logged without a signal changes id when the server has it, and a choice held to its id was lost
- * as it landed.
+ * or picked to put in focus, and a set undone — which chooses its own entry, to log it again from
+ * what it said (#63). Held until this device logs a set, or goes to pick an exercise — by what was
+ * done, not by which set is latest: a set logged without a signal changes id when the server has
+ * it, and a choice held to its id was lost as it landed. Undoing another set replaces it.
  */
 function useChoices() {
   const [held, setHeld] = useState<WorkoutChoices>(NO_CHOICES)
@@ -135,8 +135,21 @@ function useChoices() {
     choose: (chosen: WorkoutChoices['chosen']) => {
       setHeld((now) => ({ ...now, chosen }))
     },
-    reopen: (reopened: Reopened) => {
-      setHeld((now) => ({ ...now, reopened }))
+    undone: (log: SetLog) => {
+      setHeld({
+        chosen: null,
+        undone: {
+          entryId: log.entryId,
+          exerciseId: log.exerciseId,
+          effort: {
+            reps: log.reps,
+            weightG: log.weightG,
+            durationS: log.durationS,
+            distanceMm: log.distanceMm,
+          },
+          reserve: log.reserve,
+        },
+      })
     },
     forget: () => {
       setHeld(NO_CHOICES)
@@ -171,7 +184,6 @@ function useView(
     /** What the screen shows, by the contract's rules: the focus, the set shown, "+ set". */
     view,
     choose: choices.choose,
-    reopen: choices.reopen,
   }
 }
 
@@ -235,7 +247,7 @@ function useSessionWrites(
   id: string,
   submit: ReturnType<typeof useSubmit>['submit'],
   closeMenu: () => void,
-  forgetChoices: () => void,
+  chooseUndone: (log: SetLog) => void,
 ) {
   const update = useUpdateSession(id)
   const removeLog = useRemoveLog(id)
@@ -252,10 +264,10 @@ function useSessionWrites(
       })
     },
     // A set finished on another device answers 404, and says so.
-    undo: (logId: string) => {
-      forgetChoices()
+    undo: (log: SetLog) => {
+      chooseUndone(log)
       void submit(async () => {
-        await removeLog.mutateAsync(logId)
+        await removeLog.mutateAsync(log.id)
       })
     },
   }

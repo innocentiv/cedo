@@ -1,20 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
-import {
-  type Rest,
-  type RestChange,
-  type SessionRest,
-  restCounted,
-  restRemaining,
-} from '@cedo/contract'
+import { type Rest, type RestChange, type SessionRest, restPhase } from '@cedo/contract'
 import { chime } from './chime.ts'
 import { useUntilNextSet } from './until-next-set.ts'
 import { useNow } from './use-now.ts'
 
 /**
- * The clock of the rest shown on the workout (#24): how much is left with the +30 s taps counted,
- * whether it was skipped, and one tone when it is seen to run out — never on opening a screen whose
- * rest is already over. The taps and the skip hold until the next set starts a new rest. Which rest
- * runs, and how much is left of it, are the contract's (`restOf`, `restRemaining`).
+ * The clock of the rest after the latest set (#24, #63): where it stands — none follows the set, it
+ * runs with so much left, or it is over — with the +30 s taps counted and the skip, and one tone
+ * when it is seen to run out: never on opening a screen whose rest is already over, never once it
+ * is skipped, never when its set is undone. The taps and the skip hold until the next set starts a
+ * new rest. Which rest runs, and where it stands, are the contract's (`restOf`, `restPhase`).
  */
 export function useRestClock(
   rest: Rest | null,
@@ -36,23 +31,25 @@ export function useRestClock(
 
   const [ticking, setTicking] = useState(true)
   const now = useNow(ticking)
-  // Skipped on another device, or here before a reload, there is none to count (`restCounted`).
-  const counted = rest === null ? null : restCounted(rest, extensions, kept)
-  const left = counted === null ? null : restRemaining(counted, 0, now)
-  const running = left !== null && left > 0
+  const phase = restPhase(rest, extensions, kept, skipped !== null, now)
+  const running = phase.phase === 'running'
   if (running !== ticking) setTicking(running)
 
-  // The tone is for a rest seen running and then run out: opened over, or skipped, it is silent.
-  const wasRunning = useRef(false)
+  // The tone is for the rest seen running that ran out — the same one, by the sets it follows: an
+  // undo takes the session back to an earlier rest, which is no rest run out.
+  const ranOut = phase.phase === 'over' && !phase.skipped
+  const seen = useRef<string | null>(null)
   useEffect(() => {
-    if (wasRunning.current && left === 0 && skipped === null) chime()
-    wasRunning.current = running
-  }, [running, left, skipped])
+    if (running) {
+      seen.current = after
+      return
+    }
+    if (ranOut && seen.current !== null && seen.current === after) chime()
+    seen.current = null
+  }, [running, ranOut, after])
 
   return {
-    /** Seconds left; null when no rest is shown — none started, or skipped. */
-    left: skipped === null ? left : null,
-    running,
+    phase,
     extend: () => {
       extend(extensions + 1)
       tell({ sets, change: 'extend' })

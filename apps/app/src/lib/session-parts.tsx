@@ -84,7 +84,7 @@ export function LoggedSets({
    * out of reach, where the screen used to fall back to a 20 kg lift.
    */
   readonly logs: readonly SetLog[]
-  readonly onRemove: (logId: string) => void
+  readonly onRemove: (log: SetLog) => void
 }): React.JSX.Element | null {
   const unit = useWeightUnit()
   if (logs.length === 0) return null
@@ -104,7 +104,7 @@ export function LoggedSets({
               label="Undo this set"
               edge="end"
               onPress={() => {
-                onRemove(log.id)
+                onRemove(log)
               }}
               testID={`undo-set-${log.id}`}
             />
