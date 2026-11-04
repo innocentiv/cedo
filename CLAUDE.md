@@ -144,6 +144,11 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   click on a file input with `cancel`, which Expo's picker reads as nothing picked — and removes the
   input before a test can find it. Hand the input its file as it is appended, before the click:
   see `upload` in `e2e/screens/library.ts`.
+- **An installed iPhone app is only seen on the phone.** Neither a desktop browser nor the e2e
+  WebView is standalone or has insets. iOS 26 there sized the page one status bar short, and blurred
+  any page reaching under the clock some 40pt down — both green everywhere else (#61, the fixes in
+  `apps/app/public/index.html`). Push, then ask for a screenshot from the installed app, opened
+  twice: the first opening runs the shell it kept.
 - **`e2e` and `shot` serve `apps/app/dist`, so both rebuild first.** They used not to, which meant
   editing a screen and running either tested the PREVIOUS bundle and passed. Use `e2e:only` to skip
   the rebuild when you know the bundle is current.
