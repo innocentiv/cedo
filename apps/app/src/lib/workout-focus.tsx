@@ -101,8 +101,9 @@ function Focus({
 }
 
 /**
- * What is in focus: an unavailable entry, an added exercise, the entry, or — all done — Finish. Where
- * nothing is logged — the day done, an entry out of reach — the set just logged is said above it.
+ * What is in focus: an unavailable entry, an added exercise, the entry, or — all done — Finish.
+ * Where nothing is logged — the day done, an entry out of reach — the set just logged is said above
+ * it.
  */
 export function InFocus({
   focus,

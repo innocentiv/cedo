@@ -143,9 +143,10 @@ const logger = (page: Page, id: string, choose: string) => {
       return `${count} done`
     },
     /**
-     * Logs a set, and waits until it is a row: the next one is numbered from the refreshed logs. The
-     * rows before are counted from the same session read the logger is drawn from, so a logger on
-     * screen has its rows on screen too. A rest still running is skipped first, as an athlete would.
+     * Logs a set, and waits until it is a row: the next one is numbered from the refreshed logs.
+     * The rows before are counted from the same session read the logger is drawn from, so a logger
+     * on screen has its rows on screen too. A rest still running is skipped first, as an athlete
+     * would.
      */
     log: async (): Promise<void> => {
       await current()
@@ -272,7 +273,9 @@ export const session = (page: Page) => {
     extendRest: async (): Promise<void> => {
       await page.click('[data-testid="rest-control-more"]')
     },
-    /** Whether the set just logged is said under the control: from the log until its rest is over. */
+    /**
+     * Whether the set just logged is said under the control: from the log until its rest is over.
+     */
     justLogged: async (): Promise<boolean> => await page.shown('last-set'),
     /** "+ set" on the set just logged: one more beyond its entry's prescription (#24). */
     another: async (): Promise<void> => {

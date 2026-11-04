@@ -15,8 +15,8 @@ export interface LastSetProps {
 
 /**
  * The set just logged (#24), under the rest control that can take it back (#63): what it was — its
- * reserve with it, said before it was logged (#37) — and whether it was a personal best. A set still
- * waiting for a signal is said so: there is nothing to take back until the server has it.
+ * reserve with it, said before it was logged (#37) — and whether it was a personal best. A set
+ * still waiting for a signal is said so: there is nothing to take back until the server has it.
  */
 export function LastSet({
   title,

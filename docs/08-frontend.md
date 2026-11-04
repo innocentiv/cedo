@@ -619,8 +619,8 @@ used **only for state, and one meaning each everywhere**:
 | white | a warm-up |
 | red | careful — something went wrong, or a change cannot be taken back |
 
-Everything else is chalk on a charcoal ground — a selection too: a chosen segment or chip, the tab you are on,
-are chalk, never yellow, so nothing chosen is taken for the next thing to do. Weight and reps are set large in Barlow
+Everything else is chalk on a charcoal ground — a selection too: a chosen segment or chip and the tab you
+are on are chalk, never yellow, so nothing chosen is taken for the next thing to do. Weight and reps are set large in Barlow
 Condensed with tabular figures, everything else in Barlow — bundled with the app, so a self-hosted
 instance asks nothing of a third party and the installed app works offline. Fewer boxes: hierarchy
 from type and space, a card only around something acted on as one. Where a set is logged, nothing

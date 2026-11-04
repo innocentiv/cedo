@@ -45,9 +45,9 @@ export function adHocFocus<X extends Added>(
 }
 
 /**
- * A set just undone (#63): of a plan entry or of an exercise logged with none, and what it said. Its
- * entry takes the focus, and the logger starts from what the set said, not from the target: one wrong
- * number is fixed, and the set logged again.
+ * A set just undone (#63): of a plan entry or of an exercise logged with none, and what it said.
+ * Its entry takes the focus, and the logger starts from what the set said, not from the target: one
+ * wrong number is fixed, and the set logged again.
  */
 export interface Undone {
   readonly entryId: string | null
@@ -71,9 +71,9 @@ export const undoneOf = (log: ViewLog & { readonly reserve: number | null }): Un
 
 /**
  * What the athlete chose on the workout screen (GLOSSARY.md, "Focus"): an entry of the day or an
- * exercise logged with none, tapped to put in focus, and a set undone — which chooses its own entry,
- * unless something is chosen after it. The screen holds them until the athlete logs a set, or goes
- * to pick an exercise; these rules only read them.
+ * exercise logged with none, tapped to put in focus, and a set undone — which chooses its own
+ * entry, unless something is chosen after it. The screen holds them until the athlete logs a set,
+ * or goes to pick an exercise; these rules only read them.
  */
 export interface WorkoutChoices {
   readonly chosen: { readonly entry: string } | { readonly added: string } | null
@@ -149,7 +149,9 @@ interface ViewInput<E extends FlowEntry, X extends Added, L extends ViewLog, T e
   readonly loadFor: (entry: E) => Load | null
 }
 
-/** What both kinds of session read alike: an entry's sets, an exercise added in focus, a set undone. */
+/**
+ * What both kinds of session read alike: an entry's sets, an exercise added in focus, a set undone.
+ */
 function readsOf<E extends FlowEntry, X extends Added, L extends ViewLog, T extends EntryAsked>(
   input: ViewInput<E, X, L, T>,
 ) {

@@ -8,9 +8,10 @@ import { FinishedSummary, SessionNotes } from './workout-summary.tsx'
 
 /**
  * A finished session of your own, as it is read back (#25) — and fixed (#31): a set tapped opens
- * right below itself to be corrected or removed (#63), and the whole session can be deleted, asked twice, which goes back to
- * where it was opened from. Finishing still ends the logging: nothing here adds a set. The screen's
- * two columns: what it came to and its notes (`FinishedMain`), beside its sets (`FinishedSide`).
+ * right below itself to be corrected or removed (#63), and the whole session can be deleted, asked
+ * twice, which goes back to where it was opened from. Finishing still ends the logging: nothing
+ * here adds a set. The screen's two columns: what it came to and its notes (`FinishedMain`), beside
+ * its sets (`FinishedSide`).
  */
 export function FinishedMain({
   session,

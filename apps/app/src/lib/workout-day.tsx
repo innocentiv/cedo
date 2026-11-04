@@ -16,10 +16,11 @@ import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 import { useWeightUnit } from './weight-unit.ts'
 
 /*
- * A session that follows a plan's day (#24): the entry in focus, with what was just done in its Log's
- * place (`PlannedMain`, #63), then the rest of the day, what was added to it, and every set (`PlannedSide`) —
- * the screen's two columns, side by side on a desktop. What shows is the contract's `workoutView`;
- * this renders it, and says what the athlete taps. See docs/08-frontend.md.
+ * A session that follows a plan's day (#24): the entry in focus, with what was just done in its
+ * Log's place (`PlannedMain`, #63), then the rest of the day, what was added to it, and every set
+ * (`PlannedSide`) — the screen's two columns, side by side on a desktop. What shows is the
+ * contract's `workoutView`; this renders it, and says what the athlete taps. See
+ * docs/08-frontend.md.
  */
 
 /** What the main column of a planned day reads. */

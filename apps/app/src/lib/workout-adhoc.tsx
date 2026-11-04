@@ -18,10 +18,10 @@ import { useLoads } from './use-loads.ts'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
 /*
- * A session with no plan behind it (#24): the exercise in focus, with what was just done in its Log's
- * place (`AdHocMain`, #63), then the others, Add exercise, and every set (`AdHocSide`) — the screen's two
- * columns, side by side on a desktop. Nothing was prescribed, so there is always a next set until
- * the athlete moves on. What shows is the contract's `workoutView`.
+ * A session with no plan behind it (#24): the exercise in focus, with what was just done in its
+ * Log's place (`AdHocMain`, #63), then the others, Add exercise, and every set (`AdHocSide`) — the
+ * screen's two columns, side by side on a desktop. Nothing was prescribed, so there is always a
+ * next set until the athlete moves on. What shows is the contract's `workoutView`.
  */
 
 /** What the main column of a session with no plan reads. */

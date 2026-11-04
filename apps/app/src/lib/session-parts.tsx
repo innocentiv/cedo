@@ -74,7 +74,8 @@ export function UnsentSets({
 
 /**
  * Which set of a list is open to be fixed, below its row (#63): one at a time, by id — so it shows
- * the set as read again after a fix, and closes once the set is removed. Tapping it again closes it.
+ * the set as read again after a fix, and closes once the set is removed. Tapping it again closes
+ * it.
  */
 function useOpenSet() {
   const [open, setOpen] = useState<string | null>(null)

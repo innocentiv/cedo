@@ -33,7 +33,8 @@ export interface JustDone {
  * rest counting down, and Skip. Tapping the countdown adds 30 s. With no rest running, Undo sits
  * beside `log`, the logger's own button; where nothing more is logged — the day done — beside
  * nothing. The set just logged is said under it, where Undo's effect is seen. Once the rest is over
- * none of it is shown: the chime says so, and Log is back. The rest's plate is blue, as the band's was.
+ * none of it is shown: the chime says so, and Log is back. The rest's plate is blue, as the band's
+ * was.
  */
 export function AfterSet({
   after,

@@ -144,7 +144,9 @@ describe('what the workout shows', () => {
     expect(view([]).shown).toBeNull()
   })
 
-  /** Undo puts back what the set said (#63): one wrong number is fixed, and the set logged again. */
+  /**
+   * Undo puts back what the set said (#63): one wrong number is fixed, and the set logged again.
+   */
   const undone = (entryId: string | null, exerciseId = entryId ?? 'curl') => ({
     entryId,
     exerciseId,
@@ -244,7 +246,9 @@ describe('what the workout shows', () => {
       expect(v.focus.kind === 'added' && v.focus.undone).toEqual(undone(null, 'curl'))
     })
 
-    /** The plan gone out of reach mid-session: a set undone on one of its entries is no set here. */
+    /**
+     * The plan gone out of reach mid-session: a set undone on one of its entries is no set here.
+     */
     test('a set undone on a plan entry is not one of an exercise logged with none', () => {
       const v = adHoc([set(null, 'curl')], {
         choices: { chosen: null, undone: undone('squat', 'curl') },

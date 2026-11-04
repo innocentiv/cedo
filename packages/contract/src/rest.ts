@@ -102,14 +102,19 @@ export function restCounted(
 /**
  * Where the rest after the latest set stands (#63) — what the workout shows in Log's place: none
  * follows the set (a warm-up, a superset's first, a rest of 0), it runs with so much left, or it is
- * over — run out, or skipped here or on another device: only a rest run out ends with the chime. While it runs, or when none follows, the set
- * just logged can still be undone where it was logged; once it is over, it is fixed in the list.
+ * over — run out, or skipped here or on another device: only a rest run out ends with the chime.
+ * While it runs, or when none follows, the set just logged can still be undone where it was logged;
+ * once it is over, it is fixed in the list.
  */
 export type RestPhase =
   | { readonly phase: 'none' }
   | { readonly phase: 'running'; readonly left: number }
   | { readonly phase: 'over'; readonly skipped: boolean }
 
+/**
+ * The rest after the latest set — the sets' (`restOf`), with this device's +30 s taps and skip, and
+ * as the server keeps it (`restCounted`) — as it stands `now`.
+ */
 export function restPhase(
   rest: Rest | null,
   extensions: number,

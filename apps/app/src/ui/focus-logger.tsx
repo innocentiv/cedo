@@ -42,7 +42,9 @@ export interface FocusLoggerProps {
   readonly tracking: TrackingMode
   readonly sets: readonly MarkedSet[]
   readonly next: NextSet
-  /** The set just undone, of this entry: the numbers start from what it said, not the target (#63). */
+  /**
+   * The set just undone, of this entry: the numbers start from what it said, not the target (#63).
+   */
   readonly from: Undone | null
   /** The set just logged, while it can be taken back: shown in Log's place (#63). */
   readonly after: JustDone | null
@@ -62,11 +64,11 @@ export interface FocusLoggerProps {
 
 /**
  * The exercise the session is on (#24): its sets as marks, the next one's numbers — as large as the
- * screen allows, with − / + — and one button to log it, under the thumb. The numbers start from what
- * the next set asks — or what a set just undone said — and start again when the next set changes:
- * the screen keys it by that set. Once a set is logged, its rest takes Log's place, with Undo (#63).
- * Which inputs appear is the contract's `fieldsOf`; reserve is asked here too, before the set is
- * logged (#37), of the sets the contract's `asksReserveOf` names.
+ * screen allows, with − / + — and one button to log it, under the thumb. The numbers start from
+ * what the next set asks — or what a set just undone said — and start again when the next set
+ * changes: the screen keys it by that set. Once a set is logged, its rest takes Log's place, with
+ * Undo (#63). Which inputs appear is the contract's `fieldsOf`; reserve is asked here too, before
+ * the set is logged (#37), of the sets the contract's `asksReserveOf` names.
  */
 export function FocusLogger({
   name,

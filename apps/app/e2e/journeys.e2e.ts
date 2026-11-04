@@ -2919,9 +2919,9 @@ test(
 )
 
 /**
- * A mistake caught as the set is logged (#63): Undo, in Log's place, takes it back and ends its rest,
- * and the logger holds what the set said — one wrong number is fixed, not the whole set typed again.
- * Skip ends a rest early, and +30 s — a tap on the countdown — lengthens it.
+ * A mistake caught as the set is logged (#63): Undo, in Log's place, takes it back and ends its
+ * rest, and the logger holds what the set said — one wrong number is fixed, not the whole set typed
+ * again. Skip ends a rest early, and +30 s — a tap on the countdown — lengthens it.
  */
 test(
   'Undo in Log’s place takes the set back, holding what it said; Skip and +30 s',
