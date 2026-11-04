@@ -220,6 +220,8 @@ such as a band or an assisted machine, is negative added weight. A phone's numbe
 key, so the number typed is the size and the toggle is the sign. A stored value carries its own
 sign, so an assisted target opens assisted. A field emptied on the way to retyping keeps the last
 sign seen. Those rules are the contract's `assistance`, tested there; the input only wires them.
+Its unit says only `kg` when assisted — the toggle under it names which — and a bodyweight set asked
+for no weight starts at 0 added (`startingEffort`), not an empty field.
 
 A logged set is held as an `Effort` and read and written through each field's `key`; a prescribed
 set's prescription through its `targetKey`. A screen therefore names no measurement field itself.

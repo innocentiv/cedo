@@ -2149,6 +2149,42 @@ test(
 )
 
 /**
+ * A bodyweight movement asked for no weight starts at none added: 0 kg, not an empty field that − and
+ * + have to wake up first. Logged so, it is bodyweight, as it always read.
+ */
+test(
+  'a bodyweight set asked for no weight starts at 0 kg',
+  async () => {
+    await withApp('bodyweight-zero', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('dip'))
+      const mine = await page.client()
+      const [pullUp] = (await mine.exercises.list({ q: 'Pull-Up', limit: 1 })).items
+      if (pullUp?.tracking !== 'bodyweight_reps') throw new Error('No bodyweight Pull-Up seeded')
+      const plan = await mine.workouts.create({ name: 'Bodyweight', notes: null })
+      await mine.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [{ name: 'Pull', entries: [{ exerciseId: pullUp.id, sets: [{ targetReps: 8 }] }] }],
+        }),
+      )
+
+      await page.goto('/workouts')
+      await app.workouts.openFirst()
+      await app.workouts.startDay(0)
+      const pull = app.session.entry(0)
+      expect(await pull.value('weight')).toBe('0')
+      await pull.log()
+      await page.until(
+        async () => await app.session.loggedLines(),
+        (lines) => lines.includes('8 × bodyweight'),
+      )
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * No signal mid-session (#9). Sets logged offline show at once as waiting, and the server has none
  * of them; back online, they are sent in order. A set whose answer is lost on the way back — stored,
  * and the phone never told — is sent again under its key, and is still one set.

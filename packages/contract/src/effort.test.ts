@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { type Effort, compareEfforts, formatEffort, formatSets, topSet } from './effort.ts'
+import {
+  type Effort,
+  compareEfforts,
+  formatEffort,
+  formatSets,
+  startingEffort,
+  topSet,
+} from './effort.ts'
 import { lbToG } from './units.ts'
 
 const none = { reps: null, weightG: null, durationS: null, distanceMm: null }
@@ -216,5 +223,26 @@ describe('formatSets', () => {
 
   test('no sets is a dash', () => {
     expect(formatSets([], 'weight_reps', 'kg')).toBe('—')
+  })
+})
+
+/**
+ * What the logger starts a set from: what it asks. A bodyweight movement asked for no weight starts
+ * at none added — 0 kg, which − and + step from — not an empty field.
+ */
+describe('the numbers a set starts from', () => {
+  test('a bodyweight movement asked for no weight starts at none added', () => {
+    expect(startingEffort({ ...none, reps: 8 }, 'bodyweight_reps')).toEqual({
+      ...none,
+      reps: 8,
+      weightG: 0,
+    })
+  })
+
+  test('what is asked is kept: assistance, added load, and any other mode as it is', () => {
+    const assisted = { ...none, reps: 8, weightG: -7500 }
+    expect(startingEffort(assisted, 'bodyweight_reps')).toEqual(assisted)
+    // A lift with no load yet has none to start from: its weight is the athlete's to say.
+    expect(startingEffort({ ...none, reps: 8 }, 'weight_reps')).toEqual({ ...none, reps: 8 })
   })
 })

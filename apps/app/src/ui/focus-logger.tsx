@@ -10,6 +10,7 @@ import {
   asksReserveOf,
   fieldsOf,
   formatReserve,
+  startingEffort,
 } from '@cedo/contract'
 import { Card } from './card.tsx'
 import { IconButton } from './icon.tsx'
@@ -87,13 +88,9 @@ export function FocusLogger({
   testID,
 }: FocusLoggerProps): React.JSX.Element {
   // In base units throughout: the fields convert for display, so nothing here does arithmetic.
+  // A bodyweight movement asked for no weight starts at none added, 0 (`startingEffort`).
   const [effort, setEffort] = useState<Effort>(
-    from?.effort ?? {
-      weightG: next.target.weightG,
-      reps: next.target.reps,
-      durationS: next.target.durationS,
-      distanceMm: next.target.distanceMm,
-    },
+    from?.effort ?? startingEffort(next.target, tracking),
   )
   // Asked before the set is logged, of a working set counted in reps (the contract's
   // `asksReserveOf`), and never pre-filled — not even from the plan's reserve: the answer is the

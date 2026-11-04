@@ -45,9 +45,12 @@ describe('typing a weight', () => {
     expect(weight.unit()).toBe('kg')
   })
 
-  /** Assisted (#19): the number typed is the help, stored negative — the label says which. */
-  test('assisted, it is the assistance, so the unit says that instead', () => {
-    expect(weight.unit('bodyweight_reps', true)).toBe('kg assistance')
+  /**
+   * Assisted (#19): the number typed is the help, stored negative. The Added / Assisted choice under
+   * the field says which; the unit is only the unit — "kg assistance" ran off a phone's width.
+   */
+  test('assisted, it is the plain unit: the choice under the field says it is assistance', () => {
+    expect(weight.unit('bodyweight_reps', true)).toBe('kg')
   })
 })
 

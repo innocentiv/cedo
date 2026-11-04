@@ -83,8 +83,8 @@ export interface DimensionField extends Typing {
   readonly targetKey: TargetKey
   /**
    * The unit, as a field label. Only weight depends on the mode: on a bodyweight movement it is
-   * weight ADDED, `+kg` — or, `assisted`, the assistance, typed as a positive number and stored
-   * negative. Without a mode — a progression increment — it is the plain unit. And only weight
+   * weight ADDED, `+kg` — or, `assisted`, the plain unit: the assistance, typed as a positive number
+   * and stored negative, which the choice beside it names. Without a mode — a progression increment — it is the plain unit. And only weight
    * depends on the person: `fieldFor(dimension, unit)` gives it in their kg or lb.
    */
   readonly unit: (tracking?: TrackingMode, assisted?: boolean) => string
@@ -100,8 +100,10 @@ function weightField(unit: WeightUnit): DimensionField {
     key: 'weightG',
     targetKey: 'targetWeightG',
     unit: (tracking, assisted = false) => {
-      if (tracking !== 'bodyweight_reps') return unit
-      return assisted ? `${unit} assistance` : `+${unit}`
+      // Assisted, the Added / Assisted choice under the field says so: "kg assistance" ran off a
+      // phone's width.
+      if (tracking !== 'bodyweight_reps' || assisted) return unit
+      return `+${unit}`
     },
     ...(unit === 'kg' ? typing(true, kgToG, gToKgShown) : typing(true, lbToG, gToLbShown)),
   }
