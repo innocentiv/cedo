@@ -403,6 +403,9 @@ at every plan save; that is the price of a save that can drop half a plan.
    `coaching.ts`, `athlete-file.ts` or `diagnostics.ts` with a contract schema,
    an annotation, and a description written for a model: say when to use it, and what NOT to do. A
    new file must also be wired into `mcp/tools/index.ts`, or its tools never load.
-3. Format the output for reading (`mcp/format.ts`), not for machines.
+3. Format the output for reading (`mcp/format.ts`), not for machines. A write answers with what
+   it changed: the whole of it when that is small — `exercise_update` prints the exercise — and
+   only the part that changed when the rest is large and untouched — `workout_update` prints the
+   name and notes, not the plan beneath them.
 4. Add a case to `mcp/mcp.test.ts`, which drives real JSON-RPC over HTTP rather than calling the
    handler directly — auth, framing and schema publication are exactly what a direct call skips.
