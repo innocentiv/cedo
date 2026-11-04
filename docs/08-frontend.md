@@ -102,7 +102,7 @@ Two constraints found by building it:
 
 | Primitive | For |
 | --- | --- |
-| `Screen` | the outermost element of every route: safe area, background, padding, optional footer. Under a status bar its title sits just below it; nothing scrolls under the clock, where iOS 26 blurs the page (#61) |
+| `Screen` | the outermost element of every route: safe area, background, padding, optional footer. Under a status bar its title sits just below it; nothing scrolls under the clock, where iOS 26+ blurs the page (#61) |
 | `Stack` | every layout. There is no other container |
 | `Text` | all text. Variants `title` / `heading` / `body` / `label` / `caption` / `mono`, and `wordmark` — the product's name, under its mark |
 | `Button`, `NavButton` | actions, and actions that navigate — in the app, or out of it to an absolute URL |
@@ -842,14 +842,14 @@ the command.
 
 **Installed on an iPhone, the status bar is iOS's own** (#61). `index.html` sets no
 `apple-mobile-web-app-status-bar-style`: iOS draws an opaque bar tinted by `theme-color`, and the
-page starts below it. `black-translucent`, which drew the page under the clock, made iOS 26 size the
+page starts below it. `black-translucent`, which drew the page under the clock, made iOS 26+ size the
 page one status bar short — `100%`, `dvh` and `svh` all left ~59pt of the body under the tab bar,
 sheets and scrims stopping as high. iOS reads the style when the app is added, so an install made
 before keeps it until added again; for those, `index.html` still sizes the page by hand in
 standalone — the short height plus the top inset it lost, capped at `100lvh` — which changes nothing
 where the inset is 0.
 
-iOS 26 also blurs the top ~30pt of an installed app's page, under either status bar style, as it
+iOS 26+ also blurs the top ~30pt of an installed app's page (seen on iOS 27.2, a known bug), under either status bar style, as it
 blurs a native app under its header; a title at rest sat half in it, and a solid bar behind the
 clock (a pseudo-element) did not stop it. So on an installed iPhone `#root` starts 12pt lower —
 a title's capitals clear the blur at rest, and what scrolls there takes it as a native list does —

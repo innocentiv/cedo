@@ -23,7 +23,7 @@
     <meta name="apple-mobile-web-app-title" content="cedo" />
     <!-- No `apple-mobile-web-app-status-bar-style`, deliberately (#61): iOS draws its own opaque
          status bar, tinted by `theme-color`, and the page starts below it — sized to the screen,
-         which `black-translucent` on iOS 26 was not (below). iOS reads this when the app is added:
+         which `black-translucent` on iOS 26+ was not (below). iOS reads this when the app is added:
          an install made before keeps the old style until it is removed and added again. -->
 
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
@@ -52,7 +52,7 @@
         scrollbar-color: #3a3b40 #1b1c1e;
       }
       /* For an iPhone install made while the app asked for `black-translucent` (above), which keeps
-         that style until it is added again. There iOS 26 sizes the page one status bar SHORT:
+         that style until it is added again. There iOS 26+ sizes the page one status bar SHORT:
          `100%`, `dvh` and `svh` all leave ~59pt of the body showing below the tab bar, and every
          sheet and its scrim stop as high (#61). Only `lvh` reports the whole screen. The page is the
          short height plus the inset it lost, capped at the screen: once the page is as tall as the
@@ -64,7 +64,7 @@
           height: min(100lvh, calc(100% + env(safe-area-inset-top)));
         }
       }
-      /* Installed on an iPhone, iOS 26 blurs the top ~30pt of the page — under either status bar
+      /* Installed on an iPhone, iOS 26+ blurs the top ~30pt of the page — under either status bar
          style, as it blurs a native app under its header (#61); a title at rest sat half in it. The
          page starts 12pt lower, so at rest a title's capitals clear the blur, and what scrolls
          there takes it, as a native list does. In those 12pt, a strip of the floor fixed to the

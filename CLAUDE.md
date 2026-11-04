@@ -145,7 +145,7 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   input before a test can find it. Hand the input its file as it is appended, before the click:
   see `upload` in `e2e/screens/library.ts`.
 - **An installed iPhone app is only seen on the phone.** Neither a desktop browser nor the e2e
-  WebView is standalone or has insets. iOS 26 sized the page one status bar short under
+  WebView is standalone or has insets. iOS 26+ sized the page one status bar short under
   `black-translucent`, and blurs the top ~30pt of the page under any status bar style — both green
   everywhere else, and the blur was there before anyone looked (#61, `apps/app/public/index.html`).
   Fixes found online were mostly shipped unverified: measure the screenshot before trusting one.
