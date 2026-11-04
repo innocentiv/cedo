@@ -5,7 +5,9 @@ import {
   restCounted,
   restLeft,
   restPhase,
+  restPlace,
   restRemaining,
+  restWords,
 } from './rest.ts'
 
 /** What the logger counts down after a working set: the entry's rest, from when it was logged. */
@@ -165,5 +167,53 @@ describe('the chime at a rest’s end', () => {
   test('is silent for another rest than the one seen: an undo took the session back to it', () => {
     expect(chimesAtEnd(3, 2, over)).toBe(false)
     expect(chimesAtEnd(3, null, { phase: 'none' })).toBe(false)
+  })
+})
+
+/**
+ * Where an entry's rest falls in its day, and how the plan says it (#48): the logger rests a
+ * superset after the round — its last entry's rest — and an earlier entry's only when done alone.
+ */
+describe('where an entry’s rest falls', () => {
+  const day = [
+    { supersetGroup: null },
+    { supersetGroup: 'A' },
+    { supersetGroup: 'B' },
+    { supersetGroup: 'A' },
+    { supersetGroup: 'B' },
+    { supersetGroup: 'C' },
+  ]
+
+  test('its own after each set, out of a superset', () => {
+    expect(restPlace(day, 0)).toBe('own')
+  })
+
+  test('after the round, on a superset’s last entry in the day’s order', () => {
+    expect(restPlace(day, 3)).toBe('round')
+    expect(restPlace(day, 4)).toBe('round')
+  })
+
+  test('only when done alone, on its earlier entries — however the letters interleave', () => {
+    expect(restPlace(day, 1)).toBe('alone')
+    expect(restPlace(day, 2)).toBe('alone')
+  })
+
+  test('its own, on a letter no other entry shares: there is no round', () => {
+    expect(restPlace(day, 5)).toBe('own')
+  })
+})
+
+describe('an entry’s rest, said', () => {
+  test('as its time, said where it falls', () => {
+    expect(restWords(90, 'own')).toBe('rest 1:30')
+    expect(restWords(90, 'round')).toBe('rest 1:30 after the round')
+    expect(restWords(90, 'alone')).toBe('rest 1:30 when done alone')
+  })
+
+  test('straight on for none — 0 or null alike, wherever it falls', () => {
+    for (const place of ['own', 'round', 'alone'] as const) {
+      expect(restWords(0, place)).toBe('straight on')
+      expect(restWords(null, place)).toBe('straight on')
+    }
   })
 })

@@ -237,6 +237,11 @@ _Avoid_: slot, item, exercise (that is the movement itself)
 Entries of one day performed alternating, marked by a shared letter.
 _Avoid_: circuit, pairing
 
+**Round**:
+One pass through a superset's entries, each done once, in the day's order. The rest comes after
+it, not within it.
+_Avoid_: pair (a superset may hold more than two), cycle, lap
+
 **Progression rule**:
 How a person's target on an entry moves from what they logged: none, linear, double, linear in
 duration, or linear in distance at the same pace. Each finished session advances the target once
@@ -366,7 +371,8 @@ _Avoid_: current exercise, active entry, selected entry
 
 **Rest**:
 The pause after a set, before the next. It starts when a set is logged, and ends when its time is
-up, when it is skipped, or when its set is undone. A superset rests after the pair, not between.
+up, when it is skipped, or when its set is undone. A superset rests after the round, not between: the rest of its last entry. An earlier entry's
+rest counts only when it is done alone.
 _Avoid_: timer, break, recovery
 
 **Undo**:

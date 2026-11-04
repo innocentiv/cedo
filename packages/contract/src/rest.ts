@@ -1,16 +1,45 @@
 import { z } from 'zod'
 import { Timestamp } from './primitives.ts'
+import { formatDuration } from './units.ts'
 
 /**
  * The rest a plan entry prescribes between its working sets, and what the logger counts down.
  *
  * Two minutes unless the plan says otherwise: the evidence leans, with wide uncertainty, toward
  * longer rest for growth, and a minute or less on a compound lift is a known pitfall (Singer et al.,
- * Front Sports Act Living 2024). A rest of 0 is "straight on": in a superset, the rest goes on its
- * last exercise and the others' 0 sends the athlete straight to the next.
+ * Front Sports Act Living 2024). A rest of 0 — or null — is "straight on". A superset rests after
+ * the round, never within it, whatever its earlier entries say (`restingAfter`): the round's rest
+ * is its last entry's, and an earlier entry's counts only when it is done alone (#48).
  */
 
 export const DEFAULT_REST_S = 120
+
+/**
+ * Where an entry's rest falls in its day (#48), by the day's order: its own after each set; a
+ * superset's last entry's after the round; a superset's earlier entry's only when it is done alone
+ * — its partners' sets used up — as between partners the round runs straight on. A letter no other
+ * entry shares makes no round: the rest is its own.
+ */
+export type RestPlace = 'own' | 'round' | 'alone'
+
+export function restPlace(
+  entries: readonly { readonly supersetGroup: string | null }[],
+  at: number,
+): RestPlace {
+  const letter = entries[at]?.supersetGroup ?? null
+  if (letter === null) return 'own'
+  const partners = entries.flatMap((e, i) => (i !== at && e.supersetGroup === letter ? [i] : []))
+  if (partners.length === 0) return 'own'
+  return partners.some((i) => i > at) ? 'alone' : 'round'
+}
+
+/** An entry's rest as a plan says it, alike to the AI and in the app: `rest 1:30 after the round`. */
+export function restWords(restSeconds: number | null, place: RestPlace): string {
+  if (restSeconds === null || restSeconds === 0) return 'straight on'
+  const rest = `rest ${formatDuration(restSeconds)}`
+  if (place === 'round') return `${rest} after the round`
+  return place === 'alone' ? `${rest} when done alone` : rest
+}
 
 /**
  * Seconds of the entry's rest still to go, counted from its latest WORKING set — a warm-up is the
