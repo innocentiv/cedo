@@ -73,6 +73,22 @@ const planEntry = (page: Page, day: number, index: number) => {
       await page.click(`[data-testid="${id}-cue"]`)
       await page.keys(keys)
     },
+    /**
+     * Enter, from a keyboard, in the cue: the `keydown` a browser sends — the WebView's own `press`
+     * sends none, only the newline it would type.
+     */
+    cueKeyboardEnter: async (): Promise<void> => {
+      await open()
+      await page.click(`[data-testid="${id}-cue"]`)
+      await page.evaluate(
+        `document.querySelector('[data-testid="${id}-cue"]').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))`,
+      )
+    },
+    /** Whether the cue's field is the one being typed in. */
+    cueFocused: async (): Promise<boolean> =>
+      (await page.evaluate(
+        `document.activeElement?.getAttribute('data-testid') === '${id}-cue'`,
+      )) === true,
     /** The cue as it stands in its field, while it is written. */
     cueWritten: async (): Promise<string> => String(await page.value(`${id}-cue`)),
     /** The reps to leave in reserve, as offered: `0` to `5`. */

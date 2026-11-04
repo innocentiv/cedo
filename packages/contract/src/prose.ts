@@ -47,6 +47,9 @@ export const PROSE_WORDS =
   'Markdown, drawn by the app: **bold**, *italic*, # headings, - and 1. lists, | tables |, ' +
   'and links to https or mailto. HTML, images and code are shown as written, not drawn.'
 
+/** What a person writing prose in the app is told they can mark: once, under the field. */
+export const PROSE_HINT = 'Markdown: **bold**, *italic*, # heading, - list'
+
 /** The same, for one line — a cue. */
 export const INLINE_PROSE_WORDS =
   '**bold**, *italic* and links to https or mailto are drawn; nothing else is.'

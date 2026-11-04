@@ -145,7 +145,6 @@ export function Input({
       autoCapitalize={autoCapitalize}
       autoComplete={autoComplete}
       autoCorrect={false}
-      multiline={multiline}
       onSubmitEditing={onSubmitEditing}
       onBlur={onBlur}
       submitBehavior="blurAndSubmit"

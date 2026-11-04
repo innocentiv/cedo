@@ -156,24 +156,33 @@ function Spans({ inline }: { readonly inline: readonly ProseInline[] }): React.J
               </RNText>
             )
           }
-          default: {
+          case 'link': {
+            const { href } = node
             return (
               <RNText
                 key={at}
                 accessibilityRole="link"
                 style={styles.link}
                 onPress={() => {
-                  void Linking.openURL(node.href)
+                  void Linking.openURL(href)
                 }}
               >
                 <Spans inline={node.children} />
               </RNText>
             )
           }
+          // A kind not drawn here fails to compile, rather than being drawn as something else.
+          default: {
+            return undrawn(node)
+          }
         }
       })}
     </>
   )
+}
+
+function undrawn(node: never): never {
+  throw new Error(`A prose node with no way to draw it: ${JSON.stringify(node)}`)
 }
 
 const COLUMN = { left: 'flex-start', center: 'center', right: 'flex-end' } as const

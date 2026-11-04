@@ -1,7 +1,9 @@
-import { Text as RNText, StyleSheet, TextInput, View } from 'react-native'
+import { useRef } from 'react'
+import { Platform, Text as RNText, StyleSheet, TextInput, View } from 'react-native'
+import { PROSE_HINT, oneLine } from '@cedo/contract'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
-import { CONTROL_HEIGHT, color, radius, space, type } from './tokens.ts'
+import { CONTROL_HEIGHT, color, radius, space, stroke, type } from './tokens.ts'
 
 /**
  * How many lines a text in paragraphs grows to before it scrolls: most of a phone's screen above
@@ -42,6 +44,7 @@ export function GrowingInput({
   testID,
 }: GrowingInputProps): React.JSX.Element {
   const line = shape === 'line'
+  const input = useRef<React.ComponentRef<typeof TextInput>>(null)
   const field = (
     <View>
       <RNText
@@ -55,11 +58,12 @@ export function GrowingInput({
         <TextInput
           testID={testID}
           value={value}
+          ref={input}
           /**
            * A line has no newline: one that gets in — pasted, or an Enter no key event announced —
-           * is a space, as the contract keeps a cue (`EntryCue`).
+           * is a space, as the contract keeps a cue (`oneLine`).
            */
-          onChangeText={line ? (text) => onChangeText(text.replaceAll('\n', ' ')) : onChangeText}
+          onChangeText={line ? (text) => onChangeText(oneLine(text)) : onChangeText}
           placeholder={placeholder}
           placeholderTextColor={color.textFaint}
           autoFocus={autoFocus}
@@ -69,11 +73,18 @@ export function GrowingInput({
           onSubmitEditing={onSubmitEditing}
           onBlur={onBlur}
           submitBehavior={line ? 'blurAndSubmit' : 'newline'}
-          /** The web reads no `submitBehavior`: a line's Enter, from a keyboard, does nothing. */
+          /**
+           * The web reads no `submitBehavior`, and types a line's Enter as a newline: it is kept
+           * out, and does what Enter does in a field of one line — submits, and leaves it. Natively
+           * `submitBehavior` already does.
+           */
           onKeyPress={
-            line
+            line && Platform.OS === 'web'
               ? (event) => {
-                  if (event.nativeEvent.key === 'Enter') event.preventDefault()
+                  if (event.nativeEvent.key !== 'Enter') return
+                  event.preventDefault()
+                  onSubmitEditing?.()
+                  input.current?.blur()
                 }
               : undefined
           }
@@ -94,15 +105,13 @@ export function GrowingInput({
   )
 }
 
-const PROSE_HINT = '**bold**  *italic*  # heading  - list'
-
 const styles = StyleSheet.create({
   /** The input and its unseen twin, laid out alike so the one sizes the other. */
   box: {
     paddingHorizontal: space.md,
     paddingVertical: space.md,
     borderRadius: radius.md,
-    borderWidth: 1,
+    borderWidth: stroke.hairline,
     fontSize: type.body.fontSize,
     lineHeight: type.body.lineHeight,
     fontFamily: type.body.fontFamily,
@@ -110,7 +119,7 @@ const styles = StyleSheet.create({
   unseen: { opacity: 0, borderColor: 'transparent', overflow: 'hidden' },
   paragraphs: {
     minHeight: CONTROL_HEIGHT * 2,
-    maxHeight: GROWS_TO * type.body.lineHeight + 2 * space.md + 2,
+    maxHeight: GROWS_TO * type.body.lineHeight + 2 * (space.md + stroke.hairline),
   },
   /** A control's height while it is one line. */
   line: { minHeight: CONTROL_HEIGHT },

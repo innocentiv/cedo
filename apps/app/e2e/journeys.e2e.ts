@@ -2936,6 +2936,10 @@ test(
       // A cue is one line (#51): Enter, pressed at its end, starts no second.
       await entry.cueKeys(['Pause 1 s at the chest', 'Enter'])
       expect(await entry.cueWritten()).not.toContain('\n')
+      // Enter from a keyboard submits it, as it did a field of one line: it is left, and kept.
+      await entry.cueKeyboardEnter()
+      await page.until(entry.cueFocused, (focused) => !focused)
+      expect(await entry.cueWritten()).not.toContain('\n')
       await app.planEditor.saveAndStart()
 
       const bench = app.session.entry(0)

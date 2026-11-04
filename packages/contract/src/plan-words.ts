@@ -68,4 +68,4 @@ export const PLAN_WORDS = {
 /** What the workout's own fields say to the model — beside its plan, not part of it. */
 export const WORKOUT_WORDS = {
   notes: `How the workout is run — effort, progression, deload, a bad day; not its plan. ${PROSE_WORDS}`,
-}
+} as const

@@ -8,12 +8,17 @@ import { z } from 'zod'
 export const MAX_CUE_LENGTH = 200
 
 /**
- * One line, whoever wrote it: every run of whitespace — a newline from a paste or an AI included —
- * is one space, before it is measured. Trimmed; blank is none.
+ * Text kept to one line: every run of whitespace — a newline from a paste or an AI included — one
+ * space. What a cue is kept as, and what its field shows as it is typed (#51).
  */
+export function oneLine(text: string): string {
+  return text.replaceAll(/\s+/gu, ' ')
+}
+
+/** One line, whoever wrote it (`oneLine`), before it is measured. Trimmed; blank is none. */
 export const EntryCue = z
   .string()
-  .overwrite((cue) => cue.replaceAll(/\s+/gu, ' '))
+  .overwrite(oneLine)
   .trim()
   .max(MAX_CUE_LENGTH, `A cue is at most ${MAX_CUE_LENGTH} characters`)
   .nullable()

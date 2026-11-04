@@ -17,7 +17,7 @@ export const NOTES_PER_ATHLETE = 100
 /** `POST` and `PATCH` alike: a note is its words, and nothing else. */
 export const AthleteNoteInput = z.strictObject({
   text: NonEmptyString.max(4000).describe(
-    `One fact worth remembering when their training is planned, in plain words. ${PROSE_WORDS}`,
+    `One fact worth remembering when their training is planned. ${PROSE_WORDS}`,
   ),
 })
 export type AthleteNoteInput = z.output<typeof AthleteNoteInput>

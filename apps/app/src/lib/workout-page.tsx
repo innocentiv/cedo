@@ -94,8 +94,8 @@ export function WorkoutBody({
     <Stack gap="lg">
       <WorkoutOwnership workout={workout} />
       <WorkoutHead
-        // Read again with other notes — saved elsewhere — its field starts from those.
-        key={workout.notes ?? ''}
+        // Notes saved elsewhere are shown by `WrittenNotes` itself — unless they are being written
+        // here: no key on them, which would remount it and lose the words being typed (#51).
         workout={workout}
         status={workout.canEdit ? editor.status : null}
       />
