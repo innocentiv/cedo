@@ -1,0 +1,61 @@
+import { useState } from 'react'
+import { StyleSheet, View } from 'react-native'
+import { Button } from './button.tsx'
+import { Stack } from './stack.tsx'
+import { type } from './tokens.ts'
+
+/**
+ * Long text kept to its first lines, with Show all (#51) — so a workout's notes, above its plan, do
+ * not push the plan off the screen. Measured as it is laid out, not counted in lines of source: a
+ * heading and a table take very different room. Nothing is offered when nothing is hidden.
+ */
+export function Folded({
+  lines,
+  children,
+  actions,
+  testID,
+}: {
+  /** How many lines of body text show while folded. */
+  readonly lines: number
+  readonly children: React.ReactNode
+  /** Beside Show all, under the text: what else can be done with it — Edit. */
+  readonly actions?: React.ReactNode
+  readonly testID: string
+}): React.JSX.Element {
+  const [open, setOpen] = useState(false)
+  const [height, setHeight] = useState(0)
+  const folded = lines * type.body.lineHeight
+  // Half a line over is not worth a button: it is shown.
+  const folds = height > folded + type.body.lineHeight / 2
+  return (
+    <Stack gap="xs">
+      <View style={folds && !open ? [styles.clip, { maxHeight: folded }] : null}>
+        <View
+          onLayout={(event) => {
+            setHeight(event.nativeEvent.layout.height)
+          }}
+        >
+          {children}
+        </View>
+      </View>
+      {folds || actions !== undefined ? (
+        <Stack direction="row" gap="xs">
+          {folds ? (
+            <Button
+              title={open ? 'Show less' : 'Show all'}
+              variant="ghost"
+              size="small"
+              onPress={() => {
+                setOpen(!open)
+              }}
+              testID={`${testID}-fold`}
+            />
+          ) : null}
+          {actions}
+        </Stack>
+      ) : null}
+    </Stack>
+  )
+}
+
+const styles = StyleSheet.create({ clip: { overflow: 'hidden' } })

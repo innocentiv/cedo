@@ -109,7 +109,8 @@ export type SessionDay = z.output<typeof SessionDay>
  * - `null`: it follows no day — started without one, or its day has since been removed;
  * - `reachable: false`: it follows a day the reader can no longer see — they left the group it
  *   lives in. Its sets count as logged without a plan, and the session goes on as one;
- * - `reachable: true`: the day, each entry with its exercise (null when unavailable) and done count.
+ * - `reachable: true`: the day, each entry with its exercise (null when unavailable) and done count;
+ *   and the workout's notes — how it is run, a bad day's rule — to be read while it is (#51).
  *
  * Decided here, not by a screen joining its own reads: a screen that failed to FETCH the plan took
  * that for a plan out of reach, and logged the next set into the wrong series.
@@ -117,7 +118,7 @@ export type SessionDay = z.output<typeof SessionDay>
 export const SessionPlan = z
   .discriminatedUnion('reachable', [
     z.object({ reachable: z.literal(false) }),
-    z.object({ reachable: z.literal(true), day: SessionDay }),
+    z.object({ reachable: z.literal(true), day: SessionDay, workoutNotes: z.string().nullable() }),
   ])
   .nullable()
 export type SessionPlan = z.output<typeof SessionPlan>

@@ -3,14 +3,13 @@ import {
   formatDay,
   formatDuration,
   formatEffort,
-  notesToKeep,
   personalBestsLabel,
   sessionSummary,
 } from '@cedo/contract'
-import { useState } from 'react'
-import { Card, Field, Input, Stack, Text } from '../ui/index.ts'
+import { Card, Stack, Text } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
 import { useWeightUnit } from './weight-unit.ts'
+import { WrittenNotes } from './written-notes.tsx'
 
 /**
  * What a finished session came to (#24): how long it took, its working sets, and its personal
@@ -80,8 +79,9 @@ export function ReadNotes({ notes }: { readonly notes: string | null }): React.J
 }
 
 /**
- * A finished session's notes, written where they are read (#25): a journal of how it went, kept as
- * the field is left — no Save, as in the session's menu while it runs.
+ * A finished session's notes, written where they are read (#25): a journal of how it went, read
+ * first and written on request (#51), kept as the field is left — no Save, as in the session's menu
+ * while it runs.
  */
 export function SessionNotes({
   notes,
@@ -90,20 +90,20 @@ export function SessionNotes({
   readonly notes: string | null
   readonly onSave: (notes: string | null) => Promise<void>
 }): React.JSX.Element {
-  const [draft, setDraft] = useState(notes ?? '')
   return (
-    <Field label="Notes">
-      <Input
-        value={draft}
-        onChangeText={setDraft}
-        placeholder="How it went, what to change"
-        multiline
-        onBlur={() => {
-          const kept = notesToKeep(draft, notes)
-          if (kept !== undefined) void onSave(kept)
+    <Stack gap="xs">
+      <Text variant="label" tone="muted">
+        Notes
+      </Text>
+      <WrittenNotes
+        notes={notes}
+        onKeep={(kept) => {
+          void onSave(kept)
         }}
+        canEdit
+        placeholder="How it went, what to change"
         testID="session-notes"
       />
-    </Field>
+    </Stack>
   )
 }

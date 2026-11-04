@@ -1887,6 +1887,8 @@ test(
       await app.session.finish()
       await app.nav.tab('today')
       await app.today.open(0)
+      // Read first, as everyone else reads it; written on request (#51).
+      expect(await app.session.noteRead()).toBe('Felt strong')
       await app.session.noteOnSummary('Felt strong, go up next time')
       await page.until(
         async () => (await mine.sessions.get(id)).notes,
@@ -2951,6 +2953,44 @@ test(
       // The next set starts it again, from the full rest.
       await bench.log()
       expect(await bench.rest()).toMatch(/^Rest 0:0[1-5]$/u)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * A workout's notes (#51): read first by whoever wrote them, as an athlete will; folded to their
+ * first lines above the plan, with Show all; and in the session's menu on the day they are needed,
+ * which the logger alone never showed.
+ */
+test(
+  "a workout's notes are read first, fold above the plan, and are in the session's menu",
+  async () => {
+    await withApp('workout-notes', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('wnotes'))
+      await app.planEditor.create()
+      const notes = [
+        'Main lifts stop with 2 reps in reserve.',
+        'Accessories may go to 1.',
+        'Add 2.5 kg after two sessions at every target.',
+        'Supersets rest after the round.',
+        'Week 5 is a deload: two sets, 3 in reserve.',
+        'On a bad day, drop 10% and finish the day.',
+        'Two easy rides on rest days.',
+        'Never ride the day before Lower A.',
+      ].join('\n')
+      await app.planEditor.notes(notes)
+
+      expect(await app.planEditor.notesRead()).toBe(notes)
+      expect(await app.planEditor.notesFold()).toBe('Show all')
+      expect(await app.planEditor.notesCut()).toBe(true)
+      await app.planEditor.toggleNotesFold()
+      expect(await app.planEditor.notesFold()).toBe('Show less')
+      expect(await app.planEditor.notesCut()).toBe(false)
+
+      await app.planEditor.saveAndStart()
+      expect(await app.session.workoutNotes()).toBe(notes)
     })
   },
   E2E_TIMEOUT_MS,

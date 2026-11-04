@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { type Workout, type WorkoutUpdate, nameToKeep, notesToKeep } from '@cedo/contract'
+import { type Workout, type WorkoutUpdate, nameToKeep } from '@cedo/contract'
 import { useUpdateWorkout } from '../api/queries.ts'
 import { IconButton, Input, Stack, Text } from '../ui/index.ts'
 import type { PlanEditor } from './use-plan-editor.ts'
 import { useSubmit } from './use-submit.ts'
+import { WrittenNotes } from './written-notes.tsx'
 
 /** Keeps a change to a workout's name or notes, and says why when it is refused. */
 function useWorkoutPatch(workoutId: string): {
@@ -78,8 +79,14 @@ export function WorkoutTitle({
 }
 
 /**
- * The head of a workout's outline (#26): its notes — edited where they are read, kept as the field
- * is left — and what is true of the plan below: saved, saving, or why not.
+ * The workout's notes show this many lines above its plan before Show all (#51): an AI's notes run
+ * to a page, and the plan is what the page is for.
+ */
+const NOTES_FOLD = 6
+
+/**
+ * The head of a workout's outline (#26): its notes — read first, written on request, kept as the
+ * field is left (#51) — and what is true of the plan below: saved, saving, or why not.
  */
 export function WorkoutHead({
   workout,
@@ -90,26 +97,19 @@ export function WorkoutHead({
   readonly status: PlanEditor['status'] | null
 }): React.JSX.Element {
   const { keep, error } = useWorkoutPatch(workout.id)
-  const [notes, setNotes] = useState(workout.notes ?? '')
-  const canEdit = status !== null
 
   return (
     <Stack gap="sm">
-      {canEdit ? (
-        <Input
-          value={notes}
-          onChangeText={setNotes}
-          placeholder="Notes for this workout"
-          multiline
-          onBlur={() => {
-            const kept = notesToKeep(notes, workout.notes)
-            if (kept !== undefined) keep({ notes: kept })
-          }}
-          testID="workout-notes"
-        />
-      ) : workout.notes === null ? null : (
-        <Text tone="muted">{workout.notes}</Text>
-      )}
+      <WrittenNotes
+        notes={workout.notes}
+        onKeep={(notes) => {
+          keep({ notes })
+        }}
+        canEdit={status !== null}
+        placeholder="How this workout is run: effort, progression, a bad day"
+        fold={NOTES_FOLD}
+        testID="workout-notes"
+      />
       {error === null ? null : (
         <Text variant="caption" tone="danger" testID="workout-head-error">
           {error}

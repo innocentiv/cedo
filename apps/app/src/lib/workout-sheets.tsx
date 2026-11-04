@@ -60,6 +60,7 @@ export function WorkoutMenu({
   open,
   onClose,
   ended,
+  workoutNotes,
   notes,
   onSaveNotes,
   onFinish,
@@ -69,6 +70,11 @@ export function WorkoutMenu({
   readonly open: boolean
   readonly onClose: () => void
   readonly ended: boolean
+  /**
+   * How the workout followed is run — effort, a bad day's rule — to read on the day it is needed
+   * (#51); never written here. Null when it has none, or the session follows none.
+   */
+  readonly workoutNotes: string | null
   readonly notes: string | null
   readonly onSaveNotes: (notes: string | null) => Promise<void>
   readonly onFinish: () => Promise<void>
@@ -84,6 +90,14 @@ export function WorkoutMenu({
   }
   return (
     <Sheet open={open} onClose={close} title="Session" testID="session-menu">
+      {workoutNotes === null ? null : (
+        <Stack gap="xs">
+          <Text variant="label" tone="muted">
+            Workout notes
+          </Text>
+          <Text testID="session-workout-notes">{workoutNotes}</Text>
+        </Stack>
+      )}
       <Field label="Notes">
         <Input
           value={draft}

@@ -272,8 +272,9 @@ export const HOT_PATHS: readonly HotPath[] = [
     why: 'Read back during a live workout, with the day it follows. Must not issue one query per logged set, nor per entry of the day.',
     dimension: 'logged sets (9 vs 60), and the entries of the day followed',
     // The session and its logs; then the day, its entries, their sets, and the five exercise reads;
-    // and one grouped read of its exercises' earlier bests, to mark a personal best (#24).
-    maxQueries: 11,
+    // and one grouped read of its exercises' earlier bests, to mark a personal best (#24); and the
+    // workout's notes, by its key, to be read mid-session (#51).
+    maxQueries: 12,
     budgetMs: 60,
     // Its logs LEFT JOIN the plan's entries, which reach the days, and its day reads their sets.
     noSeqScan: ['set_logs', 'exercises', 'workout_entries', 'workout_days', 'workout_sets'],

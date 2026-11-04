@@ -4,6 +4,9 @@ import {
   type WorkoutSession,
   workingSetsDone,
 } from '@cedo/contract'
+import { eq } from 'drizzle-orm'
+import { db } from '../../db/client.ts'
+import { visibleWorkouts } from '../../db/visible.ts'
 import { hydrateDay } from '../workout/plan.ts'
 import type { Training } from '../coaching/training.ts'
 import { read } from './service.ts'
@@ -39,5 +42,23 @@ async function planOf(training: Training, session: WorkoutSession): Promise<Sess
       done: workingSetsDone(session.logs, { entryId: entry.id, exerciseId: entry.exerciseId }),
     }),
   )
-  return { reachable: true, day: { ...day, entries } }
+  return {
+    reachable: true,
+    day: { ...day, entries },
+    workoutNotes: await notesOf(training, session.workoutId),
+  }
+}
+
+/**
+ * The workout's notes — how it is run, a bad day's rule — read while it is (#51). Through the
+ * visible relation like the day: a day in reach is a workout in reach, since they share one owning
+ * group, so `null` is only ever a workout with no notes.
+ */
+async function notesOf(training: Training, workoutId: string): Promise<string | null> {
+  const workouts = visibleWorkouts(training.reader)
+  const [workout] = await db
+    .select({ notes: workouts.notes })
+    .from(workouts)
+    .where(eq(workouts.id, workoutId))
+  return workout?.notes ?? null
 }
