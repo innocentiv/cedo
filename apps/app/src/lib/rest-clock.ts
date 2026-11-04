@@ -3,18 +3,20 @@ import {
   type Rest,
   type RestChange,
   type SessionRest,
-  restCounted,
-  restRemaining,
+  chimesAtEnd,
+  restPhase,
 } from '@cedo/contract'
 import { chime } from './chime.ts'
 import { useUntilNextSet } from './until-next-set.ts'
 import { useNow } from './use-now.ts'
 
 /**
- * The clock of the rest shown on the workout (#24): how much is left with the +30 s taps counted,
- * whether it was skipped, and one tone when it is seen to run out — never on opening a screen whose
- * rest is already over. The taps and the skip hold until the next set starts a new rest. Which rest
- * runs, and how much is left of it, are the contract's (`restOf`, `restRemaining`).
+ * The clock of the rest after the latest set (#24, #63): where it stands — none follows the set, it
+ * runs with so much left, or it is over — with the +30 s taps counted and the skip, and one tone
+ * when it is seen to run out: never on opening a screen whose rest is already over, never once it
+ * is skipped, never when its set is undone. The taps and the skip hold until the next set starts a
+ * new rest. Which rest runs, where it stands, and whether its end chimes are the contract's
+ * (`restOf`, `restPhase`, `chimesAtEnd`); this keeps the clock, and which rest it saw running.
  */
 export function useRestClock(
   rest: Rest | null,
@@ -36,23 +38,20 @@ export function useRestClock(
 
   const [ticking, setTicking] = useState(true)
   const now = useNow(ticking)
-  // Skipped on another device, or here before a reload, there is none to count (`restCounted`).
-  const counted = rest === null ? null : restCounted(rest, extensions, kept)
-  const left = counted === null ? null : restRemaining(counted, 0, now)
-  const running = left !== null && left > 0
+  const phase = restPhase(rest, extensions, kept, skipped !== null, now)
+  const running = phase.phase === 'running'
   if (running !== ticking) setTicking(running)
 
-  // The tone is for a rest seen running and then run out: opened over, or skipped, it is silent.
-  const wasRunning = useRef(false)
+  // The rest seen running, by the sets it follows: the one whose end chimes.
+  const restAfter = rest === null ? null : sets
+  const seen = useRef<number | null>(null)
   useEffect(() => {
-    if (wasRunning.current && left === 0 && skipped === null) chime()
-    wasRunning.current = running
-  }, [running, left, skipped])
+    if (chimesAtEnd(seen.current, restAfter, phase)) chime()
+    seen.current = phase.phase === 'running' ? restAfter : null
+  }, [phase, restAfter])
 
   return {
-    /** Seconds left; null when no rest is shown — none started, or skipped. */
-    left: skipped === null ? left : null,
-    running,
+    phase,
     extend: () => {
       extend(extensions + 1)
       tell({ sets, change: 'extend' })

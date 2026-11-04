@@ -930,7 +930,7 @@ test(
 )
 
 test(
-  'undoing a set in the middle and logging again does not reuse its number',
+  'removing a set in the middle and logging again does not reuse its number',
   async () => {
     await withApp('undo-then-log', async (page) => {
       const app = screens(page)
@@ -950,10 +950,11 @@ test(
       await log(2)
       await log(3)
 
-      // Undo set 2 — the second row — then log once more.
+      // Remove set 2 — the second row, fixed in the list (#63) — then log once more.
       const second = (await app.session.loggedIds())[1]
       if (second === undefined) throw new Error('expected three logged rows')
-      await app.session.undo(second)
+      await app.fix.open(second)
+      await app.fix.remove()
       await page.until(rows, (n) => n === 2)
       await log(3)
 
@@ -1941,7 +1942,8 @@ test(
       const [typo, twice] = await app.session.loggedIds()
       if (typo === undefined || twice === undefined) throw new Error('The summary shows no sets')
       await app.fix.open(typo)
-      expect(await app.fix.title()).toBe(`${squat.name} · Set 1`)
+      expect(await app.fix.under()).toBe(typo)
+      expect(await app.fix.value('weight')).toBe('100')
       await app.fix.fill('weight', '80')
       await app.fix.save()
       await app.fix.open(twice)
@@ -2270,7 +2272,7 @@ test(
   E2E_TIMEOUT_MS,
 )
 
-/** Undoing a set ends what was picked, as it ends any choice: the day has its focus back. */
+/** Undoing a set chooses its own entry over what was picked (#63): the day has its focus back. */
 test(
   'an exercise picked mid-plan gives the day back its focus once a set is undone',
   async () => {
@@ -2286,9 +2288,8 @@ test(
       const pushUp = await app.session.addExercise('Push-Up')
       expect(await app.session.inFocus()).toBe(`adhoc ${pushUp}`)
 
-      const [logged] = await app.session.loggedIds()
-      if (logged === undefined) throw new Error('The bench set is not among those logged')
-      await app.session.undo(logged)
+      // Its rest still runs, in Push-Up's Log's place: Undo there takes the bench set back.
+      await app.session.undoJustLogged()
       await page.until(
         async () => (await app.session.loggedIds()).length,
         (rows) => rows === 0,
@@ -2881,10 +2882,12 @@ test(
 
 /**
  * What the plan tells the athlete beyond its numbers: the rest after a working set, counted down
- * from when the set was logged, and a cue under the exercise — both written in the editor.
+ * from when the set was logged, and a cue under the exercise — both written in the editor. The rest
+ * runs in Log's place (#63), with the set just logged under it and Undo; once it is over all of it
+ * goes, and Log is back — the chime is the cue, nothing stays on screen to say so.
  */
 test(
-  "a working set starts the entry's rest, and the plan's cue is shown with the exercise",
+  "a working set's rest takes Log's place, and goes once over; the plan's cue is shown",
   async () => {
     await withApp('rest-and-cue', async (page) => {
       const app = screens(page)
@@ -2900,11 +2903,193 @@ test(
       expect(await bench.rest()).toBeNull()
       await bench.log()
       expect(await bench.rest()).toMatch(/^Rest 0:0[1-5]$/u)
-      await page.until(bench.rest, (said) => said === 'Rest over — ready for the next set', 8000)
-      // The clock stood still once it was over; the next set starts it again, from the full rest.
+      expect(await bench.canLog()).toBe(false)
+      expect(await app.session.canUndoJustLogged()).toBe(true)
+      expect(await app.session.justLogged()).toBe(true)
+      await page.until(bench.rest, (said) => said === null, 8000)
+      expect(await bench.canLog()).toBe(true)
+      expect(await app.session.canUndoJustLogged()).toBe(false)
+      expect(await app.session.justLogged()).toBe(false)
+      // The next set starts it again, from the full rest.
       await bench.log()
       expect(await bench.rest()).toMatch(/^Rest 0:0[1-5]$/u)
-      await page.until(bench.rest, (said) => said === 'Rest over — ready for the next set', 8000)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * A mistake caught as the set is logged (#63): Undo, in Log's place, takes it back and ends its
+ * rest, and the logger holds what the set said — one wrong number is fixed, not the whole set typed
+ * again. Skip ends a rest early, and +30 s — a tap on the countdown — lengthens it.
+ */
+test(
+  'Undo in Log’s place takes the set back, holding what it said; Skip and +30 s',
+  async () => {
+    await withApp('undo-in-place', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('uip'))
+      await app.planEditor.create()
+      await app.planEditor.saveAndStart()
+
+      const bench = app.session.entry(0)
+      await bench.fill('weight', '62.5')
+      await bench.fill('reps', '6')
+      await bench.reserve('2')
+      await bench.log()
+      expect(await bench.rest()).toMatch(/^Rest (2:00|1:5\d)$/u)
+      expect(await app.session.lastSetText()).toBe('6 × 62.5 kg · 2 in reserve')
+
+      await app.session.undoJustLogged()
+      await page.until(
+        async () => (await app.session.loggedIds()).length,
+        (rows) => rows === 0,
+      )
+      expect(await bench.rest()).toBeNull()
+      expect(await bench.canLog()).toBe(true)
+      expect(await bench.value('weight')).toBe('62.5')
+      expect(await bench.value('reps')).toBe('6')
+      expect(await bench.reserveChosen()).toBe('2')
+
+      await bench.fill('reps', '8')
+      await bench.log()
+      await app.session.extendRest()
+      await page.until(bench.rest, (said) => /^Rest 2:[23]\d$/u.test(said ?? ''))
+      await app.session.skipRest()
+      expect(await bench.canLog()).toBe(true)
+      expect(await app.session.justLogged()).toBe(false)
+
+      const mine = await page.client()
+      const logs = (await mine.sessions.get(await app.session.id())).logs
+      expect(logs.map((l) => [l.reps, l.weightG, l.reserve])).toEqual([[8, 62_500, 2]])
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * A set fixed in the session's list (#63), right below its row: apart from the set being logged and
+ * its rest, which run on untouched.
+ */
+test(
+  'a set is fixed right below its row in progress, while the rest runs on',
+  async () => {
+    await withApp('fix-in-progress', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('fip'))
+      await app.planEditor.create()
+      await app.planEditor.saveAndStart()
+
+      const bench = app.session.entry(0)
+      // The plan prescribes no weight: each set is given its own.
+      await bench.fill('weight', '60')
+      await bench.log()
+      await bench.fill('weight', '60')
+      await bench.log()
+      const [first] = await app.session.loggedIds()
+      if (first === undefined) throw new Error('The first set is not among those logged')
+
+      await app.fix.open(first)
+      expect(await app.fix.under()).toBe(first)
+      await app.fix.fill('weight', '65')
+      await app.fix.save()
+      await page.until(
+        async () => await app.session.loggedLines(),
+        (lines) => lines.includes('8 × 65 kg') && lines.includes('8 × 60 kg'),
+      )
+      expect(await bench.rest()).toMatch(/^Rest \d:\d\d$/u)
+      expect(await app.session.canUndoJustLogged()).toBe(true)
+      expect(await app.session.lastSetText()).toBe('8 × 60 kg')
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * A superset rests after the pair, not between (#63): its first set has no rest after it, so Undo
+ * sits beside the partner's Log — the focus goes straight to it — and the pair's last starts the
+ * rest in Log's place.
+ */
+test(
+  'a superset’s first set keeps Undo beside the partner’s Log; the pair’s last rests',
+  async () => {
+    await withApp('undo-superset', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('uss'))
+      const mine = await page.client()
+      const [first, second] = (await mine.exercises.list({ limit: 50 })).items.filter(
+        (exercise) => exercise.tracking === 'weight_reps',
+      )
+      if (first === undefined || second === undefined) throw new Error('Too few lifts seeded')
+      const sets = [
+        { targetReps: 10, targetWeightG: 20_000 },
+        { targetReps: 10, targetWeightG: 20_000 },
+      ]
+      const plan = await mine.workouts.create({ name: 'Pairs', notes: null })
+      await mine.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({
+          days: [
+            {
+              name: 'A',
+              entries: [
+                { exerciseId: first.id, sets, supersetGroup: 'A', restSeconds: 0 },
+                { exerciseId: second.id, sets, supersetGroup: 'A', restSeconds: 60 },
+              ],
+            },
+          ],
+        }),
+      )
+
+      await app.planEditor.open(plan.id)
+      await app.workouts.startDay(0)
+      await app.session.entry(0).log()
+      expect(await app.session.inFocus()).toBe('entry 1')
+      const partner = app.session.entry(1)
+      expect(await partner.rest()).toBeNull()
+      expect(await partner.canLog()).toBe(true)
+      expect(await app.session.canUndoJustLogged()).toBe(true)
+
+      await partner.log()
+      expect(await partner.rest()).toMatch(/^Rest (1:00|0:5\d)$/u)
+      expect(await app.session.canUndoJustLogged()).toBe(true)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
+ * A set with no rest after it — straight on, as in a superset's first — keeps Undo beside Log until
+ * the next set is logged (#63).
+ */
+test(
+  'with no rest after a set, Undo sits beside Log until the next set',
+  async () => {
+    await withApp('undo-no-rest', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('unr'))
+      await app.planEditor.create()
+      await app.planEditor.entry(0, 0).rest('0')
+      await app.planEditor.saveAndStart()
+
+      const bench = app.session.entry(0)
+      await bench.fill('weight', '60')
+      await bench.log()
+      expect(await bench.rest()).toBeNull()
+      expect(await bench.canLog()).toBe(true)
+      expect(await app.session.canUndoJustLogged()).toBe(true)
+      expect(await app.session.lastSetText()).toBe('8 × 60 kg')
+
+      await bench.log()
+      await app.session.undoJustLogged()
+      await page.until(
+        async () => (await app.session.loggedIds()).length,
+        (rows) => rows === 1,
+      )
+      // Undo ends what was just done: the first set is not offered to undo again. Log is back.
+      expect(await app.session.canUndoJustLogged()).toBe(false)
+      expect(await app.session.justLogged()).toBe(false)
+      expect(await bench.canLog()).toBe(true)
     })
   },
   E2E_TIMEOUT_MS,

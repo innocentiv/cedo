@@ -26,6 +26,8 @@ const GLYPHS = {
   up: ['M18 15l-6-6-6 6'],
   down: ['M6 9l6 6 6-6'],
   forward: ['M5 12h14', 'M12 5l7 7-7 7'],
+  // Skip forward: a step ahead, and the bar it stops at — a player's, so it reads as "past this".
+  skip: ['M5 5l10 7-10 7z', 'M19 5v14'],
   info: ['M12 16v-4', 'M12 8h.01', 'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z'],
   plus: ['M12 5v14', 'M5 12h14'],
   minus: ['M5 12h14'],

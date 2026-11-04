@@ -1,8 +1,9 @@
 import type { Page } from '../harness.ts'
 
 /**
- * A finished session's past mistakes fixed (#31), from its summary: a set opened by tapping it, its
- * numbers corrected or the set removed — and the whole session deleted, each removal asked twice.
+ * A set fixed (#31), from the session's list — in progress or finished alike: a set opened by
+ * tapping it, right below itself (#63), its numbers corrected or the set removed — and a finished
+ * session deleted whole, each removal asked twice.
  */
 export const fix = (page: Page) => {
   const closed = async (): Promise<void> => {
@@ -17,13 +18,15 @@ export const fix = (page: Page) => {
       await page.click(`[data-testid="${rowId}"]`)
       await page.waitFor('fix-set')
     },
-    /** The set's title on its sheet — "Barbell Back Squat · Set 1": its first line as it reads. */
-    title: async (): Promise<string> =>
-      String(
-        await page.evaluate(
-          `document.querySelector('[data-testid="fix-set"]').innerText.split('\\n')[0].trim()`,
-        ),
-      ),
+    /** The row the set opened under, by its id: the one tapped, and nowhere else. */
+    under: async (): Promise<string | null> => {
+      const id = await page.evaluate(
+        `document.querySelector('[data-testid="fix-set"]')?.previousElementSibling?.dataset.testid ?? null`,
+      )
+      return typeof id === 'string' ? id : null
+    },
+    value: async (dimension: 'weight' | 'reps' | 'duration' | 'distance'): Promise<unknown> =>
+      await page.value(`fix-set-${dimension}`),
     fill: async (dimension: 'weight' | 'reps' | 'duration' | 'distance', text: string) => {
       await page.fill(`fix-set-${dimension}`, text)
     },

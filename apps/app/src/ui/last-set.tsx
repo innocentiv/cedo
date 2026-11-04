@@ -1,32 +1,31 @@
 import { Button } from './button.tsx'
 import { Card } from './card.tsx'
-import { IconButton } from './icon.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 
+export interface LastSetProps {
+  readonly title: string
+  readonly effort: string
+  readonly best: boolean
+  readonly waiting: boolean
+  /** "+ set": another beyond the prescription, once the set's entry has all it asked for. */
+  readonly onAnother?: (() => void) | undefined
+  readonly testID: string
+}
+
 /**
- * The set just logged — or one re-opened from its mark (#24): what it was — its reserve with it, said
- * before it was logged (#37) — whether it was a personal best, and Undo. A set still waiting for a
- * signal is said so, with nothing to change on it until the server has it.
+ * The set just logged (#24), under the rest control that can take it back (#63): what it was — its
+ * reserve with it, said before it was logged (#37) — and whether it was a personal best. A set
+ * still waiting for a signal is said so: there is nothing to take back until the server has it.
  */
 export function LastSet({
   title,
   effort,
   best,
   waiting,
-  onUndo,
   onAnother,
   testID,
-}: {
-  readonly title: string
-  readonly effort: string
-  readonly best: boolean
-  readonly waiting: boolean
-  readonly onUndo: (() => void) | null
-  /** "+ set": another beyond the prescription, once the set's entry has all it asked for. */
-  readonly onAnother?: (() => void) | undefined
-  readonly testID: string
-}): React.JSX.Element {
+}: LastSetProps): React.JSX.Element {
   return (
     <Card testID={testID}>
       <Stack gap="md">
@@ -53,15 +52,6 @@ export function LastSet({
               size="small"
               onPress={onAnother}
               testID={`${testID}-another`}
-            />
-          )}
-          {onUndo === null ? null : (
-            <IconButton
-              name="undo"
-              label="Undo this set"
-              edge="end"
-              onPress={onUndo}
-              testID={`${testID}-undo`}
             />
           )}
         </Stack>

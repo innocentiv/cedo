@@ -1,3 +1,4 @@
+import type { Effort } from './effort.ts'
 import type { Load } from './load.ts'
 import type { SetTarget } from './progression.ts'
 import {
@@ -11,7 +12,7 @@ import {
 } from './session-flow.ts'
 
 /**
- * What the workout screen shows (#24): the focus (GLOSSARY.md), the set shown above it, and "+ set"
+ * What the workout screen shows (#24): the focus (GLOSSARY.md), the set just logged, and "+ set"
  * — from the session's sets and what the athlete chose. Pure, so the screen only renders it and
  * holds the choices. The flow it reads is `session-flow.ts`; see docs/08-frontend.md.
  */
@@ -43,26 +44,43 @@ export function adHocFocus<X extends Added>(
   )
 }
 
-/** A set re-opened from its mark: of a plan entry, or of an exercise logged with none. */
-export interface Reopened {
+/**
+ * A set just undone (#63): of a plan entry or of an exercise logged with none, and what it said.
+ * Its entry takes the focus, and the logger starts from what the set said, not from the target: one
+ * wrong number is fixed, and the set logged again.
+ */
+export interface Undone {
   readonly entryId: string | null
   readonly exerciseId: string
-  /** The set's key among its entry's — or exercise's — sets (`SessionSet.key`). */
-  readonly key: string
+  readonly effort: Effort
+  readonly reserve: number | null
 }
+
+/** A set as it is undone: what it was of, and what it said. */
+export const undoneOf = (log: ViewLog & { readonly reserve: number | null }): Undone => ({
+  entryId: log.entryId,
+  exerciseId: log.exerciseId,
+  effort: {
+    reps: log.reps,
+    weightG: log.weightG,
+    durationS: log.durationS,
+    distanceMm: log.distanceMm,
+  },
+  reserve: log.reserve,
+})
 
 /**
  * What the athlete chose on the workout screen (GLOSSARY.md, "Focus"): an entry of the day or an
- * exercise logged with none, tapped to put in focus, and a set re-opened from its mark. The screen
- * holds them until the athlete logs or undoes a set, or goes to pick an exercise; these rules only
- * read them.
+ * exercise logged with none, tapped to put in focus, and a set undone — which chooses its own
+ * entry, unless something is chosen after it. The screen holds them until the athlete logs a set,
+ * or goes to pick an exercise; these rules only read them.
  */
 export interface WorkoutChoices {
   readonly chosen: { readonly entry: string } | { readonly added: string } | null
-  readonly reopened: Reopened | null
+  readonly undone: Undone | null
 }
 
-export const NO_CHOICES: WorkoutChoices = { chosen: null, reopened: null }
+export const NO_CHOICES: WorkoutChoices = { chosen: null, undone: null }
 
 type Loggable<E extends FlowEntry> = E & { readonly exercise: NonNullable<E['exercise']> }
 
@@ -84,15 +102,15 @@ export type Focused<
       readonly sets: SessionSet<L>[]
       /** What this session asks of it, once read. */
       readonly asked: T | undefined
-      /** The key of its set re-opened from its mark, or null. */
-      readonly selected: string | null
+      /** Its set just undone, which the logger starts from — or null. */
+      readonly undone: Undone | null
     }
   | { readonly kind: 'unavailable'; readonly entry: E }
   | {
       readonly kind: 'added'
       readonly exercise: X
       readonly sets: SessionSet<L>[]
-      readonly selected: string | null
+      readonly undone: Undone | null
     }
   | { readonly kind: 'done' }
   | { readonly kind: 'none' }
@@ -105,7 +123,7 @@ export interface WorkoutView<
   T extends EntryAsked,
 > {
   readonly focus: Focused<E, X, L, T>
-  /** The set shown above the focus — re-opened from its mark, else the one logged last. */
+  /** The set logged last — without a plan, the last logged with no entry; none after an undo. */
   readonly shown: {
     readonly log: L
     readonly exercise: NonNullable<E['exercise']> | X | null
@@ -131,28 +149,35 @@ interface ViewInput<E extends FlowEntry, X extends Added, L extends ViewLog, T e
   readonly loadFor: (entry: E) => Load | null
 }
 
-/** What both kinds of session read alike: an entry's sets, an exercise added in focus, a set re-opened. */
+/**
+ * What both kinds of session read alike: an entry's sets, an exercise added in focus, a set undone.
+ */
 function readsOf<E extends FlowEntry, X extends Added, L extends ViewLog, T extends EntryAsked>(
   input: ViewInput<E, X, L, T>,
 ) {
   const { targets, sets, added, choices } = input
-  const { chosen, reopened } = choices
+  const { undone } = choices
+  // A set undone chooses its own entry — or exercise — unless something was chosen after it.
+  const chosen: WorkoutChoices['chosen'] =
+    choices.chosen ??
+    (undone === null
+      ? null
+      : undone.entryId === null
+        ? { added: undone.exerciseId }
+        : { entry: undone.entryId })
   const asked = (entry: E) => targets.find((t) => t.entryId === entry.id)
   return {
     ...input,
-    reopened,
     asked,
     chosenEntry: chosen !== null && 'entry' in chosen ? chosen.entry : null,
     chosenAdded: chosen !== null && 'added' in chosen ? chosen.added : null,
     setsFor: (entry: E) => setsOf(entry, sets, asked(entry) ?? null, input.loadFor(entry)),
-    adHocShown: (r: Reopened) =>
-      adHocSetsOf(r.exerciseId, sets).find((s) => s.key === r.key)?.log ?? null,
+    undoneOf: (entry: E): Undone | null => (undone?.entryId === entry.id ? undone : null),
     addedFocus: (exercise: X): Focused<E, X, L, T> => ({
       kind: 'added',
       exercise,
       sets: adHocSetsOf(exercise.id, sets),
-      selected:
-        reopened?.entryId === null && reopened.exerciseId === exercise.id ? reopened.key : null,
+      undone: undone?.entryId === null && undone.exerciseId === exercise.id ? undone : null,
     }),
     exerciseOf: (log: L) => added.find((e) => e.id === log.exerciseId) ?? null,
   }
@@ -172,8 +197,9 @@ type Reads<
  * was logged to last) — else `focusOf`'s; an entry chosen out of the reader's reach
  * says so, and with every set logged the day is done. Without a plan, the focus is `adHocFocus`'s.
  *
- * The set shown is the one re-opened from its mark, else the one logged last — without a plan, the
- * last logged with no entry.
+ * The set shown is the one logged last — without a plan, the last logged with no entry — and none
+ * after an undo, until the next set. A set undone chooses its own entry, which starts from what it
+ * said.
  */
 export function workoutView<
   E extends FlowEntry,
@@ -181,12 +207,21 @@ export function workoutView<
   L extends ViewLog,
   T extends EntryAsked,
 >(input: ViewInput<E, X, L, T>): WorkoutView<E, X, L, T> {
-  if (input.day !== null) return dayView(input.day, readsOf(input))
-  // A set re-opened on a plan entry — the plan out of reach since — is none of these sets: their
-  // keys count again from `s0`, and would name another.
-  const { reopened } = input.choices
-  const own = reopened?.entryId === null ? reopened : null
-  return adHocView(readsOf({ ...input, choices: { ...input.choices, reopened: own } }))
+  const { undone } = input.choices
+  const view =
+    input.day === null
+      ? // A set undone on a plan entry — the plan out of reach since — is of no exercise logged
+        // with none.
+        adHocView(
+          readsOf({
+            ...input,
+            choices: { ...input.choices, undone: undone?.entryId === null ? undone : null },
+          }),
+        )
+      : dayView(input.day, readsOf(input))
+  // Undo ends the rest with its set (#63): the set before is not just logged again — nor its rest,
+  // nor its Undo — until the next set is. Log is back.
+  return undone === null ? view : { ...view, shown: null, another: null }
 }
 
 /** A session without a plan: an exercise added in focus, and the last set logged of one. */
@@ -194,8 +229,7 @@ function adHocView<E extends FlowEntry, X extends Added, L extends ViewLog, T ex
   r: Reads<E, X, L, T>,
 ): WorkoutView<E, X, L, T> {
   const focus = adHocFocus(r.added, r.sets, r.chosenAdded)
-  const log =
-    r.reopened === null ? r.sets.findLast((l) => l.entryId === null) : r.adHocShown(r.reopened)
+  const log = r.sets.findLast((l) => l.entryId === null)
   return {
     focus: focus === undefined ? { kind: 'none' } : r.addedFocus(focus),
     shown: log == null ? null : { log, exercise: r.exerciseOf(log) },
@@ -223,10 +257,8 @@ function dayView<E extends FlowEntry, X extends Added, L extends ViewLog, T exte
       : undefined
   const next = chosen !== undefined && loggable(chosen) ? chosen : focusOf(day, r.sets)
 
-  // The entry of the set shown: a swap's set re-opened has none, whatever was logged last.
-  const shownId = r.reopened === null ? latest?.entryId : r.reopened.entryId
-  const shownEntry = day.entries.find((e) => e.id === shownId)
-  const log = shownOfDay(r, shownEntry, latest)
+  const shownEntry = day.entries.find((e) => e.id === latest?.entryId)
+  const log = latest ?? null
   const another =
     shownEntry !== undefined &&
     nextSet(r.setsFor(shownEntry)) === null &&
@@ -261,19 +293,6 @@ function dayFocus<E extends FlowEntry, X extends Added, L extends ViewLog, T ext
     entry: next,
     sets: r.setsFor(next),
     asked: r.asked(next),
-    selected: r.reopened?.entryId === next.id ? r.reopened.key : null,
+    undone: r.undoneOf(next),
   }
-}
-
-/** The set a day shows above its focus: re-opened from its mark, else the one logged last. */
-function shownOfDay<E extends FlowEntry, X extends Added, L extends ViewLog, T extends EntryAsked>(
-  r: Reads<E, X, L, T>,
-  shownEntry: E | undefined,
-  latest: L | undefined,
-): L | null {
-  const { reopened } = r
-  if (reopened === null) return latest ?? null
-  if (reopened.entryId === null) return r.adHocShown(reopened)
-  if (shownEntry === undefined) return null
-  return r.setsFor(shownEntry).find((s) => s.key === reopened.key)?.log ?? null
 }

@@ -143,15 +143,16 @@ would otherwise be copied: `MusclePicker`, `EquipmentPicker` (what an exercise n
 or nothing — none chosen is undescribed, #33), `EntryEditor` (one plan entry's fields, opened from its
 line in a workout's outline, #26), and the
 workout's (#24) — `FocusLogger` (the exercise in focus: its `SetMarks`, the next set's `Stepper`s,
-one Log button, and the reserve asked before it), `LastSet` (the set just logged: a best, its
-reserve as said, Undo), `RestBand`, `UpNext`
+one Log button, and the reserve asked before it), `AfterSet` (in Log's place once a set is logged,
+#63: Undo, the rest's countdown and Skip, and `LastSet` under them — the set just logged, a best,
+its reserve as said), `UpNext`
 and `AddRow`,
 `SessionHeader` and `ReturnBar`; and Today's (#25) — `WeekStrip`, a week's days as the contract's
 `weekStrip` gives them. They are still presentational — the rules they render (loads
 summing to 100, which inputs a tracking mode implies, what a progression rule contains, which set
 is next, where the focus goes, whose rest runs, what a set is called) all live in `@cedo/contract`:
 `session-flow.ts` and `set-marks.ts` for the workout, and `workout-view.ts` for what its screen
-shows of them — the focus, the set above it, "+ set", the rows marked — from the sets and what the
+shows of them — the focus, the set just logged, "+ set", the rows marked — from the sets and what the
 athlete chose. An unavailable exercise has no mode, so no
 inputs: the workout shows what it prescribed and that nothing more can be logged against it, and
 a workout's outline gives it a line that says so — what it prescribes, and the bin, which is the
@@ -166,10 +167,10 @@ a row per set (`ReserveRows`), or a Manual line's own. The editor's sections are
 `RuleField` (the rule, its settings, its sentence, and asking before a switch overwrites a set),
 `SetsField` with `set-lines.tsx` (counts, warm-up lines, Plan beside Your next session, Manual's
 lines), `NextSession` (the viewer's target and **Change**), and `EntryRead`, an entry a reader
-opens. The rest band's clock is `useRestClock`
-(`src/lib/rest-clock.ts`); it and the session's clock read `useNow`
-(`src/lib/use-now.ts`), a clock of its own that ticks once a second only while it must — so the
-band re-renders, not the day. The tone at the end of a rest is `src/lib/chime.ts`, made by the
+opens. The rest's clock is `useRestClock`
+(`src/lib/rest-clock.ts`), read by `useJustDone` (`src/lib/just-done.ts`) in the focus's column; it
+and the session's clock read `useNow` (`src/lib/use-now.ts`), a clock of its own that ticks once a
+second only while it must — so the focus re-renders while a rest runs, not the day beside it. The tone at the end of a rest is `src/lib/chime.ts`, made by the
 browser, nothing bundled — three beeps, played through iOS's silent switch where Safari lets a page
 say its sound is a short alert (`navigator.audioSession`, `transient`: it lowers the athlete's
 music for a moment, where `playback` would stop it), and a buzz where `navigator.vibrate` exists.
@@ -268,30 +269,40 @@ stopped at "your heaviest" or "your lightest". Beside it the logger says what mo
 per set — "Progressed to 11 × 20 kg · the plan says 10 × 20 kg", "held: set 3 did 7 of 10", "held
 for effort: set 3 left 0 in reserve, asked 2" — the same words `workout_progression` says, so what
 the last session did is read where the next one is done. Typing is never refused. A new weight rule in the plan editor adds one step of that equipment. "Up next" is the rest of the day, an entry to a line, a superset
-drawn as one item; tapping one makes it current, and tapping a logged set re-opens it.
+drawn as one item; tapping one makes it current. The set marks are progress only: nothing is
+re-opened from them, and nothing is ever added above the logger, so what is under the thumb stays
+there (#63).
 
-- **A choice holds until this device logs or undoes a set**, or goes to pick an exercise — not
-  until the latest set changes: a set logged without a signal is known by its key until the server
-  has it, then by the server's id, and a choice held to it was lost as it landed. What is picked is
-  chosen in turn, so it takes the focus. Once a set is logged, a swap keeps the focus while a set
-  of it is the one logged last, and a set of the day gives the day its focus back. The choices are
-  the screen's own (`useWorkout`); what they put in focus is the contract's `workoutView`.
+- **A choice holds until this device logs a set**, or goes to pick an exercise — not until the
+  latest set changes: a set logged without a signal is known by its key until the server has it,
+  then by the server's id, and a choice held to it was lost as it landed. What is picked is chosen
+  in turn, so it takes the focus. Once a set is logged, a swap keeps the focus while a set of it is
+  the one logged last, and a set of the day gives the day its focus back. **Undo chooses** the
+  set's own entry, and the logger starts from what the set said — not its target — so one wrong
+  number is fixed and the set logged again. The choices are the screen's own (`useWorkout`); what
+  they put in focus is the contract's `workoutView`.
 - **Logging moves the focus** to the entry's next set, then to the next entry in day order with
   sets left. Entries of a superset alternate, and rest starts after the pair.
-- **Rest starts on its own** when a set is logged: a countdown band with +30 s and × to skip it,
-  above the set it follows; at zero the band changes colour, beeps three times and buzzes where the
-  device can, if the app is open. The server keeps the rest's end (#38; +30 s and skip are writes,
-  queued behind the sets), and the countdown takes it when it is later (`restCounted`), so a reload
-  or another device counts the same rest. Being told with the app closed waits for the native app
-  (#39): Web Push never reached an iPhone.
+- **The rest takes Log's place** (#63) when a set is logged: **Undo · countdown · Skip**, a tap on
+  the countdown adding 30 s, with the set just logged right under it — its effort, a personal best,
+  "+ set" once its entry has all it asked for. The next set's numbers stay above, ready to change
+  during the rest. Undo takes the set back and ends its rest. At zero it beeps three times and
+  buzzes where the device can, if the app is open, and all of it goes: Log is back, and the set just
+  logged is fixed from the list from then on. No colour or banner says the rest is over: the sound
+  is the cue. A set with no rest after it — a warm-up, a superset's first, a rest of 0 — keeps
+  **Undo · Log** until the next set. Where the rest stands is the contract's `restPhase`. The
+  server keeps the rest's end (#38; +30 s and skip are writes, queued behind the sets), and the
+  countdown takes it when it is later (`restCounted`), so a reload or another device counts the
+  same rest. Being told with the app closed waits for the native app (#39): Web Push never reached
+  an iPhone.
 - **Reserve is asked before Log** (#37), as one optional row in the logger, under the numbers, and
   only for a working set of an exercise measured in reps — which those are is the contract's, not
   the screen's. Whole reps, none to five, one row of segments; tapping the chosen one again takes it
   back. Never pre-filled — the answer is how the set went, not what it asked — and empty for each
-  set. What the set asks is said above it ("leave 2 in reserve"), because each working set is
-  judged against its own (ADR-0026), and a set that left fewer holds the target. Once logged, the set
-  says its reserve and asks nothing more: Undo, or correcting it from the summary (#31), is how a
-  mistake is fixed.
+  set — but for a set just undone, whose answer was given. What the set asks is said above it
+  ("leave 2 in reserve"), because each working set is judged against its own (ADR-0026), and a set
+  that left fewer holds the target. Once logged, the set says its reserve and asks nothing more:
+  Undo, or correcting it from the session's list (#31), is how a mistake is fixed.
 - **"+ set"** logs one beyond the prescription; **Add exercise** logs one with no entry, as a swap
   when a machine is taken — today's ad-hoc logging, which leaves the entry's progression alone.
 - **ⓘ** opens how to do it — cue, instructions, muscles, the video — without leaving the session.
@@ -329,8 +340,10 @@ As built (#25), on a phone top to bottom, on a desktop in two columns (`Screen` 
 - **A finished session** — its date, time, working sets and bests; its notes written in place, kept
   as the field is left; its sets by exercise, a best marked `PB`. The menu is gone once finished:
   what it held is on the page, or done.
-- **A past mistake fixed** (#31) — a set of a finished session tapped opens a `Sheet`
-  (`fix-set.tsx`): its numbers on the logger's own `Stepper`s, how hard it was, Working set or
+- **A set fixed** (#31) — a set of the session's list tapped, in progress or finished alike, opens
+  right below its own row (#63, `fix-set.tsx`) — never over the set being logged or its rest, which
+  run on: fixing one set is apart from what is done next. One open at a time; tapping it again
+  closes it. Its numbers on the logger's own `Stepper`s, how hard it was, Working set or
   Warm-up, Save — and Remove set, asked twice. Never its exercise: that set is removed and logged
   again. Delete session is last, under the sets, asked twice, and goes back to where it was opened
   from. A set of an exercise out of reach shows no measures, so offers only how hard and which
@@ -610,8 +623,8 @@ drawn only where the product's name is, never as a control:
 | white | a warm-up |
 | red | careful — something went wrong, or a change cannot be taken back |
 
-Everything else is chalk on a charcoal ground — a selection too: a chosen segment or chip, the tab you are on,
-a set re-opened are chalk, never yellow, so nothing chosen is taken for the next thing to do. Weight and reps are set large in Barlow
+Everything else is chalk on a charcoal ground — a selection too: a chosen segment or chip and the tab you
+are on are chalk, never yellow, so nothing chosen is taken for the next thing to do. Weight and reps are set large in Barlow
 Condensed with tabular figures, everything else in Barlow — bundled with the app, so a self-hosted
 instance asks nothing of a third party and the installed app works offline. Fewer boxes: hierarchy
 from type and space, a card only around something acted on as one. Where a set is logged, nothing

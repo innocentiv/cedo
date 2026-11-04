@@ -98,3 +98,48 @@ export function restCounted(
   if (there === 0) return null
   return { since: counted.since, seconds: Math.max(here, there ?? 0) }
 }
+
+/**
+ * Where the rest after the latest set stands (#63) — what the workout shows in Log's place: none
+ * follows the set (a warm-up, a superset's first, a rest of 0), it runs with so much left, or it is
+ * over — run out, or skipped here or on another device: only a rest run out ends with the chime.
+ * While it runs, or when none follows, the set just logged can still be undone where it was logged;
+ * once it is over, it is fixed in the list.
+ */
+export type RestPhase =
+  | { readonly phase: 'none' }
+  | { readonly phase: 'running'; readonly left: number }
+  | { readonly phase: 'over'; readonly skipped: boolean }
+
+/**
+ * The rest after the latest set — the sets' (`restOf`), with this device's +30 s taps and skip, and
+ * as the server keeps it (`restCounted`) — as it stands `now`.
+ */
+export function restPhase(
+  rest: Rest | null,
+  extensions: number,
+  kept: SessionRest | null,
+  skipped: boolean,
+  now: number,
+): RestPhase {
+  if (rest === null) return { phase: 'none' }
+  const counted = skipped ? null : restCounted(rest, extensions, kept)
+  if (counted === null) return { phase: 'over', skipped: true }
+  const left = restRemaining(counted, 0, now)
+  return left > 0 ? { phase: 'running', left } : { phase: 'over', skipped: false }
+}
+
+/**
+ * Whether a rest's end chimes (#24, #63): the rest seen running — named by how many sets it follows
+ * — has run out. Never one skipped, one opened already over, nor an earlier rest an undo took the
+ * session back to: those are not the rest the athlete was waiting on.
+ */
+export function chimesAtEnd(
+  seenRunning: number | null,
+  restAfter: number | null,
+  phase: RestPhase,
+): boolean {
+  return (
+    phase.phase === 'over' && !phase.skipped && seenRunning !== null && seenRunning === restAfter
+  )
+}

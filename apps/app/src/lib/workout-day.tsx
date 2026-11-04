@@ -1,6 +1,5 @@
 import {
   type Exercise,
-  type Reopened,
   type SessionDay,
   type SessionExercise,
   type WorkoutChoices,
@@ -10,17 +9,18 @@ import {
 } from '@cedo/contract'
 import { AddRow, Stack, UpNext } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
-import { JustDone, type RestShown, ShownSet } from './shown-set.tsx'
+import { type RestShown, useJustDone } from './just-done.ts'
 import { AddedExercises } from './workout-adhoc.tsx'
 import { InFocus } from './workout-focus.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 import { useWeightUnit } from './weight-unit.ts'
 
 /*
- * A session that follows a plan's day (#24): what was just done and the entry in focus
- * (`PlannedMain`), then the rest of the day, what was added to it, and every set (`PlannedSide`) —
- * the screen's two columns, side by side on a desktop. What shows is the contract's `workoutView`;
- * this renders it, and says what the athlete taps. See docs/08-frontend.md.
+ * A session that follows a plan's day (#24): the entry in focus, with what was just done in its
+ * Log's place (`PlannedMain`, #63), then the rest of the day, what was added to it, and every set
+ * (`PlannedSide`) — the screen's two columns, side by side on a desktop. What shows is the
+ * contract's `workoutView`; this renders it, and says what the athlete taps. See
+ * docs/08-frontend.md.
  */
 
 /** What the main column of a planned day reads. */
@@ -31,55 +31,46 @@ export interface PlannedMainProps {
   readonly full: readonly Exercise[]
   readonly view: WorkoutShown
   readonly onChoose: (chosen: WorkoutChoices['chosen']) => void
-  readonly onReopen: (reopened: Reopened) => void
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
   readonly onFinish: () => Promise<void>
   readonly finishing: boolean
 }
 
-/** What was just done, and the entry in focus — its next set under the thumb. */
+/** The entry in focus — its next set under the thumb, and what was just done in Log's place. */
 export function PlannedMain({
   sets,
   rest,
   full,
   view,
   onChoose,
-  onReopen,
   onHowTo,
   onFinish,
   finishing,
 }: PlannedMainProps): React.JSX.Element {
   const unit = useWeightUnit()
   const { shown, another } = view
+  const after = useJustDone({
+    rest,
+    shown,
+    sets,
+    onAnother:
+      another === null
+        ? undefined
+        : () => {
+            onChoose({ entry: another })
+          },
+  })
   return (
-    <>
-      <JustDone rest={rest}>
-        {shown === null ? null : (
-          <ShownSet
-            log={shown.log}
-            exercise={shown.exercise}
-            sets={sets}
-            onAnother={
-              another === null
-                ? undefined
-                : () => {
-                    onChoose({ entry: another })
-                  }
-            }
-          />
-        )}
-      </JustDone>
-      <InFocus
-        focus={view.focus}
-        sets={sets}
-        full={full}
-        onReopen={onReopen}
-        onHowTo={onHowTo}
-        onFinish={onFinish}
-        finishing={finishing}
-        unit={unit}
-      />
-    </>
+    <InFocus
+      focus={view.focus}
+      sets={sets}
+      full={full}
+      after={after}
+      onHowTo={onHowTo}
+      onFinish={onFinish}
+      finishing={finishing}
+      unit={unit}
+    />
   )
 }
 

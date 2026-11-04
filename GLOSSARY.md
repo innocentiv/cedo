@@ -360,8 +360,20 @@ _Avoid_: group, block
 **Focus**:
 What a session in progress puts forward to log next: an entry of its day, or an exercise logged
 with none. The one the athlete chose, else where the day's order leads; a choice holds until they
-log or undo a set, or add an exercise, which then takes the focus.
+log a set, or add an exercise, which then takes the focus. A set undone chooses its own entry, to be
+logged again.
 _Avoid_: current exercise, active entry, selected entry
+
+**Rest**:
+The pause after a set, before the next. It starts when a set is logged, and ends when its time is
+up, when it is skipped, or when its set is undone. A superset rests after the pair, not between.
+_Avoid_: timer, break, recovery
+
+**Undo**:
+Taking back the set just logged, where it was logged: while its rest runs, or — with none after it —
+until the next set. It ends the rest, and nothing is just logged again until the next set. Any
+other set is corrected or removed instead, at any time.
+_Avoid_: rollback, revert
 
 **Swap**:
 An exercise done in a session that follows a plan without being an entry of its day, in place of

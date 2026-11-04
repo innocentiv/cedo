@@ -14,6 +14,9 @@ import {
 } from './harness.ts'
 import { unique } from './screens/auth.ts'
 
+/** The first set of the session's list shown — tapped, it opens below itself to be fixed (#63). */
+const FIRST_SET = `[...document.querySelectorAll('[data-testid^="logged-set-"]')].filter((e) => e.offsetParent != null)[0]`
+
 /**
  * `bun run gallery [--only <state>] [--layout mobile|desktop]` — every screen, in the states a
  * person actually meets, at a phone's width and a laptop's, to `.artifacts/gallery/`.
@@ -389,6 +392,27 @@ async function startToday(page: Page, world: World): Promise<string> {
   return session.id
 }
 
+/**
+ * One more warm-up of today's squat, logged now: no rest follows a warm-up, so Undo sits beside Log
+ * until the next set (#63).
+ */
+async function logWarmup(page: Page, world: World, sessionId: string): Promise<void> {
+  const api = await page.client()
+  const squat = (await api.workouts.get(world.planId)).days[0]?.entries[0]
+  const warmup = squat?.sets.find((set) => set.isWarmup)
+  if (squat === undefined || warmup === undefined) throw new Error('The squat has no warm-up')
+  await api.sessions.logSet(sessionId, {
+    exerciseId: squat.exerciseId,
+    entryId: squat.id,
+    weightG: warmup.target.weightG,
+    reps: warmup.target.reps,
+    reserve: null,
+    durationS: null,
+    distanceMm: null,
+    isWarmup: true,
+  })
+}
+
 // ---------------------------------------------------------------------------------------------
 // Photographing
 // ---------------------------------------------------------------------------------------------
@@ -477,6 +501,11 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await page.waitFor('how-to')
   await snap('03c-session-how-to')
   await page.click('[data-testid="how-to-close"]')
+  // A set fixed right below its row in the list (#63), apart from the rest running in Log's place.
+  await page.evaluate(`${FIRST_SET}.click()`)
+  await page.waitFor('fix-set')
+  await snap('03d-session-fix-set')
+  await page.evaluate(`${FIRST_SET}.click()`)
 
   await show(page, '/workouts', 'workouts-screen')
   await snap('04-workouts')
@@ -565,6 +594,12 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await show(page, '/settings/connect', 'connect-screen')
   await snap('17-connect')
 
+  // A warm-up just logged has no rest after it: Undo beside Log, until the next set (#63).
+  await logWarmup(page, world, sessionId)
+  await show(page, `/today/session/${sessionId}`, 'session-screen')
+  await page.waitFor('rest-control-undo')
+  await snap('17b-session-undo-beside-log')
+
   // Last, as it ends the session every screen above showed in progress.
   await show(page, `/today/session/${sessionId}`, 'session-screen')
   await page.click('[data-testid="session-header-menu"]')
@@ -572,13 +607,11 @@ async function walk(page: Page, layout: string, world: World): Promise<void> {
   await page.click('[data-testid="finish-session-confirm"]')
   await page.waitFor('session-finished')
   await snap('18-session-finished')
-  // A past mistake fixed (#31): a set tapped on the summary opens to be corrected or removed.
-  await page.evaluate(
-    `[...document.querySelectorAll('[data-testid^="logged-set-"]')].filter((e) => e.offsetParent != null)[0].click()`,
-  )
+  // A past mistake fixed (#31): a set tapped on the summary opens below itself (#63).
+  await page.evaluate(`${FIRST_SET}.click()`)
   await page.waitFor('fix-set')
   await snap('18b-session-fix-set')
-  await page.click('[data-testid="fix-set-close"]')
+  await page.evaluate(`${FIRST_SET}.click()`)
 
   // Sam back at it, and their coach reading along (#30).
   await startToday(page, world)

@@ -46,7 +46,7 @@ export function sessionColumns(w: Workout): ScreenColumns | undefined {
   const record = (
     <>
       <UnsentSets sessionId={w.id} day={day} adHoc={w.adHocExercises} />
-      <LoggedSets logs={w.sets.server} onRemove={w.undo} />
+      <LoggedSets sessionId={w.id} logs={w.sets.server} />
     </>
   )
   const rest = {
@@ -62,7 +62,6 @@ export function sessionColumns(w: Workout): ScreenColumns | undefined {
         sets={w.sets}
         rest={rest}
         view={w.view}
-        onReopen={w.reopen}
         onHowTo={(exercise) => {
           showHowTo(exercise, null)
         }}
@@ -87,7 +86,6 @@ export function sessionColumns(w: Workout): ScreenColumns | undefined {
       full={w.picked}
       view={w.view}
       onChoose={w.choose}
-      onReopen={w.reopen}
       onHowTo={showHowTo}
       onFinish={w.finish}
       finishing={w.busy}
