@@ -450,6 +450,101 @@ describe('workout_duplicate', () => {
   })
 })
 
+/**
+ * A workout's name and notes (#44). The notes say how it is run, so they change as the plan does —
+ * and without this the athlete retyped them in the app from text the AI pasted.
+ */
+describe('workout_update', () => {
+  const aWorkout = async (user: TestUser, notes: string | null = 'RIR 2 on everything') =>
+    expectContract(Workout, await post(user, '/workouts', { name: 'Push', notes }))
+  const stored = async (user: TestUser, id: string) =>
+    expectContract(Workout, (await user.wire(`/workouts/${id}`)).body)
+
+  test('renames it, and says so', async () => {
+    const workout = await aWorkout(alice)
+    const { body } = await callTool(await mintPat(alice), 'workout_update', {
+      workoutId: workout.id,
+      name: 'Push B',
+    })
+    expect(textOf(body)).toBe(
+      `Updated workout ${workout.id} — "Push B"\nnotes: RIR 2 on everything`,
+    )
+    expect((await stored(alice, workout.id)).name).toBe('Push B')
+  })
+
+  test('replaces the notes whole', async () => {
+    const workout = await aWorkout(alice)
+    await callTool(await mintPat(alice), 'workout_update', {
+      workoutId: workout.id,
+      notes: 'Deload every fifth week',
+    })
+    expect((await stored(alice, workout.id)).notes).toBe('Deload every fifth week')
+  })
+
+  test('keeps the notes when only the name is sent', async () => {
+    const workout = await aWorkout(alice)
+    await callTool(await mintPat(alice), 'workout_update', { workoutId: workout.id, name: 'B' })
+    expect((await stored(alice, workout.id)).notes).toBe('RIR 2 on everything')
+  })
+
+  test('clears the notes with an explicit null', async () => {
+    const workout = await aWorkout(alice)
+    const { body } = await callTool(await mintPat(alice), 'workout_update', {
+      workoutId: workout.id,
+      notes: null,
+    })
+    expect(textOf(body)).toBe(`Updated workout ${workout.id} — "Push"\nno notes`)
+    expect((await stored(alice, workout.id)).notes).toBeNull()
+  })
+
+  /** A library workout alice follows but does not edit: seen, and still refused. */
+  test('refuses a workout you can read but not edit', async () => {
+    const bob = await h.as('bob')
+    await h.curator(bob)
+    const shared = await aWorkout(bob)
+    await post(bob, `/workouts/${shared.id}/transfer`, { toGroupId: h.groupId })
+    expect((await stored(alice, shared.id)).name).toBe('Push')
+
+    const { body } = await callTool(await mintPat(alice), 'workout_update', {
+      workoutId: shared.id,
+      notes: 'Mine now',
+    })
+    expect(body.result?.isError).toBe(true)
+    expect((await stored(bob, shared.id)).notes).toBe('RIR 2 on everything')
+  })
+
+  /** The notes are the workout's, not its plan's: a plan read before them still saves (ADR-0022). */
+  test('leaves the plan’s version alone', async () => {
+    const workout = await aWorkout(alice)
+    const pat = await mintPat(alice)
+    const first = await callTool(pat, 'workout_save_plan', {
+      workoutId: workout.id,
+      days: [{ name: 'A', entries: [] }],
+    })
+    expect(first.body.result?.isError).toBeUndefined()
+    const editable = PlanSave.parse(
+      JSON.parse(
+        textOf((await callTool(pat, 'workout_get_editable', { workoutId: workout.id })).body),
+      ),
+    )
+
+    if (editable.version === undefined) throw new Error('no version to send back')
+    await callTool(pat, 'workout_update', { workoutId: workout.id, notes: 'HIIT after legs' })
+    expect((await stored(alice, workout.id)).version).toBe(editable.version)
+
+    const saved = await callTool(pat, 'workout_save_plan', { workoutId: workout.id, ...editable })
+    expect(saved.body.result?.isError).toBeUndefined()
+    expect(textOf(saved.body)).toStartWith('Saved.')
+  })
+
+  /** It replaces what the notes said: a client that asks before a destructive write asks here. */
+  test('is announced as destructive', async () => {
+    const { body } = await rpc(await mintPat(alice), 'tools/list')
+    const tool = (body.result?.tools ?? []).find((t) => t.name === 'workout_update')
+    expect(tool?.annotations?.['destructiveHint']).toBe(true)
+  })
+})
+
 describe('training review', () => {
   /** Through the tool, as the AI would; the id is read back out of its text. */
   async function createExercise(

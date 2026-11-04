@@ -5,6 +5,7 @@ import {
   OfAthlete,
   ScopeFields,
   WorkoutCreate,
+  WorkoutUpdate,
   PlanSave,
   type ProgressionSuggestion,
   ReviewQuery,
@@ -18,11 +19,19 @@ import { type PlanRead, planFor, savePlanAndRead } from '../../modules/workout/p
 import * as ProgressionService from '../../modules/progression/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
 import { json, reviewSummary, text } from '../format.ts'
-import { suggestionLine, suggestionLines, workoutDetail, workoutLine } from '../format-workout.ts'
+import {
+  suggestionLine,
+  suggestionLines,
+  workoutDetail,
+  workoutLine,
+  workoutUpdated,
+} from '../format-workout.ts'
 import { groupNamesOf } from '../format-group.ts'
 
 const READ = { readOnlyHint: true, openWorldHint: false } as const
 const WRITE = { readOnlyHint: false, destructiveHint: false, openWorldHint: false } as const
+/** It replaces what the notes said, so a client asks — as for an athlete note reworded. */
+const REWORD = { ...WRITE, destructiveHint: true, idempotentHint: true } as const
 
 /**
  * OBJECTIVE 2 — reviewing and adjusting someone's training.
@@ -137,6 +146,25 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       const created = await WorkoutService.create(caller, input)
       return text(`Created workout ${created.id} — "${created.name}". Now call workout_save_plan.`)
     },
+  )
+
+  server.registerTool(
+    'workout_update',
+    {
+      title: 'Rename a workout or change its notes',
+      description:
+        'Change the name or notes of a workout you edit; an omitted field is left alone, and ' +
+        '`notes: null` clears them. `notes` REPLACES the whole text: read `workout_get` first and ' +
+        'send all you keep. The notes say how the workout is run — effort, block structure, ' +
+        'deload, what to do on a bad day — so change them when the plan changes. What is true ' +
+        'of the person, such as their equipment or an injury, is theirs, not the workout’s: ' +
+        '`equipment_set` or `note_create`. Every follower of a shared workout sees the change. ' +
+        'The plan is not touched; to change it, `workout_save_plan`.',
+      inputSchema: WorkoutUpdate.safeExtend({ workoutId: z.uuid() }),
+      annotations: REWORD,
+    },
+    async ({ workoutId, ...patch }) =>
+      text(workoutUpdated(await WorkoutService.update(caller, workoutId, patch))),
   )
 
   server.registerTool(

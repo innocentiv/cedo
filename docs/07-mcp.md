@@ -116,7 +116,7 @@ without them: a copy in a group they edit, as `workout_duplicate` is for a share
 ### 2. Reviewing someone's training
 
 `training_review` · `workout_list` · `workout_get` · `workout_get_editable` · `workout_create` ·
-`workout_save_plan` · `workout_duplicate` · `workout_progression` · `target_set` ·
+`workout_update` · `workout_save_plan` · `workout_duplicate` · `workout_progression` · `target_set` ·
 `exercise_history` · `session_log` · `session_fix_set` · `note_list` · `note_create` · `note_update` · `weigh_in_list` ·
 `weigh_in_create` · `athlete_profile_set`
 
@@ -126,6 +126,17 @@ preference, what they said of a plan. Each takes the coaching tools' `athlete`: 
 too (ADR-0021, amended). `training_review` and the plan-writing tools say to read them first; the
 review does not carry them, so a plan made without asking is the model's omission, not a stale
 payload. Only the author rewords one, and none is removed here — the app does that, behind a tap.
+
+`workout_update` changes a workout's name and notes (#44) — `PATCH /workouts/:id`, through the
+same `WorkoutService.update`: an omitted field is left alone, `notes: null` clears them. The notes
+are the **workout's**, not its plan's (`GLOSSARY.md`): how it is run — effort, block structure,
+deload, the bad-day rule — so they change when the plan does. They are not versioned with the
+plan: an edit neither checks nor raises its version (ADR-0022 guards the plan), so a save from
+an earlier `workout_get_editable` still lands, and the last edit to the notes wins. It replaces
+the whole text, so it is announced destructive and idempotent, as `note_update` is, and says to
+read `workout_get` first. It takes no `athlete`: who may change it is whoever edits its group,
+and what is true of the person following it — their equipment, an injury — goes to
+`equipment_set` or an athlete note instead.
 
 `weigh_in_list` and `weigh_in_create` (the same file) are **weigh-ins** (#42): a bodyweight a day,
 in grams, read over the review's weeks with the latest before them — yours, or an athlete's with
