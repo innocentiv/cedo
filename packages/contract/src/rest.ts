@@ -123,3 +123,18 @@ export function restPhase(
   const left = restRemaining(counted, 0, now)
   return left > 0 ? { phase: 'running', left } : { phase: 'over', skipped: false }
 }
+
+/**
+ * Whether a rest's end chimes (#24, #63): the rest seen running — named by how many sets it follows
+ * — has run out. Never one skipped, one opened already over, nor an earlier rest an undo took the
+ * session back to: those are not the rest the athlete was waiting on.
+ */
+export function chimesAtEnd(
+  seenRunning: number | null,
+  restAfter: number | null,
+  phase: RestPhase,
+): boolean {
+  return (
+    phase.phase === 'over' && !phase.skipped && seenRunning !== null && seenRunning === restAfter
+  )
+}

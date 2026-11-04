@@ -1,5 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
-import { type Rest, type RestChange, type SessionRest, restPhase } from '@cedo/contract'
+import {
+  type Rest,
+  type RestChange,
+  type SessionRest,
+  chimesAtEnd,
+  restPhase,
+} from '@cedo/contract'
 import { chime } from './chime.ts'
 import { useUntilNextSet } from './until-next-set.ts'
 import { useNow } from './use-now.ts'
@@ -9,7 +15,8 @@ import { useNow } from './use-now.ts'
  * runs with so much left, or it is over — with the +30 s taps counted and the skip, and one tone
  * when it is seen to run out: never on opening a screen whose rest is already over, never once it
  * is skipped, never when its set is undone. The taps and the skip hold until the next set starts a
- * new rest. Which rest runs, and where it stands, are the contract's (`restOf`, `restPhase`).
+ * new rest. Which rest runs, where it stands, and whether its end chimes are the contract's
+ * (`restOf`, `restPhase`, `chimesAtEnd`); this keeps the clock, and which rest it saw running.
  */
 export function useRestClock(
   rest: Rest | null,
@@ -35,18 +42,13 @@ export function useRestClock(
   const running = phase.phase === 'running'
   if (running !== ticking) setTicking(running)
 
-  // The tone is for the rest seen running that ran out — the same one, by the sets it follows: an
-  // undo takes the session back to an earlier rest, which is no rest run out.
-  const ranOut = phase.phase === 'over' && !phase.skipped
-  const seen = useRef<string | null>(null)
+  // The rest seen running, by the sets it follows: the one whose end chimes.
+  const restAfter = rest === null ? null : sets
+  const seen = useRef<number | null>(null)
   useEffect(() => {
-    if (running) {
-      seen.current = after
-      return
-    }
-    if (ranOut && seen.current !== null && seen.current === after) chime()
-    seen.current = null
-  }, [running, ranOut, after])
+    if (chimesAtEnd(seen.current, restAfter, phase)) chime()
+    seen.current = phase.phase === 'running' ? restAfter : null
+  }, [phase, restAfter])
 
   return {
     phase,

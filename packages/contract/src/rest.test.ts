@@ -1,5 +1,12 @@
 import { describe, expect, test } from 'bun:test'
-import { DEFAULT_REST_S, restCounted, restLeft, restPhase, restRemaining } from './rest.ts'
+import {
+  DEFAULT_REST_S,
+  chimesAtEnd,
+  restCounted,
+  restLeft,
+  restPhase,
+  restRemaining,
+} from './rest.ts'
 
 /** What the logger counts down after a working set: the entry's rest, from when it was logged. */
 describe('rest left', () => {
@@ -135,5 +142,28 @@ describe('the rest’s phase', () => {
       phase: 'over',
       skipped: true,
     })
+  })
+})
+
+/**
+ * The chime at a rest's end (#24, #63): for the rest seen running that ran out — the same one, by
+ * the sets it follows.
+ */
+describe('the chime at a rest’s end', () => {
+  const over = { phase: 'over', skipped: false } as const
+
+  test('sounds for the rest seen running, run out', () => {
+    expect(chimesAtEnd(3, 3, over)).toBe(true)
+  })
+
+  test('is silent for a rest skipped, still running, or opened already over', () => {
+    expect(chimesAtEnd(3, 3, { phase: 'over', skipped: true })).toBe(false)
+    expect(chimesAtEnd(3, 3, { phase: 'running', left: 10 })).toBe(false)
+    expect(chimesAtEnd(null, 3, over)).toBe(false)
+  })
+
+  test('is silent for another rest than the one seen: an undo took the session back to it', () => {
+    expect(chimesAtEnd(3, 2, over)).toBe(false)
+    expect(chimesAtEnd(3, null, { phase: 'none' })).toBe(false)
   })
 })
