@@ -161,6 +161,23 @@ describe('what the workout shows', () => {
     expect(v.current.upNext?.id).toBe('rdl')
   })
 
+  /**
+   * Undo ends the rest with the set (#63): the set before is not shown as just logged again — nor
+   * its rest, nor its Undo — until the next set is logged. Log is back.
+   */
+  test('after an undo, no set is just logged — nor "+ set" — until the next', () => {
+    const sets = [set('squat'), set('squat')]
+    const v = view(sets, { choices: { chosen: null, undone: undone('rdl') } })
+    expect(v.shown).toBeNull()
+    expect(v.another).toBeNull()
+    const adHoc = view([set(null, 'curl')], {
+      day: null,
+      added,
+      choices: { chosen: null, undone: undone(null, 'curl') },
+    })
+    expect(adHoc.shown).toBeNull()
+  })
+
   test('a swap’s set undone takes the focus to its exercise, which starts from it', () => {
     const v = view([set('squat')], {
       added,

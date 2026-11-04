@@ -3033,8 +3033,10 @@ test(
         async () => (await app.session.loggedIds()).length,
         (rows) => rows === 1,
       )
-      // The first set's Undo is back: it is again the set just logged, with no rest after it.
-      expect(await app.session.canUndoJustLogged()).toBe(true)
+      // Undo ends what was just done: the first set is not offered to undo again. Log is back.
+      expect(await app.session.canUndoJustLogged()).toBe(false)
+      expect(await app.session.justLogged()).toBe(false)
+      expect(await bench.canLog()).toBe(true)
     })
   },
   E2E_TIMEOUT_MS,

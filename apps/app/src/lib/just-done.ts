@@ -29,7 +29,8 @@ export interface RestShown {
 /**
  * The set just logged, while it can still be taken back where it was logged (#63): while its rest
  * runs — +30 s and Skip told to the server too (#38) — or, with no rest after it, until the next set.
- * Null before the first set, and once the rest is over: the chime has said so, and Log is back. A set
+ * Null before the first set, after an undo until the next, and once the rest is over: the chime has
+ * said so, and Log is back. A set
  * still waiting for a signal has no Undo yet. Its "+ set" goes beyond its entry's prescription.
  */
 export function useJustDone({
@@ -46,7 +47,8 @@ export function useJustDone({
   const unit = useWeightUnit()
   const tell = useChangeRest(rest.sessionId)
   const { submit, error } = useSubmit()
-  const clock = useRestClock(rest.rest, rest.kept, rest.sets, (change) => {
+  // With nothing just logged — after an undo, until the next set — no rest runs, nor chimes (#63).
+  const clock = useRestClock(shown === null ? null : rest.rest, rest.kept, rest.sets, (change) => {
     // In the session's queue, behind the sets: offline, it is sent after them.
     void submit(async () => {
       await tell.mutateAsync(change)

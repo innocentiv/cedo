@@ -10,6 +10,7 @@ import {
   type WorkoutChoices,
   type WorkoutView,
   exercisesInSession,
+  undoneOf,
   workoutView,
 } from '@cedo/contract'
 import { type PendingLog, withPending } from '../api/pending.ts'
@@ -136,20 +137,7 @@ function useChoices() {
       setHeld((now) => ({ ...now, chosen }))
     },
     undone: (log: SetLog) => {
-      setHeld({
-        chosen: null,
-        undone: {
-          entryId: log.entryId,
-          exerciseId: log.exerciseId,
-          effort: {
-            reps: log.reps,
-            weightG: log.weightG,
-            durationS: log.durationS,
-            distanceMm: log.distanceMm,
-          },
-          reserve: log.reserve,
-        },
-      })
+      setHeld({ chosen: null, undone: undoneOf(log) })
     },
     forget: () => {
       setHeld(NO_CHOICES)

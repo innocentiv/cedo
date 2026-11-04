@@ -56,6 +56,19 @@ export interface Undone {
   readonly reserve: number | null
 }
 
+/** A set as it is undone: what it was of, and what it said. */
+export const undoneOf = (log: ViewLog & { readonly reserve: number | null }): Undone => ({
+  entryId: log.entryId,
+  exerciseId: log.exerciseId,
+  effort: {
+    reps: log.reps,
+    weightG: log.weightG,
+    durationS: log.durationS,
+    distanceMm: log.distanceMm,
+  },
+  reserve: log.reserve,
+})
+
 /**
  * What the athlete chose on the workout screen (GLOSSARY.md, "Focus"): an entry of the day or an
  * exercise logged with none, tapped to put in focus, and a set undone — which chooses its own entry,
@@ -110,7 +123,7 @@ export interface WorkoutView<
   T extends EntryAsked,
 > {
   readonly focus: Focused<E, X, L, T>
-  /** The set logged last — without a plan, the last logged with no entry. */
+  /** The set logged last — without a plan, the last logged with no entry; none after an undo. */
   readonly shown: {
     readonly log: L
     readonly exercise: NonNullable<E['exercise']> | X | null
@@ -182,8 +195,9 @@ type Reads<
  * was logged to last) — else `focusOf`'s; an entry chosen out of the reader's reach
  * says so, and with every set logged the day is done. Without a plan, the focus is `adHocFocus`'s.
  *
- * The set shown is the one logged last — without a plan, the last logged with no entry. A set undone
- * chooses its own entry, which starts from what it said.
+ * The set shown is the one logged last — without a plan, the last logged with no entry — and none
+ * after an undo, until the next set. A set undone chooses its own entry, which starts from what it
+ * said.
  */
 export function workoutView<
   E extends FlowEntry,
@@ -191,11 +205,21 @@ export function workoutView<
   L extends ViewLog,
   T extends EntryAsked,
 >(input: ViewInput<E, X, L, T>): WorkoutView<E, X, L, T> {
-  if (input.day !== null) return dayView(input.day, readsOf(input))
-  // A set undone on a plan entry — the plan out of reach since — is of no exercise logged with none.
   const { undone } = input.choices
-  const own = undone?.entryId === null ? undone : null
-  return adHocView(readsOf({ ...input, choices: { ...input.choices, undone: own } }))
+  const view =
+    input.day === null
+      ? // A set undone on a plan entry — the plan out of reach since — is of no exercise logged
+        // with none.
+        adHocView(
+          readsOf({
+            ...input,
+            choices: { ...input.choices, undone: undone?.entryId === null ? undone : null },
+          }),
+        )
+      : dayView(input.day, readsOf(input))
+  // Undo ends the rest with its set (#63): the set before is not just logged again — nor its rest,
+  // nor its Undo — until the next set is. Log is back.
+  return undone === null ? view : { ...view, shown: null, another: null }
 }
 
 /** A session without a plan: an exercise added in focus, and the last set logged of one. */
