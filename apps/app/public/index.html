@@ -3,8 +3,9 @@
   <head>
     <meta charset="utf-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <!-- `viewport-fit=cover`: installed on iOS the app draws under the notch, and the safe-area
-         insets react-native-safe-area-context reads are only non-zero with it. -->
+    <!-- `viewport-fit=cover`: installed on iOS the app draws to the screen's bottom edge, under the
+         home indicator, and the safe-area insets react-native-safe-area-context reads are only
+         non-zero with it. -->
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, shrink-to-fit=no, viewport-fit=cover"
@@ -20,7 +21,12 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="cedo" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <!-- No `apple-mobile-web-app-status-bar-style`, deliberately (#61). With `black-translucent`
+         the app drew under the status bar, and iOS 26 blurs whatever page it finds up there — the
+         top ~25pt of every screen, titles included; a fixed opaque bar over the edge did not stop
+         it. Unset, iOS draws its own opaque status bar, tinted by `theme-color`, and the page starts
+         below it. iOS reads this when the app is added: an install made before keeps the old style
+         until it is removed and added again. -->
 
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
@@ -47,31 +53,17 @@
       html {
         scrollbar-color: #3a3b40 #1b1c1e;
       }
-      /* Installed on an iPhone (iOS 26), `black-translucent` draws the app under the status bar but
-         sizes the page one status bar SHORT: `100%`, `dvh` and `svh` all leave ~59pt of the body
-         showing below the tab bar, and every sheet and its scrim stop as high (#61). Only `lvh`
-         reports the whole screen. The page is the short height plus the inset it lost, capped at
-         the screen: once the page is as tall as the screen, iOS gives it the whole viewport, and
-         what is fixed to the bottom reaches it too. The inset is 0 wherever nothing drew under a
-         status bar — Android, a desktop, a Safari tab (not standalone) — so there it changes
-         nothing. */
+      /* For an iPhone install made while the app asked for `black-translucent` (above), which keeps
+         that style until it is added again. There iOS 26 sizes the page one status bar SHORT:
+         `100%`, `dvh` and `svh` all leave ~59pt of the body showing below the tab bar, and every
+         sheet and its scrim stop as high (#61). Only `lvh` reports the whole screen. The page is the
+         short height plus the inset it lost, capped at the screen: once the page is as tall as the
+         screen, iOS gives it the whole viewport, and what is fixed to the bottom reaches it too.
+         The inset is 0 wherever nothing draws under a status bar — an install made since, Android,
+         a desktop, a Safari tab — so there it changes nothing. */
       @media (display-mode: standalone) {
         html {
           height: min(100lvh, calc(100% + env(safe-area-inset-top)));
-        }
-        /* iOS 26 blurs the top of an installed app's page — a fade some 40pt down from the edge,
-           over the title — unless a fixed, full-width, opaque box covers that edge. This is that
-           box: the floor, behind the clock, the status bar's height. The page starts below it
-           (`Screen`), so it hides nothing; 0 tall wherever there is no status bar to draw under. */
-        body::before {
-          content: '';
-          position: fixed;
-          top: 0;
-          left: 0;
-          right: 0;
-          height: env(safe-area-inset-top);
-          background-color: #1b1c1e;
-          z-index: 1;
         }
       }
     </style>

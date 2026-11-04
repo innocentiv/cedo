@@ -840,19 +840,19 @@ and carries the manifest link and the tags iOS reads instead of a manifest. `man
 and the icons sit beside it. The icons are rendered from `public/icons/icon.svg`; its comment gives
 the command.
 
-**Installed on an iPhone, the page is sized by hand** (#61). With `black-translucent` the app draws
-under the status bar, but iOS 26 sizes its page one status bar short: `100%`, `dvh` and `svh` all
-left ~59pt of the body showing under the tab bar, and every sheet and its scrim stopped as high.
-`index.html` gives the page, in standalone only, the short height plus the top inset it lost,
-capped at `100lvh`; once the page is the screen's height iOS gives it the whole viewport, and what is
-fixed to the bottom follows. Anywhere nothing draws under a status bar the inset is 0 and it changes
-nothing. It can be seen only on a device — neither a desktop browser nor the e2e WebView is
-standalone — so a change to it is proved on a phone, installed, opened twice (the first opening runs
-the shell it kept). Its top edge is a solid bar of the floor behind the clock (`body::before`, fixed):
-iOS 26 blurs an installed app's page some 40pt down from the top unless a fixed, opaque, full-width
-box covers that edge, and with the page scrolling under the clock the blur fell on every title.
-Inside that page the tab bar sits over the home indicator, its padding the inset
-less 12pt (`HOME_INDICATOR_OVERLAP`), as a native one does.
+**Installed on an iPhone, the status bar is iOS's own** (#61). `index.html` sets no
+`apple-mobile-web-app-status-bar-style`: iOS draws an opaque bar tinted by `theme-color`, and the
+page starts below it. `black-translucent`, which drew the page under the clock, cost two things on
+iOS 26. It sized the page one status bar short — `100%`, `dvh` and `svh` all left ~59pt of the body
+under the tab bar, sheets and scrims stopping as high — and it blurred the top ~25pt of every
+screen, titles included; a fixed opaque bar over the edge fixed neither the blur nor the text. iOS
+reads the style when the app is added, so an install made before keeps it until added again; for
+those, `index.html` still sizes the page by hand in standalone — the short height plus the top inset
+it lost, capped at `100lvh` — which changes nothing where the inset is 0. Inside the page the tab bar
+sits over the home indicator, its padding the inset less 12pt (`HOME_INDICATOR_OVERLAP`), as a
+native one does. All of it can be seen only on a device — neither a desktop browser nor the e2e
+WebView is standalone — so a change to it is proved on a phone, installed, opened twice (the first
+opening runs the shell it kept).
 
 The service worker keeps the **app shell**, and nothing else: the one document, and the bundle it
 names. It is authored in TypeScript (`src/pwa/`), and `bun run export` bundles it on its own into

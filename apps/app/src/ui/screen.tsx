@@ -121,9 +121,9 @@ export function Screen({
   )
 
   const split = desk && columns !== undefined && beside !== null
-  // Under a status bar — an installed iPhone — the title sits just below it, not a full step down
+  // Under a status bar drawn over the page, the title sits just below it, not a full step down
   // (#61). The page itself starts below the bar: nothing scrolls under the clock, where iOS 26
-  // blurs whatever page it finds (index.html keeps that edge solid).
+  // blurs whatever page it finds.
   const underBar = header === undefined && insets.top > 0
 
   return (
