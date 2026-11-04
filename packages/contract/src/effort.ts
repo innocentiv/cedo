@@ -10,6 +10,19 @@ export interface Effort {
 }
 
 /**
+ * What the logger starts a set from: what it asks. On a bodyweight movement, a target that names no
+ * weight asks none added — 0, said as 0 kg, which − and + step from — never an empty field: added
+ * to bodyweight, nothing is nothing however it is logged. Any other mode starts from it as it is: a
+ * lift with no load yet has its weight left to the athlete.
+ */
+export const startingEffort = (asked: Effort, tracking: TrackingMode): Effort => ({
+  reps: asked.reps,
+  weightG: tracking === 'bodyweight_reps' ? (asked.weightG ?? 0) : asked.weightG,
+  durationS: asked.durationS,
+  distanceMm: asked.distanceMm,
+})
+
+/**
  * One line for a target, a logged set or a suggestion, in the terms its tracking mode measures:
  * `8 × 60 kg`, `10 × bodyweight`, `6 × bodyweight +20 kg`, `1:00`, `5 km in 25:00`.
  *

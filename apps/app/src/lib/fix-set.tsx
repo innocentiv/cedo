@@ -1,5 +1,12 @@
 import { useState } from 'react'
-import { type Effort, type SetLog, type SetLogUpdate, asksReserve, fieldsOf } from '@cedo/contract'
+import {
+  type Effort,
+  type SetLog,
+  type SetLogUpdate,
+  asksReserve,
+  fieldsOf,
+  startingEffort,
+} from '@cedo/contract'
 import { useCorrectSet, useRemoveSet } from '../api/session-queries.ts'
 import {
   Button,
@@ -54,12 +61,10 @@ function FixSetForm({
 }): React.JSX.Element {
   const tracking = log.exercise?.tracking ?? null
   // In base units throughout, as the logger's: the fields convert for display.
-  const [effort, setEffort] = useState<Effort>({
-    weightG: log.weightG,
-    reps: log.reps,
-    durationS: log.durationS,
-    distanceMm: log.distanceMm,
-  })
+  // As the logger's: on a bodyweight movement, no weight added reads 0 (`startingEffort`).
+  const [effort, setEffort] = useState<Effort>(() =>
+    tracking === null ? log : startingEffort(log, tracking),
+  )
   const [reserve, setReserve] = useState(log.reserve)
   const [isWarmup, setIsWarmup] = useState(log.isWarmup)
   const correct = useCorrectSet(sessionId)
