@@ -145,9 +145,10 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   input before a test can find it. Hand the input its file as it is appended, before the click:
   see `upload` in `e2e/screens/library.ts`.
 - **An installed iPhone app is only seen on the phone.** Neither a desktop browser nor the e2e
-  WebView is standalone or has insets. With `black-translucent`, iOS 26 sized the page one status bar
-  short and blurred the top of every screen — both green everywhere else; a fixed opaque bar over the
-  edge, which several projects shipped unverified, did not help (#61, `apps/app/public/index.html`).
+  WebView is standalone or has insets. iOS 26 sized the page one status bar short under
+  `black-translucent`, and blurs the top ~30pt of the page under any status bar style — both green
+  everywhere else, and the blur was there before anyone looked (#61, `apps/app/public/index.html`).
+  Fixes found online were mostly shipped unverified: measure the screenshot before trusting one.
   Push, then ask for a screenshot from the installed app, opened twice: the first opening runs the
   shell it kept. A change to the status-bar style needs the app removed and added again.
 - **`e2e` and `shot` serve `apps/app/dist`, so both rebuild first.** They used not to, which meant

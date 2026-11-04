@@ -21,12 +21,10 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="cedo" />
-    <!-- No `apple-mobile-web-app-status-bar-style`, deliberately (#61). With `black-translucent`
-         the app drew under the status bar, and iOS 26 blurs whatever page it finds up there — the
-         top ~25pt of every screen, titles included; a fixed opaque bar over the edge did not stop
-         it. Unset, iOS draws its own opaque status bar, tinted by `theme-color`, and the page starts
-         below it. iOS reads this when the app is added: an install made before keeps the old style
-         until it is removed and added again. -->
+    <!-- No `apple-mobile-web-app-status-bar-style`, deliberately (#61): iOS draws its own opaque
+         status bar, tinted by `theme-color`, and the page starts below it — sized to the screen,
+         which `black-translucent` on iOS 26 was not (below). iOS reads this when the app is added:
+         an install made before keeps the old style until it is removed and added again. -->
 
     <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
     <style id="expo-reset">
@@ -66,11 +64,40 @@
           height: min(100lvh, calc(100% + env(safe-area-inset-top)));
         }
       }
+      /* Installed on an iPhone, iOS 26 blurs the top ~30pt of the page — under either status bar
+         style, as it blurs a native app under its header (#61); a title at rest sat half in it. The
+         page starts 12pt lower, so at rest a title's capitals clear the blur, and what scrolls
+         there takes it, as a native list does. In those 12pt, a strip of the floor fixed to the
+         edge: a fixed, opaque, full-width box over the edge is reported to make iOS paint its
+         colour in place of the blur — a real element, as a pseudo-element was not taken for one.
+         `-webkit-touch-callout` is iOS's own: Android and desktops are left as they were. */
+      #top-edge {
+        display: none;
+      }
+      @media (display-mode: standalone) {
+        @supports (-webkit-touch-callout: none) {
+          #root {
+            box-sizing: border-box;
+            padding-top: 12px;
+          }
+          #top-edge {
+            display: block;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 12px;
+            background-color: #1b1c1e;
+            z-index: 1;
+          }
+        }
+      }
     </style>
   </head>
 
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="top-edge"></div>
     <div id="root"></div>
   </body>
 </html>

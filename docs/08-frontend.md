@@ -842,13 +842,19 @@ the command.
 
 **Installed on an iPhone, the status bar is iOS's own** (#61). `index.html` sets no
 `apple-mobile-web-app-status-bar-style`: iOS draws an opaque bar tinted by `theme-color`, and the
-page starts below it. `black-translucent`, which drew the page under the clock, cost two things on
-iOS 26. It sized the page one status bar short — `100%`, `dvh` and `svh` all left ~59pt of the body
-under the tab bar, sheets and scrims stopping as high — and it blurred the top ~25pt of every
-screen, titles included; a fixed opaque bar over the edge fixed neither the blur nor the text. iOS
-reads the style when the app is added, so an install made before keeps it until added again; for
-those, `index.html` still sizes the page by hand in standalone — the short height plus the top inset
-it lost, capped at `100lvh` — which changes nothing where the inset is 0. Inside the page the tab bar
+page starts below it. `black-translucent`, which drew the page under the clock, made iOS 26 size the
+page one status bar short — `100%`, `dvh` and `svh` all left ~59pt of the body under the tab bar,
+sheets and scrims stopping as high. iOS reads the style when the app is added, so an install made
+before keeps it until added again; for those, `index.html` still sizes the page by hand in
+standalone — the short height plus the top inset it lost, capped at `100lvh` — which changes nothing
+where the inset is 0.
+
+iOS 26 also blurs the top ~30pt of an installed app's page, under either status bar style, as it
+blurs a native app under its header; a title at rest sat half in it, and a solid bar behind the
+clock (a pseudo-element) did not stop it. So on an installed iPhone `#root` starts 12pt lower —
+a title's capitals clear the blur at rest, and what scrolls there takes it as a native list does —
+and in those 12pt a real element, `#top-edge`, is fixed: a fixed, opaque, full-width box over the
+edge is reported to make iOS paint its colour in place of the blur. Inside the page the tab bar
 sits over the home indicator, its padding the inset less 12pt (`HOME_INDICATOR_OVERLAP`), as a
 native one does. All of it can be seen only on a device — neither a desktop browser nor the e2e
 WebView is standalone — so a change to it is proved on a phone, installed, opened twice (the first
