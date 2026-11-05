@@ -83,7 +83,7 @@ export function WorkoutTitle({
  * The workout's notes show this many lines above its plan before Show all (#51): an AI's notes run
  * to a page, and the plan is what the page is for.
  */
-const NOTES_FOLD = 6
+const NOTES_FOLD = 9
 
 /**
  * The head of a workout's outline (#26): its notes — read first, written on request, kept as the

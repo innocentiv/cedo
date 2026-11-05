@@ -378,7 +378,7 @@ As built (#26):
 
 - **The head** — back, the name set as the title it is and edited there (`WorkoutTitle`, the
   screen's `ownHeading`), the notes under it on a card of their own — read first, as a reader sees
-  them, folded to six lines, a small chevron centred under them to show the rest and a small pencil
+  them, folded to nine lines whose last two fade into the card, a small chevron centred under them to show the rest and a small pencil
   at the right edge to write them (`WrittenNotes`, #51) — each kept as its field is left; then, only
   when something is wrong, why the plan is not saved. Saved, or on its way, nothing is said on
   screen; a change on its way marks the status `aria-busy`.

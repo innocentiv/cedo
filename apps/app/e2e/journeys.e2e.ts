@@ -2983,6 +2983,10 @@ test(
         'On a bad day, drop 10% and finish the day.',
         'Two easy rides on rest days.',
         'Never ride the day before Lower A.',
+        'Sleep before chasing a number.',
+        'Log every set, warm-ups included.',
+        'Film a top set once a week.',
+        'Eat before Lower A.',
       ].join('\n')
       await app.planEditor.notes(notes)
 
