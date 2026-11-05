@@ -332,18 +332,30 @@ export const workouts = (page: Page) => {
  * A workout's plan, edited in place on its page (#26, ADR-0022): every change saved as it is made.
  * `save` waits for the page to say so, then goes back where it came from, as Save used to.
  */
+/** Somewhere on a plan's page that does nothing when tapped: who owns it, under its name. */
+const AROUND = '[data-testid="workout-transfer-owner"]'
+
 export const planEditor = (page: Page) => {
-  /** Waits until the page says the plan is saved — failing with why, if it was refused. */
+  /**
+   * Waits until the plan is saved — nothing on its way, which the page says to assistive tech as
+   * busy, and nothing wrong said on screen (#51) — failing with why, if it was refused.
+   */
   const saved = async (): Promise<void> => {
     await closeEntrySettings(page)
     const status = await page.until(
       async () =>
         (await page.shown('plan-said'))
           ? `refused: ${(await page.text('plan-said')) ?? ''}`
-          : await page.text('plan-status'),
-      (seen) => seen === 'Saved' || seen?.startsWith('refused') === true,
+          : (await page.evaluate(
+                `document.querySelector('[data-testid="plan-status"]')?.getAttribute('aria-busy')`,
+              )) === 'true'
+            ? 'saving'
+            : ((await page.text('plan-status')) ?? '') === ''
+              ? 'saved'
+              : `not saved: ${(await page.text('plan-status')) ?? ''}`,
+      (seen) => seen !== 'saving',
     )
-    if (status !== 'Saved') throw new Error(`Saving was ${String(status)}`)
+    if (status !== 'saved') throw new Error(`Saving was ${status}`)
   }
   const save = async (): Promise<void> => {
     await saved()
@@ -391,7 +403,7 @@ export const planEditor = (page: Page) => {
     },
     /** Leaves the field being typed in, as a tap on the page around it would: it is kept. */
     leaveField: async (): Promise<void> => {
-      await page.click('[data-testid="plan-status"]')
+      await page.click(AROUND)
     },
     /** A day's name, as its field holds it. */
     dayName: async (day: number): Promise<unknown> => await page.value(`day-name-${String(day)}`),
@@ -405,13 +417,21 @@ export const planEditor = (page: Page) => {
       const opens = (await page.shown('workout-notes-add')) ? 'add' : 'edit'
       await page.click(`[data-testid="workout-notes-${opens}"]`)
       await page.fill('workout-notes', text)
-      await page.click('[data-testid="plan-status"]')
+      await page.click(AROUND)
       await page.waitFor('workout-notes-read')
     },
     /** The workout's notes as they read, folded or not: all of their text is laid out. */
     notesRead: async (): Promise<string | null> => await page.text('workout-notes-read'),
-    /** What the notes' fold offers — `Show all`, `Show less` — or null, when nothing is folded. */
-    notesFold: async (): Promise<string | null> => await page.text('workout-notes-fold'),
+    /**
+     * What the notes' fold offers, as its chevron is named aloud — `Show all`, `Show less` — or
+     * null, when nothing is folded.
+     */
+    notesFold: async (): Promise<string | null> => {
+      const said = await page.evaluate(
+        `document.querySelector('[data-testid="workout-notes-fold"]')?.getAttribute('aria-label') ?? null`,
+      )
+      return typeof said === 'string' ? said : null
+    },
     toggleNotesFold: async (): Promise<void> => {
       await page.click('[data-testid="workout-notes-fold"]')
     },

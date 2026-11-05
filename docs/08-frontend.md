@@ -377,9 +377,13 @@ and what the logs did to it are read side by side.
 As built (#26):
 
 - **The head** — back, the name set as the title it is and edited there (`WorkoutTitle`, the
-  screen's `ownHeading`), the notes under it — read first, as a reader sees them, folded to six lines with Show all and
-  written with Edit (`WrittenNotes`, #51) — each kept as its field is left; then one line on
-  the plan: Saved, Saving…, or Not saved and why.
+  screen's `ownHeading`), the notes under it on a card of their own — read first, as a reader sees
+  them, folded to nine lines whose last two fade into the card, a small chevron centred under them to show the rest and a small pencil
+  at the right edge to write them (`WrittenNotes`, #51) — each kept as its field is left; then, only
+  when something is wrong, why the plan is not saved. Saved, or on its way, nothing is said on
+  screen; a change on its way marks the status `aria-busy`.
+- **Icons come in two sizes** (#51): a control's — back, a day's fold, the bin, ↑ ↓ — and `small`
+  for what is seldom used and stays out of the way — pin, transfer, the notes' fold and pencil.
 - **The outline** — each day its name (edited where it reads, kept as the field is left and put
   back if left empty — no day is nameless), Start, ↑ ↓ and the bin; each entry one line, `3 sets · 10 × 20 kg · Double 8–12, +5 kg`, and the viewer's target after it — `· next 12 × 40 kg` — only when it differs from the plan; a manual entry whose sets differ says each run of equal sets, `1 set 6 × 90 kg · 2 sets 8 × 80 kg · Manual`; a superset's letter before its name; Add exercise
   at the foot of a day, Add day at the foot of the plan. An unavailable exercise's line says so,
