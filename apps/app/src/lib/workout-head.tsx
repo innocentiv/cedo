@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { View } from 'react-native'
 import { type Workout, type WorkoutUpdate, nameToKeep } from '@cedo/contract'
 import { useUpdateWorkout } from '../api/queries.ts'
 import { IconButton, Input, Stack, Text } from '../ui/index.ts'
@@ -121,33 +122,43 @@ export function WorkoutHead({
 }
 
 /**
- * What is true of the plan on screen: saved; on its way; kept here, unsent, because the schema would
- * refuse it — and why, three reasons at most; or put back, because the server refused it.
+ * What is wrong with the plan on screen, if anything: kept here, unsent, because the schema would
+ * refuse it — and why, three reasons at most; or put back, because the server refused it. Saved, or
+ * on its way, it says nothing (#51).
  */
 function PlanStatus({ status }: { readonly status: PlanEditor['status'] }): React.JSX.Element {
-  const { issues, said, saving, unsaved } = status
+  const { issues, said, saving } = status
   return (
-    <Stack gap="xs">
-      <Text variant="caption" tone={issues.length > 0 ? 'danger' : 'muted'} testID="plan-status">
-        {saving ? 'Saving…' : unsaved ? 'Not saved' : 'Saved'}
-      </Text>
-      {said === null ? null : (
-        <Text variant="caption" tone="danger" testID="plan-said">
-          {said}
-        </Text>
-      )}
-      {issues.length === 0 ? null : (
-        <Stack gap="xs" testID="plan-issues">
-          {issues.slice(0, 3).map((issue) => (
-            <Text key={issue} variant="caption" tone="danger">
-              {issue}
-            </Text>
-          ))}
-          {issues.length > 3 ? (
-            <Text variant="caption" tone="danger">{`…and ${String(issues.length - 3)} more`}</Text>
-          ) : null}
-        </Stack>
-      )}
-    </Stack>
+    // Busy while a change is on its way — said to assistive tech, not on screen: a plan saved as
+    // it is edited says nothing until something is wrong, as notes kept as they are left do.
+    <View aria-busy={saving} testID="plan-status">
+      <Stack gap="xs">
+        {issues.length === 0 ? null : (
+          <Text variant="caption" tone="danger">
+            Not saved
+          </Text>
+        )}
+        {said === null ? null : (
+          <Text variant="caption" tone="danger" testID="plan-said">
+            {said}
+          </Text>
+        )}
+        {issues.length === 0 ? null : (
+          <Stack gap="xs" testID="plan-issues">
+            {issues.slice(0, 3).map((issue) => (
+              <Text key={issue} variant="caption" tone="danger">
+                {issue}
+              </Text>
+            ))}
+            {issues.length > 3 ? (
+              <Text
+                variant="caption"
+                tone="danger"
+              >{`…and ${String(issues.length - 3)} more`}</Text>
+            ) : null}
+          </Stack>
+        )}
+      </Stack>
+    </View>
   )
 }

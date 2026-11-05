@@ -1,31 +1,35 @@
 import { useState } from 'react'
 import { StyleSheet, View } from 'react-native'
-import { Button } from './button.tsx'
+import { IconButton } from './icon.tsx'
 import { Stack } from './stack.tsx'
 import { type } from './tokens.ts'
 
 /**
- * Long text kept to its first lines, with Show all (#51) — so a workout's notes, above its plan, do
- * not push the plan off the screen. Measured as it is laid out, not counted in lines of source: a
- * heading and a table take very different room. Nothing is offered when nothing is hidden.
+ * Long text kept to its first lines, with a chevron to show the rest (#51) — so a workout's notes,
+ * above its plan, do not push the plan off the screen. Measured as it is laid out, not counted in
+ * lines of source: a heading and a table take very different room. Nothing is offered when nothing
+ * is hidden.
+ *
+ * Its controls are small glyphs on one line under the text, as rarely used as pinning: the chevron
+ * centred, and what else can be done with the text — Edit — at the right edge.
  */
 export function Folded({
   lines,
   children,
-  actions,
+  action,
   testID,
 }: {
   /** How many lines of body text show while folded. */
   readonly lines: number
   readonly children: React.ReactNode
-  /** Beside Show all, under the text: what else can be done with it — Edit. */
-  readonly actions?: React.ReactNode
+  /** At the right edge under the text: a small `IconButton`, `edge="end"`. */
+  readonly action?: React.ReactNode
   readonly testID: string
 }): React.JSX.Element {
   const [open, setOpen] = useState(false)
   const [height, setHeight] = useState(0)
   const folded = lines * type.body.lineHeight
-  // Half a line over is not worth a button: it is shown.
+  // Half a line over is not worth a control: it is shown.
   const folds = height > folded + type.body.lineHeight / 2
   return (
     <Stack gap="xs">
@@ -38,12 +42,13 @@ export function Folded({
           {children}
         </View>
       </View>
-      {folds || actions !== undefined ? (
-        <Stack direction="row" gap="xs">
+      {folds || action !== undefined ? (
+        <Stack direction="row" align="center">
+          <View style={styles.side} />
           {folds ? (
-            <Button
-              title={open ? 'Show less' : 'Show all'}
-              variant="ghost"
+            <IconButton
+              name={open ? 'up' : 'down'}
+              label={open ? 'Show less' : 'Show all'}
               size="small"
               onPress={() => {
                 setOpen(!open)
@@ -51,11 +56,15 @@ export function Folded({
               testID={`${testID}-fold`}
             />
           ) : null}
-          {actions}
+          <View style={[styles.side, styles.end]}>{action}</View>
         </Stack>
       ) : null}
     </Stack>
   )
 }
 
-const styles = StyleSheet.create({ clip: { overflow: 'hidden' } })
+const styles = StyleSheet.create({
+  clip: { overflow: 'hidden' },
+  side: { flex: 1 },
+  end: { alignItems: 'flex-end' },
+})

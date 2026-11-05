@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { notesToKeep } from '@cedo/contract'
-import { Button, Folded, Input, Prose } from '../ui/index.ts'
+import { Card, Folded, IconButton, Input, Prose, Stack, Text } from '../ui/index.ts'
 
 /**
  * Notes read first, and written on request (#51): whoever may change them sees them as everyone
@@ -57,25 +57,42 @@ export function WrittenNotes({
     )
   }
 
-  const edit = (title: string, id: string) => (
-    <Button
-      title={title}
-      variant="ghost"
+  const edit = (label: string, id: string) => (
+    <IconButton
+      name="edit"
+      label={label}
       size="small"
+      edge="end"
       onPress={() => {
         setEditing(true)
       }}
       testID={`${testID}-${id}`}
     />
   )
-  if (shown === null) return canEdit ? edit('Add notes', 'add') : null
+  // On a ground of their own, so they read apart from the plan around them; none yet, the card
+  // says what they are for, beside the same pencil.
+  if (shown === null) {
+    if (!canEdit) return null
+    return (
+      <Card>
+        <Stack direction="row" align="center" gap="sm">
+          <Stack grow>
+            <Text tone="faint">{placeholder}</Text>
+          </Stack>
+          {edit('Add notes', 'add')}
+        </Stack>
+      </Card>
+    )
+  }
   return (
-    <Folded
-      lines={fold ?? Number.POSITIVE_INFINITY}
-      actions={canEdit ? edit('Edit', 'edit') : undefined}
-      testID={testID}
-    >
-      <Prose text={shown} testID={`${testID}-read`} />
-    </Folded>
+    <Card>
+      <Folded
+        lines={fold ?? Number.POSITIVE_INFINITY}
+        action={canEdit ? edit('Edit notes', 'edit') : undefined}
+        testID={testID}
+      >
+        <Prose text={shown} testID={`${testID}-read`} />
+      </Folded>
+    </Card>
   )
 }
