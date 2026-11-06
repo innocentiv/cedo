@@ -390,6 +390,23 @@ describe('a retried log, by its idempotency key', () => {
 /** `session_log` over MCP: a whole, finished session in one write. */
 describe('logging a whole session at once', () => {
   /**
+   * Yesterday's session, logged by the AI while today's is open on the phone: one logged whole is
+   * never in progress, not even inside its own write, so the session open is no obstacle — and
+   * stays open.
+   */
+  test('is logged while another session is in progress', async () => {
+    const squat = await anExercise(alice, 'Squat')
+    const open = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const logged = await logWhole(
+      alice.caller,
+      SessionLogInput.parse({ sets: [{ exerciseId: squat, reps: 5 }] }),
+    )
+    expect(logged.endedAt).not.toBeNull()
+    const still = expectContract(WorkoutSession, (await alice.wire(`/sessions/${open.id}`)).body)
+    expect(still.endedAt).toBeNull()
+  })
+
+  /**
    * One INSERT shares one `now()`, and a session's logs read back by `logged_at`, then `set_index`
    * — so equal timestamps interleaved the exercises: squat 1, bench 1, squat 2, bench 2.
    */
@@ -749,14 +766,15 @@ describe("a session's targets", () => {
     reps.map((count) => ({ reps: count, weightG: kgToG(60), durationS: null, distanceMm: null }))
 
   /**
-   * A past mistake fixed (#31): 8 reps typed for 7 earned a rep more; corrected, the rep is gone
-   * and last time says 7 — carried over the sessions as they stand, never as first logged.
+   * A past mistake fixed (#31): 8 reps typed for 7, corrected, and last time says 7 — read from the
+   * sessions as they stand, never as first logged. What a correction does to the target is
+   * `progression/steps.test.ts`'s, one row a change.
    */
-  test('follow a set of an earlier session corrected, or the session deleted', async () => {
+  test('last time follows a set of an earlier session corrected, or the session deleted', async () => {
     const workout = await aPlannedWorkout(alice, await anExercise(alice))
     const earlier = await aSession(alice, workout, [8, 8, 8])
     const id = await aSession(alice, workout, [], false)
-    expect((await targetsOf(alice, id))[0]?.target.reps).toBe(9)
+    expect((await targetsOf(alice, id))[0]?.last).toEqual(sets(8, 8, 8))
 
     const read = expectContract(WorkoutSession, (await alice.wire(`/sessions/${earlier}`)).body)
     for (const log of read.logs.filter((l) => !l.isWarmup)) {
@@ -766,10 +784,7 @@ describe("a session's targets", () => {
       })
       expect(fixed.status).toBe(200)
     }
-    const [after] = await targetsOf(alice, id)
-    expect(after?.target.reps).toBe(8)
-    expect(after?.changed).toBe(false)
-    expect(after?.last).toEqual(sets(7, 7, 7))
+    expect((await targetsOf(alice, id))[0]?.last).toEqual(sets(7, 7, 7))
 
     expect((await alice.wire(`/sessions/${earlier}`, { method: 'DELETE' })).status).toBe(200)
     expect((await targetsOf(alice, id))[0]?.last).toBeNull()

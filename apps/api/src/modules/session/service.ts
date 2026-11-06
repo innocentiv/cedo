@@ -7,10 +7,10 @@ import {
   type WorkoutSession,
   personalBestsIn,
 } from '@cedo/contract'
-import { type Transaction, db } from '../../db/client.ts'
+import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises } from '../../db/visible.ts'
-import { conflict, isForeignKeyRefusal, notFound } from '../../lib/error.ts'
+import { isForeignKeyRefusal, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { type Training, own, sessionsOf } from '../coaching/training.ts'
 import { earlierBests } from './bests.ts'
@@ -69,12 +69,6 @@ export const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutS
       : { since: row.restSince.toISOString(), endsAt: row.restEndsAt.toISOString() },
 })
 
-/** Said by every write only a session in progress takes. */
-const FINISHED = 'That session has already been finished'
-
-/** No rest running (#38): its set undone, or the session finished. */
-export const NO_REST = { restSince: null, restEndsAt: null } as const
-
 /**
  * +30 s, or skip — of the rest running after the session's `sets`th set, and only that one (#38).
  * Named by how many sets there were when it was tapped, not by a time: a set logged without a
@@ -106,35 +100,6 @@ export async function changeRest(
         sql`${logged} = ${sets}`,
       ),
     )
-}
-
-/**
- * Locks the caller's session for a write to its sets, and says whether it is finished. Every write
- * to its sets takes this lock (`writeSessionSets`), so they are taken in turn: the next set's
- * number is read from the sets as they stand.
- */
-export async function lockOwn(
-  tx: Transaction,
-  caller: Caller,
-  id: string,
-): Promise<{ finished: boolean }> {
-  const [locked] = await tx
-    .select({ endedAt: workoutSessions.endedAt })
-    .from(workoutSessions)
-    .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
-    .for('update')
-  if (locked === undefined) throw notFound('session')
-  return { finished: locked.endedAt !== null }
-}
-
-/**
- * Locks the caller's session for a write only a session in progress takes — a set, its finish —
- * and refuses one already finished. Locked, then checked: read without the lock, a finish landing
- * between the check and the write let a set into a session that was already over. See GLOSSARY.md,
- * "Session".
- */
-export async function lockInProgress(tx: Transaction, caller: Caller, id: string): Promise<void> {
-  if ((await lockOwn(tx, caller, id)).finished) throw conflict(FINISHED)
 }
 
 /** One of the caller's own sessions, read back after a write to it. */
