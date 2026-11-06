@@ -1,26 +1,21 @@
 import {
   type Exercise,
-  NO_TARGET,
   type SessionEntry,
-  type SessionEntryTarget,
   type WeightUnit,
   formatEffort,
-  formatSets,
-  markedSets,
-  nextSet,
-  nextSetWords,
+  loggerAsks,
   prescriptionOf,
-  targetLine,
 } from '@cedo/contract'
 import { AfterSet, ConfirmButton, FocusLogger, type JustDone, Stack, Text } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
 import { useLoads } from './use-loads.ts'
-import { AdHocFocus } from './workout-adhoc.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
 /**
- * What a planned day has in focus (#24), and how it shows — the set just logged in Log's place
- * (#63). Which it is is the contract's `workoutView`; this renders it.
+ * What is in focus (#24), and how it shows: of a planned day, an entry out of reach or the day done;
+ * of any session, the logger of an entry or an exercise added (`Focus`) — the set just logged in
+ * Log's place (#63). Which it is is the contract's `workoutView`, and what the logger asks its
+ * `loggerAsks`; this renders them.
  */
 
 /** An entry whose exercise the reader can no longer see: what it asked, and nothing to log. */
@@ -45,65 +40,87 @@ function Unavailable({
   )
 }
 
-/** The entry in focus: its sets, the next one large, and Log. */
-function Focus({
-  entry,
-  exercise,
+/** A focus with something to log: an entry of the day, or an exercise added. */
+type Logging = Extract<WorkoutShown['focus'], { kind: 'entry' | 'added' }>
+
+/**
+ * What the logger shows of what it logs to: an entry's exercise and cue; an exercise added has no
+ * cue, and is at hand whole — how to do it, what loads it — only when picked this open.
+ */
+const shownOf = (focus: Logging, full: readonly Exercise[]) =>
+  focus.kind === 'entry'
+    ? {
+        exercise: focus.entry.exercise,
+        whole: focus.entry.exercise,
+        cue: focus.entry.cue,
+        testID: `log-entry-${focus.entry.index}`,
+      }
+    : {
+        exercise: focus.exercise,
+        whole: full.find((e) => e.id === focus.exercise.id),
+        cue: null,
+        testID: `adhoc-${focus.exercise.id}`,
+      }
+
+/**
+ * The entry or exercise in focus: its sets, the next one large, and Log — as the contract's
+ * `loggerAsks` decides them.
+ */
+export function Focus({
+  focus,
+  full,
   sets,
-  entrySets,
-  asked,
-  from,
   after,
   onHowTo,
   unit,
 }: {
-  readonly entry: SessionEntry
-  readonly exercise: Exercise
+  readonly focus: Logging
+  /** The exercises picked this open, whole. */
+  readonly full: readonly Exercise[]
   readonly sets: WorkoutSets
-  readonly entrySets: Extract<WorkoutShown['focus'], { kind: 'entry' }>['sets']
-  readonly asked: SessionEntryTarget | undefined
-  readonly from: Extract<WorkoutShown['focus'], { kind: 'entry' }>['undone']
+  /** The set just logged, while it can be taken back: in Log's place (#63). */
   readonly after: JustDone | null
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
   readonly unit: WeightUnit
 }): React.JSX.Element {
-  const next = nextSet(entrySets)
-  const words = nextSetWords(entrySets, next, true)
-  const target = next?.target ?? asked?.target ?? prescriptionOf(entry)?.target ?? NO_TARGET
-  const load = useLoads()(exercise)
-  const { tracking } = exercise
+  const asks = loggerAsks(focus, sets.waiting, unit)
+  const { exercise, whole, cue, testID } = shownOf(focus, full)
+  // Its weights as the athlete can load them, when the whole exercise is at hand (#36).
+  const load = useLoads()(whole)
   return (
     <FocusLogger
-      // Keyed by the set it logs: the numbers start again from what the NEXT set asks. By how many
-      // sets there are, not the last one's id: a set logged without a signal changes id when the
-      // server has it, and a reserve already chosen for the next set would be lost to it (#37).
-      key={`${entry.id}:${next?.key ?? 'more'}:${String(sets.all.length)}`}
+      // The numbers start again from what the next set asks when the key changes.
+      key={asks.key}
       name={exercise.name}
-      cue={entry.cue}
-      tracking={tracking}
-      sets={markedSets(entrySets, sets.waiting)}
-      next={{ target, isWarmup: next?.isWarmup ?? false, title: words.title, action: words.action }}
-      from={from}
+      cue={cue}
+      tracking={exercise.tracking}
+      sets={asks.marks}
+      next={asks.next}
+      from={asks.from}
       after={after}
-      progressed={asked === undefined ? null : targetLine(asked, unit, next ?? undefined)}
-      last={asked?.last == null ? null : `Last time ${formatSets(asked.last, tracking, unit)}`}
+      progressed={asks.progressed}
+      last={asks.last}
       busy={sets.busy}
       load={load}
       onLog={(set) => {
-        sets.record.log({ exerciseId: entry.exerciseId, entryId: entry.id, ...set })
+        sets.record.log({ ...asks.logsAgainst, ...set })
       }}
-      onHowTo={() => {
-        onHowTo(exercise, entry.cue)
-      }}
-      testID={`log-entry-${entry.index}`}
+      onHowTo={
+        whole === undefined
+          ? undefined
+          : () => {
+              onHowTo(whole, cue)
+            }
+      }
+      testID={testID}
     />
   )
 }
 
 /**
- * What is in focus: an unavailable entry, an added exercise, the entry, or — all done — Finish.
- * Where nothing is logged — the day done, an entry out of reach — the set just logged is said above
- * it.
+ * What is in focus: an unavailable entry, all done — Finish — or what is logged: an entry, or an
+ * exercise added. Where nothing is logged — the day done, an entry out of reach — the set just
+ * logged is said above it.
  */
 export function InFocus({
   focus,
@@ -133,22 +150,6 @@ export function InFocus({
       </>
     )
   }
-  if (focus.kind === 'added') {
-    const { exercise } = focus
-    return (
-      <AdHocFocus
-        exercise={exercise}
-        marks={focus.sets}
-        whole={full.find((e) => e.id === exercise.id)}
-        sets={sets}
-        from={focus.undone}
-        after={after}
-        onHowTo={(whole) => {
-          onHowTo(whole, null)
-        }}
-      />
-    )
-  }
   if (focus.kind === 'done') {
     return (
       <Stack gap="md" testID="day-done">
@@ -165,18 +166,5 @@ export function InFocus({
   }
   // A day always has a focus or is done; nothing is in focus only without a plan.
   if (focus.kind === 'none') return null
-  const { entry } = focus
-  return (
-    <Focus
-      entry={entry}
-      exercise={entry.exercise}
-      sets={sets}
-      entrySets={focus.sets}
-      asked={focus.asked}
-      from={focus.undone}
-      after={after}
-      onHowTo={onHowTo}
-      unit={unit}
-    />
-  )
+  return <Focus focus={focus} full={full} sets={sets} after={after} onHowTo={onHowTo} unit={unit} />
 }

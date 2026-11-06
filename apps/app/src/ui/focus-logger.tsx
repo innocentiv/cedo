@@ -4,7 +4,7 @@ import {
   type Load,
   type LogSetInput,
   type MarkedSet,
-  type SetTarget,
+  type NextSet,
   type TrackingMode,
   type Undone,
   asksReserveOf,
@@ -20,15 +20,6 @@ import { SetMarks } from './set-marks.tsx'
 import { Stack } from './stack.tsx'
 import { Stepper } from './stepper.tsx'
 import { Text } from './text.tsx'
-
-export interface NextSet {
-  readonly target: SetTarget
-  readonly isWarmup: boolean
-  /** What it is, as the athlete reads it: "Warm-up 1 of 2", "Set 3 of 5", "Another set". */
-  readonly title: string
-  /** The button's words: "Log warm-up", "Log set 3", "Log another set". */
-  readonly action: string
-}
 
 /** A set as the logger hands it over: its numbers, whether a warm-up, and its reserve. */
 export interface LoggedHere {

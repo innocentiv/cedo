@@ -155,7 +155,10 @@ summing to 100, which inputs a tracking mode implies, what a progression rule co
 is next, where the focus goes, whose rest runs, what a set is called) all live in `@cedo/contract`:
 `session-flow.ts` and `set-marks.ts` for the workout, and `workout-view.ts` for what its screen
 shows of them — the focus, the set just logged, "+ set", the rows marked — from the sets and what the
-athlete chose, which `workout-choices.ts` changes. An unavailable exercise has no mode, so no
+athlete chose, which `workout-choices.ts` changes; and `focus-logger.ts` for what the logger asks of
+the focus, an entry or an exercise added alike (`loggerAsks`) — the set it logs, its marks, the lines
+beside it, what the set is logged against, and the key it starts again by. One `Focus` component
+draws it for both. An unavailable exercise has no mode, so no
 inputs: the workout shows what it prescribed and that nothing more can be logged against it, and
 a workout's outline gives it a line that says so — what it prescribes, and the bin, which is the
 only way the plan saves again.
@@ -294,7 +297,10 @@ there (#63).
   contract's `choicesAfter` (`workout-choices.ts`) — the screen holds the choices and sends it what
   the athlete did — and what they put in focus is its `workoutView`.
 - **Logging moves the focus** to the entry's next set, then to the next entry in day order with
-  sets left. Entries of a superset alternate, and rest starts after the round.
+  sets left. Entries of a superset alternate, and rest starts after the round. The numbers — and a
+  reserve answered — start again from what the next set asks when the set the logger logs changes:
+  by where it stands in the focus, never by an id or by how many sets the session holds, so a set
+  landing late, or one logged on another entry from elsewhere, leaves what is typed.
 - **The rest takes Log's place** (#63) when a set is logged: **Undo · countdown · Skip**, a tap on
   the countdown adding 30 s, with the set just logged right under it — its effort, a personal best,
   "+ set" once its entry has all it asked for. The next set's numbers stay above, ready to change
@@ -315,8 +321,10 @@ there (#63).
   ("leave 2 in reserve"), because each working set is judged against its own (ADR-0026), and a set
   that left fewer holds the target. Once logged, the set says its reserve and asks nothing more:
   Undo, or correcting it from the session's list (#31), is how a mistake is fixed.
-- **"+ set"** logs one beyond the prescription; **Add exercise** logs one with no entry, as a swap
-  when a machine is taken — today's ad-hoc logging, which leaves the entry's progression alone.
+- **"+ set"** logs one beyond the prescription, starting from what the entry's last working set
+  asked — as a set past the plan is asked (`setsOf`) — not its top set; **Add exercise** logs one
+  with no entry, as a swap when a machine is taken — today's ad-hoc logging, which leaves the
+  entry's progression alone.
 - **ⓘ** opens how to do it — cue, instructions, muscles, the video — without leaving the session.
 - **A session in progress takes over the app**: its own header — back, the day, the time since it
   started, the menu, on one line — in place of the tab bar. Back leaves it in progress, and a bar on

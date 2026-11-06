@@ -57,15 +57,7 @@ export function sessionColumns(w: Workout): ScreenColumns | undefined {
   }
   if (day === undefined) {
     return columns(
-      <AdHocMain
-        full={w.picked}
-        sets={w.sets}
-        rest={rest}
-        view={w.view}
-        onHowTo={(exercise) => {
-          showHowTo(exercise, null)
-        }}
-      />,
+      <AdHocMain full={w.picked} sets={w.sets} rest={rest} view={w.view} onHowTo={showHowTo} />,
       <AdHocSide
         exercises={w.adHocExercises}
         sets={w.sets}
