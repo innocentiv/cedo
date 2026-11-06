@@ -12,13 +12,19 @@ import type { LatestStep } from './evaluate.ts'
  */
 
 /**
- * The entries to evaluate — of one day when `dayId` names one — their prescribed sets, and the
- * caller's latest step on each. Null when there is no entry the caller can see.
+ * Which of a workout's entries are read: every one (a plan's targets), one day's (a session's), or
+ * one (a target set by hand).
+ */
+export type Within = { readonly dayId: string } | { readonly entryId: string } | null
+
+/**
+ * The entries to evaluate — those `within` names — their prescribed sets, and the caller's latest
+ * step on each. Null when there is no entry the caller can see.
  */
 export async function loadEntries(
   caller: Caller,
   workoutId: string,
-  dayId: string | null,
+  within: Within,
   /** A write's transaction, when one reads: its connection, and what it has written. */
   on: Database | Transaction = db,
 ) {
@@ -40,7 +46,13 @@ export async function loadEntries(
      * do not appear — there is nothing useful to advise about a movement you cannot read.
      */
     .innerJoin(exercises, eq(exercises.id, plan.exerciseId))
-    .where(dayId === null ? undefined : eq(plan.dayId, dayId))
+    .where(
+      within === null
+        ? undefined
+        : 'dayId' in within
+          ? eq(plan.dayId, within.dayId)
+          : eq(plan.id, within.entryId),
+    )
     .orderBy(asc(plan.dayIndex), asc(plan.index))
   if (entries.length === 0) return null
 

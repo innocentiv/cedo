@@ -259,6 +259,17 @@ describe('a target set by hand', () => {
     expect((await shown(p))?.target).toMatchObject({ reps: 8, weightG: 55_000 })
   })
 
+  test('is set only on an entry of the workout it names', async () => {
+    const p = await planned()
+    const other = await planned()
+    const res = await alice.wire(`/workouts/${other.workoutId}/entries/${p.entryId}/target`, {
+      method: 'PUT',
+      body: JSON.stringify({ reps: 10 }),
+    })
+    expect(res.status).toBe(404)
+    expect((await shown(p))?.target.reps).toBe(8)
+  })
+
   test('is not anyone else’s to set', async () => {
     const p = await planned()
     const bob = await (await makeApi()).as('bob')

@@ -1,4 +1,4 @@
-import type { EntryTarget, TargetByHand } from '@cedo/contract'
+import type { EntryTarget, LoadFor, TargetByHand } from '@cedo/contract'
 import { againstOf, targetByHand } from '@cedo/contract'
 import { type Transaction, db } from '../../db/client.ts'
 import { invalid, notFound } from '../../lib/error.ts'
@@ -24,7 +24,9 @@ export async function setTargetByHand(
 ): Promise<EntryTarget> {
   return await db.transaction(async (tx) => {
     await lockSteps(tx, caller)
-    const before = await entryTarget(tx, caller, workoutId, entryId)
+    const loadFor = await loadsOf(caller.userId, caller.weightUnit, tx)
+    const read = async () => await entryTarget(tx, caller, { workoutId, entryId }, loadFor)
+    const before = await read()
     const set = targetByHand(before.entry.progression, before.shown.target, input)
     if ('refused' in set) throw invalid(set.refused, [{ path: '', message: set.refused }])
     await writeByHand(tx, caller, {
@@ -33,19 +35,24 @@ export async function setTargetByHand(
       target: set.target,
       against: againstOf(before.entry.progression, before.working),
     })
-    return (await entryTarget(tx, caller, workoutId, entryId)).shown
+    return (await read()).shown
   })
 }
 
-/** One entry of a workout the caller can see, its working sets, and the target they are shown. */
-async function entryTarget(tx: Transaction, caller: Caller, workoutId: string, entryId: string) {
-  const loaded = await loadEntries(caller, workoutId, null, tx)
-  const entry = loaded?.entries.find((e) => e.id === entryId)
+/**
+ * One entry of a workout the caller can see — read alone, not the whole plan — its working sets,
+ * and the target they are shown.
+ */
+async function entryTarget(
+  tx: Transaction,
+  caller: Caller,
+  { workoutId, entryId }: { readonly workoutId: string; readonly entryId: string },
+  loadFor: LoadFor,
+) {
+  const loaded = await loadEntries(caller, workoutId, { entryId }, tx)
+  const entry = loaded?.entries[0]
   if (loaded === null || entry === undefined) throw notFound('entry')
-  const prescribed = loaded.prescribed.filter((s) => s.entryId === entryId)
-  const steps = loaded.steps.filter((s) => s.entryId === entryId)
-  const loadFor = await loadsOf(caller.userId, caller.weightUnit, tx)
-  const [shown] = targetsOf([entry], prescribed, steps, loadFor)
+  const [shown] = targetsOf([entry], loaded.prescribed, loaded.steps, loadFor)
   if (shown === undefined) throw notFound('entry')
-  return { entry, shown, working: prescribed.filter((s) => !s.isWarmup) }
+  return { entry, shown, working: loaded.prescribed.filter((s) => !s.isWarmup) }
 }

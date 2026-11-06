@@ -33,7 +33,7 @@ export async function targetsForSession(
   if (session === undefined) throw notFound('session')
   if (session.workoutId === null || session.dayId === null) return []
 
-  const loaded = await loadEntries(caller, session.workoutId, session.dayId)
+  const loaded = await loadEntries(caller, session.workoutId, { dayId: session.dayId })
   if (loaded === null) return []
   const exerciseIds = [...new Set(loaded.entries.map((e) => e.exerciseId))]
   const [last, loadFor] = await Promise.all([
