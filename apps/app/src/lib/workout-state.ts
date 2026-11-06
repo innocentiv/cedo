@@ -27,7 +27,7 @@ const NO_LOGS: readonly SetLog[] = []
 const NO_TARGETS: readonly SessionEntryTarget[] = []
 
 /** Tells `choicesAfter` what the athlete did. */
-type Send = (event: ChoiceEvent) => void
+type Did = (event: ChoiceEvent) => void
 
 /** What the workout screen shows: the contract's `workoutView`, of this session. */
 export type WorkoutShown = WorkoutView<
@@ -65,12 +65,12 @@ export function useWorkout(id: string) {
   const menu = useMenu()
   const [howTo, setHowTo] = useState<{ exercise: Exercise; cue: string | null } | null>(null)
   const serverLogs = session.data?.logs ?? NO_LOGS
-  // What the athlete chose (GLOSSARY.md, "Focus"): each thing done here is sent to `choicesAfter`.
-  const [choices, send] = useReducer(choicesAfter, NO_CHOICES)
-  const writes = useSessionWrites(id, submission.submit, menu.hide, send)
-  const picks = useAdHocPicks(serverLogs, send)
+  // What the athlete chose (GLOSSARY.md, "Focus"): each thing they do here goes to `choicesAfter`.
+  const [choices, did] = useReducer(choicesAfter, NO_CHOICES)
+  const writes = useSessionWrites(id, submission.submit, menu.hide, did)
+  const picks = useAdHocPicks(serverLogs, did)
   const ended = session.data?.endedAt != null
-  const sets = workoutSets(serverLogs, unsent.sets, record, writes.undo, send)
+  const sets = workoutSets(serverLogs, unsent.sets, record, writes.undo, did)
 
   return {
     id,
@@ -102,7 +102,7 @@ export function useWorkout(id: string) {
     setHowTo,
     ...picks,
     ...writes,
-    ...useView(plan, targets.data, sets, picks.adHocExercises, [choices, send]),
+    ...useView(plan, targets.data, sets, picks.adHocExercises, [choices, did]),
   }
 }
 
@@ -117,7 +117,7 @@ const workoutSets = (
   unsent: ReturnType<typeof useUnsentSets>['sets'],
   record: WorkoutSets['record'],
   undo: WorkoutSets['undo'],
-  send: Send,
+  did: Did,
 ): WorkoutSets => ({
   server,
   // Sets still waiting for a signal count as done: the next one comes up, rest starts (#9).
@@ -126,7 +126,7 @@ const workoutSets = (
   record: {
     ...record,
     log: (...set) => {
-      send({ kind: 'logged' })
+      did({ kind: 'logged' })
       record.log(...set)
     },
   },
@@ -142,7 +142,7 @@ function useView(
   targets: readonly SessionEntryTarget[] | undefined,
   sets: WorkoutSets,
   added: readonly SessionExercise[],
-  [choices, send]: readonly [WorkoutChoices, Send],
+  [choices, did]: readonly [WorkoutChoices, Did],
 ) {
   const loads = useLoads()
   // The plan as the server says the reader can reach it (`SessionPlan`) — never decided here.
@@ -161,7 +161,7 @@ function useView(
     view,
     /** An entry tapped in Up next, an exercise among those added, or "+ set": put in focus. */
     choose: (chosen: Chosen) => {
-      send({ kind: 'tapped', chosen })
+      did({ kind: 'tapped', chosen })
     },
   }
 }
@@ -185,7 +185,7 @@ function useMenu() {
  * one with a plan — then any picked since (`exercisesInSession`). Picks are local: once a set is
  * logged, the log carries the exercise. Going to pick, and what is picked, say so to `choicesAfter`.
  */
-function useAdHocPicks(logs: readonly SetLog[], send: Send) {
+function useAdHocPicks(logs: readonly SetLog[], did: Did) {
   const [picking, setPicking] = useState(false)
   const [declined, setDeclined] = useState(false)
   const [picked, setPicked] = useState<Exercise[]>([])
@@ -196,7 +196,7 @@ function useAdHocPicks(logs: readonly SetLog[], send: Send) {
     picking,
     declined,
     startPicking: () => {
-      send({ kind: 'pickerOpened' })
+      did({ kind: 'pickerOpened' })
       setPicking(true)
     },
     cancelPicking: () => {
@@ -207,7 +207,7 @@ function useAdHocPicks(logs: readonly SetLog[], send: Send) {
     pick: (exercises: readonly Exercise[]) => {
       const ids = new Set(exercises.map((e) => e.id))
       setPicked((now) => [...now.filter((e) => !ids.has(e.id)), ...exercises])
-      send({ kind: 'picked', exercises })
+      did({ kind: 'picked', exercises })
       setPicking(false)
     },
   }
@@ -218,7 +218,7 @@ function useSessionWrites(
   id: string,
   submit: ReturnType<typeof useSubmit>['submit'],
   closeMenu: () => void,
-  send: Send,
+  did: Did,
 ) {
   const update = useUpdateSession(id)
   const removeLog = useRemoveLog(id)
@@ -236,7 +236,7 @@ function useSessionWrites(
     },
     // A set finished on another device answers 404, and says so.
     undo: (log: SetLog) => {
-      send({ kind: 'undone', set: log })
+      did({ kind: 'undone', set: log })
       void submit(async () => {
         await removeLog.mutateAsync(log.id)
       })

@@ -6,7 +6,7 @@ import type { FlowLog } from './session-flow.ts'
  * changes it (`choicesAfter`). The screen holds it; `workoutView` reads it.
  */
 
-/** A set as it is undone: what it was of, and what it said. */
+/** What undoing reads of a set: the entry and exercise it was of, its effort, and its reserve. */
 type UndoneLog = FlowLog & { readonly exerciseId: string; readonly reserve: number | null }
 
 /**
@@ -22,7 +22,7 @@ export interface Undone {
 }
 
 /** A set as it is undone: what it was of, and what it said. */
-export const undoneOf = (log: UndoneLog): Undone => ({
+const undoneOf = (log: UndoneLog): Undone => ({
   entryId: log.entryId,
   exerciseId: log.exerciseId,
   effort: {

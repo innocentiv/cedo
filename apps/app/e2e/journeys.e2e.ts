@@ -2292,8 +2292,9 @@ test(
       expect(await app.session.inFocus()).toBe('entry 0')
 
       // Two picked together (#27): the first takes the focus, though the last was picked last.
-      const [pushUp] = await app.session.addExercises(['Push-Up', 'Plank'])
-      expect(await app.session.inFocus()).toBe(`adhoc ${pushUp ?? ''}`)
+      const [pushUp, plank] = await app.session.addExercises(['Push-Up', 'Plank'])
+      if (pushUp === undefined || plank === undefined) throw new Error('Two were picked')
+      expect(await app.session.inFocus()).toBe(`adhoc ${pushUp}`)
 
       // The bench's rest still runs, in Push-Up's Log's place: Undo there takes its set back (#63).
       await app.session.undoJustLogged()
