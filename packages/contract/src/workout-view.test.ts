@@ -303,6 +303,11 @@ describe('what the workout shows', () => {
       expect(choicesAfter(chose({ entry: 'rdl' }), { kind: 'pickerOpened' })).toEqual(NO_CHOICES)
     })
 
+    test('opening the picker keeps a set undone: only the next set ends it', () => {
+      const held = { chosen: { entry: 'squat' }, undone: undone('rdl') }
+      expect(choicesAfter(held, { kind: 'pickerOpened' })).toEqual(heldUndo)
+    })
+
     test('a set logged forgets everything: the next set ends a choice, and an undo', () => {
       const held = { chosen: { entry: 'rdl' }, undone: undone('squat') }
       expect(choicesAfter(held, { kind: 'logged' })).toEqual(NO_CHOICES)
@@ -361,6 +366,22 @@ describe('what the workout shows', () => {
       // A set of the day gives the day its focus back: squat is done, so rdl, not dip.
       const ofTheDay = [...swapped, set('squat')]
       expect(focusId(view(ofTheDay, { added, choices: choicesAfter(swap, logged) }))).toBe('rdl')
+    })
+
+    /**
+     * Undo ends the rest with its set (#63), and opening the picker after it does not bring the set
+     * before back as just logged — its rest, its Undo — whether something is picked or not.
+     */
+    test('the picker opened after an undo: no set comes back as just logged', () => {
+      const squat1 = set('squat')
+      const rdl1 = { ...set('rdl'), reserve: null }
+      const opened = after(logged, logged, { kind: 'undone', set: rdl1 }, { kind: 'pickerOpened' })
+      // Put away: the set undone still has the focus, to be logged again.
+      const away = view([squat1], { added, choices: opened })
+      expect([away.shown, focusId(away)]).toEqual([null, 'rdl'])
+      // Picked: the exercise has the focus, and Log stays.
+      const pick = view([squat1], { added, choices: choicesAfter(opened, picked('dip')) })
+      expect([pick.shown, focusId(pick)]).toEqual([null, 'dip'])
     })
 
     /** c0fb1fe: a choice held to the latest set's id was lost as a set logged offline landed. */

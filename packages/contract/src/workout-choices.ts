@@ -64,7 +64,9 @@ export type ChoiceEvent =
  *
  * - **Tapped**: chosen, over anything chosen before; a set undone stays undone.
  * - **Picked**: the first exercise picked is chosen, so it takes the focus as a tap would.
- * - **Picker opened**: what was chosen is forgotten — what is picked takes the focus.
+ * - **Picker opened**: what was chosen is forgotten — what is picked takes the focus. A set undone
+ *   stays undone: forgotten, the set before it came back as just logged, its rest and its Undo
+ *   with it — what Undo ends (#63).
  * - **Logged**: everything is forgotten. The next set is what ends a choice — by what this device
  *   did, never by which set is latest: a set logged without a signal changes id when the server has
  *   it, and a choice held to its id was lost as it landed.
@@ -79,6 +81,7 @@ export function choicesAfter(held: WorkoutChoices, event: ChoiceEvent): WorkoutC
       return first === undefined ? held : { ...held, chosen: { added: first.id } }
     }
     case 'pickerOpened':
+      return { ...held, chosen: null }
     case 'logged':
       return NO_CHOICES
     case 'undone':
