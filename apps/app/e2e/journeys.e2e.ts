@@ -2321,14 +2321,7 @@ test(
       const app = screens(page)
       await app.auth.register(unique('ofr'))
       await startTwoEntryDay(page)
-      /** The rest's seconds left, as the countdown reads them: `Rest 1:57` is 117. */
-      const left = async () => {
-        const [, minutes, seconds] =
-          /^Rest (\d+):(\d\d)$/u.exec((await app.session.entry(0).rest()) ?? '') ?? []
-        return minutes === undefined || seconds === undefined
-          ? null
-          : Number(minutes) * 60 + Number(seconds)
-      }
+      const left = app.session.entry(0).restLeft
 
       await page.goOffline()
       await app.session.entry(0).logWhileOffline()

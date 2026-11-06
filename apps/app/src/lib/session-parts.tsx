@@ -38,7 +38,7 @@ export function PlanUnavailable(): React.JSX.Element {
  * set just logged is (`exerciseOfSet`), since the server has not named them yet.
  */
 export function UnsentSets({
-  sets: { unsent: sets, heldUp },
+  sets: { unsent, heldUp },
   day,
   adHoc,
 }: {
@@ -47,8 +47,8 @@ export function UnsentSets({
   readonly adHoc: readonly SessionExercise[]
 }): React.JSX.Element | null {
   const unit = useWeightUnit()
-  if (sets.length === 0) return null
-  const count = `${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`
+  if (unsent.length === 0) return null
+  const count = `${unsent.length} ${unsent.length === 1 ? 'set' : 'sets'}`
   return (
     <Card testID="session-unsent">
       <Stack gap="xs">
@@ -57,7 +57,7 @@ export function UnsentSets({
             {`Keep cedo open — ${count} will be sent when the signal is back.`}
           </Text>
         ) : null}
-        {sets.map(({ input, key }) => {
+        {unsent.map(({ input, key }) => {
           const exercise = exerciseOfSet(day ?? null, adHoc, input)
           return (
             <ListRow

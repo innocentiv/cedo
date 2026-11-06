@@ -48,12 +48,12 @@ export function adHocFocus<X extends Added>(
 /**
  * The exercise a set is of, as the workout names it — the set just logged, or one waiting for a
  * signal, which the server has not named yet: its entry's in the day, else the exercise added to
- * the session. Null when neither is in reach.
+ * the session. Null when neither names it.
  */
 export function exerciseOfSet<E extends FlowEntry, X extends Added>(
   day: { readonly entries: readonly E[] } | null,
   added: readonly X[],
-  set: { readonly entryId: string | null; readonly exerciseId: string },
+  set: Pick<ViewLog, 'entryId' | 'exerciseId'>,
 ): NonNullable<E['exercise']> | X | null {
   return (
     day?.entries.find((e) => e.id === set.entryId)?.exercise ??

@@ -15,7 +15,12 @@ import {
   exercisesInSession,
   workoutView,
 } from '@cedo/contract'
-import { type PendingLog, type SessionSets, setsOfSession } from '../api/pending.ts'
+import {
+  type PendingLog,
+  type QueuedSend,
+  type SessionSets,
+  setsOfSession,
+} from '../api/pending.ts'
 import { useSession, useSessionTargets } from '../api/queries.ts'
 import { useQueuedSends, useRemoveLog, useUpdateSession } from '../api/session-queries.ts'
 import { useRecordSet } from './record-set.ts'
@@ -38,10 +43,12 @@ export type WorkoutShown = WorkoutView<
 >
 
 /**
- * A session's sets, as every part of the workout reads and changes them: as `setsOfSession` reads
- * them — those still waiting for a signal counted as done (#9) — and the writes to them.
+ * A session's sets, as every part of the workout reads and changes them: as the server has them, as
+ * `setsOfSession` reads them — those still waiting for a signal counted as done (#9) — and the
+ * writes to them.
  */
 export interface WorkoutSets extends SessionSets {
+  readonly server: readonly SetLog[]
   readonly record: ReturnType<typeof useRecordSet>
   /** Takes back a set the server has: its entry takes the focus, from what it said (#63). */
   readonly undo: (log: SetLog) => void
@@ -67,7 +74,7 @@ export function useWorkout(id: string) {
   const writes = useSessionWrites(id, submission.submit, menu.hide, did)
   const picks = useAdHocPicks(serverLogs, did)
   const ended = session.data?.endedAt != null
-  const sets = workoutSets(setsOfSession(serverLogs, sends), record, writes.undo, did)
+  const sets = workoutSets(serverLogs, sends, record, writes.undo, did)
 
   return {
     id,
@@ -105,16 +112,19 @@ export function useWorkout(id: string) {
 
 export type Workout = ReturnType<typeof useWorkout>
 
-/** The sets as `setsOfSession` reads them, and the writes to them. Logging one tells `choicesAfter`. */
+/** The sets as the server has them and as `setsOfSession` reads them, and the writes to them. */
 const workoutSets = (
-  read: SessionSets,
+  server: readonly SetLog[],
+  sends: readonly QueuedSend[],
   record: WorkoutSets['record'],
   undo: WorkoutSets['undo'],
   did: Did,
 ): WorkoutSets => ({
-  ...read,
+  ...setsOfSession(server, sends),
+  server,
   record: {
     ...record,
+    // Logging a set tells `choicesAfter`: the next set is what ends a choice.
     log: (...set) => {
       did({ kind: 'logged' })
       record.log(...set)

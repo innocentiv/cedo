@@ -131,10 +131,12 @@ describe('a session’s sets, sent and not', () => {
   })
 
   /** The next set waits for a first send on its way; behind one held up, it queues instead. */
-  test('busy only while a set’s first send is on its way', () => {
+  test('busy only while the last set’s first send is on its way', () => {
     expect(setsOfSession(server, [sending()]).busy).toBe(true)
     expect(setsOfSession(server, [offline(), offline()]).busy).toBe(false)
     expect(setsOfSession(server, [resent(), offline()]).busy).toBe(false)
     expect(setsOfSession(server, []).busy).toBe(false)
+    // The signal back, the queue drains in order: the last set waits its turn, so Log is free.
+    expect(setsOfSession(server, [sending(), offline()]).busy).toBe(false)
   })
 })
