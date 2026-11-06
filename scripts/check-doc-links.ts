@@ -15,7 +15,20 @@ import { readdir, stat } from 'node:fs/promises'
 import { dirname, join, normalize, relative, resolve } from 'node:path'
 
 const ROOT = resolve(import.meta.dir, '..')
-const SKIP = new Set(['node_modules', '.git', 'dist', 'build', '.expo', '.artifacts', '.tsbuild'])
+/**
+ * Not this project's documents. `.claude/` holds agent skills installed from elsewhere, whose
+ * examples link to files in their authors' projects — it failed the gate on a clean checkout.
+ */
+const SKIP = new Set([
+  'node_modules',
+  '.git',
+  'dist',
+  'build',
+  '.expo',
+  '.artifacts',
+  '.tsbuild',
+  '.claude',
+])
 const MARKDOWN_LINK = /\[[^\]]*\]\(([^)\s#]+)(?:#[^)]*)?\)/gu
 const DOCS_REFERENCE = /docs\/[A-Za-z0-9][A-Za-z0-9._/-]*\.md/gu
 const EXTERNAL = /^(?:https?:|mailto:)/u
