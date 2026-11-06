@@ -2310,6 +2310,39 @@ test(
 )
 
 /**
+ * The rest after a set logged without a signal counts down as any other (#9): the set is dated
+ * once, when it is logged. It used to be dated afresh each time the screen was drawn, so a tap — on
+ * another entry, on the menu — sent its rest back to the start.
+ */
+test(
+  'the rest after a set logged without a signal keeps counting down through a tap',
+  async () => {
+    await withApp('offline-rest', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('ofr'))
+      await startTwoEntryDay(page)
+      /** The rest's seconds left, as the countdown reads them: `Rest 1:57` is 117. */
+      const left = async () => {
+        const [, minutes, seconds] =
+          /^Rest (\d+):(\d\d)$/u.exec((await app.session.entry(0).rest()) ?? '') ?? []
+        return minutes === undefined || seconds === undefined
+          ? null
+          : Number(minutes) * 60 + Number(seconds)
+      }
+
+      await page.goOffline()
+      await app.session.entry(0).logWhileOffline()
+      // Two minutes, the default rest: wait for it to have counted down a little.
+      await page.until(left, (seconds) => seconds !== null && seconds <= 117)
+      await app.session.entry(1).shown()
+      expect(await left()).toBeLessThanOrEqual(117)
+      await page.goOnline()
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * A write refused because what it names is gone or out of reach says the screen's picture is
  * stale. The athlete is removed from the group mid-session, on the coach's device: the screen still
  * shows the plan, the next set against it is refused — and the session used to keep showing the plan

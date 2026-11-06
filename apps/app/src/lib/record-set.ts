@@ -25,8 +25,10 @@ export function useRecordSet(sessionId: string) {
     ): void => {
       // The tap that logs a set starts the sound its rest will end with: iOS asks for a tap.
       primeChime()
-      // Its key is made here, once: however many times it is sent, it is this one set (#9).
+      // Its key and its time are made here, once: however many times it is sent, it is this one set
+      // (#9), and its rest counts from now however often it is read.
       const key = newIdempotencyKey()
+      const loggedAt = new Date().toISOString()
       void submit(async () => {
         await logSet.mutateAsync({
           input: {
@@ -40,6 +42,7 @@ export function useRecordSet(sessionId: string) {
             isWarmup: set.isWarmup,
           },
           key,
+          loggedAt,
         })
       })
     },

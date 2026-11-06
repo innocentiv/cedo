@@ -1,6 +1,7 @@
 import { useMutationState } from '@tanstack/react-query'
-import type { LogSetInput, RestChange, SessionUpdate, SetLog, SetLogUpdate } from '@cedo/contract'
+import type { RestChange, SessionUpdate, SetLog, SetLogUpdate } from '@cedo/contract'
 import { api } from './http.ts'
+import type { QueuedSet } from './pending.ts'
 import { sendAgain } from './retry.ts'
 import { sessionQueue, useWriteTo } from './write-to.ts'
 
@@ -32,12 +33,6 @@ export const useChangeRest = (id: string) =>
   useWriteTo('session', async (input: RestChange) => await api.sessions.changeRest(id, input), {
     queued: { mutationKey: ['changeRest', id], scope: sessionQueue(id).scope },
   })
-
-/** One set, its idempotency key made once when it was logged, so every retry of it is the same. */
-export interface QueuedSet {
-  readonly input: LogSetInput
-  readonly key: string
-}
 
 /**
  * Sent at once when there is a signal; without one, it waits in the session's queue and is sent

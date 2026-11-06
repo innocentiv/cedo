@@ -121,7 +121,7 @@ const workoutSets = (
 ): WorkoutSets => ({
   server,
   // Sets still waiting for a signal count as done: the next one comes up, rest starts (#9).
-  all: withPending(server, unsent, Date.now()),
+  all: withPending(server, unsent),
   waiting: new Set(unsent.map((s) => s.key)),
   record: {
     ...record,
