@@ -3,9 +3,9 @@ import type { Held, SetAttempt, SessionAttempts, SetTarget } from './progression
 /**
  * Judging what was logged against a prescription: whether a session clears it, one judge per
  * dimension a rule advances, each over the WORKING sets alone, in set order (warm-ups dropped by
- * `working`); whether a run of sessions does (`judgeRun`); and, when not, why it was held — named
- * by the working set that held it (ADR-0026). Shared by the rules in step.ts; not part of the
- * contract's surface. See docs/adr/0012-progression-rules.md.
+ * `working`); and, when not, why it was held — named by the working set that held it (ADR-0026).
+ * Shared by the rules in step.ts; not part of the contract's surface. See
+ * docs/adr/0012-progression-rules.md.
  */
 
 /** What a session did to a prescription: cleared it, or held it, and why. */
@@ -132,23 +132,6 @@ export function judgeDistance(
     return time !== null && time * goal <= goalTime * distance
   })
   return short ?? 'cleared'
-}
-
-/**
- * The most recent `count` sessions must all clear: `cleared` when they did, else the verdict of the
- * newest that did not — or null when none held it, and there are only too few of them yet. A
- * session of nothing that counts is judged empty: short at its first set.
- */
-export function judgeRun(
-  count: number,
-  sessions: readonly SessionAttempts[],
-  judge: (session: SessionAttempts) => Verdict,
-): Verdict | null {
-  for (const session of sessions.slice(0, count)) {
-    const verdict = judge(working(session) ?? [])
-    if (verdict !== 'cleared') return verdict
-  }
-  return sessions.length >= count ? 'cleared' : null
 }
 
 /** Drop warm-ups. Returns null when the session recorded nothing that counts. */

@@ -222,7 +222,8 @@ Each step is said with why: advanced, from what to what, or held — `held: set 
 of the target, or `held for effort: set 3 left 0 in reserve, asked 2`, a set ground out past its own
 reserve. Each working set is judged against the reserve it asks, so a plan whose last set may go to
 failure asks 0 of that set and holds nothing for it. A hold for effort is not a stall, and no reason
-to deload: the reps were there, done harder than asked. The rules' maths is `progress()`'s; see
+to deload: the reps were there, done harder than asked. The rules' maths is `step`'s, which the
+contract reaches only through `takeSteps`; see
 [adr/0012](adr/0012-progression-rules.md) for the truth tables — its effort table as amended, each
 set against its own reserve ([adr/0026](adr/0026-targets-and-steps.md)) and whole
 ([adr/0027](adr/0027-reps-in-reserve-whole-everywhere.md)) — and 0026 for what they are applied to.

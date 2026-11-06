@@ -1,16 +1,16 @@
 import { and, eq, gte, inArray, sql } from 'drizzle-orm'
-import type { Against, SetTarget } from '@cedo/contract'
+import { type Against, type SetTarget, takeSteps } from '@cedo/contract'
 import type { Transaction } from '../../db/client.ts'
 import { progressionSteps } from '../../db/schema.ts'
 import { groupBy } from '../../lib/keyset.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { loadsOf } from '../equipment/held.ts'
 import { finishedSets, ruledEntries, stepsOf } from './step-rows.ts'
-import { retaken } from './take-steps.ts'
 
 /**
  * The statements that write a person's steps (ADR-0026), each in the caller's transaction and
- * under the person's step lock. What to write is `take-steps.ts`'s; what to read, `step-rows.ts`'s.
+ * under the person's step lock. What to write is the contract's `takeSteps`; what to read,
+ * `step-rows.ts`'s.
  */
 
 /** What a session's steps cover: the entries it trained, from its start. */
@@ -55,12 +55,12 @@ export async function retakeSteps(
   const stepsByEntry = groupBy(steps, (s) => s.entryId)
   const setsByEntry = groupBy(sets, (s) => s.entryId)
   const taken = entries.flatMap((entry) =>
-    retaken(
+    takeSteps(
       entry,
       stepsByEntry.get(entry.id) ?? [],
       setsByEntry.get(entry.id) ?? [],
       scope.startedAt,
-      loadFor,
+      loadFor(entry),
     ),
   )
   if (taken.length === 0) return

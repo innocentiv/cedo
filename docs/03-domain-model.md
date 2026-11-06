@@ -339,7 +339,7 @@ have nothing. A save locks the person's row first, so two at once take turns.
 weights for it, make a `Load` (`loadOf`) — or none, when either is unknown, and nothing is snapped.
 A plan keeps its weights. What a person is shown is the heaviest loadable weight not above their
 target, capped at the heaviest and raised to the lightest (`loadable`), and progression judges a
-session against what they were shown (`nextLoadableTarget`), never the plan's number — and moves it
+session against what they were shown (`takeSteps`), never the plan's number — and moves it
 up from there, a loadable weight at least, so an increase under one step still moves; the step keeps
 the weight it advanced to, loadable the day it was taken. A warm-up's scaled weight is snapped down
 the same way, and raised to the lightest. The grid is counted in the unit the athlete reads

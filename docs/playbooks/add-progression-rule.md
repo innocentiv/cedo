@@ -25,15 +25,16 @@ tracking mode allows can be saved by nobody and offered by no screen.
 Give every field a description (`.describe`): an AI learns the rule from it, and a test fails on a
 plan field without one.
 
-## 2. Teach `progress` about it — and say what it moves
+## 2. Teach `step` about it — and say what it moves
 
-`progress` is a pure function, and its switch is exhaustive — `switch-exhaustiveness-check` will
-fail the build until the new case is handled. That is deliberate: it is impossible to add a rule and
-forget the maths.
+`step`, in `packages/contract/src/step.ts`, is a pure function, and its switch is exhaustive —
+`switch-exhaustiveness-check` will fail the build until the new case is handled. That is
+deliberate: it is impossible to add a rule and forget the maths.
 
-It is called in one place: when a session is finished (and when a correction takes steps again), to
-take the step from the person's target. The logger, the plan editor and `workout_progression` read
-the stored target, so an AI's advice and the athlete's next session cannot differ.
+It is reached in one place, `takeSteps` (`take-steps.ts`), which takes each session's step from
+the person's target — when a session is finished, and when a correction takes steps again. The
+contract does not export `step`. The logger, the plan editor and `workout_progression` read the
+stored target, so an AI's advice and the athlete's next session cannot differ.
 
 Declare two things, beside the rule:
 
@@ -47,15 +48,18 @@ that moves and judges nothing new reuses existing declarations.
 
 What a session must do to clear a target is a judge in `packages/contract/src/clears.ts`, one per
 dimension a rule advances (`judgeReps`, `judgeDuration`, `judgeDistance`), each built on
-`everyWorkingSet` and answering a `Verdict`; reps are judged against each working set's own reps in
+`firstShort` and answering a `Verdict`; reps are judged against each working set's own reps in
 reserve. A rule that advances a dimension already there reuses its judge; a new dimension adds one
-beside them. A target pushed past its ceiling is held by `progress` itself, so a rule's maths need
+beside them. A target pushed past its ceiling is held by `step` itself, so a rule's maths need
 not check `MAX_*`.
 
 ## 3. Write the truth table first
 
 In `packages/contract/src/progression.test.ts`. No database, no DOM — this is where progression
-correctness is actually proven.
+correctness is actually proven. Each table's sessions are taken through `takeSteps`, as production
+takes them, never through `step` directly. What only a run of steps does belongs in
+`take-steps.test.ts`: where a run starts, what anchors it, what each session is judged against, and
+the loadable weights it lands on.
 
 Cover: a success advancing, a failure not advancing, `afterSuccesses` counted over consecutive
 sessions only (the streak a step carries: one more when cleared, none when held or advanced),

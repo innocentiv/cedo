@@ -32,8 +32,9 @@ export interface Stepped {
 
 /**
  * Take one step: the next target from what one finished session did to the target it was asked.
- * Pure, total and deterministic — the single implementation, called when a session is finished and
- * when a correction takes steps again; everything that shows a target reads what it stored.
+ * Pure, total and deterministic — the single implementation, reached only through `takeSteps`
+ * (take-steps.ts), once for each session it takes a step for; everything that shows a target reads
+ * what it stored. Not part of the contract's surface, and tested through `takeSteps`.
  *
  * It ADVANCES OR HOLDS, never decreases. Deloading is a judgement call needing context this
  * function does not have (illness, a bad week, form breakdown), so it stays with the user or the
@@ -47,33 +48,6 @@ export function step(input: StepInput): Stepped {
   return SetTarget.safeParse(next.target).success
     ? next
     : { target: input.target, held: null, streak: 0 }
-}
-
-/**
- * Past sessions for one entry, MOST RECENT FIRST — the shape the rules' truth tables are written
- * in. Replayed oldest first, a step each, from `target` with no streak.
- */
-export interface ProgressionInput extends Omit<StepInput, 'streak' | 'session'> {
-  readonly sessions: readonly SessionAttempts[]
-}
-
-/** What `progress` answers: the target after every session, and why the newest held it, if it did. */
-export interface Progressed {
-  readonly target: SetTarget
-  readonly held: Held | null
-}
-
-/**
- * The target after a run of sessions, each a step from the last (ADR-0026): the rule carried
- * forward session by session, as steps are taken. The newest session's step says why it held.
- */
-export function progress(input: ProgressionInput): Progressed {
-  const { sessions, ...rest } = input
-  let at: Stepped = { target: rest.target, held: null, streak: 0 }
-  for (const session of sessions.toReversed()) {
-    at = step({ ...rest, target: at.target, streak: at.streak, session })
-  }
-  return { target: at.target, held: at.held }
 }
 
 /** A target nothing held: advanced, or with nothing to hold it for — and no streak to carry. */

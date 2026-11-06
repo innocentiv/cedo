@@ -6,7 +6,7 @@ import { PLAN_WORDS } from './plan-words.ts'
 
 /**
  * How a set's targets advance over time. Stored as JSONB on `workout_entries`, so adding a rule
- * kind means extending this union and `progress` — never a migration.
+ * kind means extending this union and `step` — never a migration.
  * See docs/adr/0012-progression-rules.md.
  */
 
@@ -155,7 +155,7 @@ export const Held = z.discriminatedUnion('reason', [
 export type Held = z.output<typeof Held>
 
 /**
- * What `progress` proposes for one workout entry, alongside what it proposes to change from.
+ * The caller's target on one workout entry (ADR-0026), alongside the prescription it starts from.
  * Returned by `GET /workouts/:id/progression` and by the `workout_progression` MCP tool — the AI's
  * entry point for "evaluate my progression and set next week's numbers".
  */

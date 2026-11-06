@@ -1,11 +1,57 @@
 import { describe, expect, test } from 'bun:test'
-import type { Progression, SessionAttempts, SetTarget } from './progression.ts'
-import { type ProgressionInput, progress } from './step.ts'
+import type { Held, Progression, SessionAttempts, SetTarget } from './progression.ts'
+import { type FinishedSet, type RuledEntry, takeSteps } from './take-steps.ts'
 import { MAX_DURATION_S, MAX_WEIGHT_G } from './measurement.ts'
 import { formatWeight, kgToG, mToMm } from './units.ts'
 
+/**
+ * A run of finished sessions, MOST RECENT FIRST — the shape these tables are written in — from an
+ * entry whose `workingSets` working sets ask `target`, each the reserve `reserves` gives it, or the
+ * target's when it gives none. Nothing was stored before them.
+ */
+interface Run {
+  readonly rule: Progression
+  readonly target: SetTarget
+  readonly workingSets: number
+  readonly reserves?: readonly (number | null)[]
+  readonly sessions: readonly SessionAttempts[]
+}
+
+const DAY_MS = 86_400_000
+
+/**
+ * The run taken as steps are (`takeSteps`), a day apart, with no load known: the target the newest
+ * session left, and why it held it, if it did. A run that took no step leaves the target it asked.
+ * A session of no sets at all is no rows, so no session — as in production, it takes no step, and
+ * a table has nothing to learn from one.
+ */
+function afterSteps(run: Run): { readonly target: SetTarget; readonly held: Held | null } {
+  const entry: RuledEntry = {
+    id: 'entry',
+    progression: run.rule,
+    working: Array.from({ length: run.workingSets }, (_, i) => ({
+      targetReps: run.target.reps,
+      targetWeightG: run.target.weightG,
+      targetReserve: run.reserves === undefined ? run.target.reserve : (run.reserves[i] ?? null),
+      targetDurationS: run.target.durationS,
+      targetDistanceMm: run.target.distanceMm,
+    })),
+  }
+  const sets: FinishedSet[] = run.sessions.toReversed().flatMap((session, i) =>
+    session.map((set) => ({
+      ...set,
+      sessionId: `session ${i + 1}`,
+      startedAt: new Date((i + 1) * DAY_MS),
+    })),
+  )
+  const newest = takeSteps(entry, [], sets, new Date(0), null).at(-1)
+  return newest === undefined
+    ? { target: run.target, held: null }
+    : { target: newest.target, held: newest.held }
+}
+
 /** The next prescription alone: most of these tables are about where it goes, not why. */
-const targetOf = (input: ProgressionInput): SetTarget => progress(input).target
+const targetOf = (run: Run): SetTarget => afterSteps(run).target
 
 /** `sets(60)(12, 12, 10)` -> three attempts at 60 kg; `sets(60, 0)(…)`, each with none in reserve. */
 const sets =
@@ -55,7 +101,7 @@ const effort = (set: number, reserve: number, asked: number) =>
   ({ reason: 'effort', set, reserve, asked }) as const
 const LINEAR: Progression = { kind: 'linear', incrementG: kgToG(2.5), afterSuccesses: 1 }
 
-describe('progress — double progression (3 sets of 8-12, +2.5kg)', () => {
+describe('taking steps —double progression (3 sets of 8-12, +2.5kg)', () => {
   const run = (t: SetTarget, ...sessions: SessionAttempts[]) =>
     targetOf({ rule: DOUBLE, target: t, workingSets: 3, sessions })
 
@@ -149,7 +195,7 @@ describe('progress — double progression (3 sets of 8-12, +2.5kg)', () => {
   })
 })
 
-describe('progress — linear progression', () => {
+describe('taking steps —linear progression', () => {
   test('a session that clears the prescription adds weight', () => {
     const result = targetOf({
       rule: LINEAR,
@@ -192,7 +238,7 @@ describe('progress — linear progression', () => {
  * judged on its reps and weight alone. Whole, both sides (ADR-0027), so there is no allowance. See
  * docs/adr/0012-progression-rules.md.
  */
-describe('progress — a prescribed reserve is a floor', () => {
+describe('taking steps —a prescribed reserve is a floor', () => {
   const at = (reserve: number | null, t: SetTarget): SetTarget => ({ ...t, reserve })
   const double = (t: SetTarget, ...sessions: SessionAttempts[]) =>
     targetOf({ rule: DOUBLE, target: t, workingSets: 3, sessions })
@@ -269,10 +315,10 @@ describe('progress — a prescribed reserve is a floor', () => {
  * against its own — not every set against the first's. A plan whose last set may go to failure
  * held for effort every session while it was judged against set 1.
  */
-describe('progress — each working set is judged against its own reserve', () => {
+describe('taking steps —each working set is judged against its own reserve', () => {
   const ramp = { ...target(12, 60), reserve: 2 }
   const judged = (reserves: readonly (number | null)[], session: SessionAttempts) =>
-    progress({ rule: DOUBLE, target: ramp, workingSets: 3, reserves, sessions: [session] })
+    afterSteps({ rule: DOUBLE, target: ramp, workingSets: 3, reserves, sessions: [session] })
 
   test('a ramp to failure, done as asked, advances', () => {
     expect(judged([2, 1, 0], rated([12, 2], [12, 1], [12, 0])).target).toEqual({
@@ -298,14 +344,14 @@ describe('progress — each working set is judged against its own reserve', () =
  * athlete nor the AI reads a prescription held for effort as a stall. None when it advanced, or had
  * nothing to judge.
  */
-describe('progress — why a prescription held', () => {
+describe('taking steps —why a prescription held', () => {
   const top = { ...target(12, 60), reserve: 2 }
   const why = (rule: Progression, t: SetTarget, ...sessions: SessionAttempts[]) =>
-    progress({ rule, target: t, workingSets: 3, sessions }).held
+    afterSteps({ rule, target: t, workingSets: 3, sessions }).held
 
   test('it gives the next prescription, with no reason when it advanced', () => {
     expect(
-      progress({ rule: DOUBLE, target: top, workingSets: 3, sessions: [all(2, 12, 12, 12)] }),
+      afterSteps({ rule: DOUBLE, target: top, workingSets: 3, sessions: [all(2, 12, 12, 12)] }),
     ).toEqual({ target: { ...target(8, 62.5), reserve: 2 }, held: null })
   })
 
@@ -351,7 +397,7 @@ describe('progress — why a prescription held', () => {
   test("none at a target's ceiling: it was cleared, and stopped only by the limit", () => {
     const t: SetTarget = { ...target(5, null), weightG: MAX_WEIGHT_G - 1000 }
     const session: SessionAttempts = [{ reps: 5, weightG: t.weightG }]
-    expect(progress({ rule: LINEAR, target: t, workingSets: 1, sessions: [session] })).toEqual({
+    expect(afterSteps({ rule: LINEAR, target: t, workingSets: 1, sessions: [session] })).toEqual({
       target: t,
       held: null,
     })
@@ -374,18 +420,17 @@ describe('progress — why a prescription held', () => {
   test('a hold or a run is only ever short of its targets', () => {
     const rule: Progression = { kind: 'linear_duration', incrementS: 15, afterSuccesses: 1 }
     expect(
-      progress({ rule, target: timed(60), workingSets: 1, sessions: [[{ durationS: 45 }]] }).held,
+      afterSteps({ rule, target: timed(60), workingSets: 1, sessions: [[{ durationS: 45 }]] }).held,
     ).toEqual(short(1, did({ durationS: 45 }), timed(60)))
   })
 })
 
-describe('progress — invariants that must hold for every rule', () => {
+describe('taking steps —invariants that must hold for every rule', () => {
   const rules: Progression[] = [{ kind: 'none' }, LINEAR, DOUBLE]
   const histories: SessionAttempts[][] = [
     [],
     [at60(12, 12, 12)],
     [at60(1, 1, 1)],
-    [[], []],
     [sets(0)(0, 0, 0)],
   ]
 
@@ -426,7 +471,7 @@ describe('progress — invariants that must hold for every rule', () => {
   })
 })
 
-describe('progress — warm-up sets are excluded entirely', () => {
+describe('taking steps —warm-up sets are excluded entirely', () => {
   const warmup = (weightKg: number, reps: number) => ({
     weightG: kgToG(weightKg),
     reps,
@@ -460,7 +505,7 @@ describe('progress — warm-up sets are excluded entirely', () => {
   })
 })
 
-describe('progress — linear_duration (planks, dead hangs, carries)', () => {
+describe('taking steps —linear_duration (planks, dead hangs, carries)', () => {
   const RULE: Progression = { kind: 'linear_duration', incrementS: 5, afterSuccesses: 1 }
   const timedSets = (...seconds: number[]): SessionAttempts =>
     seconds.map((durationS) => ({ durationS }))
@@ -522,7 +567,7 @@ describe('progress — linear_duration (planks, dead hangs, carries)', () => {
  * so a volume step never hides a pace jump. Going faster is left to the user or the AI — a shorter
  * target time would break advance-or-hold. See docs/adr/0012-progression-rules.md.
  */
-describe('progress — linear_distance (runs, rows)', () => {
+describe('taking steps —linear_distance (runs, rows)', () => {
   const RULE: Progression = { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 }
   const covered = (metres: number, seconds: number | null): SetTarget => ({
     reps: null,
@@ -610,7 +655,7 @@ describe('progress — linear_distance (runs, rows)', () => {
   })
 
   test('never shortens the distance or the time', () => {
-    for (const sessions of [[], [ran([9000, 100])], [ran([1, 99_999])], [[]]]) {
+    for (const sessions of [[], [ran([9000, 100])], [ran([1, 99_999])]]) {
       const t = covered(5000, 1800)
       const after = next(t, sessions)
       expect(after.distanceMm ?? 0).toBeGreaterThanOrEqual(t.distanceMm ?? 0)
@@ -624,7 +669,7 @@ describe('progress — linear_distance (runs, rows)', () => {
  * 500 for the whole plan's progression, and for the logger's pre-fill. At the ceiling, every rule
  * holds instead.
  */
-describe('progress — a target at its ceiling holds', () => {
+describe('taking steps —a target at its ceiling holds', () => {
   test('a weight that would pass the heaviest target', () => {
     const t: SetTarget = { ...target(5, null), weightG: MAX_WEIGHT_G - 1000 }
     expect(

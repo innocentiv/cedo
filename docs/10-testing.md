@@ -38,7 +38,8 @@ the amendment to `docs/adr/0017-webview-for-ui-verification.md`.
 
 ## T1 — contract
 
-Pure functions, no database, no DOM: `progress()`, the unit converters, `parseMediaUrl()`, and
+Pure functions, no database, no DOM: `takeSteps()` (every progression rule's truth tables, taken
+as production takes steps), the unit converters, `parseMediaUrl()`, and
 every `.refine()` invariant such as muscle loads summing to 100. Most of the domain's correctness is
 proven here, which is what makes the thinness rule affordable everywhere else.
 
@@ -62,6 +63,12 @@ A service's PURE half — rows in, answer out, like `progression/evaluate.ts`, o
 `group/service.ts` (tested by `group/slug.test.ts`) — is tested directly beside it, with no
 database. It is still the service's rule, kept in the API because
 only the API runs it; the contract is for what more than one side needs.
+
+The progression rules are the one exception, made by ADR-0012 and kept by ADR-0026: their maths
+(`step`) and the one loop that runs it (`takeSteps`) live in the contract though only the API calls
+them, because their truth tables are the rules' specification, and T1 (`progression.test.ts`,
+`take-steps.test.ts`). Truth tables and loop must share a package for the tables to test the loop
+production runs. Reading a target — `evaluate.ts` — is the API's, as above.
 
 Two things are mandatory in every module:
 
