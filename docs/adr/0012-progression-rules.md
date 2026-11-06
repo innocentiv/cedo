@@ -29,6 +29,13 @@ hit would offer its next set the advanced weight mid-workout. The plan stays wha
 prescribed; progression carries it forward from there. Added after the requirements review (#2):
 the target was computed and shown only as a caption, while the logger offered the old weight.
 
+**Names since (2026-11-06).** What this decision calls `progress()` is the contract's `takeSteps`,
+which applies `step` to each finished session ([0026](0026-targets-and-steps.md) stores what it
+returns). A target is read in one place, the API's `progression/evaluate.ts`. Every reader gets one
+shape, `EntryTarget`: `GET /workouts/:id/progression`, `workout_progression` and a target set by
+hand. The session read's `SessionEntryTarget` adds last time. The plan's numbers are `prescribed` and
+the person's are `target`; these were once `current` and `suggested`, on a second shape.
+
 ### Double progression advances at the entry level
 
 An entry has **one weight**; its sets never diverge. Given `3 × 8–12 @ 60 kg, +2.5 kg`:

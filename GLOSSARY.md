@@ -201,7 +201,9 @@ _Avoid_: increment (that is the progression rule's), plate step
 A weight an athlete's equipment can put on an exercise: the lightest of the item holding its load,
 then a weight step at a time, up to the heaviest. A target's weight is shown as the heaviest
 loadable weight not above it — or the lightest, under it — and a set is judged against that. When a
-target moves up, it moves up from the weight shown, by a loadable weight at least.
+target moves up, it moves up from the weight shown, by a loadable weight at least. A target at the
+heaviest is at the athlete's heaviest, however it got there: there is nothing heavier for it to move
+to.
 _Avoid_: available weight, real weight, snapped weight
 
 **Doable**:
@@ -282,7 +284,8 @@ the prescription and rule as they stand, and the prescription otherwise. It move
 entry's progression rule, one step per finished session, or when set by hand, and starts again from
 the prescription when that or its rule changes — and differs from the prescription only in what the
 rule moves. Two people following one plan each have their own; a
-manual entry has none.
+manual entry has none. The sessions behind it are those since it last started — from the
+prescription, or set by hand — not every session the entry was ever trained in.
 _Avoid_: prescription (that is the author's, and stays), goal, next weight
 
 **Step**:

@@ -215,8 +215,15 @@ logger reads the same target (`GET /sessions/:id/targets`), so the AI and the lo
 different numbers. A session in progress moves nothing until it is finished. Both answer in weights
 the athlete can load (#36, ADR-0024): a step keeps the weight it advanced to, loadable the day it
 was taken (ADR-0026), and reading it snaps it to the caller's equipment as it is now. `workout_get` keeps the plan's weights as
-written, a set the athlete cannot load as written followed by `(loads 22 kg)` — or `, the heaviest`
-— for them, or for `athlete`.
+written, a set the athlete cannot load as written followed by `(loads 22 kg)` — or
+`(loads 30 kg, your heaviest)` — for them, or for `athlete`.
+
+Each `workout_progression` line ends with what stands behind the target (#66): `from 3 sessions` —
+those since it last started, from the prescription — `set by hand`, `set by hand, then 1 session`,
+or `no session yet`, which is also what a plan edit leaves. A target at the heaviest weight the
+athlete can load says `(your heaviest)`: there is nothing heavier for it to move to, so it is not
+read as a stall. The target is the contract's one shape, `EntryTarget`, which the app's plan editor
+and logger read too.
 
 Each step is said with why: advanced, from what to what, or held — `held: set 3 did 7 of 10`, short
 of the target, or `held for effort: set 3 left 0 in reserve, asked 2`, a set ground out past its own

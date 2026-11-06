@@ -269,7 +269,8 @@ their latest step if it was taken against the prescription and rule as they stan
 prescription (ADR-0026); on a manual entry, the plan's numbers for that
 set, with last time's set beside it; a warm-up, its own line's weight scaled by the working target,
 worked out as it is asked. Each is asked as it can be loaded (`setsOf`), and the target says when it
-stopped at "your heaviest" or "your lightest". Beside it the logger says what moved it or held it,
+sits at "your heaviest" — under a heavier plan, or trained up to it — or was raised to "your
+lightest". Beside it the logger says what moved it or held it,
 per set — "Progressed to 11 × 20 kg · the plan says 10 × 20 kg", "held: set 3 did 7 of 10", "held
 for effort: set 3 left 0 in reserve, asked 2" — the same words `workout_progression` says, so what
 the last session did is read where the next one is done. Typing is never refused. A new weight rule in the plan editor adds one step of that equipment. "Up next" is the rest of the day, an entry to a line, a superset

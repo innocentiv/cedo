@@ -343,7 +343,8 @@ session against what they were shown (`takeSteps`), never the plan's number — 
 up from there, a loadable weight at least, so an increase under one step still moves; the step keeps
 the weight it advanced to, loadable the day it was taken. A warm-up's scaled weight is snapped down
 the same way, and raised to the lightest. The grid is counted in the unit the athlete reads
-(`Load.unit`): grams are not whole pounds. `EntryTarget.limit` says where it stopped. See
+(`Load.unit`): grams are not whole pounds. `EntryTarget.limit` says where it stops: at the heaviest
+— asked it or more, or trained up to it (#66) — or under the lightest. See
 [adr/0024](adr/0024-targets-follow-the-athletes-equipment.md), and
 [adr/0026](adr/0026-targets-and-steps.md) for what a step keeps.
 

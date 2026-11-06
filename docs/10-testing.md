@@ -68,7 +68,10 @@ The progression rules are the one exception, made by ADR-0012 and kept by ADR-00
 (`step`) and the one loop that runs it (`takeSteps`) live in the contract though only the API calls
 them, because their truth tables are the rules' specification, and T1 (`progression.test.ts`,
 `take-steps.test.ts`). Truth tables and loop must share a package for the tables to test the loop
-production runs. Reading a target — `evaluate.ts` — is the API's, as above.
+production runs. Reading a target — `evaluate.ts` — is the API's, as above, and every rule of it is
+tested in `evaluate.test.ts`. Only the definition it shares with `takeSteps`, `standingTarget` (the
+latest step if it still counts, else the prescription), is the contract's, because the loop needs
+it there.
 
 Two things are mandatory in every module:
 
