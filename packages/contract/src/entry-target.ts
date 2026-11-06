@@ -34,8 +34,9 @@ export const EntryTarget = z.object({
   /** Why it held, when something did (#45): a prescription held for effort is not a stall. */
   held: Held.nullable(),
   /**
-   * Where the athlete's equipment stopped its weight (#36): their heaviest, under a heavier plan,
-   * or their lightest, over a lighter one. Null otherwise — and while what they load is unknown.
+   * Where the athlete's equipment stops its weight (#36): their heaviest — under a heavier plan, or
+   * trained up to it, with nothing heavier to move to (#66) — or their lightest, over a lighter
+   * plan. Null otherwise — and while what they load is unknown.
    */
   limit: LoadLimit.nullable(),
   /** How many of their finished sessions took a step on the entry. Zero: no history yet. */

@@ -117,9 +117,10 @@ export function workoutDetail(
 
 /**
  * Each entry's next target for the caller, beside what the plan says, and why its latest step held,
- * per set (`heldWords`) — the logger's words. A manual entry is the plan's numbers. Reps in reserve
- * are not said: they are the plan's, set by set, which no rule moves — one number here read a ramp
- * of 2, 1, 0 as 2 for every set.
+ * per set (`heldWords`) — the logger's words; where the athlete's equipment stopped it (#66), so
+ * a target at their heaviest is not read as a stall. A manual entry is the plan's numbers. Reps in
+ * reserve are not said: they are the plan's, set by set, which no rule moves — one number here read
+ * a ramp of 2, 1, 0 as 2 for every set.
  */
 export function nextTargetLines(targets: readonly EntryTarget[], unit: WeightUnit): string {
   if (targets.length === 0) return 'This workout has no entries yet.'
@@ -132,7 +133,8 @@ export function nextTargetLine(t: EntryTarget, unit: WeightUnit): string {
   if (t.rule.kind === 'none') {
     return `${head}: ${plan}, the plan’s numbers — change the plan to change them`
   }
-  const next = formatEffort(t.target, t.tracking, unit)
+  const limit = t.limit === null ? '' : ` (${LOAD_LIMIT_WORDS[t.limit]})`
+  const next = `${formatEffort(t.target, t.tracking, unit)}${limit}`
   const target = t.changed
     ? `next ${next}; the plan says ${plan}`
     : `next ${next}, as the plan says`

@@ -122,6 +122,17 @@ describe('reading a target', () => {
     expect(none?.changed).toBe(false)
     expect(read(sets, [stepped(at(24_000), sets)], DUMBBELLS)?.target.weightG).toBe(24_000)
   })
+
+  /** #66: why a target stopped moving — a step at the heaviest dumbbell said nothing. */
+  test('at the heaviest the athlete can load, says so: trained up to it, or planned at it', () => {
+    const sets = plan(28_000)
+    expect(read(sets, [stepped(at(30_000), sets)], DUMBBELLS)).toMatchObject({
+      target: { weightG: 30_000 },
+      limit: 'heaviest',
+    })
+    expect(read(plan(30_000), [], DUMBBELLS)?.limit).toBe('heaviest')
+    expect(read(sets, [], DUMBBELLS)?.limit).toBeNull()
+  })
 })
 
 /** What a session asks of each warm-up (ADR-0026): following the working target, worked out here. */
