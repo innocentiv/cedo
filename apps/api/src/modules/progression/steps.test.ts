@@ -5,13 +5,12 @@ import {
   EntryTarget,
   Exercise,
   SessionEntryTarget,
-  SessionLogInput,
   Workout,
   WorkoutSession,
 } from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestUser, makeApi } from '../../test/harness.ts'
-import { logWhole } from '../session/log-whole.ts'
+import { callTool, mintPat } from '../../test/mcp-wire.ts'
 
 /**
  * A person's target, stored as steps (ADR-0026): the rule runs once, when a session is finished,
@@ -73,19 +72,31 @@ const start = async (p: Plan) =>
     await send('/sessions', { workoutId: p.workoutId, dayId: p.dayId }),
   ).id
 
-/** A finished session of three working sets of `reps` at `weightG`. */
-async function trained(p: Plan, reps: number, weightG = 55_000): Promise<string> {
+/** One working set of the entry: `reps` at `weightG`. */
+const setOf = (p: Plan, reps: number, weightG = 55_000) => ({
+  exerciseId: p.exerciseId,
+  entryId: p.entryId,
+  weightG,
+  reps,
+})
+
+/** A session in progress, three working sets of `reps` at `weightG` logged. */
+async function logged(p: Plan, reps: number, weightG = 55_000): Promise<string> {
   const id = await start(p)
   for (let i = 0; i < 3; i += 1) {
     // oxlint-disable-next-line no-await-in-loop -- sets in order, as they are logged.
-    await send(`/sessions/${id}/logs`, {
-      exerciseId: p.exerciseId,
-      entryId: p.entryId,
-      weightG,
-      reps,
-    })
+    await send(`/sessions/${id}/logs`, setOf(p, reps, weightG))
   }
+  return id
+}
+
+const finish = async (id: string) =>
   await send(`/sessions/${id}`, { endedAt: new Date().toISOString() }, 'PATCH')
+
+/** A finished session of three working sets of `reps` at `weightG`. */
+async function trained(p: Plan, reps: number, weightG = 55_000): Promise<string> {
+  const id = await logged(p, reps, weightG)
+  await finish(id)
   return id
 }
 
@@ -220,35 +231,27 @@ describe('a change to a session moves the steps it trained, and every one after'
     expect((await shown(p))?.target.reps).toBe(10)
     return first
   }
-  const eight = (p: Plan) => ({
-    exerciseId: p.exerciseId,
-    entryId: p.entryId,
-    weightG: 55_000,
-    reps: 8,
-  })
-
   /** Each change, and the target it leaves: 9 — the 8s met once — throughout. */
   const changes: readonly (readonly [string, (p: Plan) => Promise<void>])[] = [
     [
       'finished: its own steps, none while it was in progress',
       async (p) => {
-        const id = await start(p)
-        for (let i = 0; i < 3; i += 1) {
-          // oxlint-disable-next-line no-await-in-loop -- sets in order, as they are logged.
-          await send(`/sessions/${id}/logs`, eight(p))
-        }
+        const id = await logged(p, 8)
         expect((await shown(p))?.target.reps).toBe(8)
-        await send(`/sessions/${id}`, { endedAt: new Date().toISOString() }, 'PATCH')
+        await finish(id)
       },
     ],
     [
+      // `session_log`, through MCP: a whole session from the AI.
       'logged whole: its steps, as a finish takes them',
       async (p) => {
-        const set = eight(p)
-        await logWhole(
-          alice.caller,
-          SessionLogInput.parse({ workoutId: p.workoutId, dayId: p.dayId, sets: [set, set, set] }),
-        )
+        const set = setOf(p, 8)
+        const sent = await callTool(await mintPat(alice), 'session_log', {
+          workoutId: p.workoutId,
+          dayId: p.dayId,
+          sets: [set, set, set],
+        })
+        expect(sent.body.result?.isError ?? false).toBe(false)
       },
     ],
     [
