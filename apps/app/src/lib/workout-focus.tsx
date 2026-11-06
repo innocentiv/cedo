@@ -87,7 +87,7 @@ function Focus({
       after={after}
       progressed={asked === undefined ? null : targetLine(asked, unit, next ?? undefined)}
       last={asked?.last == null ? null : `Last time ${formatSets(asked.last, tracking, unit)}`}
-      busy={sets.record.busy}
+      busy={sets.busy}
       load={load}
       onLog={(set) => {
         sets.record.log({ exerciseId: entry.exerciseId, entryId: entry.id, ...set })

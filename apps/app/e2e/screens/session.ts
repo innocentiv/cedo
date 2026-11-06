@@ -1,3 +1,4 @@
+import { clockToS } from '@cedo/contract'
 import type { Page } from '../harness.ts'
 import { picker } from './picker.ts'
 
@@ -105,6 +106,15 @@ const logger = (page: Page, id: string, choose: string) => {
     rest: async (): Promise<string | null> => {
       if (!(await page.shown('rest-control-left'))) return null
       return `Rest ${(await page.text('rest-control-left')) ?? ''}`
+    },
+    /** The same rest's seconds left — `1:28` is 88 — or null when none runs. */
+    restLeft: async (): Promise<number | null> => {
+      if (!(await page.shown('rest-control-left'))) return null
+      const [, minutes, seconds] =
+        /^(\d+):(\d\d)$/u.exec((await page.text('rest-control-left')) ?? '') ?? []
+      return minutes === undefined || seconds === undefined
+        ? null
+        : clockToS(0, Number(minutes), Number(seconds))
     },
     /** "Last time 5, 5, 5 × 60 kg" — null when the exercise was never done before. */
     last: async (): Promise<string | null> => {

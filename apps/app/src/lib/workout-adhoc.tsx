@@ -179,7 +179,7 @@ export function AdHocFocus({
       }}
       progressed={null}
       last={null}
-      busy={sets.record.busy}
+      busy={sets.busy}
       load={load}
       onLog={(set) => {
         sets.record.log({ exerciseId: exercise.id, entryId: null, ...set })

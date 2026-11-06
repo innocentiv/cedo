@@ -30,7 +30,8 @@ without a signal — the shell's caching rules, in `src/pwa/shell-cache.ts`, tes
 and a fake network. The service worker wiring them to the browser is driven for real by a journey
 that registers it, takes the site down, and opens the app. And **when a logged set is sent again**
 — only for no answer or a 5xx, under its idempotency key — in `src/api/retry.ts`; and **how such a
-set counts on the workout** until it is sent — done, dated after every stored one — in
+set counts on the workout** until it is sent — done, dated once when it was logged and after every
+stored one, waiting, held up, and whether the next set waits for its first send — in
 `src/api/pending.ts`. A journey covers
 the queue itself: sets logged offline, sent once back online, and one whose answer is lost still
 stored once. Components are still never tested: see

@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test'
 import type { SetTarget } from './progression.ts'
 import type { FlowEntry, FlowLog } from './session-flow.ts'
 import { type ChoiceEvent, type Chosen, NO_CHOICES, choicesAfter } from './workout-choices.ts'
-import { workoutView } from './workout-view.ts'
+import { exerciseOfSet, workoutView } from './workout-view.ts'
 
 /** What the workout screen shows (#24): the focus, the set shown above it, and "+ set". */
 
@@ -143,6 +143,15 @@ describe('what the workout shows', () => {
     const sets = [set('squat'), set('rdl')]
     expect(view(sets).shown).toEqual({ log: sets[1]!, exercise: rdl.exercise })
     expect(view([]).shown).toBeNull()
+  })
+
+  /** One rule for the set just logged and for one waiting for a signal, which the server has not named. */
+  test('a set is of its entry’s exercise, else of one added, else of none in reach', () => {
+    const ofSquat = { name: 'Back Squat' }
+    const named = { entries: [{ ...squat, exercise: ofSquat }] }
+    expect(exerciseOfSet(named, added, { entryId: 'squat', exerciseId: 'curl' })).toBe(ofSquat)
+    expect(exerciseOfSet(named, added, { entryId: null, exerciseId: 'dip' })).toEqual({ id: 'dip' })
+    expect(exerciseOfSet(null, added, { entryId: 'squat', exerciseId: 'press' })).toBeNull()
   })
 
   /**

@@ -1,6 +1,7 @@
 import { useMutationState } from '@tanstack/react-query'
-import type { LogSetInput, RestChange, SessionUpdate, SetLog, SetLogUpdate } from '@cedo/contract'
+import type { RestChange, SessionUpdate, SetLog, SetLogUpdate } from '@cedo/contract'
 import { api } from './http.ts'
+import type { QueuedSend, QueuedSet } from './pending.ts'
 import { sendAgain } from './retry.ts'
 import { sessionQueue, useWriteTo } from './write-to.ts'
 
@@ -33,12 +34,6 @@ export const useChangeRest = (id: string) =>
     queued: { mutationKey: ['changeRest', id], scope: sessionQueue(id).scope },
   })
 
-/** One set, its idempotency key made once when it was logged, so every retry of it is the same. */
-export interface QueuedSet {
-  readonly input: LogSetInput
-  readonly key: string
-}
-
 /**
  * Sent at once when there is a signal; without one, it waits in the session's queue and is sent
  * when the signal is back — again, under its key, if the answer was lost (`retry.ts`).
@@ -58,25 +53,18 @@ export const useLogSet = (sessionId: string) =>
   )
 
 /**
- * The sets of this session not yet sent, in the order logged — and whether any is held up: waiting
- * for a signal, or sent again after a lost answer — which is when the screen asks to stay open.
+ * This session's sets still being sent, in the order logged, as the queue holds them — read once,
+ * for `setsOfSession` (pending.ts) to work out what the workout shows of them.
  */
-export function useUnsentSets(sessionId: string): {
-  readonly sets: readonly QueuedSet[]
-  readonly heldUp: boolean
-} {
-  const pending = useMutationState({
+export const useQueuedSends = (sessionId: string): readonly QueuedSend[] =>
+  useMutationState({
     filters: { mutationKey: sessionQueue(sessionId).logs, status: 'pending' },
     select: (mutation) => ({
       set: mutation.state.variables as QueuedSet | undefined,
-      heldUp: mutation.state.isPaused || mutation.state.failureCount > 0,
+      paused: mutation.state.isPaused,
+      failures: mutation.state.failureCount,
     }),
   })
-  return {
-    sets: pending.flatMap(({ set }) => (set === undefined ? [] : [set])),
-    heldUp: pending.some((p) => p.heldUp),
-  }
-}
 
 export const useRemoveLog = (sessionId: string) =>
   useWriteTo('session', async (logId: string) => await api.sessions.removeLog(sessionId, logId))

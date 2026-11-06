@@ -178,9 +178,14 @@ say its sound is a short alert (`navigator.audioSession`, `transient`: it lowers
 music for a moment, where `playback` would stop it), and a buzz where `navigator.vibrate` exists.
 
 Sets logged without a signal (#9) count as done on the workout — the next set comes up, rest
-starts — through `withPending` (`src/api/pending.ts`): app-owned state with no React in it, so
-unit-tested beside it, like `retry.ts`. Each is dated after the latest stored set, so a server
-clock ahead of the device cannot send the focus back to a set already done.
+starts — through `src/api/pending.ts`: app-owned state with no React in it, so unit-tested beside
+it, like `retry.ts`. The session and the queue are read once (`useQueuedSends`), and
+`setsOfSession` works out everything the workout shows of them: all the sets, which are waiting,
+the rows "not sent yet", whether one is held up ("Keep cedo open"), and whether a first send is on
+its way. Each set is dated once, when it is logged, beside its idempotency key — so its rest counts
+down however often the screen is drawn — and after the latest stored set, so a server clock ahead
+of the device cannot send the focus back to a set already done. The server dates it again when it
+arrives, so its rest starts again then (#67).
 
 A composite that reads through a query hook is not presentational, so it lives in `src/lib/`
 instead: the exercise picker, and `OwnershipLine` — one quiet line under an exercise's or a
