@@ -38,7 +38,8 @@ the amendment to `docs/adr/0017-webview-for-ui-verification.md`.
 
 ## T1 — contract
 
-Pure functions, no database, no DOM: `progress()`, the unit converters, `parseMediaUrl()`, and
+Pure functions, no database, no DOM: `takeSteps()` (every progression rule's truth tables, taken
+as production takes steps), the unit converters, `parseMediaUrl()`, and
 every `.refine()` invariant such as muscle loads summing to 100. Most of the domain's correctness is
 proven here, which is what makes the thinness rule affordable everywhere else.
 
