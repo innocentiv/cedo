@@ -200,6 +200,13 @@ describe('steps in weights the athlete can load (ADR-0024)', () => {
     expect(moves(steps)).toEqual([[t(8, 20_000), t(8, 22_000)]])
   })
 
+  test('an increase of several steps lands on the heaviest weight not above it', () => {
+    const rule: Progression = { ...LINEAR, incrementG: 5000 }
+    const steps = onDumbbells(rule, plan(8, 20_000), session(1, 20_000, [8, 8, 8]))
+    // 20 + 5 is 25: 24 is the heaviest dumbbell not above it — not just the next one up, 22.
+    expect(moves(steps)).toEqual([[t(8, 20_000), t(8, 24_000)]])
+  })
+
   test('double progression at the top of its reps moves one weight up, not round its reps again', () => {
     const rule: Progression = { ...DOUBLE, incrementG: 1000 }
     const steps = onDumbbells(rule, plan(12, 22_000), session(1, 22_000, [12, 12, 12]))
