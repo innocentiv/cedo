@@ -9,7 +9,6 @@ import {
 import { AfterSet, ConfirmButton, FocusLogger, type JustDone, Stack, Text } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
 import { useLoads } from './use-loads.ts'
-import { AdHocFocus } from './workout-adhoc.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
 /**
@@ -39,30 +38,59 @@ function Unavailable({
   )
 }
 
-/** The entry in focus: its sets, the next one large, and Log — as the contract's `loggerAsks`. */
-function Focus({
+/** A focus with something to log: an entry of the day, or an exercise added. */
+type Logging = Extract<WorkoutShown['focus'], { kind: 'entry' | 'added' }>
+
+/**
+ * What the logger shows of what it logs to: an entry's exercise and cue; an exercise added has no
+ * cue, and is at hand whole — how to do it, what loads it — only when picked this open.
+ */
+const shownOf = (focus: Logging, full: readonly Exercise[]) =>
+  focus.kind === 'entry'
+    ? {
+        exercise: focus.entry.exercise,
+        whole: focus.entry.exercise,
+        cue: focus.entry.cue,
+        testID: `log-entry-${focus.entry.index}`,
+      }
+    : {
+        exercise: focus.exercise,
+        whole: full.find((e) => e.id === focus.exercise.id),
+        cue: null,
+        testID: `adhoc-${focus.exercise.id}`,
+      }
+
+/**
+ * The entry or exercise in focus: its sets, the next one large, and Log — as the contract's
+ * `loggerAsks` decides them.
+ */
+export function Focus({
   focus,
+  full,
   sets,
   after,
   onHowTo,
   unit,
 }: {
-  readonly focus: Extract<WorkoutShown['focus'], { kind: 'entry' }>
+  readonly focus: Logging
+  /** The exercises picked this open, whole. */
+  readonly full: readonly Exercise[]
   readonly sets: WorkoutSets
+  /** The set just logged, while it can be taken back: in Log's place (#63). */
   readonly after: JustDone | null
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
   readonly unit: WeightUnit
 }): React.JSX.Element {
-  const { entry } = focus
-  const { exercise } = entry
   const asks = loggerAsks(focus, sets.waiting, unit, sets.all.length)
-  const load = useLoads()(exercise)
+  const { exercise, whole, cue, testID } = shownOf(focus, full)
+  // Its weights as the athlete can load them, when the whole exercise is at hand (#36).
+  const load = useLoads()(whole)
   return (
     <FocusLogger
       // The numbers start again from what the next set asks when the key changes.
       key={asks.key}
       name={exercise.name}
-      cue={entry.cue}
+      cue={cue}
       tracking={exercise.tracking}
       sets={asks.marks}
       next={asks.next}
@@ -75,18 +103,22 @@ function Focus({
       onLog={(set) => {
         sets.record.log({ ...asks.logsAgainst, ...set })
       }}
-      onHowTo={() => {
-        onHowTo(exercise, entry.cue)
-      }}
-      testID={`log-entry-${entry.index}`}
+      onHowTo={
+        whole === undefined
+          ? undefined
+          : () => {
+              onHowTo(whole, cue)
+            }
+      }
+      testID={testID}
     />
   )
 }
 
 /**
- * What is in focus: an unavailable entry, an added exercise, the entry, or — all done — Finish.
- * Where nothing is logged — the day done, an entry out of reach — the set just logged is said above
- * it.
+ * What is in focus: an unavailable entry, all done — Finish — or what is logged: an entry, or an
+ * exercise added. Where nothing is logged — the day done, an entry out of reach — the set just
+ * logged is said above it.
  */
 export function InFocus({
   focus,
@@ -116,19 +148,6 @@ export function InFocus({
       </>
     )
   }
-  if (focus.kind === 'added') {
-    return (
-      <AdHocFocus
-        focus={focus}
-        whole={full.find((e) => e.id === focus.exercise.id)}
-        sets={sets}
-        after={after}
-        onHowTo={(whole) => {
-          onHowTo(whole, null)
-        }}
-      />
-    )
-  }
   if (focus.kind === 'done') {
     return (
       <Stack gap="md" testID="day-done">
@@ -145,5 +164,5 @@ export function InFocus({
   }
   // A day always has a focus or is done; nothing is in focus only without a plan.
   if (focus.kind === 'none') return null
-  return <Focus focus={focus} sets={sets} after={after} onHowTo={onHowTo} unit={unit} />
+  return <Focus focus={focus} full={full} sets={sets} after={after} onHowTo={onHowTo} unit={unit} />
 }

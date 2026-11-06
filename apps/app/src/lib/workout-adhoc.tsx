@@ -3,13 +3,12 @@ import {
   type Exercise,
   type SessionExercise,
   adHocSetsOf,
-  loggerAsks,
   progressOf,
 } from '@cedo/contract'
-import { AddRow, FocusLogger, type JustDone, Stack, UpNext } from '../ui/index.ts'
+import { AddRow, Stack, UpNext } from '../ui/index.ts'
 import { type RestShown, useJustDone } from './just-done.ts'
-import { useLoads } from './use-loads.ts'
 import { useWeightUnit } from './weight-unit.ts'
+import { Focus } from './workout-focus.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
 /*
@@ -26,7 +25,7 @@ export interface AdHocMainProps {
   readonly sets: WorkoutSets
   readonly rest: RestShown
   readonly view: WorkoutShown
-  readonly onHowTo: (exercise: Exercise) => void
+  readonly onHowTo: (exercise: Exercise, cue: string | null) => void
 }
 
 /** The exercise in focus — one more set from the last — and what was just done in Log's place. */
@@ -39,16 +38,9 @@ export function AdHocMain({
 }: AdHocMainProps): React.JSX.Element | null {
   const { focus, shown } = view
   const after = useJustDone({ rest, shown, sets })
+  const unit = useWeightUnit()
   if (focus.kind !== 'added') return null
-  return (
-    <AdHocFocus
-      focus={focus}
-      whole={full.find((e) => e.id === focus.exercise.id)}
-      sets={sets}
-      after={after}
-      onHowTo={onHowTo}
-    />
-  )
+  return <Focus focus={focus} full={full} sets={sets} after={after} onHowTo={onHowTo} unit={unit} />
 }
 
 /** What the side column of a session with no plan reads. */
@@ -124,57 +116,6 @@ export function AddedExercises({
       current={current}
       onChoose={onChoose}
       testID="adhoc-row"
-    />
-  )
-}
-
-/** An exercise logged with no plan entry, in focus: its sets, and one more from the last. */
-export function AdHocFocus({
-  focus,
-  whole,
-  sets,
-  after,
-  onHowTo,
-}: {
-  /** As the contract's `workoutView` gives it: its sets, those logged then one more. */
-  readonly focus: Extract<WorkoutShown['focus'], { kind: 'added' }>
-  /** The whole exercise, when it was picked this open: how to do it can be shown. */
-  readonly whole: Exercise | undefined
-  readonly sets: WorkoutSets
-  /** The set just logged, while it can be taken back: in Log's place (#63). */
-  readonly after: JustDone | null
-  readonly onHowTo: (exercise: Exercise) => void
-}): React.JSX.Element {
-  const { exercise } = focus
-  // Its weights as the athlete can load them, when the whole exercise is at hand (#36).
-  const load = useLoads()(whole)
-  const asks = loggerAsks(focus, sets.waiting, useWeightUnit(), sets.all.length)
-  return (
-    <FocusLogger
-      // The numbers start again from what the next set asks when the key changes.
-      key={asks.key}
-      name={exercise.name}
-      cue={null}
-      tracking={exercise.tracking}
-      sets={asks.marks}
-      from={asks.from}
-      after={after}
-      next={asks.next}
-      progressed={asks.progressed}
-      last={asks.last}
-      busy={sets.busy}
-      load={load}
-      onLog={(set) => {
-        sets.record.log({ ...asks.logsAgainst, ...set })
-      }}
-      onHowTo={
-        whole === undefined
-          ? undefined
-          : () => {
-              onHowTo(whole)
-            }
-      }
-      testID={`adhoc-${exercise.id}`}
     />
   )
 }
