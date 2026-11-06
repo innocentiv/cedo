@@ -18,6 +18,48 @@ export interface QueuedSet {
   readonly loggedAt: string
 }
 
+/** A set's send as the queue holds it: the set, and how its sending stands. */
+export interface QueuedSend {
+  readonly set: QueuedSet | undefined
+  /** Waiting for a signal — or behind a set that is. */
+  readonly paused: boolean
+  /** Tries that failed: an answer lost on a weak signal, sent again (`retry.ts`). */
+  readonly failures: number
+}
+
+/**
+ * A session's sets as the workout reads them (#9): as the server has them, all of them — those
+ * waiting for a signal counted as done — which are waiting, and how their sending stands. Every
+ * reading of a set not yet sent is worked out here, from the session and the queue read once.
+ */
+export interface SessionSets<S extends PendingLog = SetLog> {
+  readonly server: readonly S[]
+  readonly all: readonly PendingLog[]
+  /** The keys of the sets waiting to be sent: a set's id until the server gives it one. */
+  readonly waiting: ReadonlySet<string>
+  /** The sets not yet sent, in the order logged — shown as soon as logged: not sent is not lost. */
+  readonly unsent: readonly QueuedSet[]
+  /** One waits for a signal, or is sent again after a lost answer: the screen asks to stay open. */
+  readonly heldUp: boolean
+  /** A set's first send is on its way: the next waits for it, not behind it in the queue. */
+  readonly busy: boolean
+}
+
+export function setsOfSession<S extends PendingLog>(
+  server: readonly S[],
+  sends: readonly QueuedSend[],
+): SessionSets<S> {
+  const unsent = sends.flatMap(({ set }) => (set === undefined ? [] : [set]))
+  return {
+    server,
+    all: withPending(server, unsent),
+    waiting: new Set(unsent.map((s) => s.key)),
+    unsent,
+    heldUp: sends.some((s) => s.paused || s.failures > 0),
+    busy: sends.some((s) => !s.paused && s.failures === 0),
+  }
+}
+
 /**
  * Sets logged but not yet sent (#9), as the workout screen's flow reads them (#24): done. Logged
  * without a signal, the next set must still come up and rest still start — the athlete is between

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { type LogSetInput, focusOf } from '@cedo/contract'
-import { type PendingLog, withPending } from './pending.ts'
+import { type PendingLog, type QueuedSend, setsOfSession, withPending } from './pending.ts'
 
 const input = (entryId: string, isWarmup = false): LogSetInput => ({
   exerciseId: crypto.randomUUID(),
@@ -90,5 +90,51 @@ describe('sets logged without a signal (#9), on the workout screen (#24)', () =>
     const day = { entries: [entry('squat', 0), entry('rdl', 1)] }
     const logs = withPending([], [queued('a', 'squat')])
     expect(focusOf(day, logs)?.id).toBe('rdl')
+  })
+})
+
+/** A session's sets as the workout reads them, from the session and the queue read once. */
+describe('a session’s sets, sent and not', () => {
+  const sending = (set = queued(crypto.randomUUID(), 'squat')): QueuedSend => ({
+    set,
+    paused: false,
+    failures: 0,
+  })
+  const offline = (set = queued(crypto.randomUUID(), 'squat')): QueuedSend => ({
+    ...sending(set),
+    paused: true,
+  })
+  const resent = (set = queued(crypto.randomUUID(), 'squat')): QueuedSend => ({
+    ...sending(set),
+    failures: 1,
+  })
+  const server = [stored('squat', '2026-10-25T17:58:00Z')]
+
+  test('the sets not sent are listed in the order logged, waiting, and counted as done', () => {
+    const [a, b] = [queued('a', 'squat'), queued('b', 'rdl')]
+    const sets = setsOfSession(server, [offline(a), offline(b)])
+    expect(sets.unsent).toEqual([a, b])
+    expect([...sets.waiting]).toEqual(['a', 'b'])
+    expect(sets.all.map((l) => l.id)).toEqual([...server.map((l) => l.id), 'a', 'b'])
+  })
+
+  test('a send not yet holding its set is none of them', () => {
+    const sets = setsOfSession(server, [{ set: undefined, paused: false, failures: 0 }])
+    expect([sets.unsent, sets.all.length]).toEqual([[], 1])
+  })
+
+  test('held up while one waits for a signal, or is sent again after a lost answer', () => {
+    expect(setsOfSession(server, [offline()]).heldUp).toBe(true)
+    expect(setsOfSession(server, [resent()]).heldUp).toBe(true)
+    expect(setsOfSession(server, [sending()]).heldUp).toBe(false)
+    expect(setsOfSession(server, []).heldUp).toBe(false)
+  })
+
+  /** The next set waits for a first send on its way; behind one held up, it queues instead. */
+  test('busy only while a set’s first send is on its way', () => {
+    expect(setsOfSession(server, [sending()]).busy).toBe(true)
+    expect(setsOfSession(server, [offline(), offline()]).busy).toBe(false)
+    expect(setsOfSession(server, [resent(), offline()]).busy).toBe(false)
+    expect(setsOfSession(server, []).busy).toBe(false)
   })
 })

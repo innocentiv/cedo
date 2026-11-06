@@ -2,7 +2,7 @@ import { Fragment, useState } from 'react'
 import { useRouter } from 'expo-router'
 import type { LoggedExercise, SessionDay, SessionExercise, SetLog } from '@cedo/contract'
 import { byExercise, formatWithReserve, loggedLabel, loggedTitle } from '@cedo/contract'
-import { useUnsentSets } from '../api/session-queries.ts'
+import type { SessionSets } from '../api/pending.ts'
 import { useWeightUnit } from './weight-unit.ts'
 import { exerciseName } from './exercise-name.ts'
 import { Card, ListRow, Stack, Text } from '../ui/index.ts'
@@ -32,16 +32,15 @@ export function PlanUnavailable(): React.JSX.Element {
  * day or the ad-hoc picks, since the server has not named them yet.
  */
 export function UnsentSets({
-  sessionId,
+  sets: { unsent: sets, heldUp },
   day,
   adHoc,
 }: {
-  readonly sessionId: string
+  readonly sets: Pick<SessionSets, 'unsent' | 'heldUp'>
   readonly day: SessionDay | undefined
   readonly adHoc: readonly SessionExercise[]
 }): React.JSX.Element | null {
   const unit = useWeightUnit()
-  const { sets, heldUp } = useUnsentSets(sessionId)
   if (sets.length === 0) return null
   const exerciseOf = (exerciseId: string): LoggedExercise | null =>
     day?.entries.find((e) => e.exerciseId === exerciseId)?.exercise ??

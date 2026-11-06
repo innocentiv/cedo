@@ -13,12 +13,8 @@ export function useRecordSet(sessionId: string) {
   const logSet = useLogSet(sessionId)
   // Its own submission, so a set waiting for a signal never holds Finish, nor clears its refusal.
   const { submit, error } = useSubmit()
-  // Held only while a set's first send is on its way. Once one waits — for a signal, or behind
-  // another — the next is logged behind it, the queue keeping the order (#9).
-  const busy = logSet.isPending && !logSet.isPaused && logSet.failureCount === 0
 
   return {
-    busy,
     error,
     log: (
       set: LoggedHere & { readonly exerciseId: string; readonly entryId: string | null },

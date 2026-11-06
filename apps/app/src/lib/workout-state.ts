@@ -15,9 +15,9 @@ import {
   exercisesInSession,
   workoutView,
 } from '@cedo/contract'
-import { type PendingLog, withPending } from '../api/pending.ts'
+import { type PendingLog, type SessionSets, setsOfSession } from '../api/pending.ts'
 import { useSession, useSessionTargets } from '../api/queries.ts'
-import { useRemoveLog, useUnsentSets, useUpdateSession } from '../api/session-queries.ts'
+import { useQueuedSends, useRemoveLog, useUpdateSession } from '../api/session-queries.ts'
 import { useRecordSet } from './record-set.ts'
 import { useLoads } from './use-loads.ts'
 import { useSubmit } from './use-submit.ts'
@@ -38,13 +38,10 @@ export type WorkoutShown = WorkoutView<
 >
 
 /**
- * A session's sets, as every part of the workout reads and changes them: as the server has them,
- * with those still waiting for a signal (which count as done, #9), and the writes to them.
+ * A session's sets, as every part of the workout reads and changes them: as `setsOfSession` reads
+ * them — those still waiting for a signal counted as done (#9) — and the writes to them.
  */
-export interface WorkoutSets {
-  readonly server: readonly SetLog[]
-  readonly all: readonly PendingLog[]
-  readonly waiting: ReadonlySet<string>
+export interface WorkoutSets extends SessionSets {
   readonly record: ReturnType<typeof useRecordSet>
   /** Takes back a set the server has: its entry takes the focus, from what it said (#63). */
   readonly undo: (log: SetLog) => void
@@ -59,7 +56,7 @@ export function useWorkout(id: string) {
   const session = useSession(id)
   const plan = session.data?.plan
   const targets = useSessionTargets(id, plan?.reachable === true)
-  const unsent = useUnsentSets(id)
+  const sends = useQueuedSends(id)
   const record = useRecordSet(id)
   const submission = useSubmit()
   const menu = useMenu()
@@ -70,7 +67,7 @@ export function useWorkout(id: string) {
   const writes = useSessionWrites(id, submission.submit, menu.hide, did)
   const picks = useAdHocPicks(serverLogs, did)
   const ended = session.data?.endedAt != null
-  const sets = workoutSets(serverLogs, unsent.sets, record, writes.undo, did)
+  const sets = workoutSets(setsOfSession(serverLogs, sends), record, writes.undo, did)
 
   return {
     id,
@@ -108,21 +105,14 @@ export function useWorkout(id: string) {
 
 export type Workout = ReturnType<typeof useWorkout>
 
-/**
- * The sets as the server has them and as the workout counts them — those waiting included. Logging
- * one says so to `choicesAfter`.
- */
+/** The sets as `setsOfSession` reads them, and the writes to them. Logging one tells `choicesAfter`. */
 const workoutSets = (
-  server: readonly SetLog[],
-  unsent: ReturnType<typeof useUnsentSets>['sets'],
+  read: SessionSets,
   record: WorkoutSets['record'],
   undo: WorkoutSets['undo'],
   did: Did,
 ): WorkoutSets => ({
-  server,
-  // Sets still waiting for a signal count as done: the next one comes up, rest starts (#9).
-  all: withPending(server, unsent),
-  waiting: new Set(unsent.map((s) => s.key)),
+  ...read,
   record: {
     ...record,
     log: (...set) => {
