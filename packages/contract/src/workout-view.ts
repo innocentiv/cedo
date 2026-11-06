@@ -66,6 +66,25 @@ type Loggable<E extends FlowEntry> = E & { readonly exercise: NonNullable<E['exe
 
 const loggable = <E extends FlowEntry>(entry: E): entry is Loggable<E> => entry.exercise !== null
 
+/** An entry in focus: its sets, what this session asks of it, and its set just undone. */
+export interface FocusedEntry<E extends FlowEntry, L extends ViewLog, T extends EntryAsked> {
+  readonly kind: 'entry'
+  readonly entry: Loggable<E>
+  readonly sets: SessionSet<L>[]
+  /** What this session asks of it, once read. */
+  readonly asked: T | undefined
+  /** Its set just undone, which the logger starts from — or null. */
+  readonly undone: Undone | null
+}
+
+/** An exercise added in focus — a swap, or one of a session without a plan. */
+export interface FocusedAdded<X extends Added, L extends ViewLog> {
+  readonly kind: 'added'
+  readonly exercise: X
+  readonly sets: SessionSet<L>[]
+  readonly undone: Undone | null
+}
+
 /**
  * What the focus is on: an entry, one out of the reader's reach, a swap or an exercise added, the
  * day all done — or, a session without a plan with nothing picked, nothing.
@@ -76,22 +95,9 @@ export type Focused<
   L extends ViewLog,
   T extends EntryAsked,
 > =
-  | {
-      readonly kind: 'entry'
-      readonly entry: Loggable<E>
-      readonly sets: SessionSet<L>[]
-      /** What this session asks of it, once read. */
-      readonly asked: T | undefined
-      /** Its set just undone, which the logger starts from — or null. */
-      readonly undone: Undone | null
-    }
+  | FocusedEntry<E, L, T>
   | { readonly kind: 'unavailable'; readonly entry: E }
-  | {
-      readonly kind: 'added'
-      readonly exercise: X
-      readonly sets: SessionSet<L>[]
-      readonly undone: Undone | null
-    }
+  | FocusedAdded<X, L>
   | { readonly kind: 'done' }
   | { readonly kind: 'none' }
 

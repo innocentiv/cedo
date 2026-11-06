@@ -1,16 +1,10 @@
 import {
   type Exercise,
-  NO_TARGET,
   type SessionEntry,
-  type SessionEntryTarget,
   type WeightUnit,
   formatEffort,
-  formatSets,
-  markedSets,
-  nextSet,
-  nextSetWords,
+  loggerAsks,
   prescriptionOf,
-  targetLine,
 } from '@cedo/contract'
 import { AfterSet, ConfirmButton, FocusLogger, type JustDone, Stack, Text } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
@@ -45,52 +39,41 @@ function Unavailable({
   )
 }
 
-/** The entry in focus: its sets, the next one large, and Log. */
+/** The entry in focus: its sets, the next one large, and Log — as the contract's `loggerAsks`. */
 function Focus({
-  entry,
-  exercise,
+  focus,
   sets,
-  entrySets,
-  asked,
-  from,
   after,
   onHowTo,
   unit,
 }: {
-  readonly entry: SessionEntry
-  readonly exercise: Exercise
+  readonly focus: Extract<WorkoutShown['focus'], { kind: 'entry' }>
   readonly sets: WorkoutSets
-  readonly entrySets: Extract<WorkoutShown['focus'], { kind: 'entry' }>['sets']
-  readonly asked: SessionEntryTarget | undefined
-  readonly from: Extract<WorkoutShown['focus'], { kind: 'entry' }>['undone']
   readonly after: JustDone | null
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
   readonly unit: WeightUnit
 }): React.JSX.Element {
-  const next = nextSet(entrySets)
-  const words = nextSetWords(entrySets, next, true)
-  const target = next?.target ?? asked?.target ?? prescriptionOf(entry)?.target ?? NO_TARGET
+  const { entry } = focus
+  const { exercise } = entry
+  const asks = loggerAsks(focus, sets.waiting, unit, sets.all.length)
   const load = useLoads()(exercise)
-  const { tracking } = exercise
   return (
     <FocusLogger
-      // Keyed by the set it logs: the numbers start again from what the NEXT set asks. By how many
-      // sets there are, not the last one's id: a set logged without a signal changes id when the
-      // server has it, and a reserve already chosen for the next set would be lost to it (#37).
-      key={`${entry.id}:${next?.key ?? 'more'}:${String(sets.all.length)}`}
+      // The numbers start again from what the next set asks when the key changes.
+      key={asks.key}
       name={exercise.name}
       cue={entry.cue}
-      tracking={tracking}
-      sets={markedSets(entrySets, sets.waiting)}
-      next={{ target, isWarmup: next?.isWarmup ?? false, title: words.title, action: words.action }}
-      from={from}
+      tracking={exercise.tracking}
+      sets={asks.marks}
+      next={asks.next}
+      from={asks.from}
       after={after}
-      progressed={asked === undefined ? null : targetLine(asked, unit, next ?? undefined)}
-      last={asked?.last == null ? null : `Last time ${formatSets(asked.last, tracking, unit)}`}
+      progressed={asks.progressed}
+      last={asks.last}
       busy={sets.busy}
       load={load}
       onLog={(set) => {
-        sets.record.log({ exerciseId: entry.exerciseId, entryId: entry.id, ...set })
+        sets.record.log({ ...asks.logsAgainst, ...set })
       }}
       onHowTo={() => {
         onHowTo(exercise, entry.cue)
@@ -134,14 +117,11 @@ export function InFocus({
     )
   }
   if (focus.kind === 'added') {
-    const { exercise } = focus
     return (
       <AdHocFocus
-        exercise={exercise}
-        marks={focus.sets}
-        whole={full.find((e) => e.id === exercise.id)}
+        focus={focus}
+        whole={full.find((e) => e.id === focus.exercise.id)}
         sets={sets}
-        from={focus.undone}
         after={after}
         onHowTo={(whole) => {
           onHowTo(whole, null)
@@ -165,18 +145,5 @@ export function InFocus({
   }
   // A day always has a focus or is done; nothing is in focus only without a plan.
   if (focus.kind === 'none') return null
-  const { entry } = focus
-  return (
-    <Focus
-      entry={entry}
-      exercise={entry.exercise}
-      sets={sets}
-      entrySets={focus.sets}
-      asked={focus.asked}
-      from={focus.undone}
-      after={after}
-      onHowTo={onHowTo}
-      unit={unit}
-    />
-  )
+  return <Focus focus={focus} sets={sets} after={after} onHowTo={onHowTo} unit={unit} />
 }
