@@ -1,7 +1,8 @@
 import { describe, expect, test } from 'bun:test'
 import type { SetTarget } from './progression.ts'
 import type { FlowEntry, FlowLog } from './session-flow.ts'
-import { NO_CHOICES, workoutView } from './workout-view.ts'
+import { type Chosen, NO_CHOICES, type WorkoutChoices, choicesAfter } from './workout-choices.ts'
+import { workoutView } from './workout-view.ts'
 
 /** What the workout screen shows (#24): the focus, the set shown above it, and "+ set". */
 
@@ -254,6 +255,56 @@ describe('what the workout shows', () => {
         choices: { chosen: null, undone: undone('squat', 'curl') },
       })
       expect(v.focus.kind === 'added' && v.focus.undone).toBeNull()
+    })
+  })
+
+  /**
+   * What the athlete chose, after what they did (GLOSSARY.md, "Focus"): `choicesAfter`, the one rule
+   * of it — each thing done on the workout screen, from what was held.
+   */
+  describe('what the athlete chose, after what they did', () => {
+    /** A set as it is undone: what `undone(…)` says it said. */
+    const undoneSet = (entryId: string | null, exerciseId = entryId ?? 'curl') => ({
+      ...set(entryId, exerciseId),
+      reps: 6,
+      weightG: 95_000,
+      reserve: 2,
+    })
+    const chose = (chosen: Chosen): WorkoutChoices => ({ chosen, undone: null })
+    const heldUndo: WorkoutChoices = { chosen: null, undone: undone('rdl') }
+
+    test('a tap chooses, over what was chosen; a set undone stays undone', () => {
+      const tapped = (chosen: Chosen) => ({ kind: 'tapped', chosen }) as const
+      expect(choicesAfter(chose({ entry: 'squat' }), tapped({ added: 'dip' }))).toEqual(
+        chose({ added: 'dip' }),
+      )
+      expect(choicesAfter(heldUndo, tapped({ entry: 'squat' }))).toEqual({
+        chosen: { entry: 'squat' },
+        undone: undone('rdl'),
+      })
+    })
+
+    test('picking chooses the first picked, as a tap would; picking nothing changes nothing', () => {
+      const picked = choicesAfter(chose({ entry: 'rdl' }), {
+        kind: 'picked',
+        exercises: [{ id: 'dip' }, { id: 'curl' }],
+      })
+      expect(picked).toEqual(chose({ added: 'dip' }))
+      expect(choicesAfter(heldUndo, { kind: 'picked', exercises: [] })).toBe(heldUndo)
+    })
+
+    test('opening the picker forgets what was chosen: what is picked takes the focus', () => {
+      expect(choicesAfter(chose({ entry: 'rdl' }), { kind: 'pickerOpened' })).toEqual(NO_CHOICES)
+    })
+
+    test('a set logged forgets everything: the next set ends a choice, and an undo', () => {
+      const held = { chosen: { entry: 'rdl' }, undone: undone('squat') }
+      expect(choicesAfter(held, { kind: 'logged' })).toEqual(NO_CHOICES)
+    })
+
+    test('a set undone is held, as it said, over what was chosen and any set undone before', () => {
+      const held = { chosen: { entry: 'squat' }, undone: undone(null, 'dip') }
+      expect(choicesAfter(held, { kind: 'undone', set: undoneSet('rdl') })).toEqual(heldUndo)
     })
   })
 })

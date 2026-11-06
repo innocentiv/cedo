@@ -1,4 +1,3 @@
-import type { Effort } from './effort.ts'
 import type { Load } from './load.ts'
 import type { SetTarget } from './progression.ts'
 import {
@@ -10,11 +9,13 @@ import {
   nextSet,
   setsOf,
 } from './session-flow.ts'
+import type { Chosen, Undone, WorkoutChoices } from './workout-choices.ts'
 
 /**
  * What the workout screen shows (#24): the focus (GLOSSARY.md), the set just logged, and "+ set"
- * — from the session's sets and what the athlete chose. Pure, so the screen only renders it and
- * holds the choices. The flow it reads is `session-flow.ts`; see docs/08-frontend.md.
+ * — from the session's sets and what the athlete chose (`workout-choices.ts`). Pure, so the screen
+ * only renders it and holds the choices. The flow it reads is `session-flow.ts`; see
+ * docs/08-frontend.md.
  */
 
 /** What these rules read of a set as the workout shows it: the exercise it is of, too. */
@@ -43,44 +44,6 @@ export function adHocFocus<X extends Added>(
     of(chosen) ?? (latest?.entryId === null ? of(latest.exerciseId) : undefined) ?? exercises.at(-1)
   )
 }
-
-/**
- * A set just undone (#63): of a plan entry or of an exercise logged with none, and what it said.
- * Its entry takes the focus, and the logger starts from what the set said, not from the target: one
- * wrong number is fixed, and the set logged again.
- */
-export interface Undone {
-  readonly entryId: string | null
-  readonly exerciseId: string
-  readonly effort: Effort
-  readonly reserve: number | null
-}
-
-/** A set as it is undone: what it was of, and what it said. */
-export const undoneOf = (log: ViewLog & { readonly reserve: number | null }): Undone => ({
-  entryId: log.entryId,
-  exerciseId: log.exerciseId,
-  effort: {
-    reps: log.reps,
-    weightG: log.weightG,
-    durationS: log.durationS,
-    distanceMm: log.distanceMm,
-  },
-  reserve: log.reserve,
-})
-
-/**
- * What the athlete chose on the workout screen (GLOSSARY.md, "Focus"): an entry of the day or an
- * exercise logged with none, tapped to put in focus, and a set undone — which chooses its own
- * entry, unless something is chosen after it. The screen holds them until the athlete logs a set,
- * or goes to pick an exercise; these rules only read them.
- */
-export interface WorkoutChoices {
-  readonly chosen: { readonly entry: string } | { readonly added: string } | null
-  readonly undone: Undone | null
-}
-
-export const NO_CHOICES: WorkoutChoices = { chosen: null, undone: null }
 
 type Loggable<E extends FlowEntry> = E & { readonly exercise: NonNullable<E['exercise']> }
 
@@ -158,7 +121,7 @@ function readsOf<E extends FlowEntry, X extends Added, L extends ViewLog, T exte
   const { targets, sets, added, choices } = input
   const { undone } = choices
   // A set undone chooses its own entry — or exercise — unless something was chosen after it.
-  const chosen: WorkoutChoices['chosen'] =
+  const chosen: Chosen | null =
     choices.chosen ??
     (undone === null
       ? null

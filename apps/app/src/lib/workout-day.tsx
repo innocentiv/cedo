@@ -1,8 +1,8 @@
 import {
+  type Chosen,
   type Exercise,
   type SessionDay,
   type SessionExercise,
-  type WorkoutChoices,
   formatPrescription,
   nextSet,
   progressOf,
@@ -30,7 +30,7 @@ export interface PlannedMainProps {
   /** The exercises added this open, whole: how to do them can be shown. */
   readonly full: readonly Exercise[]
   readonly view: WorkoutShown
-  readonly onChoose: (chosen: WorkoutChoices['chosen']) => void
+  readonly onChoose: (chosen: Chosen) => void
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
   readonly onFinish: () => Promise<void>
   readonly finishing: boolean
@@ -81,7 +81,7 @@ export interface PlannedSideProps {
   /** Exercises logged with no entry — swaps — then any added since: `exercisesInSession`. */
   readonly added: readonly SessionExercise[]
   readonly view: WorkoutShown
-  readonly onChoose: (chosen: WorkoutChoices['chosen']) => void
+  readonly onChoose: (chosen: Chosen) => void
   /** Every set the session holds, under the day. */
   readonly record: React.ReactNode
   readonly onAdd: () => void

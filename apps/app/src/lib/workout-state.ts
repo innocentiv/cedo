@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useReducer, useState } from 'react'
 import {
+  type ChoiceEvent,
+  type Chosen,
   type Exercise,
   NO_CHOICES,
   type SessionEntry,
@@ -9,8 +11,8 @@ import {
   type SetLog,
   type WorkoutChoices,
   type WorkoutView,
+  choicesAfter,
   exercisesInSession,
-  undoneOf,
   workoutView,
 } from '@cedo/contract'
 import { type PendingLog, withPending } from '../api/pending.ts'
@@ -23,6 +25,9 @@ import { useSubmit } from './use-submit.ts'
 /** Stable, so an absent session does not recompute the exercises on every render. */
 const NO_LOGS: readonly SetLog[] = []
 const NO_TARGETS: readonly SessionEntryTarget[] = []
+
+/** Tells `choicesAfter` what the athlete did. */
+type Send = (event: ChoiceEvent) => void
 
 /** What the workout screen shows: the contract's `workoutView`, of this session. */
 export type WorkoutShown = WorkoutView<
@@ -60,11 +65,12 @@ export function useWorkout(id: string) {
   const menu = useMenu()
   const [howTo, setHowTo] = useState<{ exercise: Exercise; cue: string | null } | null>(null)
   const serverLogs = session.data?.logs ?? NO_LOGS
-  const choices = useChoices()
-  const writes = useSessionWrites(id, submission.submit, menu.hide, choices.undone)
-  const picks = useAdHocPicks(serverLogs, choices)
+  // What the athlete chose (GLOSSARY.md, "Focus"): each thing done here is sent to `choicesAfter`.
+  const [choices, send] = useReducer(choicesAfter, NO_CHOICES)
+  const writes = useSessionWrites(id, submission.submit, menu.hide, send)
+  const picks = useAdHocPicks(serverLogs, send)
   const ended = session.data?.endedAt != null
-  const sets = workoutSets(serverLogs, unsent.sets, record, writes.undo, choices.forget)
+  const sets = workoutSets(serverLogs, unsent.sets, record, writes.undo, send)
 
   return {
     id,
@@ -96,7 +102,7 @@ export function useWorkout(id: string) {
     setHowTo,
     ...picks,
     ...writes,
-    ...useView(plan, targets.data, sets, picks.adHocExercises, choices),
+    ...useView(plan, targets.data, sets, picks.adHocExercises, [choices, send]),
   }
 }
 
@@ -104,14 +110,14 @@ export type Workout = ReturnType<typeof useWorkout>
 
 /**
  * The sets as the server has them and as the workout counts them — those waiting included. Logging
- * one forgets what the athlete chose: the next set is what ends a choice. Undoing one chooses it.
+ * one says so to `choicesAfter`.
  */
 const workoutSets = (
   server: readonly SetLog[],
   unsent: ReturnType<typeof useUnsentSets>['sets'],
   record: WorkoutSets['record'],
   undo: WorkoutSets['undo'],
-  forget: () => void,
+  send: Send,
 ): WorkoutSets => ({
   server,
   // Sets still waiting for a signal count as done: the next one comes up, rest starts (#9).
@@ -120,35 +126,12 @@ const workoutSets = (
   record: {
     ...record,
     log: (...set) => {
-      forget()
+      send({ kind: 'logged' })
       record.log(...set)
     },
   },
   undo,
 })
-
-/**
- * What the athlete chose to look at (GLOSSARY.md, "Focus"): an entry or an exercise added, tapped
- * or picked to put in focus, and a set undone — which chooses its own entry, to log it again from
- * what it said (#63). Held until this device logs a set, or goes to pick an exercise — by what was
- * done, not by which set is latest: a set logged without a signal changes id when the server has
- * it, and a choice held to its id was lost as it landed. Undoing another set replaces it.
- */
-function useChoices() {
-  const [held, setHeld] = useState<WorkoutChoices>(NO_CHOICES)
-  return {
-    held,
-    choose: (chosen: WorkoutChoices['chosen']) => {
-      setHeld((now) => ({ ...now, chosen }))
-    },
-    undone: (log: SetLog) => {
-      setHeld({ chosen: null, undone: undoneOf(log) })
-    },
-    forget: () => {
-      setHeld(NO_CHOICES)
-    },
-  }
-}
 
 /**
  * The day the session follows, and what the screen shows of it (the contract's `workoutView`) with
@@ -159,7 +142,7 @@ function useView(
   targets: readonly SessionEntryTarget[] | undefined,
   sets: WorkoutSets,
   added: readonly SessionExercise[],
-  choices: ReturnType<typeof useChoices>,
+  [choices, send]: readonly [WorkoutChoices, Send],
 ) {
   const loads = useLoads()
   // The plan as the server says the reader can reach it (`SessionPlan`) — never decided here.
@@ -169,14 +152,17 @@ function useView(
     targets: targets ?? NO_TARGETS,
     sets: sets.all,
     added,
-    choices: choices.held,
+    choices,
     loadFor: (entry) => loads(entry.exercise),
   })
   return {
     day,
     /** What the screen shows, by the contract's rules: the focus, the set shown, "+ set". */
     view,
-    choose: choices.choose,
+    /** An entry tapped in Up next, an exercise among those added, or "+ set": put in focus. */
+    choose: (chosen: Chosen) => {
+      send({ kind: 'tapped', chosen })
+    },
   }
 }
 
@@ -197,12 +183,9 @@ function useMenu() {
 /**
  * The exercises logged with no plan entry — the whole of a session without a plan, or the swaps in
  * one with a plan — then any picked since (`exercisesInSession`). Picks are local: once a set is
- * logged, the log carries the exercise. Picking one chooses it, so it takes the focus.
+ * logged, the log carries the exercise. Going to pick, and what is picked, say so to `choicesAfter`.
  */
-function useAdHocPicks(
-  logs: readonly SetLog[],
-  choices: Pick<ReturnType<typeof useChoices>, 'choose' | 'forget'>,
-) {
+function useAdHocPicks(logs: readonly SetLog[], send: Send) {
   const [picking, setPicking] = useState(false)
   const [declined, setDeclined] = useState(false)
   const [picked, setPicked] = useState<Exercise[]>([])
@@ -212,24 +195,19 @@ function useAdHocPicks(
     picked,
     picking,
     declined,
-    /** Going to pick forgets what was chosen: what is picked takes the focus. */
     startPicking: () => {
-      choices.forget()
+      send({ kind: 'pickerOpened' })
       setPicking(true)
     },
     cancelPicking: () => {
       setPicking(false)
       setDeclined(true)
     },
-    /**
-     * Several at once (#27), in the order picked: the first is chosen, so it takes the focus as a
-     * tap would — until a set is logged.
-     */
+    /** Several at once (#27), in the order picked. */
     pick: (exercises: readonly Exercise[]) => {
       const ids = new Set(exercises.map((e) => e.id))
       setPicked((now) => [...now.filter((e) => !ids.has(e.id)), ...exercises])
-      const [first] = exercises
-      if (first !== undefined) choices.choose({ added: first.id })
+      send({ kind: 'picked', exercises })
       setPicking(false)
     },
   }
@@ -240,7 +218,7 @@ function useSessionWrites(
   id: string,
   submit: ReturnType<typeof useSubmit>['submit'],
   closeMenu: () => void,
-  chooseUndone: (log: SetLog) => void,
+  send: Send,
 ) {
   const update = useUpdateSession(id)
   const removeLog = useRemoveLog(id)
@@ -258,7 +236,7 @@ function useSessionWrites(
     },
     // A set finished on another device answers 404, and says so.
     undo: (log: SetLog) => {
-      chooseUndone(log)
+      send({ kind: 'undone', set: log })
       void submit(async () => {
         await removeLog.mutateAsync(log.id)
       })
