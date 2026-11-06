@@ -29,7 +29,7 @@ export const STEP_KINDS = ['session', 'by_hand'] as const
 export type StepKind = (typeof STEP_KINDS)[number]
 
 /** A prescribed working set, as a plan holds it. */
-interface WorkingSet {
+export interface PrescribedWorkingSet {
   readonly targetReps: number | null
   readonly targetWeightG: number | null
   readonly targetReserve: number | null
@@ -38,7 +38,7 @@ interface WorkingSet {
 }
 
 /** What a step taken now is taken against: the entry's rule and its WORKING sets, in order. */
-export function againstOf(rule: Progression, working: readonly WorkingSet[]): Against {
+export function againstOf(rule: Progression, working: readonly PrescribedWorkingSet[]): Against {
   const [first] = working
   return {
     rule,

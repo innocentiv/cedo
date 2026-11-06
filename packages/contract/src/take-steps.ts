@@ -1,4 +1,11 @@
-import { type Against, type StepKind, againstOf, prescriptionIn, stillCounts } from './against.ts'
+import {
+  type Against,
+  type PrescribedWorkingSet,
+  type StepKind,
+  againstOf,
+  prescriptionIn,
+  stillCounts,
+} from './against.ts'
 import { type Load, loadable, steppedOn } from './load.ts'
 import { loadableTarget } from './loadable-target.ts'
 import type { Held, Progression, SetAttempt, SetTarget } from './progression.ts'
@@ -15,13 +22,7 @@ import { step } from './step.ts'
 export interface RuledEntry {
   readonly id: string
   readonly progression: Progression
-  readonly working: readonly {
-    readonly targetReps: number | null
-    readonly targetWeightG: number | null
-    readonly targetReserve: number | null
-    readonly targetDurationS: number | null
-    readonly targetDistanceMm: number | null
-  }[]
+  readonly working: readonly PrescribedWorkingSet[]
 }
 
 /** One of the caller's steps on the entry, as stored. */
@@ -52,7 +53,8 @@ export interface Taken {
   readonly against: Against
 }
 
-type Base = Pick<Taken, 'target' | 'streak' | 'against'>
+/** The step the next session steps from: the last one taken, one stored, or one set by hand. */
+type Previous = Pick<Taken, 'target' | 'streak' | 'against'>
 
 /**
  * One entry's steps from `from` onward, taken: the sessions and the steps set by hand since, in the
@@ -68,7 +70,7 @@ export function takeSteps(
   from: Date,
   load: Load | null,
 ): Taken[] {
-  const now = againstOf(entry.progression, entry.working)
+  const asItStands = againstOf(entry.progression, entry.working)
   const judgedAgainst = new Map(
     steps.flatMap((s) =>
       s.sessionId !== null && s.takenAt >= from ? [[s.sessionId, s.against]] : [],
@@ -84,17 +86,17 @@ export function takeSteps(
     }),
   ].toSorted((a, b) => a.at.getTime() - b.at.getTime())
 
-  let base: Base | null = steps.findLast((s) => s.takenAt < from) ?? null
+  let previous: Previous | null = steps.findLast((s) => s.takenAt < from) ?? null
   const taken: Taken[] = []
-  for (const event of timeline) {
-    if ('byHand' in event) {
-      base = event.byHand
+  for (const moment of timeline) {
+    if ('byHand' in moment) {
+      previous = moment.byHand
       continue
     }
-    const next = sessionStep(entry, event.sets, base, judgedAgainst, now, load)
+    const next = sessionStep(entry, moment.sets, previous, judgedAgainst, asItStands, load)
     if (next === null) continue
     taken.push(next)
-    base = next
+    previous = next
   }
   return taken
 }
@@ -122,18 +124,18 @@ function bySession(sets: readonly FinishedSet[]): Map<string, FinishedSet[]> {
 function sessionStep(
   entry: RuledEntry,
   sets: readonly FinishedSet[],
-  base: Base | null,
+  previous: Previous | null,
   judgedAgainst: ReadonlyMap<string, Against>,
-  now: Against,
+  asItStands: Against,
   load: Load | null,
 ): Taken | null {
   const [first] = sets
   if (first === undefined) return null
-  const against = judgedAgainst.get(first.sessionId) ?? now
+  const against = judgedAgainst.get(first.sessionId) ?? asItStands
   if (against.rule.kind === 'none') return null
   const start =
-    base !== null && stillCounts(base.against, against)
-      ? base
+    previous !== null && stillCounts(previous.against, against)
+      ? previous
       : { target: prescriptionIn(against), streak: 0 }
   const shown = loadableTarget(load, start.target).target
   const stepped = step({
