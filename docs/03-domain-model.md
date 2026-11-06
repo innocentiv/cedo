@@ -271,8 +271,10 @@ the warm-ups, rest, cue, superset and order are not part of `against`.
 
 **Corrections take steps again.** Correcting or removing a set of a finished session, or deleting a
 finished session, takes every step of the affected entries from that session onward again, in the
-transaction that made the change (`writeSessionSets` reads what the session trained BEFORE the
-write, so a removed set's entry is still taken); a `by_hand` step
+transaction that made the change; finishing a session, or logging one whole, takes its own. Every
+change to a session goes through one path that says so once, `changeSession`
+(`modules/session/write-session.ts`): it reads what a finished session trained BEFORE the write,
+so a removed set's entry, or a deleted session's, is still taken. A `by_hand` step
 stays where it stands in time and the sessions after it are judged from it.
 
 A step keeps the weight it advanced to — from the weight the person was shown, a loadable weight up
@@ -396,8 +398,10 @@ workout_sessions.rest_since?, rest_ends_at?
 The rest after a set is kept by the server (#38): `rest_since` and `rest_ends_at` are worked out as
 each set is logged by the contract's `restOf`, moved by +30 s and ended by skip (`POST
 /sessions/:id/rest`, naming its rest by how many sets were logged), worked out again on Undo and on
-a set corrected, and cleared by finishing. Every write to a session's sets goes through
-`writeSessionSets` (`modules/session/set-writes.ts`), which keeps it (`keepRest`, in `rest.ts`).
+a set corrected, and cleared by finishing. Every change to a session goes through `changeSession`
+(`modules/session/write-session.ts`), which keeps it (`keepRest`, in `rest.ts`) in the change's own
+transaction, under the session's lock — so changes at once keep theirs in the order they are made,
+and a change refused keeps none.
 Being told it is over with the app closed waits
 for the native app (#39). See [adr/0025](adr/0025-rest-kept-by-the-server.md).
 
