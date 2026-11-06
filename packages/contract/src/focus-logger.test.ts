@@ -90,8 +90,8 @@ const onCurl = (logs: readonly Log[], undone: Undone | null = null) => ({
 })
 
 const NONE: ReadonlySet<string> = new Set()
-const asks = (focus: Parameters<typeof loggerAsks>[0], waiting = NONE, count = 0) =>
-  loggerAsks(focus, waiting, 'kg', count)
+const asks = (focus: Parameters<typeof loggerAsks>[0], waiting = NONE) =>
+  loggerAsks(focus, waiting, 'kg')
 
 describe('what the logger asks of an entry of the day', () => {
   test('the next set as the session asks it, counted as the plan does: warm-ups first', () => {
@@ -130,7 +130,7 @@ describe('what the logger asks of an entry of the day', () => {
     expect(asks(onBench([done('bench', true), done('bench')])).progressed).toBe(
       'Prescribed 8 × 80 kg',
     )
-    expect(loggerAsks(onBench([]), NONE, 'lb', 0).progressed).toBe('Prescribed 6 × 198.42 lb')
+    expect(loggerAsks(onBench([]), NONE, 'lb').progressed).toBe('Prescribed 6 × 198.42 lb')
     expect(asks(onBench([])).last).toBeNull()
     const last = [at(6, 90), at(8, 80), at(7, 80)]
     expect(asks(onBench([], { ...asked, last })).last).toBe(
@@ -195,20 +195,26 @@ describe('the key the logger starts again by', () => {
   test('changes when a set is logged; not when one waiting lands with the server’s id', () => {
     const sent = done('bench', true)
     const landed = { ...sent, id: 'from-the-server' }
-    const before = asks(onBench([]), NONE, 0).key
-    const waiting = asks(onBench([sent]), new Set([sent.id]), 1).key
+    const before = asks(onBench([])).key
+    const waiting = asks(onBench([sent]), new Set([sent.id])).key
     expect(waiting).not.toBe(before)
-    expect(asks(onBench([landed]), NONE, 1).key).toBe(waiting)
+    expect(asks(onBench([landed])).key).toBe(waiting)
+  })
+
+  test('changes when a set is undone; not when one lands on another entry', () => {
+    const logs = [done('bench', true), done('bench')]
+    const now = asks(onBench(logs)).key
+    expect(asks(onBench(logs.slice(0, 1))).key).not.toBe(now)
+    // Logged elsewhere — another device, the AI — what is typed here stays.
+    expect(asks(onBench([...logs, done('squat')])).key).toBe(now)
   })
 
   test('changes with each another set logged', () => {
     const all = allOfBench()
-    expect(asks(onBench([...all, done('bench')]), NONE, 5).key).not.toBe(
-      asks(onBench(all), NONE, 4).key,
-    )
+    expect(asks(onBench([...all, done('bench')])).key).not.toBe(asks(onBench(all)).key)
   })
 
   test('of an exercise added, changes with each set logged', () => {
-    expect(asks(onCurl([done(null)]), NONE, 1).key).not.toBe(asks(onCurl([]), NONE, 0).key)
+    expect(asks(onCurl([done(null)])).key).not.toBe(asks(onCurl([])).key)
   })
 })

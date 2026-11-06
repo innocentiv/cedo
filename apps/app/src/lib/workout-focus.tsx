@@ -81,7 +81,7 @@ export function Focus({
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
   readonly unit: WeightUnit
 }): React.JSX.Element {
-  const asks = loggerAsks(focus, sets.waiting, unit, sets.all.length)
+  const asks = loggerAsks(focus, sets.waiting, unit)
   const { exercise, whole, cue, testID } = shownOf(focus, full)
   // Its weights as the athlete can load them, when the whole exercise is at hand (#36).
   const load = useLoads()(whole)

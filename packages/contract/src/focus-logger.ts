@@ -28,9 +28,10 @@ export interface NextSet {
 export interface LoggerAsks {
   /**
    * The logger is keyed by it: its numbers, and a reserve answered, start again from what the next
-   * set asks when it changes. By how many sets the session holds, not the last one's id: a set
-   * logged without a signal changes id when the server has it, and a reserve already chosen for the
-   * next set would be lost to it (#37).
+   * set asks when it changes. By the focus and where the set it logs stands in it — never an id: a
+   * set logged without a signal changes id when the server has it, and a reserve already chosen for
+   * the next set was lost to it (#37); nor by how many sets the session holds, which a set logged
+   * elsewhere — another device, the AI — changes under what is typed.
    */
   readonly key: string
   readonly next: NextSet
@@ -59,8 +60,6 @@ export function loggerAsks<
   focus: FocusedEntry<E, L, T> | FocusedAdded<X, L>,
   waiting: ReadonlySet<string>,
   unit: WeightUnit,
-  /** How many sets the session holds, those waiting for a signal too. */
-  count: number,
 ): LoggerAsks {
   const next = nextSet(focus.sets)
   const logs = next ?? anotherOf(focus.sets)
@@ -77,7 +76,7 @@ export function loggerAsks<
     const { exercise } = focus
     return {
       ...either,
-      key: `${exercise.id}:${String(count)}`,
+      key: `added:${exercise.id}:${logs.key}`,
       progressed: null,
       last: null,
       logsAgainst: { exerciseId: exercise.id, entryId: null },
@@ -86,7 +85,7 @@ export function loggerAsks<
   const { entry, asked } = focus
   return {
     ...either,
-    key: `${entry.id}:${next?.key ?? 'more'}:${String(count)}`,
+    key: `entry:${entry.id}:${logs.key}`,
     progressed: asked === undefined ? null : targetLine(asked, unit, logs),
     last: asked?.last == null ? null : `Last time ${formatSets(asked.last, asked.tracking, unit)}`,
     logsAgainst: { exerciseId: entry.exerciseId, entryId: entry.id },
@@ -96,10 +95,12 @@ export function loggerAsks<
 /**
  * Once an entry has every set it asked for, another: what its last working set asked — as `setsOf`
  * asks a set past the plan, in a weight the athlete can load — else, none prescribed, the last done.
+ * Keyed as `setsOf` will key it once logged: the next extra.
  */
 const anotherOf = <L extends FlowLog>(
   sets: readonly SessionSet<L>[],
-): Pick<SessionSet<L>, 'isWarmup' | 'target'> => ({
+): Pick<SessionSet<L>, 'key' | 'isWarmup' | 'target'> => ({
+  key: `x${String(sets.filter((s) => s.extra).length)}`,
   isWarmup: false,
   target: sets.findLast((s) => !s.isWarmup)?.target ?? NO_TARGET,
 })
