@@ -1,12 +1,14 @@
 import { type Against, type StepKind, againstOf, prescriptionIn, stillCounts } from './against.ts'
-import type { Load } from './load.ts'
-import { nextLoadableStep } from './loadable-target.ts'
+import { type Load, loadable, steppedOn } from './load.ts'
+import { loadableTarget } from './loadable-target.ts'
 import type { Held, Progression, SetAttempt, SetTarget } from './progression.ts'
+import { step } from './step.ts'
 
 /**
  * Taking steps, apart from their storage: rows in, steps out, no database (ADR-0026). The rules'
- * maths is `step`'s; what is here is the order — training's — and what each session is judged from
- * and against. The API's `write-steps.ts` reads the rows and writes what this returns.
+ * maths is `step`'s, reached only from here; what is here is the order — training's — what each
+ * session is judged from and against, and the weights it lands on (ADR-0024). The API's
+ * `write-steps.ts` reads the rows and writes what this returns.
  */
 
 /** An entry the caller can see: its rule, and its WORKING sets in order. */
@@ -89,10 +91,10 @@ export function takeSteps(
       base = event.byHand
       continue
     }
-    const step = sessionStep(entry, event.sets, base, judgedAgainst, now, load)
-    if (step === null) continue
-    taken.push(step)
-    base = step
+    const next = sessionStep(entry, event.sets, base, judgedAgainst, now, load)
+    if (next === null) continue
+    taken.push(next)
+    base = next
   }
   return taken
 }
@@ -112,6 +114,10 @@ function bySession(sets: readonly FinishedSet[]): Map<string, FinishedSet[]> {
  * One session's step, from wherever the last step left the target — while that step still counts
  * against the plan as it stood for this session, else from that plan's prescription. Null under no
  * rule: a manual entry takes no steps.
+ *
+ * In weights the athlete can load: the session is judged against the target as they were shown it
+ * — a 22.5 kg plan logged as 22 on 2 kg dumbbells is met, not missed — and an advance is added to
+ * THAT weight (`fitted`), so the step keeps a weight their equipment could load the day it was taken.
  */
 function sessionStep(
   entry: RuledEntry,
@@ -129,25 +135,40 @@ function sessionStep(
     base !== null && stillCounts(base.against, against)
       ? base
       : { target: prescriptionIn(against), streak: 0 }
-  const stepped = nextLoadableStep(
-    {
-      rule: against.rule,
-      target: start.target,
-      workingSets: against.reserves.length,
-      reserves: against.reserves,
-      streak: start.streak,
-      session: sets,
-    },
-    load,
-  )
+  const shown = loadableTarget(load, start.target).target
+  const stepped = step({
+    rule: against.rule,
+    target: shown,
+    workingSets: against.reserves.length,
+    reserves: against.reserves,
+    streak: start.streak,
+    session: sets,
+  })
   return {
     entryId: entry.id,
     sessionId: first.sessionId,
     takenAt: first.startedAt,
-    from: stepped.shown,
-    target: stepped.target,
+    from: shown,
+    target: fitted(load, shown, stepped.target),
     held: stepped.held,
     streak: stepped.streak,
     against,
   }
+}
+
+/**
+ * `next` in a weight the athlete can load, moved on from the target as they were shown it. When the
+ * rule adds weight, it is the heaviest they have that is not above what the rule asks, but always
+ * one weight up at least: a 1 kg increase on 2 kg dumbbells moves 22 to 24, where stepping down
+ * would hold it there for good, and double progression would climb its reps forever. At their
+ * heaviest already, one up is the heaviest: there it stays.
+ */
+function fitted(load: Load | null, shown: SetTarget, next: SetTarget): SetTarget {
+  // Its weight held, it is the weight shown, though its reps may have climbed.
+  if (next.weightG === shown.weightG) return next
+  if (load === null || next.weightG === null || shown.weightG === null) {
+    return loadableTarget(load, next).target
+  }
+  const up = steppedOn(load, shown.weightG, 1)
+  return { ...next, weightG: Math.max(loadable(load, next.weightG).weightG, up) }
 }
