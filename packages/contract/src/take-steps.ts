@@ -1,27 +1,16 @@
-import {
-  type Against,
-  type Held,
-  type LoadFor,
-  type LoadedExercise,
-  type Progression,
-  type SetAttempt,
-  type SetTarget,
-  type StepKind,
-  againstOf,
-  nextLoadableStep,
-  prescriptionIn,
-  stillCounts,
-} from '@cedo/contract'
-import { groupBy } from '../../lib/keyset.ts'
+import { type Against, type StepKind, againstOf, prescriptionIn, stillCounts } from './against.ts'
+import type { Load } from './load.ts'
+import { nextLoadableStep } from './loadable-target.ts'
+import type { Held, Progression, SetAttempt, SetTarget } from './progression.ts'
 
 /**
  * Taking steps, apart from their storage: rows in, steps out, no database (ADR-0026). The rules'
- * maths is the contract's `step`; what is here is the order — training's — and what each session
- * is judged from and against. `write-steps.ts` reads the rows and writes what this returns.
+ * maths is `step`'s; what is here is the order — training's — and what each session is judged from
+ * and against. The API's `write-steps.ts` reads the rows and writes what this returns.
  */
 
-/** An entry the caller can see: its rule, its WORKING sets in order, and its exercise's load. */
-export interface RuledEntry extends LoadedExercise {
+/** An entry the caller can see: its rule, and its WORKING sets in order. */
+export interface RuledEntry {
   readonly id: string
   readonly progression: Progression
   readonly working: readonly {
@@ -64,17 +53,18 @@ export interface Taken {
 type Base = Pick<Taken, 'target' | 'streak' | 'against'>
 
 /**
- * One entry's steps from `from` onward, taken again: the sessions and the steps set by hand since,
- * in the order they happened, each session a step from wherever the last one left the target. A
- * session already judged is judged against the plan as it stood then (its stored `against`); one
- * not judged before, against the plan as it stands. A step set by hand stays, and anchors.
+ * One entry's steps from `from` onward, taken: the sessions and the steps set by hand since, in the
+ * order they happened, each session a step from wherever the last one left the target. A session
+ * already judged is judged against the plan as it stood then (its stored `against`); one not judged
+ * before, against the plan as it stands. A step set by hand stays, and anchors. `load` is what the
+ * person's equipment puts on the entry's exercise, or null when it is not known.
  */
-export function retaken(
+export function takeSteps(
   entry: RuledEntry,
   steps: readonly StoredStep[],
   sets: readonly FinishedSet[],
   from: Date,
-  loadFor: LoadFor,
+  load: Load | null,
 ): Taken[] {
   const now = againstOf(entry.progression, entry.working)
   const judgedAgainst = new Map(
@@ -86,7 +76,7 @@ export function retaken(
     ...steps
       .filter((s) => s.kind === 'by_hand' && s.takenAt >= from)
       .map((s) => ({ at: s.takenAt, byHand: s })),
-    ...[...groupBy(sets, (l) => l.sessionId).values()].flatMap((session) => {
+    ...[...bySession(sets).values()].flatMap((session) => {
       const [first] = session
       return first === undefined ? [] : [{ at: first.startedAt, sets: session }]
     }),
@@ -99,12 +89,23 @@ export function retaken(
       base = event.byHand
       continue
     }
-    const step = sessionStep(entry, event.sets, base, judgedAgainst, now, loadFor)
+    const step = sessionStep(entry, event.sets, base, judgedAgainst, now, load)
     if (step === null) continue
     taken.push(step)
     base = step
   }
   return taken
+}
+
+/** The sets of each session, in the order they came. */
+function bySession(sets: readonly FinishedSet[]): Map<string, FinishedSet[]> {
+  const sessions = new Map<string, FinishedSet[]>()
+  for (const set of sets) {
+    const session = sessions.get(set.sessionId)
+    if (session === undefined) sessions.set(set.sessionId, [set])
+    else session.push(set)
+  }
+  return sessions
 }
 
 /**
@@ -118,7 +119,7 @@ function sessionStep(
   base: Base | null,
   judgedAgainst: ReadonlyMap<string, Against>,
   now: Against,
-  loadFor: LoadFor,
+  load: Load | null,
 ): Taken | null {
   const [first] = sets
   if (first === undefined) return null
@@ -137,7 +138,7 @@ function sessionStep(
       streak: start.streak,
       session: sets,
     },
-    loadFor(entry),
+    load,
   )
   return {
     entryId: entry.id,
