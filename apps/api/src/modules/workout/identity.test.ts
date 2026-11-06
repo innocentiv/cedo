@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import {
+  EntryTarget,
   Exercise,
-  ProgressionSuggestion,
   Workout,
   WorkoutSession,
   WorkoutSessionSummary,
@@ -104,11 +104,11 @@ async function sessionsSeen(
   workoutId: string,
   entryId: string | undefined,
 ): Promise<number | undefined> {
-  const suggestions = expectContract(
-    z.array(ProgressionSuggestion),
+  const targets = expectContract(
+    z.array(EntryTarget),
     (await user.wire(`/workouts/${workoutId}/progression`)).body,
   )
-  return suggestions.find((s) => s.entryId === entryId)?.sessionsConsidered
+  return targets.find((t) => t.entryId === entryId)?.sessions
 }
 
 describe('saving a plan keeps the identity of what it sends back', () => {

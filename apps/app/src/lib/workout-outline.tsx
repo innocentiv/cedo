@@ -91,7 +91,7 @@ export function Outline({
               key={entry.key}
               entry={entry}
               exercise={library.get(entry.exerciseId)}
-              target={entry.id === undefined ? undefined : targets.get(entry.id)}
+              own={entry.id === undefined ? undefined : targets.get(entry.id)}
               current={selected === entry.key}
               // A reader opens it too: the plan said, and their own target to change.
               onPress={() => {

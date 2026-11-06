@@ -2,12 +2,12 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import {
   DuplicateInput,
+  type EntryTarget,
   OfAthlete,
   ScopeFields,
   WorkoutCreate,
   WorkoutUpdate,
   PlanSave,
-  type ProgressionSuggestion,
   ReviewQuery,
   TargetByHand,
   planSaveFrom,
@@ -20,8 +20,8 @@ import * as ProgressionService from '../../modules/progression/service.ts'
 import * as WorkoutService from '../../modules/workout/service.ts'
 import { READ, REPLACES, REWRITES, WRITE, json, reviewSummary, text } from '../format.ts'
 import {
-  suggestionLine,
-  suggestionLines,
+  nextTargetLine,
+  nextTargetLines,
   workoutDetail,
   workoutLine,
   workoutUpdated,
@@ -36,10 +36,8 @@ import { groupNamesOf } from '../format-group.ts'
  * See docs/07-mcp.md.
  */
 export function registerTrainingTools(server: McpServer, caller: Caller): void {
-  const outline = async (
-    { workout, held }: PlanRead,
-    targets: readonly ProgressionSuggestion[] = [],
-  ) => workoutDetail(workout, caller.weightUnit, held, await groupNamesOf(caller), targets)
+  const outline = async ({ workout, held }: PlanRead, targets: readonly EntryTarget[] = []) =>
+    workoutDetail(workout, caller.weightUnit, held, await groupNamesOf(caller), targets)
 
   server.registerTool(
     'training_review',
@@ -107,7 +105,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       const read = await planFor(await ownOrCoached(caller, athlete), workoutId)
       // The caller's own targets only: a coach reading an athlete's is not offered.
       const targets =
-        athlete === undefined ? await ProgressionService.suggestForWorkout(caller, workoutId) : []
+        athlete === undefined ? await ProgressionService.targetsForWorkout(caller, workoutId) : []
       return text(await outline(read, targets))
     },
   )
@@ -222,8 +220,8 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ workoutId }) =>
       text(
-        suggestionLines(
-          await ProgressionService.suggestForWorkout(caller, workoutId),
+        nextTargetLines(
+          await ProgressionService.targetsForWorkout(caller, workoutId),
           caller.weightUnit,
         ),
       ),
@@ -245,7 +243,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ workoutId, entryId, ...target }) => {
       const set = await ProgressionService.setTargetByHand(caller, workoutId, entryId, target)
-      return text(`Set.\n\n${suggestionLine(set, caller.weightUnit)}`)
+      return text(`Set.\n\n${nextTargetLine(set, caller.weightUnit)}`)
     },
   )
 }

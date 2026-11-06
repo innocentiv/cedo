@@ -1,12 +1,12 @@
 import { beforeEach, expect, test } from 'bun:test'
 import { z } from 'zod'
 import {
-  EntryTarget,
   Exercise,
   GroupMembership,
   PersonalAccessTokenCreated,
   Workout,
   SessionDetail,
+  SessionEntryTarget,
   WorkoutSession,
   WorkoutSessionSummary,
   page,
@@ -578,7 +578,7 @@ test('losing a group takes back every name it showed, on every read path', async
   // What her session on Bob's plan asks of each entry: his prescriptions, while she is a member.
   const targetsOf = async () =>
     expectContract(
-      z.array(EntryTarget),
+      z.array(SessionEntryTarget),
       (await alice.wire(`/sessions/${w.alicesSessionId}/targets`)).body,
     )
   expect(await targetsOf()).not.toEqual([])

@@ -665,7 +665,7 @@ describe('taking steps — linear_distance (runs, rows)', () => {
 })
 
 /**
- * A suggestion past what a target may hold would be refused by the API's own response schema — a
+ * A step past what a target may hold would be refused by the API's own response schema — a
  * 500 for the whole plan's progression, and for the logger's pre-fill. At the ceiling, every rule
  * holds instead.
  */

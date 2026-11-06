@@ -1,44 +1,45 @@
 import { z } from 'zod'
 import { type Effort, formatEffort } from './effort.ts'
-import type { TrackingMode } from './exercise.ts'
+import { TrackingMode } from './exercise.ts'
 import { LOAD_LIMIT_WORDS, LoadLimit } from './load.ts'
 import { LoggedEffort } from './log.ts'
-import { Held, SetTarget } from './progression.ts'
+import { Held, Progression, SetTarget } from './progression.ts'
 import { heldWords } from './progression-words.ts'
 import type { WeightUnit } from './units.ts'
 
 /**
- * What one entry of a session asks for, and what was done last time — `GET /sessions/:id/targets`,
- * what the logger is pre-filled with.
- *
- * `target` is the plan's prescription carried forward by the entry's rule over the sessions that
- * started BEFORE this one, never this one itself: counted with its own sets, the next set of a
- * session whose sets had all hit would be offered the advanced weight mid-session. The plan is not
- * written to: it stays what its author prescribed, and progression carries it forward from there.
- *
- * `target`'s weight is one the athlete can load (#36) — the heaviest their equipment loads that is
- * not above it — and progression judged their last session against that, not the plan's.
+ * A person's target on one workout entry (GLOSSARY.md, "Target"; ADR-0026), beside the prescription
+ * it starts from: their latest step while what it was taken against stands as the plan does, else
+ * the plan's prescription — in a weight they can load (#36). Worked out as it is read; the plan is
+ * never written. One shape wherever a target is read: `GET /workouts/:id/progression` (the plan
+ * editor, and `workout_progression`, the AI's entry point for "evaluate my progression and set next
+ * week's numbers"), a target set by hand, and — with last time — a session's (`SessionEntryTarget`).
  */
 export const EntryTarget = z.object({
   entryId: z.uuid(),
-  /** What the plan prescribes. */
+  exerciseId: z.uuid(),
+  exerciseName: z.string(),
+  /** So a reader says targets in the exercise's terms — `formatEffort(target, tracking, unit)`. */
+  tracking: TrackingMode,
+  rule: Progression,
+  /** What the plan prescribes: its first working set. */
   prescribed: SetTarget,
-  /** What this session asks for. */
+  /** What their next session asks. */
   target: SetTarget,
-  /** Whether the rule moved it — the logger says so beside the prescription. */
+  /**
+   * Whether the rule moved it off the prescription — in weights they can load, so 22.5 kg shown as
+   * 22 has not moved. The logger and the editor say it beside the prescription.
+   */
   changed: z.boolean(),
-  /** Why the rule held it, if something did (#45) — the logger says so when it was the effort. */
+  /** Why it held, when something did (#45): a prescription held for effort is not a stall. */
   held: Held.nullable(),
   /**
    * Where the athlete's equipment stopped its weight (#36): their heaviest, under a heavier plan,
    * or their lightest, over a lighter one. Null otherwise — and while what they load is unknown.
    */
   limit: LoadLimit.nullable(),
-  /**
-   * The working sets of the latest earlier session that logged this exercise — in this plan or any
-   * other, or none — in the order they were logged. Null when there is none.
-   */
-  last: z.array(LoggedEffort).nullable(),
+  /** How many of their finished sessions took a step on the entry. Zero: no history yet. */
+  sessions: z.int().nonnegative(),
   /**
    * What each warm-up asks, in set order: its own line, its weight following the working target in
    * proportion (`warmupsFor`, ADR-0026) — worked out as it is read, never kept.
@@ -54,6 +55,21 @@ export const EntryTarget = z.object({
 export type EntryTarget = z.output<typeof EntryTarget>
 
 /**
+ * What one entry of a session asks — `GET /sessions/:id/targets`, what the logger is pre-filled
+ * with: the person's target as the steps of the sessions BEFORE this one left it, and what was done
+ * last time. A session takes its step only once it is finished, so its own sets never move what it
+ * asks mid-session.
+ */
+export const SessionEntryTarget = EntryTarget.extend({
+  /**
+   * The working sets of the latest earlier session that logged this exercise — in this plan or any
+   * other, or none — in the order they were logged. Null when there is none.
+   */
+  last: z.array(LoggedEffort).nullable(),
+})
+export type SessionEntryTarget = z.output<typeof SessionEntryTarget>
+
+/**
  * What the logger says beside an entry's target (docs/08-frontend.md, the workout screen): moved by
  * the rule, beside what the plan says — "Progressed to 11 × 20 kg · the plan says 10 × 20 kg" — or as
  * prescribed; then why the latest session held it, per set, in the words `workout_progression` says
@@ -63,7 +79,6 @@ export type EntryTarget = z.output<typeof EntryTarget>
  */
 export function targetLine(
   asked: EntryTarget,
-  tracking: TrackingMode,
   unit: WeightUnit,
   /**
    * The set it is said for: on Manual each working set asks its own. A warm-up is never judged, so
@@ -71,6 +86,7 @@ export function targetLine(
    */
   set?: { readonly isWarmup: boolean; readonly target: Effort },
 ): string {
+  const { tracking } = asked
   const said = set === undefined || set.isWarmup ? asked.target : set.target
   const limit = asked.limit === null ? '' : ` · ${LOAD_LIMIT_WORDS[asked.limit]}`
   const target = `${formatEffort(asked.target, tracking, unit)}${limit}`

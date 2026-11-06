@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { ApiError, Exercise, GroupMembership, ProgressionSuggestion, Workout } from '@cedo/contract'
+import { ApiError, EntryTarget, Exercise, GroupMembership, Workout } from '@cedo/contract'
 import { z } from 'zod'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
@@ -312,6 +312,6 @@ describe('sharing a workout does not share its exercises', () => {
     const res = await bob.wire(`/workouts/${workout.id}/progression`)
     expect(res.status).toBe(200)
     expect(JSON.stringify(res.body)).not.toContain('Alice Secret Movement')
-    expect(expectContract(z.array(ProgressionSuggestion), res.body)).toHaveLength(0)
+    expect(expectContract(z.array(EntryTarget), res.body)).toHaveLength(0)
   })
 })

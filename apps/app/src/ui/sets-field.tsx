@@ -1,6 +1,6 @@
 import {
+  type EntryTarget,
   type SetKind,
-  type SetTarget,
   type TrackingMode,
   fieldsOf,
   hasTarget,
@@ -19,18 +19,17 @@ import { ManualLines, Warmups } from './set-lines.tsx'
 import { Stack } from './stack.tsx'
 import { type ChangeTarget, NextSession } from './target-change.tsx'
 
-/** What the viewer's own target says of an entry — theirs, not the plan's (ADR-0026). */
-export interface EntryTargetView {
-  readonly suggested: SetTarget
-  /** Each warm-up as their next session asks it, its weight following the target. */
-  readonly warmups: readonly SetTarget[]
-}
+/**
+ * What the viewer's own target says of an entry — theirs, not the plan's (ADR-0026): what their
+ * next session asks, and each warm-up, its weight following the target.
+ */
+export type EntryTargetView = Pick<EntryTarget, 'target' | 'warmups'>
 
 export interface SetsFieldProps {
   readonly entry: EntryDraft
   readonly tracking: TrackingMode
   readonly onChange: (entry: EntryDraft) => void
-  readonly target: EntryTargetView | null
+  readonly own: EntryTargetView | null
   readonly change: ChangeTarget | null
   /** "you were at 12 × 40 kg", while an edit restarts the target from the plan. */
   readonly restartedFrom: string | null
@@ -82,7 +81,7 @@ function Ruled({
   entry,
   tracking,
   onChange,
-  target,
+  own,
   change,
   testID,
 }: SetsFieldProps): React.JSX.Element {
@@ -129,7 +128,7 @@ function Ruled({
           <NextSession
             rule={entry.progression}
             tracking={tracking}
-            target={target?.suggested ?? null}
+            target={own?.target ?? null}
             change={change}
             testID={testID}
           />

@@ -1,23 +1,26 @@
 import { and, asc, eq, inArray, lt, sql } from 'drizzle-orm'
-import type { EntryTarget, LoggedEffort } from '@cedo/contract'
+import type { LoggedEffort, SessionEntryTarget } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
 import { groupBy } from '../../lib/keyset.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { loadsOf } from '../equipment/held.ts'
-import { targetsFrom } from './evaluate.ts'
+import { sessionTargetsOf } from './evaluate.ts'
 import { loadEntries } from './entries.ts'
 
 /**
  * What a session asks of each entry of the day it follows — the logger's pre-fill — and what was
- * done last time. See `EntryTarget`.
+ * done last time. See `SessionEntryTarget`.
  *
  * The caller's target as their steps left it (ADR-0026). A session takes its step only when it is
  * finished, so its own sets never move what it asks mid-session. A session following no day, or a
  * day out of the caller's reach, asks nothing — there is nothing to offer.
  */
-export async function targetsForSession(caller: Caller, sessionId: string): Promise<EntryTarget[]> {
+export async function targetsForSession(
+  caller: Caller,
+  sessionId: string,
+): Promise<SessionEntryTarget[]> {
   const [session] = await db
     .select({
       workoutId: workoutSessions.workoutId,
@@ -37,7 +40,7 @@ export async function targetsForSession(caller: Caller, sessionId: string): Prom
     lastTimes(caller, exerciseIds, session.startedAt),
     loadsOf(caller.userId, caller.weightUnit),
   ])
-  return targetsFrom(loaded.entries, loaded.prescribed, loaded.steps, loadFor, last)
+  return sessionTargetsOf(loaded.entries, loaded.prescribed, loaded.steps, loadFor, last)
 }
 
 /**

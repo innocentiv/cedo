@@ -1,5 +1,5 @@
 import { type UseQueryResult, useQuery } from '@tanstack/react-query'
-import type { ProgressionSuggestion, TargetByHand } from '@cedo/contract'
+import type { EntryTarget, TargetByHand } from '@cedo/contract'
 import { api } from './http.ts'
 import { keys } from './query-client.ts'
 import { useWriteTo } from './write-to.ts'
@@ -9,7 +9,7 @@ import { useWriteTo } from './write-to.ts'
  * what the plan prescribes — the plan's outline and the entry editor's Your next session. Theirs
  * whoever owns the plan: a reader of it has targets too.
  */
-export const useTargets = (workoutId: string): UseQueryResult<ProgressionSuggestion[]> =>
+export const useTargets = (workoutId: string): UseQueryResult<EntryTarget[]> =>
   useQuery({
     queryKey: keys.progression(workoutId),
     queryFn: async () => await api.workouts.progression(workoutId),

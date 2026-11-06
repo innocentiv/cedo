@@ -28,7 +28,7 @@ export function EntryRead({
   entry,
   rest,
   tracking,
-  target,
+  own,
   change,
   testID,
 }: {
@@ -36,7 +36,7 @@ export function EntryRead({
   /** Where its rest falls in its day — see `restPlace`. */
   readonly rest: RestPlace
   readonly tracking: TrackingMode
-  readonly target: EntryTargetView | null
+  readonly own: EntryTargetView | null
   readonly change: ChangeTarget | null
   readonly testID: string
 }): React.JSX.Element {
@@ -69,7 +69,7 @@ export function EntryRead({
             <NextSession
               rule={rule}
               tracking={tracking}
-              target={target?.suggested ?? null}
+              target={own?.target ?? null}
               change={change}
               testID={testID}
             />

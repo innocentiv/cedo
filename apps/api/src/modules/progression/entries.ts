@@ -7,8 +7,8 @@ import { planEntries } from '../workout/plan.ts'
 import type { LatestStep } from './evaluate.ts'
 
 /**
- * What progression reads (#36 moved it here, for the plan's suggestions and a session's targets
- * alike): the entries, their prescribed sets, and the caller's latest step on each.
+ * What progression reads (#36 moved it here, for a plan's targets and a session's alike): the
+ * entries, their prescribed sets, and the caller's latest step on each.
  */
 
 /**
@@ -35,7 +35,7 @@ export async function loadEntries(
     })
     .from(plan)
     /**
-     * An INNER join onto the visible exercises: without it a suggestion returns the name and
+     * An INNER join onto the visible exercises: without it a target returns the name and
      * prescribed load of an exercise the caller cannot see. Entries whose exercise is hidden simply
      * do not appear — there is nothing useful to advise about a movement you cannot read.
      */

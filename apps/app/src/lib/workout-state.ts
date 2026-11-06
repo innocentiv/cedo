@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react'
 import {
-  type EntryTarget,
   type Exercise,
   NO_CHOICES,
   type SessionEntry,
+  type SessionEntryTarget,
   type SessionExercise,
   type SessionPlan,
   type SetLog,
@@ -22,10 +22,15 @@ import { useSubmit } from './use-submit.ts'
 
 /** Stable, so an absent session does not recompute the exercises on every render. */
 const NO_LOGS: readonly SetLog[] = []
-const NO_TARGETS: readonly EntryTarget[] = []
+const NO_TARGETS: readonly SessionEntryTarget[] = []
 
 /** What the workout screen shows: the contract's `workoutView`, of this session. */
-export type WorkoutShown = WorkoutView<SessionEntry, SessionExercise, PendingLog, EntryTarget>
+export type WorkoutShown = WorkoutView<
+  SessionEntry,
+  SessionExercise,
+  PendingLog,
+  SessionEntryTarget
+>
 
 /**
  * A session's sets, as every part of the workout reads and changes them: as the server has them,
@@ -151,7 +156,7 @@ function useChoices() {
  */
 function useView(
   plan: SessionPlan | undefined,
-  targets: readonly EntryTarget[] | undefined,
+  targets: readonly SessionEntryTarget[] | undefined,
   sets: WorkoutSets,
   added: readonly SessionExercise[],
   choices: ReturnType<typeof useChoices>,

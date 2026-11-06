@@ -133,17 +133,17 @@ describe('reads do not N+1', () => {
     expect(many.count).toBeLessThanOrEqual(2)
   })
 
-  test('progression suggestions cost the same for 1 entry as for 48', async () => {
+  test("a plan's targets cost the same for 1 entry as for 48", async () => {
     const ids = await exerciseIds(12)
 
     const small = await planned(1, 1, ids)
     const smallCount = await withQueryCount(() =>
-      ProgressionService.suggestForWorkout(alice.caller, small),
+      ProgressionService.targetsForWorkout(alice.caller, small),
     )
 
     const large = await planned(6, 8, ids)
     const largeCount = await withQueryCount(() =>
-      ProgressionService.suggestForWorkout(alice.caller, large),
+      ProgressionService.targetsForWorkout(alice.caller, large),
     )
 
     expect(smallCount.result).toHaveLength(1)

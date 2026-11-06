@@ -9,7 +9,7 @@ import { get as getSession } from '../../modules/session/plan.ts'
 import { list as listSessions } from '../../modules/session/list.ts'
 import { history } from '../../modules/session/history.ts'
 import { today } from '../../modules/session/today.ts'
-import { suggestForWorkout } from '../../modules/progression/service.ts'
+import { targetsForWorkout } from '../../modules/progression/service.ts'
 import { targetsForSession } from '../../modules/progression/targets.ts'
 import { trainingReview } from '../../modules/review/service.ts'
 import { libraryAudit } from '../../modules/review/curation.ts'
@@ -176,7 +176,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     },
   },
   {
-    name: 'progression suggestions',
+    name: "a plan's targets",
     why: "Every entry's target, as the caller's steps left it (ADR-0026). A per-entry step query grows with the plan.",
     dimension: 'plan size (3 vs 560 entries)',
     // The workout; its entries; their sets; the caller's latest steps; what they can load (#36).
@@ -190,7 +190,7 @@ export const HOT_PATHS: readonly HotPath[] = [
     ],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
-      return await suggestForWorkout(profile.caller, profile.workoutId)
+      return await targetsForWorkout(profile.caller, profile.workoutId)
     },
   },
   {

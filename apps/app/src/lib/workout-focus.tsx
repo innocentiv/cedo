@@ -1,8 +1,8 @@
 import {
-  type EntryTarget,
   type Exercise,
   NO_TARGET,
   type SessionEntry,
+  type SessionEntryTarget,
   type WeightUnit,
   formatEffort,
   formatSets,
@@ -61,7 +61,7 @@ function Focus({
   readonly exercise: Exercise
   readonly sets: WorkoutSets
   readonly entrySets: Extract<WorkoutShown['focus'], { kind: 'entry' }>['sets']
-  readonly asked: EntryTarget | undefined
+  readonly asked: SessionEntryTarget | undefined
   readonly from: Extract<WorkoutShown['focus'], { kind: 'entry' }>['undone']
   readonly after: JustDone | null
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
@@ -85,7 +85,7 @@ function Focus({
       next={{ target, isWarmup: next?.isWarmup ?? false, title: words.title, action: words.action }}
       from={from}
       after={after}
-      progressed={asked === undefined ? null : targetLine(asked, tracking, unit, next ?? undefined)}
+      progressed={asked === undefined ? null : targetLine(asked, unit, next ?? undefined)}
       last={asked?.last == null ? null : `Last time ${formatSets(asked.last, tracking, unit)}`}
       busy={sets.record.busy}
       load={load}

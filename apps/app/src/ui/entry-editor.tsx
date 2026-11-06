@@ -25,7 +25,7 @@ export interface EntryEditorProps {
   readonly load: Load | null
   readonly onChange: (entry: EntryDraft) => void
   /** The viewer's own target on it — null until it is read, or for an entry not saved yet. */
-  readonly target: EntryTargetView | null
+  readonly own: EntryTargetView | null
   /** Setting their target by hand; null on Manual, which has none. */
   readonly change: ChangeTarget | null
   /** What their target was, while an edit restarts it from the plan. */
@@ -59,7 +59,7 @@ export function EntryEditor(props: EntryEditorProps): React.JSX.Element {
           entry={entry}
           tracking={tracking}
           onChange={onChange}
-          target={props.target}
+          own={props.own}
           change={props.change}
           restartedFrom={props.restartedFrom}
           testID={testID}

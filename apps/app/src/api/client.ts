@@ -28,9 +28,9 @@ import {
   PersonalAccessToken,
   type PersonalAccessTokenCreate,
   PersonalAccessTokenCreated,
-  ProgressionSuggestion,
   type TargetByHand,
   SessionDetail,
+  SessionEntryTarget,
   type SessionQuery,
   Today,
   type TodayQuery,
@@ -149,11 +149,10 @@ const workouts = ({ GET, POST, PATCH, PUT, DELETE }: Verbs) => ({
   remove: async (id: string) => await DELETE(`/workouts/${id}`, Ok),
   replacePlan: async (id: string, body: PlanSave) =>
     await PUT(`/workouts/${id}/plan`, Workout, body),
-  progression: async (id: string) =>
-    await GET(`/workouts/${id}/progression`, z.array(ProgressionSuggestion)),
+  progression: async (id: string) => await GET(`/workouts/${id}/progression`, z.array(EntryTarget)),
   /** The caller's own target on one entry, set by hand (ADR-0026): what their next session asks. */
   setTarget: async (id: string, entryId: string, body: TargetByHand) =>
-    await PUT(`/workouts/${id}/entries/${entryId}/target`, ProgressionSuggestion, body),
+    await PUT(`/workouts/${id}/entries/${entryId}/target`, EntryTarget, body),
   duplicate: async (id: string, body: DuplicateInput = {}) =>
     await POST(`/workouts/${id}/duplicate`, Workout, body),
   transfer: async (id: string, body: TransferInput) =>
@@ -168,7 +167,7 @@ const sessions = ({ GET, POST, PATCH, DELETE }: Verbs) => ({
   list: async (query: Partial<SessionQuery> = {}) =>
     await GET('/sessions', page(WorkoutSessionSummary), asQuery(query)),
   get: async (id: string) => await GET(`/sessions/${id}`, SessionDetail),
-  targets: async (id: string) => await GET(`/sessions/${id}/targets`, z.array(EntryTarget)),
+  targets: async (id: string) => await GET(`/sessions/${id}/targets`, z.array(SessionEntryTarget)),
   start: async (body: SessionStart) => await POST('/sessions', WorkoutSession, body),
   update: async (id: string, body: SessionUpdate) =>
     await PATCH(`/sessions/${id}`, WorkoutSession, body),

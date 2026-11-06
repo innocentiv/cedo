@@ -1,13 +1,7 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { sql } from 'drizzle-orm'
 import { z } from 'zod'
-import {
-  Exercise,
-  ProgressionSuggestion,
-  SessionLogInput,
-  Workout,
-  WorkoutSession,
-} from '@cedo/contract'
+import { EntryTarget, Exercise, SessionLogInput, Workout, WorkoutSession } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { expectContract } from '../../test/contract.ts'
 import { type TestUser, makeApi } from '../../test/harness.ts'
@@ -131,11 +125,11 @@ describe("a person's steps, taken one write at a time", () => {
           amendLog(alice.caller, p.earlier, p.logs[0] ?? '', { reps: 7 }),
         ])
         // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
-        const [suggestion] = expectContract(
-          z.array(ProgressionSuggestion),
+        const [shown] = expectContract(
+          z.array(EntryTarget),
           (await alice.wire(`/workouts/${p.workoutId}/progression`)).body,
         )
-        if (suggestion?.suggested.reps !== 9) wrong.push(suggestion?.suggested.reps ?? -1)
+        if (shown?.target.reps !== 9) wrong.push(shown?.target.reps ?? -1)
       }
       expect(wrong).toEqual([])
     },
@@ -173,11 +167,11 @@ describe("a person's steps, taken one write at a time", () => {
           ),
         ])
         // oxlint-disable-next-line no-await-in-loop -- rounds in turn: each is its own race.
-        const [suggestion] = expectContract(
-          z.array(ProgressionSuggestion),
+        const [shown] = expectContract(
+          z.array(EntryTarget),
           (await alice.wire(`/workouts/${p.workoutId}/progression`)).body,
         )
-        if (suggestion?.suggested.reps !== 10) wrong.push(suggestion?.suggested.reps ?? -1)
+        if (shown?.target.reps !== 10) wrong.push(shown?.target.reps ?? -1)
       }
       expect(wrong).toEqual([])
     },

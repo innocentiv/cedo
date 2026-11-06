@@ -13,8 +13,8 @@ const working = (...targets: SetTarget[]) => targets.map((target) => ({ isWarmup
 const warmup = (target: SetTarget) => ({ isWarmup: true, target })
 
 /** The viewer's target, as the server reads it: moved off the plan by their steps, or not. */
-const moved = (suggested: SetTarget) => ({ suggested, changed: true })
-const unmoved = (suggested: SetTarget) => ({ suggested, changed: false })
+const moved = (target: SetTarget) => ({ target, changed: true })
+const unmoved = (target: SetTarget) => ({ target, changed: false })
 
 const DOUBLE: Progression = { kind: 'double', repRange: [8, 12], incrementG: 5000 }
 const MANUAL: Progression = { kind: 'none' }

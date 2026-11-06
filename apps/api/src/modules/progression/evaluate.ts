@@ -4,10 +4,9 @@ import {
   type EquipmentSlug,
   type Held,
   type LoadFor,
-  type LoadLimit,
   type LoggedEffort,
   type Progression,
-  type ProgressionSuggestion,
+  type SessionEntryTarget,
   type SetTarget,
   type TrackingMode,
   type WorkoutSetInput,
@@ -23,8 +22,8 @@ import { groupBy } from '../../lib/keyset.ts'
 /**
  * Progression's reading, apart from its loading: rows in, targets out, no database (ADR-0026). A
  * person's target is their latest step, while what it was taken against stands as the plan does
- * now — else the plan's prescription; either is shown in a weight they can load (#36). The rules'
- * maths runs when a step is taken (`write-steps.ts`), never here.
+ * now — else the plan's prescription (`standingTarget`); either is shown in a weight they can load
+ * (#36). The rules' maths runs when a step is taken (`write-steps.ts`), never here.
  */
 
 /** An entry whose exercise the caller can see — the only kind there is anything to advise about. */
@@ -52,107 +51,72 @@ export interface LatestStep {
   readonly sessions: number
 }
 
-/** One suggestion per entry, in the order the entries arrive. `prescribed` is in set order. */
-export function suggest(
+/** Each entry's target, in the order the entries arrive. `prescribed` is in set order. */
+export function targetsOf(
   entries: readonly EntryToEvaluate[],
   prescribed: readonly PrescribedSet[],
   steps: readonly LatestStep[],
   loadFor: LoadFor,
-): ProgressionSuggestion[] {
-  return evaluate(entries, prescribed, steps, loadFor).map((e) => e.suggestion)
-}
-
-/** Each entry's suggestion, and where the athlete's equipment stopped its weight, if it did. */
-function evaluate(
-  entries: readonly EntryToEvaluate[],
-  prescribed: readonly PrescribedSet[],
-  steps: readonly LatestStep[],
-  loadFor: LoadFor,
-): {
-  readonly entry: EntryToEvaluate
-  readonly suggestion: ProgressionSuggestion
-  readonly limit: LoadLimit | null
-  readonly working: SetTarget[]
-}[] {
+): EntryTarget[] {
   const setsByEntry = groupBy(prescribed, (s) => s.entryId)
   const stepByEntry = new Map(steps.map((s) => [s.entryId, s]))
   return entries.map((entry) =>
-    Object.assign(
-      suggestForEntry(entry, setsByEntry.get(entry.id) ?? [], stepByEntry.get(entry.id), loadFor),
-      { entry },
-    ),
+    targetOf(entry, setsByEntry.get(entry.id) ?? [], stepByEntry.get(entry.id), loadFor),
   )
 }
 
-/**
- * What a session asks of each entry — `EntryTarget` — from the same reading as `suggest`; and last
- * time's working sets of each entry's exercise, by exercise.
- */
-export function targetsFrom(
+/** What a session asks of each entry — its target — and last time's working sets of its exercise. */
+export function sessionTargetsOf(
   entries: readonly EntryToEvaluate[],
   prescribed: readonly PrescribedSet[],
   steps: readonly LatestStep[],
   loadFor: LoadFor,
   lastByExercise: ReadonlyMap<string, LoggedEffort[]>,
-): EntryTarget[] {
-  const read = evaluate(entries, prescribed, steps, loadFor)
-  return read.map(({ suggestion: s, limit, working }) => ({
-    entryId: s.entryId,
-    prescribed: s.current,
-    target: s.suggested,
-    changed: s.changed,
-    held: s.held,
-    limit,
-    last: lastByExercise.get(s.exerciseId) ?? null,
-    warmups: s.warmups,
-    working,
-  }))
+): SessionEntryTarget[] {
+  return targetsOf(entries, prescribed, steps, loadFor).map((target) =>
+    Object.assign(target, { last: lastByExercise.get(target.exerciseId) ?? null }),
+  )
 }
 
 /**
  * In weights the athlete can load (#36): `changed` is the target moved off the prescription as
  * shown, never the snapping alone — 22.5 kg shown as 22 has not progressed.
  */
-function suggestForEntry(
+function targetOf(
   entry: EntryToEvaluate,
   prescribed: readonly PrescribedSet[],
   latest: LatestStep | undefined,
   loadFor: LoadFor,
-): {
-  readonly suggestion: ProgressionSuggestion
-  readonly limit: LoadLimit | null
-  /** What each working set asks: the target with its own reserve, or on Manual its own numbers. */
-  readonly working: SetTarget[]
-} {
+): EntryTarget {
   const working = prescribed.filter((s) => !s.isWarmup)
   const now = againstOf(entry.progression, working)
-  const current = prescriptionIn(now)
+  const plan = prescriptionIn(now)
   const { target, step } = standingTarget(latest, now)
   const load = loadFor(entry)
-  const shown = loadableTarget(load, current)
+  const shown = loadableTarget(load, plan)
   // The rule never moves reps in reserve: the target asks what the plan asks of it.
-  const reached = loadableTarget(load, { ...target, reserve: current.reserve })
-
-  const suggestion = {
+  const reached = loadableTarget(load, { ...target, reserve: plan.reserve })
+  return {
     entryId: entry.id,
     exerciseId: entry.exerciseId,
     exerciseName: entry.exerciseName,
     tracking: entry.tracking,
     rule: entry.progression,
-    current,
-    suggested: reached.target,
+    prescribed: plan,
+    target: reached.target,
     changed: !sameTarget(shown.target, reached.target),
     held: step?.held ?? null,
-    sessionsConsidered: latest?.sessions ?? 0,
+    limit: reached.limit,
+    sessions: latest?.sessions ?? 0,
     warmups: warmupsFor(
       prescribed.filter((s) => s.isWarmup).map((w) => setTargetOf(w)),
       // Unsnapped, both: snapping a 22.5 kg plan to 22 is not progress for a warm-up to follow.
-      current,
+      plan,
       target,
       load,
     ),
+    working: asksOf(entry, working, reached.target, load),
   }
-  return { suggestion, limit: reached.limit, working: asksOf(entry, working, reached.target, load) }
 }
 
 /**

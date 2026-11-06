@@ -1,11 +1,11 @@
-import type { ProgressionSuggestion, TargetByHand } from '@cedo/contract'
+import type { EntryTarget, TargetByHand } from '@cedo/contract'
 import { againstOf, targetByHand } from '@cedo/contract'
 import { type Transaction, db } from '../../db/client.ts'
 import { invalid, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { loadsOf } from '../equipment/held.ts'
 import { loadEntries } from './entries.ts'
-import { suggest } from './evaluate.ts'
+import { targetsOf } from './evaluate.ts'
 import { lockSteps, writeByHand } from './write-steps.ts'
 
 /**
@@ -21,19 +21,19 @@ export async function setTargetByHand(
   workoutId: string,
   entryId: string,
   input: TargetByHand,
-): Promise<ProgressionSuggestion> {
+): Promise<EntryTarget> {
   return await db.transaction(async (tx) => {
     await lockSteps(tx, caller)
     const before = await entryTarget(tx, caller, workoutId, entryId)
-    const set = targetByHand(before.entry.progression, before.suggestion.suggested, input)
+    const set = targetByHand(before.entry.progression, before.shown.target, input)
     if ('refused' in set) throw invalid(set.refused, [{ path: '', message: set.refused }])
     await writeByHand(tx, caller, {
       entryId,
-      from: before.suggestion.suggested,
+      from: before.shown.target,
       target: set.target,
       against: againstOf(before.entry.progression, before.working),
     })
-    return (await entryTarget(tx, caller, workoutId, entryId)).suggestion
+    return (await entryTarget(tx, caller, workoutId, entryId)).shown
   })
 }
 
@@ -45,7 +45,7 @@ async function entryTarget(tx: Transaction, caller: Caller, workoutId: string, e
   const prescribed = loaded.prescribed.filter((s) => s.entryId === entryId)
   const steps = loaded.steps.filter((s) => s.entryId === entryId)
   const loadFor = await loadsOf(caller.userId, caller.weightUnit, tx)
-  const [suggestion] = suggest([entry], prescribed, steps, loadFor)
-  if (suggestion === undefined) throw notFound('entry')
-  return { entry, suggestion, working: prescribed.filter((s) => !s.isWarmup) }
+  const [shown] = targetsOf([entry], prescribed, steps, loadFor)
+  if (shown === undefined) throw notFound('entry')
+  return { entry, shown, working: prescribed.filter((s) => !s.isWarmup) }
 }

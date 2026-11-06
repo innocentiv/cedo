@@ -47,10 +47,10 @@ export function entryLine(
   rule: Progression,
   tracking: TrackingMode | null,
   unit: WeightUnit,
-  target: { readonly suggested: Effort; readonly changed: boolean } | null,
+  own: { readonly target: Effort; readonly changed: boolean } | null,
 ): string {
   const words = describeProgression(rule, (grams) => formatWeight(grams, unit))
   const line = `${workingRuns(sets, tracking, unit)} · ${words}`
-  if (rule.kind === 'none' || target === null || !target.changed) return line
-  return `${line} · next ${formatEffort(target.suggested, tracking, unit)}`
+  if (rule.kind === 'none' || own === null || !own.changed) return line
+  return `${line} · next ${formatEffort(own.target, tracking, unit)}`
 }

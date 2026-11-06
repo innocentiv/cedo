@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { z } from 'zod'
-import { EntryTarget, Exercise, Workout, WorkoutSession } from '@cedo/contract'
+import { Exercise, SessionEntryTarget, Workout, WorkoutSession } from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
@@ -83,7 +83,7 @@ async function trained(p: Plan, weightG: number, reserve: number | null = null):
 const targetOf = async (p: Plan) => {
   const id = await start(p)
   const [target] = expectContract(
-    z.array(EntryTarget),
+    z.array(SessionEntryTarget),
     (await alice.wire(`/sessions/${id}/targets`)).body,
   )
   return target
