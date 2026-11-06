@@ -1,11 +1,55 @@
 import { describe, expect, test } from 'bun:test'
-import type { Progression, SessionAttempts, SetTarget } from './progression.ts'
-import { type ProgressionInput, progress } from './step.ts'
+import type { Held, Progression, SessionAttempts, SetTarget } from './progression.ts'
+import { type FinishedSet, type RuledEntry, takeSteps } from './take-steps.ts'
 import { MAX_DURATION_S, MAX_WEIGHT_G } from './measurement.ts'
 import { formatWeight, kgToG, mToMm } from './units.ts'
 
+/**
+ * A run of finished sessions, MOST RECENT FIRST — the shape these tables are written in — from an
+ * entry whose `workingSets` working sets ask `target`, each the reserve `reserves` gives it, or the
+ * target's when it gives none. Nothing was stored before them.
+ */
+interface Run {
+  readonly rule: Progression
+  readonly target: SetTarget
+  readonly workingSets: number
+  readonly reserves?: readonly (number | null)[]
+  readonly sessions: readonly SessionAttempts[]
+}
+
+const DAY_MS = 86_400_000
+
+/**
+ * The run taken as steps are (`takeSteps`), a day apart, with no load known: the target the newest
+ * session left, and why it held it, if it did. A run that took no step leaves the target it asked.
+ */
+function progressed(run: Run): { readonly target: SetTarget; readonly held: Held | null } {
+  const entry: RuledEntry = {
+    id: 'entry',
+    progression: run.rule,
+    working: Array.from({ length: run.workingSets }, (_, i) => ({
+      targetReps: run.target.reps,
+      targetWeightG: run.target.weightG,
+      targetReserve: run.reserves === undefined ? run.target.reserve : (run.reserves[i] ?? null),
+      targetDurationS: run.target.durationS,
+      targetDistanceMm: run.target.distanceMm,
+    })),
+  }
+  const sets: FinishedSet[] = run.sessions.toReversed().flatMap((session, i) =>
+    session.map((set) => ({
+      ...set,
+      sessionId: `session ${i + 1}`,
+      startedAt: new Date((i + 1) * DAY_MS),
+    })),
+  )
+  const newest = takeSteps(entry, [], sets, new Date(0), null).at(-1)
+  return newest === undefined
+    ? { target: run.target, held: null }
+    : { target: newest.target, held: newest.held }
+}
+
 /** The next prescription alone: most of these tables are about where it goes, not why. */
-const targetOf = (input: ProgressionInput): SetTarget => progress(input).target
+const targetOf = (run: Run): SetTarget => progressed(run).target
 
 /** `sets(60)(12, 12, 10)` -> three attempts at 60 kg; `sets(60, 0)(…)`, each with none in reserve. */
 const sets =
@@ -272,7 +316,7 @@ describe('progress — a prescribed reserve is a floor', () => {
 describe('progress — each working set is judged against its own reserve', () => {
   const ramp = { ...target(12, 60), reserve: 2 }
   const judged = (reserves: readonly (number | null)[], session: SessionAttempts) =>
-    progress({ rule: DOUBLE, target: ramp, workingSets: 3, reserves, sessions: [session] })
+    progressed({ rule: DOUBLE, target: ramp, workingSets: 3, reserves, sessions: [session] })
 
   test('a ramp to failure, done as asked, advances', () => {
     expect(judged([2, 1, 0], rated([12, 2], [12, 1], [12, 0])).target).toEqual({
@@ -301,11 +345,11 @@ describe('progress — each working set is judged against its own reserve', () =
 describe('progress — why a prescription held', () => {
   const top = { ...target(12, 60), reserve: 2 }
   const why = (rule: Progression, t: SetTarget, ...sessions: SessionAttempts[]) =>
-    progress({ rule, target: t, workingSets: 3, sessions }).held
+    progressed({ rule, target: t, workingSets: 3, sessions }).held
 
   test('it gives the next prescription, with no reason when it advanced', () => {
     expect(
-      progress({ rule: DOUBLE, target: top, workingSets: 3, sessions: [all(2, 12, 12, 12)] }),
+      progressed({ rule: DOUBLE, target: top, workingSets: 3, sessions: [all(2, 12, 12, 12)] }),
     ).toEqual({ target: { ...target(8, 62.5), reserve: 2 }, held: null })
   })
 
@@ -351,7 +395,7 @@ describe('progress — why a prescription held', () => {
   test("none at a target's ceiling: it was cleared, and stopped only by the limit", () => {
     const t: SetTarget = { ...target(5, null), weightG: MAX_WEIGHT_G - 1000 }
     const session: SessionAttempts = [{ reps: 5, weightG: t.weightG }]
-    expect(progress({ rule: LINEAR, target: t, workingSets: 1, sessions: [session] })).toEqual({
+    expect(progressed({ rule: LINEAR, target: t, workingSets: 1, sessions: [session] })).toEqual({
       target: t,
       held: null,
     })
@@ -374,7 +418,7 @@ describe('progress — why a prescription held', () => {
   test('a hold or a run is only ever short of its targets', () => {
     const rule: Progression = { kind: 'linear_duration', incrementS: 15, afterSuccesses: 1 }
     expect(
-      progress({ rule, target: timed(60), workingSets: 1, sessions: [[{ durationS: 45 }]] }).held,
+      progressed({ rule, target: timed(60), workingSets: 1, sessions: [[{ durationS: 45 }]] }).held,
     ).toEqual(short(1, did({ durationS: 45 }), timed(60)))
   })
 })
