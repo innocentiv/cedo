@@ -155,7 +155,7 @@ summing to 100, which inputs a tracking mode implies, what a progression rule co
 is next, where the focus goes, whose rest runs, what a set is called) all live in `@cedo/contract`:
 `session-flow.ts` and `set-marks.ts` for the workout, and `workout-view.ts` for what its screen
 shows of them — the focus, the set just logged, "+ set", the rows marked — from the sets and what the
-athlete chose. An unavailable exercise has no mode, so no
+athlete chose, which `workout-choices.ts` changes. An unavailable exercise has no mode, so no
 inputs: the workout shows what it prescribed and that nothing more can be logged against it, and
 a workout's outline gives it a line that says so — what it prescribes, and the bin, which is the
 only way the plan saves again.
@@ -284,8 +284,10 @@ there (#63).
   in turn, so it takes the focus. Once a set is logged, a swap keeps the focus while a set of it is
   the one logged last, and a set of the day gives the day its focus back. **Undo chooses** the
   set's own entry, and the logger starts from what the set said — not its target — so one wrong
-  number is fixed and the set logged again. The choices are the screen's own (`useWorkout`); what
-  they put in focus is the contract's `workoutView`.
+  number is fixed and the set logged again; only the next set ends it, not going to pick, which
+  would bring back the set before it with its rest. How each of these changes what was chosen is the
+  contract's `choicesAfter` (`workout-choices.ts`) — the screen holds the choices and sends it what
+  the athlete did — and what they put in focus is its `workoutView`.
 - **Logging moves the focus** to the entry's next set, then to the next entry in day order with
   sets left. Entries of a superset alternate, and rest starts after the round.
 - **The rest takes Log's place** (#63) when a set is logged: **Undo · countdown · Skip**, a tap on

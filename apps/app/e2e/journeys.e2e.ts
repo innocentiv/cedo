@@ -2261,100 +2261,49 @@ async function startTwoEntryDay(page: Page): Promise<void> {
 }
 
 /**
- * An entry chosen while a set waits for a signal stays chosen when the set is sent. A set logged
- * offline is known by its key until the server has it, then by the server's id — so a choice held
- * to the latest set's id was lost as it landed, and the focus went back where the day's order leads.
+ * The focus follows what the athlete does (GLOSSARY.md, "Focus"). The screen sends each thing done to
+ * the contract's `choicesAfter`, whose rules its unit tests hold; this proves each is sent — a tap,
+ * the picker opened, exercises picked, a set undone, a set logged. It starts where only a browser
+ * shows it (c0fb1fe): a set logged without a signal is known by its key until the server has it,
+ * then by the server's id, and a choice made meanwhile outlasts the change.
  */
 test(
-  'an entry chosen while a set waits for a signal stays in focus once the set is sent',
+  'the focus follows a tap, the picker, a pick, an undo and a set logged — across a lost signal',
   async () => {
-    await withApp('choice-across-the-signal', async (page) => {
+    await withApp('focus-follows', async (page) => {
       const app = screens(page)
-      await app.auth.register(unique('chs'))
+      await app.auth.register(unique('ffw'))
       await startTwoEntryDay(page)
+      const loggedRows = async () => (await app.session.loggedIds()).length
 
+      // Logged without a signal; the bench has a set left, but the athlete taps the squat.
       await page.goOffline()
       await app.session.entry(0).logWhileOffline()
-      // The bench has a set left, so the day would stay on it; the athlete goes to the squat.
       await app.session.entry(1).shown()
       expect(await app.session.inFocus()).toBe('entry 1')
-
       await page.goOnline()
       await app.session.sent()
-      await page.until(
-        async () => (await app.session.loggedIds()).length,
-        (rows) => rows === 1,
-      )
+      await page.until(loggedRows, (rows) => rows === 1)
       expect(await app.session.inFocus()).toBe('entry 1')
-    })
-  },
-  E2E_TIMEOUT_MS,
-)
 
-/** Going to pick an exercise, and putting the picker away, forgets an entry chosen (#24). */
-test(
-  'an entry chosen is forgotten on going to pick an exercise, picked or not',
-  async () => {
-    await withApp('picker-forgets', async (page) => {
-      const app = screens(page)
-      await app.auth.register(unique('pkf'))
-      await startTwoEntryDay(page)
-
-      await app.session.entry(1).shown()
-      expect(await app.session.inFocus()).toBe('entry 1')
+      // Going to pick forgets it, picked or not: the day's order has the bench.
       await app.session.openPicker()
       await app.session.skipPicking()
       expect(await app.session.inFocus()).toBe('entry 0')
-    })
-  },
-  E2E_TIMEOUT_MS,
-)
 
-/** Undoing a set chooses its own entry over what was picked (#63): the day has its focus back. */
-test(
-  'an exercise picked mid-plan gives the day back its focus once a set is undone',
-  async () => {
-    await withApp('undo-ends-pick', async (page) => {
-      const app = screens(page)
-      await app.auth.register(unique('uep'))
-      await app.planEditor.create()
-      await app.planEditor.saveAndStart()
-
-      const bench = app.session.entry(0)
-      await bench.fill('weight', '60')
-      await bench.log()
-      const pushUp = await app.session.addExercise('Push-Up')
+      // Two picked together (#27): the first takes the focus, though the last was picked last.
+      const [pushUp, plank] = await app.session.addExercises(['Push-Up', 'Plank'])
+      if (pushUp === undefined || plank === undefined) throw new Error('Two were picked')
       expect(await app.session.inFocus()).toBe(`adhoc ${pushUp}`)
 
-      // Its rest still runs, in Push-Up's Log's place: Undo there takes the bench set back.
+      // The bench's rest still runs, in Push-Up's Log's place: Undo there takes its set back (#63).
       await app.session.undoJustLogged()
-      await page.until(
-        async () => (await app.session.loggedIds()).length,
-        (rows) => rows === 0,
-      )
+      await page.until(loggedRows, (rows) => rows === 0)
       expect(await app.session.inFocus()).toBe('entry 0')
-    })
-  },
-  E2E_TIMEOUT_MS,
-)
 
-/**
- * Exercises picked together into a session without a plan (#27): the first is chosen, so it takes
- * the focus though the last was picked last — and keeps it once a set of it is logged.
- */
-test(
-  'exercises picked together without a plan: the first takes the focus, and keeps it',
-  async () => {
-    await withApp('picked-together', async (page) => {
-      const app = screens(page)
-      await app.auth.register(unique('ptg'))
-      await app.session.startAdhoc()
-      const [bench, squat] = await app.session.addExercises(['Bench', 'Squat'])
-      if (bench === undefined || squat === undefined) throw new Error('Two were picked')
-      expect(await app.session.inFocus()).toBe(`adhoc ${bench}`)
-
-      await app.session.adhoc(bench).log()
-      expect(await app.session.inFocus()).toBe(`adhoc ${bench}`)
+      // A set logged ends a choice: the squat tapped and logged, the day's order has the bench.
+      await app.session.entry(1).log()
+      expect(await app.session.inFocus()).toBe('entry 0')
     })
   },
   E2E_TIMEOUT_MS,
@@ -2832,37 +2781,6 @@ test(
         [false, 8],
         [true, 12],
       ])
-    })
-  },
-  E2E_TIMEOUT_MS,
-)
-
-/**
- * An exercise added mid-plan takes the focus as a choice does: its own set keeps it there — a swap
- * logged last — and a set of the day gives the day its focus back. It used to hold the focus over
- * the day's order for as long as it was the last exercise added.
- */
-test(
-  'an exercise added mid-plan gives the day back its focus once a set of the day is logged',
-  async () => {
-    await withApp('added-gives-back', async (page) => {
-      const app = screens(page)
-      await app.auth.register(unique('agb'))
-      await app.planEditor.create()
-      await app.planEditor.saveAndStart()
-
-      const bench = app.session.entry(0)
-      await bench.fill('weight', '60')
-      await bench.log()
-      const pushUp = await app.session.addExercise('Push-Up')
-      expect(await app.session.inFocus()).toBe(`adhoc ${pushUp}`)
-      const swap = app.session.adhoc(pushUp)
-      await swap.fill('reps', '12')
-      await swap.log()
-      expect(await app.session.inFocus()).toBe(`adhoc ${pushUp}`)
-
-      await bench.log()
-      expect(await app.session.inFocus()).toBe('entry 0')
     })
   },
   E2E_TIMEOUT_MS,

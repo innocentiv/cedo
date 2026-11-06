@@ -1,10 +1,10 @@
 import {
+  type Chosen,
   type Exercise,
   NO_TARGET,
   type SessionExercise,
   type SessionSet,
   type Undone,
-  type WorkoutChoices,
   adHocSetsOf,
   markedSets,
   nextSet,
@@ -64,7 +64,7 @@ export interface AdHocSideProps {
   readonly exercises: readonly SessionExercise[]
   readonly sets: WorkoutSets
   readonly view: WorkoutShown
-  readonly onChoose: (chosen: WorkoutChoices['chosen']) => void
+  readonly onChoose: (chosen: Chosen) => void
   /** Every set the session holds, under its exercises. */
   readonly record: React.ReactNode
   readonly onAdd: () => void
