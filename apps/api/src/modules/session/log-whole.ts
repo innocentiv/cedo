@@ -1,9 +1,9 @@
-import { eq, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import type { SessionLogInput, WorkoutSession } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { changeIn } from './write-session.ts'
+import { LOGGED_WHOLE, changeSessionIn } from './write-session.ts'
 import { assertLoggable } from './loggable.ts'
 import { numberedInOrder } from './numbering.ts'
 import { readOwn, rethrowMissingEntry } from './service.ts'
@@ -12,11 +12,12 @@ import { assertStartable } from './start.ts'
 const nowPlusMicros = (n: number) => sql<Date>`now() + ${n}::integer * interval '1 microsecond'`
 
 /**
- * A whole, finished session in ONE transaction — `session_log` over MCP: started, then changed as
- * any session is (`changeIn`) — its sets logged and it finished at once, so it takes its steps as a
- * finish does (ADR-0026). Everything is validated before anything is written, so one bad set logs
- * nothing and a retry cannot duplicate the rest. The statement count does not grow with the number
- * of sets. Sets keep the order sent.
+ * A whole, finished session in ONE transaction — `session_log` over MCP: started finished, ending
+ * after its last set, then changed as any session is (`changeSessionIn`) — its sets logged, so it
+ * takes its steps as a finish does (ADR-0026). Never in progress, so a session open on the phone is
+ * no obstacle. Everything is validated before anything is written, so one bad set logs nothing and
+ * a retry cannot duplicate the rest. The statement count does not grow with the number of sets.
+ * Sets keep the order sent.
  */
 export async function logWhole(caller: Caller, input: SessionLogInput): Promise<WorkoutSession> {
   await assertStartable(caller, input)
@@ -30,18 +31,15 @@ export async function logWhole(caller: Caller, input: SessionLogInput): Promise<
         workoutId: input.workoutId,
         dayId: input.dayId,
         notes: input.notes,
+        endedAt: nowPlusMicros(input.sets.length),
       })
       .returning({ id: workoutSessions.id })
     if (created === undefined) throw new Error('Could not record the session')
-    await changeIn(tx, caller, created.id, { inProgress: true, finishes: true }, async () => {
+    await changeSessionIn(tx, caller, created.id, LOGGED_WHOLE, async () => {
       const rows = numberedInOrder(input.sets).map((set, i) =>
         Object.assign(set, { sessionId: created.id, loggedAt: nowPlusMicros(i) }),
       )
       await tx.insert(setLogs).values(rows).catch(rethrowMissingEntry)
-      await tx
-        .update(workoutSessions)
-        .set({ endedAt: nowPlusMicros(input.sets.length) })
-        .where(eq(workoutSessions.id, created.id))
     })
     return created.id
   })

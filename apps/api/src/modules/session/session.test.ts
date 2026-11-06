@@ -390,6 +390,23 @@ describe('a retried log, by its idempotency key', () => {
 /** `session_log` over MCP: a whole, finished session in one write. */
 describe('logging a whole session at once', () => {
   /**
+   * Yesterday's session, logged by the AI while today's is open on the phone: one logged whole is
+   * never in progress, not even inside its own write, so the session open is no obstacle — and
+   * stays open.
+   */
+  test('is logged while another session is in progress', async () => {
+    const squat = await anExercise(alice, 'Squat')
+    const open = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const logged = await logWhole(
+      alice.caller,
+      SessionLogInput.parse({ sets: [{ exerciseId: squat, reps: 5 }] }),
+    )
+    expect(logged.endedAt).not.toBeNull()
+    const still = expectContract(WorkoutSession, (await alice.wire(`/sessions/${open.id}`)).body)
+    expect(still.endedAt).toBeNull()
+  })
+
+  /**
    * One INSERT shares one `now()`, and a session's logs read back by `logged_at`, then `set_index`
    * — so equal timestamps interleaved the exercises: squat 1, bench 1, squat 2, bench 2.
    */
