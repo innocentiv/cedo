@@ -126,6 +126,20 @@ describe("targets in the athlete's weights", () => {
     expect(target?.limit).toBe('heaviest')
   })
 
+  /** #66: trained up to the heaviest dumbbell, it stayed there and never said why. */
+  test('trained up to the heaviest dumbbell, it stays there, and says so', async () => {
+    await dumbbells()
+    const p = await planned(28_000)
+    await trained(p, 28_000)
+    await trained(p, 30_000)
+    // 28 cleared asks 30; 30 cleared asks 32.5, which no dumbbell weighs: it stays at 30.
+    expect(await targetOf(p)).toMatchObject({
+      target: { weightG: 30_000 },
+      changed: true,
+      limit: 'heaviest',
+    })
+  })
+
   test('with the weights not known, the plan stands — and 22 is still short of 22.5', async () => {
     const p = await planned(22_500)
     await trained(p, 22_000)
