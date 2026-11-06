@@ -99,6 +99,13 @@ const shown = async (p: Plan) => {
   return target
 }
 
+/** The caller's own target on the entry, set by hand. */
+const setBy = (p: Plan, target: unknown) =>
+  alice.wire(`/workouts/${p.workoutId}/entries/${p.entryId}/target`, {
+    method: 'PUT',
+    body: JSON.stringify(target),
+  })
+
 describe('a target accumulates across finished sessions', () => {
   /**
    * The bug ADR-0026 began with: judged against the plan's own 8 every time, the target moved one
@@ -230,12 +237,6 @@ describe('a correction takes the steps after it again', () => {
 
 /** A target set by hand anchors what follows (ADR-0026): a step of its own, by the same rules. */
 describe('a target set by hand', () => {
-  const setBy = (p: Plan, target: unknown) =>
-    alice.wire(`/workouts/${p.workoutId}/entries/${p.entryId}/target`, {
-      method: 'PUT',
-      body: JSON.stringify(target),
-    })
-
   test('is where the next session is judged from', async () => {
     const p = await planned()
     await trained(p, 8)
@@ -266,5 +267,49 @@ describe('a target set by hand', () => {
       body: JSON.stringify({ reps: 10 }),
     })
     expect(res.status).toBe(404)
+  })
+})
+
+/**
+ * The sessions behind a target (#66): the run since it last started — from the plan's
+ * prescription, or set by hand — never every session the entry ever took. What
+ * `workout_progression` says as "from 3 sessions"; worked out in SQL (`latestSteps`).
+ */
+describe('the sessions behind a target', () => {
+  test('each session of the run, every one building on the last', async () => {
+    const p = await planned()
+    await trained(p, 8)
+    await trained(p, 9)
+    expect(await shown(p)).toMatchObject({ sessions: 2, byHand: false })
+  })
+
+  test('none once a plan edit restarts it — and the run again once the plan is put back', async () => {
+    const p = await planned()
+    await trained(p, 8)
+    await trained(p, 9)
+    await replanned(p, 60_000)
+    expect(await shown(p)).toMatchObject({ sessions: 0, byHand: false })
+    await replanned(p, 55_000)
+    expect(await shown(p)).toMatchObject({ sessions: 2 })
+  })
+
+  test('a plan moved away and back counts from its return, where the target restarted', async () => {
+    const p = await planned()
+    await trained(p, 8)
+    await replanned(p, 60_000)
+    await trained(p, 8, 60_000)
+    await replanned(p, 55_000)
+    await trained(p, 8)
+    // Judged from 55 kg's prescription again: the step at 60 kg did not count against it.
+    expect(await shown(p)).toMatchObject({ target: { reps: 9 }, sessions: 1 })
+  })
+
+  test('set by hand: says so, and counts the sessions since', async () => {
+    const p = await planned()
+    await trained(p, 8)
+    await setBy(p, { reps: 11 })
+    expect(await shown(p)).toMatchObject({ sessions: 0, byHand: true })
+    await trained(p, 11)
+    expect(await shown(p)).toMatchObject({ target: { reps: 12 }, sessions: 1, byHand: true })
   })
 })

@@ -232,6 +232,19 @@ describe('workout_progression says each step, and each hold by its set', () => {
     )
   })
 
+  /** #66: what stands behind a target — set by hand, not the sessions it counted before. */
+  test('set by hand: says so, and the sessions since', async () => {
+    const p = await planned(alice, DOUBLE)
+    await callTool(pat, 'target_set', { workoutId: p.workoutId, entryId: p.entryId, reps: 10 })
+    expect(await progression(pat, p)).toBe(
+      'Bench (Double 8–12, +2.5 kg): next 10 × 60 kg; the plan says 8 × 60 kg  (set by hand)',
+    )
+    await trained(pat, p, [10, 10, 10])
+    expect(await progression(pat, p)).toBe(
+      'Bench (Double 8–12, +2.5 kg): next 11 × 60 kg; the plan says 8 × 60 kg  (set by hand, then 1 session)',
+    )
+  })
+
   /** #66: where the athlete's equipment stops a target, which it never said. */
   test('at the heaviest the athlete can load, says so', async () => {
     const p = await planned(alice, LINEAR, ['dumbbells'])

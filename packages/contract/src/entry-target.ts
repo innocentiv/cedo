@@ -39,8 +39,16 @@ export const EntryTarget = z.object({
    * plan. Null otherwise — and while what they load is unknown.
    */
   limit: LoadLimit.nullable(),
-  /** How many of their finished sessions took a step on the entry. Zero: no history yet. */
+  /**
+   * How many finished sessions stand behind the target (#66): those since it last started — from
+   * the prescription, or set by hand (`byHand`) — never every session the entry took. Zero: none
+   * yet, or none since the plan changed under the target. Counted from the latest step back while
+   * each was taken against the same plan, so a change that keeps the target (another working set)
+   * can count short; never long.
+   */
   sessions: z.int().nonnegative(),
+  /** Whether the target was set by hand, `sessions` after it. */
+  byHand: z.boolean(),
   /**
    * What each warm-up asks, in set order: its own line, its weight following the working target in
    * proportion (`warmupsFor`, ADR-0026) — worked out as it is read, never kept.

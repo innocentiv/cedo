@@ -22,6 +22,7 @@ const asked = (more: Partial<EntryTarget>): EntryTarget => ({
   held: null,
   limit: null,
   sessions: 0,
+  byHand: false,
   warmups: [],
   working: [],
   ...more,

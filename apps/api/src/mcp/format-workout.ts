@@ -139,7 +139,12 @@ export function nextTargetLine(t: EntryTarget, unit: WeightUnit): string {
     ? `next ${next}; the plan says ${plan}`
     : `next ${next}, as the plan says`
   const why = t.held === null ? '' : ` — ${heldWords(t.held, t.tracking, unit)}`
-  const n = t.sessions
-  const basis = n === 0 ? 'no session yet' : `from ${n} session${n === 1 ? '' : 's'}`
-  return `${head}: ${target}${why}  (${basis})`
+  return `${head}: ${target}${why}  (${basisOf(t)})`
+}
+
+/** What stands behind a target (#66): the sessions since it last started, and if set by hand. */
+function basisOf({ sessions, byHand }: EntryTarget): string {
+  const since = `${sessions} session${sessions === 1 ? '' : 's'}`
+  if (byHand) return sessions === 0 ? 'set by hand' : `set by hand, then ${since}`
+  return sessions === 0 ? 'no session yet' : `from ${since}`
 }

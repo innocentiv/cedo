@@ -70,6 +70,7 @@ const stepped = (target: SetTarget, sets = plan(), more: Partial<LatestStep> = {
     sets.filter((s) => !s.isWarmup),
   ),
   sessions: 1,
+  byHand: false,
   ...more,
 })
 
@@ -101,12 +102,18 @@ describe('reading a target', () => {
 
   /** Resets are derived, never written: nothing changed but the plan, and back again. */
   test('the prescription once the plan moved under the step — and the step once it is put back', () => {
-    const step = stepped(at(65_000))
+    const step = stepped(at(65_000), plan(), { sessions: 3, byHand: true })
     const typo = read(plan(6_000), [step])
     expect(typo?.target).toMatchObject({ weightG: 6_000 })
     expect(typo?.changed).toBe(false)
     expect(typo?.held).toBeNull()
-    expect(read(plan(), [step])?.target).toMatchObject({ weightG: 65_000 })
+    // #66: nothing stands behind the prescription — not the sessions behind the step.
+    expect(typo).toMatchObject({ sessions: 0, byHand: false })
+    expect(read(plan(), [step])).toMatchObject({
+      target: { weightG: 65_000 },
+      sessions: 3,
+      byHand: true,
+    })
   })
 
   test('asks the reserve the plan asks, which no rule moves', () => {

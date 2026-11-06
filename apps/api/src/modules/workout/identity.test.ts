@@ -128,7 +128,11 @@ describe('saving a plan keeps the identity of what it sends back', () => {
     expect(saved.days[0]?.entries[0]?.id).toBe(plan.days[0]?.entries[0]?.id)
     expect(saved.days[0]?.entries[0]?.sets[0]?.target.weightG).toBe(kgToG(62.5))
 
-    // Progression still sees the session, and history still names the day.
+    // The entry keeps its step: taken against 60 kg, it stands behind no target of 62.5 (#66) —
+    // and behind the target again once the plan is put back. History still names the day.
+    expect(await sessionsSeen(alice, plan.id, saved.days[0]?.entries[0]?.id)).toBe(0)
+    for (const set of push.entries[0]?.sets ?? []) set.targetWeightG = kgToG(60)
+    await save(alice, plan.id, edited)
     expect(await sessionsSeen(alice, plan.id, saved.days[0]?.entries[0]?.id)).toBe(1)
     const sessions = expectContract(
       page(WorkoutSessionSummary),

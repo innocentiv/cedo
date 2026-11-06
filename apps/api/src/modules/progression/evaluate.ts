@@ -42,13 +42,14 @@ export interface PrescribedSet extends WorkoutSetInput {
   readonly entryId: string
 }
 
-/** The caller's latest step on an entry, and how many finished sessions have taken one. */
+/** The caller's latest step on an entry, and the run behind it — see `EntryTarget.sessions`. */
 export interface LatestStep {
   readonly entryId: string
   readonly target: SetTarget
   readonly held: Held | null
   readonly against: Against
   readonly sessions: number
+  readonly byHand: boolean
 }
 
 /** Each entry's target, in the order the entries arrive. `prescribed` is in set order. */
@@ -107,7 +108,9 @@ function targetOf(
     changed: !sameTarget(shown.target, reached.target),
     held: step?.held ?? null,
     limit: reached.limit,
-    sessions: latest?.sessions ?? 0,
+    // Behind the step while it counts; a target restarted from the plan has nothing behind it.
+    sessions: step?.sessions ?? 0,
+    byHand: step?.byHand ?? false,
     warmups: warmupsFor(
       prescribed.filter((s) => s.isWarmup).map((w) => setTargetOf(w)),
       // Unsnapped, both: snapping a 22.5 kg plan to 22 is not progress for a warm-up to follow.
