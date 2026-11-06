@@ -1,7 +1,13 @@
 import { Fragment, useState } from 'react'
 import { useRouter } from 'expo-router'
-import type { LoggedExercise, SessionDay, SessionExercise, SetLog } from '@cedo/contract'
-import { byExercise, formatWithReserve, loggedLabel, loggedTitle } from '@cedo/contract'
+import type { SessionDay, SessionExercise, SetLog } from '@cedo/contract'
+import {
+  byExercise,
+  exerciseOfSet,
+  formatWithReserve,
+  loggedLabel,
+  loggedTitle,
+} from '@cedo/contract'
 import type { SessionSets } from '../api/pending.ts'
 import { useWeightUnit } from './weight-unit.ts'
 import { exerciseName } from './exercise-name.ts'
@@ -28,8 +34,8 @@ export function PlanUnavailable(): React.JSX.Element {
  * Sets logged but not yet sent, shown as soon as logged: a set not sent must not look like a set
  * not logged (#9). When one is held up — no signal, or an answer lost on the way back — the screen
  * asks for the app to stay open: they are kept in memory, and sent in order when the signal
- * returns. Not undoable until sent: there is nothing on the server to take back yet. Named from the
- * day or the ad-hoc picks, since the server has not named them yet.
+ * returns. Not undoable until sent: there is nothing on the server to take back yet. Named as the
+ * set just logged is (`exerciseOfSet`), since the server has not named them yet.
  */
 export function UnsentSets({
   sets: { unsent: sets, heldUp },
@@ -42,10 +48,6 @@ export function UnsentSets({
 }): React.JSX.Element | null {
   const unit = useWeightUnit()
   if (sets.length === 0) return null
-  const exerciseOf = (exerciseId: string): LoggedExercise | null =>
-    day?.entries.find((e) => e.exerciseId === exerciseId)?.exercise ??
-    adHoc.find((e) => e.id === exerciseId) ??
-    null
   const count = `${sets.length} ${sets.length === 1 ? 'set' : 'sets'}`
   return (
     <Card testID="session-unsent">
@@ -56,7 +58,7 @@ export function UnsentSets({
           </Text>
         ) : null}
         {sets.map(({ input, key }) => {
-          const exercise = exerciseOf(input.exerciseId)
+          const exercise = exerciseOfSet(day ?? null, adHoc, input)
           return (
             <ListRow
               key={key}

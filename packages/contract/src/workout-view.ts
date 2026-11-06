@@ -45,6 +45,23 @@ export function adHocFocus<X extends Added>(
   )
 }
 
+/**
+ * The exercise a set is of, as the workout names it — the set just logged, or one waiting for a
+ * signal, which the server has not named yet: its entry's in the day, else the exercise added to
+ * the session. Null when neither is in reach.
+ */
+export function exerciseOfSet<E extends FlowEntry, X extends Added>(
+  day: { readonly entries: readonly E[] } | null,
+  added: readonly X[],
+  set: { readonly entryId: string | null; readonly exerciseId: string },
+): NonNullable<E['exercise']> | X | null {
+  return (
+    day?.entries.find((e) => e.id === set.entryId)?.exercise ??
+    added.find((e) => e.id === set.exerciseId) ??
+    null
+  )
+}
+
 type Loggable<E extends FlowEntry> = E & { readonly exercise: NonNullable<E['exercise']> }
 
 const loggable = <E extends FlowEntry>(entry: E): entry is Loggable<E> => entry.exercise !== null
@@ -142,7 +159,7 @@ function readsOf<E extends FlowEntry, X extends Added, L extends ViewLog, T exte
       sets: adHocSetsOf(exercise.id, sets),
       undone: undone?.entryId === null && undone.exerciseId === exercise.id ? undone : null,
     }),
-    exerciseOf: (log: L) => added.find((e) => e.id === log.exerciseId) ?? null,
+    exerciseOf: (log: L) => exerciseOfSet(input.day, added, log),
   }
 }
 
@@ -230,7 +247,7 @@ function dayView<E extends FlowEntry, X extends Added, L extends ViewLog, T exte
       : null
   return {
     focus: dayFocus(r, chosen, addedInFocus, next),
-    shown: log === null ? null : { log, exercise: shownEntry?.exercise ?? r.exerciseOf(log) },
+    shown: log === null ? null : { log, exercise: r.exerciseOf(log) },
     another,
     current: {
       // The entry chosen is the row marked, out of the reader's reach or not: it is what is shown.
