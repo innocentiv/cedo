@@ -64,6 +64,12 @@ A service's PURE half — rows in, answer out, like `progression/evaluate.ts`, o
 database. It is still the service's rule, kept in the API because
 only the API runs it; the contract is for what more than one side needs.
 
+The progression rules are the one exception, made by ADR-0012 and kept by ADR-0026: their maths
+(`step`) and the one loop that runs it (`takeSteps`) live in the contract though only the API calls
+them, because their truth tables are the rules' specification, and T1 (`progression.test.ts`,
+`take-steps.test.ts`). Truth tables and loop must share a package for the tables to test the loop
+production runs. Reading a target — `evaluate.ts` — is the API's, as above.
+
 Two things are mandatory in every module:
 
 - **Cross-user and cross-group ACL isolation.** A user must get `404`, never `403`, for something
