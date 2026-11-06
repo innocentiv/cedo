@@ -6,7 +6,7 @@ import { conflict, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { type StepScope, retakeSteps } from '../progression/service.ts'
 import { keepRest } from './rest.ts'
-import { NO_REST, ownedBy, readOwn } from './service.ts'
+import { ownedBy, readOwn } from './service.ts'
 
 /**
  * A change to a session (#24, #31; ADR-0026): every write that changes what it holds, or whether it
@@ -34,11 +34,13 @@ const FINISHED = 'That session has already been finished'
  * - the steps of every entry it trained taken again, with every step after them (ADR-0026) — of a
  *   session finished before the change, what it trained BEFORE it, read before the write, since a
  *   set removed, its entry's last there, or the session deleted is not there to read after; of one
- *   the change finishes, what it trained once finished. A session in progress takes none.
+ *   the change finishes, what it trained once finished. A session in progress takes none;
+ * - the rest it has running worked out again and kept (`keepRest`, #38) — none, once it is over —
+ *   under the same lock: changes at once keep theirs in the order they are made, never a rest
+ *   worked out from sets another change has since overtaken.
  *
- * Thrown, nothing is written. Then the rest it has running is worked out again and kept
- * (`keepRest`, #38), after the commit, outside the lock: two changes at once may keep theirs in
- * either order, and the next change puts it right.
+ * Thrown, nothing is written — the rest neither: a set sent again finds none stored, and is
+ * logged, its rest with it.
  */
 export async function changeSession<T>(
   caller: Caller,
@@ -46,9 +48,7 @@ export async function changeSession<T>(
   change: Change,
   write: (tx: Transaction) => Promise<T>,
 ): Promise<T> {
-  const written = await db.transaction(async (tx) => await changeIn(tx, caller, id, change, write))
-  await keepRest(caller, id)
-  return written
+  return await db.transaction(async (tx) => await changeIn(tx, caller, id, change, write))
 }
 
 /** `changeSession`, in a transaction already open: a session logged whole, started in it. */
@@ -70,6 +70,7 @@ export async function changeIn<T>(
   const before = finished ? await trainedBy(tx, caller, id) : null
   const result = await write(tx)
   await retakeSteps(tx, caller, finishes ? await trainedBy(tx, caller, id) : before)
+  await keepRest(tx, caller, id)
   return result
 }
 
@@ -109,8 +110,6 @@ export async function update(
        * An ISO string, never a JS Date: raw `sql` bypasses the column encoder.
        */
       endedAt: sql<Date>`greatest(${patch.endedAt}::timestamptz, ${workoutSessions.startedAt})`,
-      // Finished, no rest runs on (#38).
-      ...NO_REST,
     }),
     ...(patch.notes !== undefined && { notes: patch.notes }),
   }

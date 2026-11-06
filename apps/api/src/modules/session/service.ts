@@ -69,9 +69,6 @@ export const toSession = (row: SessionRow, logs: readonly LoggedRow[]): WorkoutS
       : { since: row.restSince.toISOString(), endsAt: row.restEndsAt.toISOString() },
 })
 
-/** No rest running (#38): its set undone, or the session finished. */
-export const NO_REST = { restSince: null, restEndsAt: null } as const
-
 /**
  * +30 s, or skip — of the rest running after the session's `sets`th set, and only that one (#38).
  * Named by how many sets there were when it was tapped, not by a time: a set logged without a
