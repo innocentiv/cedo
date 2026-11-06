@@ -13,9 +13,9 @@ import {
   type WorkoutSetInput,
   againstOf,
   loadableTarget,
-  prescriptionOf,
+  prescriptionIn,
   setTargetOf,
-  stillCounts,
+  standingTarget,
   warmupsFor,
 } from '@cedo/contract'
 import { groupBy } from '../../lib/keyset.ts'
@@ -124,21 +124,15 @@ function suggestForEntry(
   /** What each working set asks: the target with its own reserve, or on Manual its own numbers. */
   readonly working: SetTarget[]
 } {
-  const first = prescriptionOf({ sets: prescribed })
-  const current = first === undefined ? NOTHING_PRESCRIBED : setTargetOf(first)
-  const now = againstOf(
-    entry.progression,
-    prescribed.filter((s) => !s.isWarmup),
-  )
-  const counts = latest !== undefined && stillCounts(latest.against, now)
+  const working = prescribed.filter((s) => !s.isWarmup)
+  const now = againstOf(entry.progression, working)
+  const current = prescriptionIn(now)
+  const { target, step } = standingTarget(latest, now)
   const load = loadFor(entry)
   const shown = loadableTarget(load, current)
   // The rule never moves reps in reserve: the target asks what the plan asks of it.
-  const reached = counts
-    ? loadableTarget(load, { ...latest.target, reserve: current.reserve })
-    : shown
+  const reached = loadableTarget(load, { ...target, reserve: current.reserve })
 
-  const working = prescribed.filter((s) => !s.isWarmup)
   const suggestion = {
     entryId: entry.id,
     exerciseId: entry.exerciseId,
@@ -148,13 +142,13 @@ function suggestForEntry(
     current,
     suggested: reached.target,
     changed: !sameTarget(shown.target, reached.target),
-    held: counts ? latest.held : null,
+    held: step?.held ?? null,
     sessionsConsidered: latest?.sessions ?? 0,
     warmups: warmupsFor(
       prescribed.filter((s) => s.isWarmup).map((w) => setTargetOf(w)),
       // Unsnapped, both: snapping a 22.5 kg plan to 22 is not progress for a warm-up to follow.
       current,
-      counts ? latest.target : current,
+      target,
       load,
     ),
   }
@@ -176,15 +170,6 @@ const asksOf = (
       ? loadableTarget(load, setTargetOf(s)).target
       : Object.assign({}, target, { reserve: s.targetReserve }),
   )
-
-/** An entry with no working set prescribes nothing — every target null. */
-const NOTHING_PRESCRIBED: SetTarget = {
-  reps: null,
-  weightG: null,
-  reserve: null,
-  durationS: null,
-  distanceMm: null,
-}
 
 const sameTarget = (a: SetTarget, b: SetTarget): boolean =>
   a.reps === b.reps &&

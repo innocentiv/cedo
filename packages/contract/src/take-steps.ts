@@ -3,8 +3,7 @@ import {
   type PrescribedWorkingSet,
   type StepKind,
   againstOf,
-  prescriptionIn,
-  stillCounts,
+  standingTarget,
 } from './against.ts'
 import { type Load, loadable, steppedOn } from './load.ts'
 import { loadableTarget } from './loadable-target.ts'
@@ -133,17 +132,14 @@ function sessionStep(
   if (first === undefined) return null
   const against = judgedAgainst.get(first.sessionId) ?? asItStands
   if (against.rule.kind === 'none') return null
-  const start =
-    previous !== null && stillCounts(previous.against, against)
-      ? previous
-      : { target: prescriptionIn(against), streak: 0 }
+  const start = standingTarget(previous, against)
   const shown = loadableTarget(load, start.target).target
   const stepped = step({
     rule: against.rule,
     target: shown,
     workingSets: against.reserves.length,
     reserves: against.reserves,
-    streak: start.streak,
+    streak: start.step?.streak ?? 0,
     session: sets,
   })
   return {
