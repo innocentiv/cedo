@@ -1,7 +1,13 @@
 import { describe, expect, test } from 'bun:test'
 import type { SetTarget } from './progression.ts'
 import type { FlowEntry, FlowLog } from './session-flow.ts'
-import { type Chosen, NO_CHOICES, type WorkoutChoices, choicesAfter } from './workout-choices.ts'
+import {
+  type ChoiceEvent,
+  type Chosen,
+  NO_CHOICES,
+  type WorkoutChoices,
+  choicesAfter,
+} from './workout-choices.ts'
 import { workoutView } from './workout-view.ts'
 
 /** What the workout screen shows (#24): the focus, the set shown above it, and "+ set". */
@@ -122,7 +128,7 @@ describe('what the workout shows', () => {
     expect(v.current).toEqual({ upNext: null, addedToday: 'dip' })
   })
 
-  // That picking chooses is the app's, proven by the journeys: here, only what a choice does.
+  // That picking chooses is `choicesAfter`'s, below: here, only what a choice does.
   test('an exercise added and chosen takes the focus from the day', () => {
     const choices = { chosen: { added: 'curl' }, undone: null }
     expect(focusId(view([set('squat')], { added, choices }))).toBe('curl')
@@ -305,6 +311,64 @@ describe('what the workout shows', () => {
     test('a set undone is held, as it said, over what was chosen and any set undone before', () => {
       const held = { chosen: { entry: 'squat' }, undone: undone(null, 'dip') }
       expect(choicesAfter(held, { kind: 'undone', set: undoneSet('rdl') })).toEqual(heldUndo)
+    })
+  })
+
+  /**
+   * The focus as the athlete goes: what they do, through `choicesAfter`, read back through
+   * `workoutView`. That the screen sends each of these is one journey's (journeys.e2e.ts, "the
+   * focus follows what the athlete does").
+   */
+  describe('the focus, as the athlete goes', () => {
+    const after = (...events: ChoiceEvent[]) =>
+      events.reduce((held, event) => choicesAfter(held, event), NO_CHOICES)
+    const tapped = (chosen: Chosen): ChoiceEvent => ({ kind: 'tapped', chosen })
+    const picked = (...ids: string[]): ChoiceEvent => ({
+      kind: 'picked',
+      exercises: ids.map((id) => ({ id })),
+    })
+    const logged: ChoiceEvent = { kind: 'logged' }
+
+    test('an entry chosen is forgotten on going to pick an exercise, picked or not', () => {
+      expect(focusId(view([], { choices: after(tapped({ entry: 'rdl' })) }))).toBe('rdl')
+      const opened = after(tapped({ entry: 'rdl' }), { kind: 'pickerOpened' })
+      expect(focusId(view([], { choices: opened }))).toBe('squat')
+    })
+
+    test('an exercise picked mid-plan gives the day back its focus once a set is undone', () => {
+      const squat1 = { ...set('squat'), reserve: null }
+      const pick = after(logged, picked('dip'))
+      expect(focusId(view([squat1], { added, choices: pick }))).toBe('dip')
+      const back = choicesAfter(pick, { kind: 'undone', set: squat1 })
+      expect(focusId(view([], { added, choices: back }))).toBe('squat')
+    })
+
+    test('exercises picked together without a plan: the first takes the focus, and keeps it', () => {
+      const adHoc = { day: null, added }
+      // Dip is the last there is, so it would be the focus had nothing been chosen.
+      expect(focusId(view([], { ...adHoc, choices: after(picked('curl', 'dip')) }))).toBe('curl')
+      const curl = after(picked('curl', 'dip'), logged)
+      expect(focusId(view([set(null, 'curl')], { ...adHoc, choices: curl }))).toBe('curl')
+    })
+
+    test('an exercise added mid-plan gives the day back its focus once a set of the day is logged', () => {
+      const first = [set('squat')]
+      expect(focusId(view(first, { added, choices: after(logged, picked('dip')) }))).toBe('dip')
+      // Its own set keeps it there: a swap logged last.
+      const swapped = [...first, set(null, 'dip')]
+      const swap = after(logged, picked('dip'), logged)
+      expect(focusId(view(swapped, { added, choices: swap }))).toBe('dip')
+      // A set of the day gives the day its focus back: squat is done, so rdl, not dip.
+      const ofTheDay = [...swapped, set('squat')]
+      expect(focusId(view(ofTheDay, { added, choices: choicesAfter(swap, logged) }))).toBe('rdl')
+    })
+
+    /** c0fb1fe: a choice held to the latest set's id was lost as a set logged offline landed. */
+    test('a choice outlasts a set that changes id as it reaches the server', () => {
+      const waiting = set('squat')
+      const choices = after(logged, tapped({ entry: 'rdl' }))
+      expect(focusId(view([waiting], { choices }))).toBe('rdl')
+      expect(focusId(view([{ ...waiting, id: crypto.randomUUID() }], { choices }))).toBe('rdl')
     })
   })
 })
