@@ -109,14 +109,20 @@ describe('what the logger asks of an entry of the day', () => {
     })
   })
 
-  test('once every set it asked for is logged, another: from the entry’s target', () => {
-    const another = { target: at(6, 90, 2), isWarmup: false, title: 'Another set' }
-    expect(asks(onBench(allOfBench())).next).toEqual({ ...another, action: 'Log another set' })
-    // With nothing from the server, the plan's own prescription.
-    expect(asks(onBench(allOfBench(), null)).next).toEqual({
-      ...another,
+  /** As `setsOf` asks a set past the plan: what the last working set asked — not the top set. */
+  test('once every set it asked for is logged, another: as the last working set asked', () => {
+    const another = {
+      target: at(8, 80, 0),
+      isWarmup: false,
+      title: 'Another set',
       action: 'Log another set',
-    })
+    }
+    expect(asks(onBench(allOfBench())).next).toEqual(another)
+    expect(asks(onBench(allOfBench())).progressed).toBe('Prescribed 8 × 80 kg')
+    // With nothing from the server, the plan's own numbers.
+    expect(asks(onBench(allOfBench(), null)).next).toEqual(another)
+    // And one more after it, the same.
+    expect(asks(onBench([...allOfBench(), done('bench')])).next).toEqual(another)
   })
 
   test('beside it, the target — the entry’s on a warm-up — and last time', () => {

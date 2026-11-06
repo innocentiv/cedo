@@ -1,8 +1,7 @@
 import { formatSets } from './effort.ts'
 import { type SessionEntryTarget, targetLine } from './entry-target.ts'
-import { prescriptionOf } from './plan-editing.ts'
 import { NO_TARGET, type SetTarget } from './progression.ts'
-import { type FlowEntry, type FlowLog, nextSet } from './session-flow.ts'
+import { type FlowEntry, type FlowLog, type SessionSet, nextSet } from './session-flow.ts'
 import { type MarkedSet, markedSets, nextSetWords } from './set-marks.ts'
 import type { WeightUnit } from './units.ts'
 import type { Undone } from './workout-choices.ts'
@@ -64,32 +63,43 @@ export function loggerAsks<
   count: number,
 ): LoggerAsks {
   const next = nextSet(focus.sets)
-  const words = nextSetWords(focus.sets, next, focus.kind === 'entry')
-  const marks = markedSets(focus.sets, waiting)
+  const logs = next ?? anotherOf(focus.sets)
+  const either = {
+    next: {
+      target: logs.target,
+      isWarmup: logs.isWarmup,
+      ...nextSetWords(focus.sets, next, focus.kind === 'entry'),
+    },
+    marks: markedSets(focus.sets, waiting),
+    from: focus.undone,
+  }
   if (focus.kind === 'added') {
     const { exercise } = focus
     return {
+      ...either,
       key: `${exercise.id}:${String(count)}`,
-      next: { target: next?.target ?? NO_TARGET, isWarmup: false, ...words },
-      marks,
       progressed: null,
       last: null,
       logsAgainst: { exerciseId: exercise.id, entryId: null },
-      from: focus.undone,
     }
   }
   const { entry, asked } = focus
   return {
+    ...either,
     key: `${entry.id}:${next?.key ?? 'more'}:${String(count)}`,
-    next: {
-      target: next?.target ?? asked?.target ?? prescriptionOf(entry)?.target ?? NO_TARGET,
-      isWarmup: next?.isWarmup ?? false,
-      ...words,
-    },
-    marks,
-    progressed: asked === undefined ? null : targetLine(asked, unit, next ?? undefined),
+    progressed: asked === undefined ? null : targetLine(asked, unit, logs),
     last: asked?.last == null ? null : `Last time ${formatSets(asked.last, asked.tracking, unit)}`,
     logsAgainst: { exerciseId: entry.exerciseId, entryId: entry.id },
-    from: focus.undone,
   }
 }
+
+/**
+ * Once an entry has every set it asked for, another: what its last working set asked — as `setsOf`
+ * asks a set past the plan, in a weight the athlete can load — else, none prescribed, the last done.
+ */
+const anotherOf = <L extends FlowLog>(
+  sets: readonly SessionSet<L>[],
+): Pick<SessionSet<L>, 'isWarmup' | 'target'> => ({
+  isWarmup: false,
+  target: sets.findLast((s) => !s.isWarmup)?.target ?? NO_TARGET,
+})
