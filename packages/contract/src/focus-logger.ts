@@ -1,7 +1,8 @@
 import { formatSets } from './effort.ts'
 import { type SessionEntryTarget, targetLine } from './entry-target.ts'
-import { NO_TARGET, type SetTarget } from './progression.ts'
-import { type FlowEntry, type FlowLog, type SessionSet, nextSet } from './session-flow.ts'
+import type { LogSetInput } from './log.ts'
+import type { SetTarget } from './progression.ts'
+import { type FlowEntry, type FlowLog, nextExtra, nextSet } from './session-flow.ts'
 import { type MarkedSet, markedSets, nextSetWords } from './set-marks.ts'
 import type { WeightUnit } from './units.ts'
 import type { Undone } from './workout-choices.ts'
@@ -41,7 +42,7 @@ export interface LoggerAsks {
   /** Last time's working sets, as read. */
   readonly last: string | null
   /** What the set is logged against: an entry, or — none — the exercise added. */
-  readonly logsAgainst: { readonly exerciseId: string; readonly entryId: string | null }
+  readonly logsAgainst: Pick<LogSetInput, 'exerciseId' | 'entryId'>
   /** The set just undone of it, which the numbers start from (#63) — or null. */
   readonly from: Undone | null
 }
@@ -62,11 +63,12 @@ export function loggerAsks<
   unit: WeightUnit,
 ): LoggerAsks {
   const next = nextSet(focus.sets)
-  const logs = next ?? anotherOf(focus.sets)
-  const either = {
+  // The set it logs: the next — or, every set an entry prescribes logged, an extra ("Another set").
+  const toLog = next ?? nextExtra(focus.sets)
+  const shared = {
     next: {
-      target: logs.target,
-      isWarmup: logs.isWarmup,
+      target: toLog.target,
+      isWarmup: toLog.isWarmup,
       ...nextSetWords(focus.sets, next, focus.kind === 'entry'),
     },
     marks: markedSets(focus.sets, waiting),
@@ -75,8 +77,8 @@ export function loggerAsks<
   if (focus.kind === 'added') {
     const { exercise } = focus
     return {
-      ...either,
-      key: `added:${exercise.id}:${logs.key}`,
+      ...shared,
+      key: `added:${exercise.id}:${toLog.key}`,
       progressed: null,
       last: null,
       logsAgainst: { exerciseId: exercise.id, entryId: null },
@@ -84,23 +86,10 @@ export function loggerAsks<
   }
   const { entry, asked } = focus
   return {
-    ...either,
-    key: `entry:${entry.id}:${logs.key}`,
-    progressed: asked === undefined ? null : targetLine(asked, unit, logs),
+    ...shared,
+    key: `entry:${entry.id}:${toLog.key}`,
+    progressed: asked === undefined ? null : targetLine(asked, unit, toLog),
     last: asked?.last == null ? null : `Last time ${formatSets(asked.last, asked.tracking, unit)}`,
     logsAgainst: { exerciseId: entry.exerciseId, entryId: entry.id },
   }
 }
-
-/**
- * Once an entry has every set it asked for, another: what its last working set asked — as `setsOf`
- * asks a set past the plan, in a weight the athlete can load — else, none prescribed, the last done.
- * Keyed as `setsOf` will key it once logged: the next extra.
- */
-const anotherOf = <L extends FlowLog>(
-  sets: readonly SessionSet<L>[],
-): Pick<SessionSet<L>, 'key' | 'isWarmup' | 'target'> => ({
-  key: `x${String(sets.filter((s) => s.extra).length)}`,
-  isWarmup: false,
-  target: sets.findLast((s) => !s.isWarmup)?.target ?? NO_TARGET,
-})

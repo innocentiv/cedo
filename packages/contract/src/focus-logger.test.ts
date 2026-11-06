@@ -131,6 +131,10 @@ describe('what the logger asks of an entry of the day', () => {
       'Prescribed 8 × 80 kg',
     )
     expect(loggerAsks(onBench([]), NONE, 'lb').progressed).toBe('Prescribed 6 × 198.42 lb')
+    const moved = { ...asked, target: at(6, 92.5, 2), changed: true }
+    expect(asks(onBench([], moved)).progressed).toBe(
+      'Progressed to 6 × 92.5 kg · the plan says 6 × 90 kg',
+    )
     expect(asks(onBench([])).last).toBeNull()
     const last = [at(6, 90), at(8, 80), at(7, 80)]
     expect(asks(onBench([], { ...asked, last })).last).toBe(

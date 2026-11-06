@@ -90,7 +90,7 @@ export function setsOf<L extends FlowLog>(
   return [
     ...sets,
     ...beyond.map((log, i) => ({
-      key: `x${i}`,
+      key: extraKey(i),
       isWarmup: false,
       target: lastAsked ?? effortOf(log),
       log,
@@ -99,9 +99,25 @@ export function setsOf<L extends FlowLog>(
   ]
 }
 
+/** The nth set logged beyond what an entry prescribes — an extra — is keyed `x0`, `x1`… */
+const extraKey = (n: number): string => `x${String(n)}`
+
 /** The first set still to do, or null when every prescribed set is logged. */
 export const nextSet = <L extends FlowLog>(sets: readonly SessionSet<L>[]): SessionSet<L> | null =>
   sets.find((s) => s.log === null) ?? null
+
+/**
+ * The extra an entry's sets ask next, once every one prescribed is logged ("Another set"): what the
+ * last working set asked — as `setsOf` asks a set past the plan — keyed as it will be once logged.
+ * An entry with no working set, which a plan never saves, asks its last extra done, or nothing.
+ */
+export const nextExtra = <L extends FlowLog>(
+  sets: readonly SessionSet<L>[],
+): Pick<SessionSet<L>, 'key' | 'isWarmup' | 'target'> => ({
+  key: extraKey(sets.filter((s) => s.extra).length),
+  isWarmup: false,
+  target: sets.findLast((s) => !s.isWarmup)?.target ?? NO_TARGET,
+})
 
 const effortOf = (log: FlowLog): SetTarget => ({
   reps: log.reps,

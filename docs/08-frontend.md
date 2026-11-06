@@ -322,8 +322,9 @@ there (#63).
   that left fewer holds the target. Once logged, the set says its reserve and asks nothing more:
   Undo, or correcting it from the session's list (#31), is how a mistake is fixed.
 - **"+ set"** logs one beyond the prescription, starting from what the entry's last working set
-  asked — as a set past the plan is asked (`setsOf`) — not its top set; **Add exercise** logs one with no entry, as a swap
-  when a machine is taken — today's ad-hoc logging, which leaves the entry's progression alone.
+  asked — as a set past the plan is asked (`setsOf`) — not its top set; **Add exercise** logs one
+  with no entry, as a swap when a machine is taken — today's ad-hoc logging, which leaves the
+  entry's progression alone.
 - **ⓘ** opens how to do it — cue, instructions, muscles, the video — without leaving the session.
 - **A session in progress takes over the app**: its own header — back, the day, the time since it
   started, the menu, on one line — in place of the tab bar. Back leaves it in progress, and a bar on

@@ -12,8 +12,10 @@ import { useLoads } from './use-loads.ts'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
 /**
- * What a planned day has in focus (#24), and how it shows — the set just logged in Log's place
- * (#63). Which it is is the contract's `workoutView`; this renders it.
+ * What is in focus (#24), and how it shows: of a planned day, an entry out of reach or the day done;
+ * of any session, the logger of an entry or an exercise added (`Focus`) — the set just logged in
+ * Log's place (#63). Which it is is the contract's `workoutView`, and what the logger asks its
+ * `loggerAsks`; this renders them.
  */
 
 /** An entry whose exercise the reader can no longer see: what it asked, and nothing to log. */
