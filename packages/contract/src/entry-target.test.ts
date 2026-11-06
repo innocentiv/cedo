@@ -89,4 +89,15 @@ describe('targetLine', () => {
     const line = targetLine(asked({ target: at(24_000), limit: 'heaviest' }), 'kg')
     expect(line).toStartWith('Prescribed 8 × 24 kg · ')
   })
+
+  /**
+   * On Manual each set asks its own weight, and the limit is the entry's target's: a back-off at
+   * 28 kg under a top set at the heaviest dumbbell is not at the heaviest.
+   */
+  test('on Manual, the limit only of a set at the weight it was found for', () => {
+    const top = asked({ target: at(30_000), limit: 'heaviest' })
+    const set = (weightG: number) => ({ isWarmup: false, target: at(weightG) })
+    expect(targetLine(top, 'kg', set(28_000))).toBe('Prescribed 8 × 28 kg')
+    expect(targetLine(top, 'kg', set(30_000))).toBe('Prescribed 8 × 30 kg · your heaviest')
+  })
 })

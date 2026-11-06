@@ -84,7 +84,8 @@ export type SessionEntryTarget = z.output<typeof SessionEntryTarget>
  * prescribed; then why the latest session held it, per set, in the words `workout_progression` says
  * ("held: set 3 did 7 of 10", "held for effort: set 3 left 0 in reserve, asked 2"), so what the last
  * session did is read where the next one is done. Where the athlete's equipment stopped it (#36) is
- * said after the target. No reps in reserve: each set asks its own, and the logger says it above it.
+ * said after the target — on Manual, only of a set at the target's weight, the one it was found for.
+ * No reps in reserve: each set asks its own, and the logger says it above it.
  */
 export function targetLine(
   asked: EntryTarget,
@@ -97,10 +98,13 @@ export function targetLine(
 ): string {
   const { tracking } = asked
   const said = set === undefined || set.isWarmup ? asked.target : set.target
-  const limit = asked.limit === null ? '' : ` · ${LOAD_LIMIT_WORDS[asked.limit]}`
-  const target = `${formatEffort(asked.target, tracking, unit)}${limit}`
+  const limitOf = (effort: Effort): string =>
+    asked.limit === null || effort.weightG !== asked.target.weightG
+      ? ''
+      : ` · ${LOAD_LIMIT_WORDS[asked.limit]}`
+  const target = `${formatEffort(asked.target, tracking, unit)}${limitOf(asked.target)}`
   const moved = asked.changed
     ? `Progressed to ${target} · the plan says ${formatEffort(asked.prescribed, tracking, unit)}`
-    : `Prescribed ${formatEffort(said, tracking, unit)}${limit}`
+    : `Prescribed ${formatEffort(said, tracking, unit)}${limitOf(said)}`
   return asked.held === null ? moved : `${moved} · ${heldWords(asked.held, tracking, unit)}`
 }
