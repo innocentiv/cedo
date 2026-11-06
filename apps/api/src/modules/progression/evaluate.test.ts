@@ -9,9 +9,10 @@ import {
 import { type EntryToEvaluate, type LatestStep, type PrescribedSet, targetsOf } from './evaluate.ts'
 
 /**
- * Reading a target, without a database (ADR-0026): the latest step while it still counts against
- * the plan as it stands, else the prescription — in weights the athlete can load. Taking steps is
- * tested in the contract (`step`) and through the routes (`steps.test.ts`).
+ * Reading a target, without a database (ADR-0026) — every rule of it is here: the latest step while
+ * it still counts against the plan as it stands, else the prescription — in weights the athlete can
+ * load — and what each set asks. Taking steps is tested in the contract (`takeSteps`); which steps
+ * are read, and the run behind the latest, in SQL, through the routes (`steps.test.ts`).
  */
 
 const LINEAR: Progression = { kind: 'linear', incrementG: 2500, afterSuccesses: 1 }
@@ -142,7 +143,10 @@ describe('reading a target', () => {
   })
 })
 
-/** What a session asks of each warm-up (ADR-0026): following the working target, worked out here. */
+/**
+ * What a session asks of each warm-up (ADR-0026): following the working target, worked out here —
+ * the logger's pre-fill and the editor's Your next session read the same.
+ */
 describe("a session's warm-ups", () => {
   test('follow the working target in proportion, and ask as planned before any step', () => {
     const asked = (steps: LatestStep[]) =>
@@ -195,13 +199,5 @@ describe("a session's working sets, each its own", () => {
     expect(asked?.working).toEqual([{ ...at(30_000, 6), reserve: 1 }, at(30_000), at(30_000)])
     const [unloaded] = targetsOf([entry({ kind: 'none' })], top, [], () => null)
     expect(unloaded?.working).toEqual([{ ...at(90_000, 6), reserve: 1 }, at(80_500), at(80_500)])
-  })
-})
-
-/** The editor's Your next session column shows the warm-ups as the next session asks them. */
-describe('a target, as the editor reads it', () => {
-  test('carries its warm-ups, following the working target in proportion', () => {
-    expect(read(plan(), [stepped(at(75_000))])?.warmups).toEqual([at(25_000, 5)])
-    expect(read(plan(), [])?.warmups).toEqual([at(20_000, 5)])
   })
 })
