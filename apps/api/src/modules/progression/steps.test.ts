@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { z } from 'zod'
-import { EntryTarget, Exercise, SessionEntryTarget, Workout, WorkoutSession } from '@cedo/contract'
+import {
+  ApiError,
+  EntryTarget,
+  Exercise,
+  SessionEntryTarget,
+  Workout,
+  WorkoutSession,
+} from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestUser, makeApi } from '../../test/harness.ts'
 
@@ -267,6 +274,7 @@ describe('a target set by hand', () => {
       body: JSON.stringify({ reps: 10 }),
     })
     expect(res.status).toBe(404)
+    expectContract(ApiError, res.body)
     expect((await shown(p))?.target.reps).toBe(8)
   })
 

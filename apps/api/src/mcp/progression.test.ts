@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import {
+  type EquipmentSlug,
   Exercise,
   PLAN_WORDS,
   PlanSave,
@@ -37,7 +38,7 @@ const exercise = async (
   user: TestUser,
   name: string,
   tracking = 'weight_reps',
-  equipment: readonly string[] | null = null,
+  equipment: readonly EquipmentSlug[] | null = null,
 ) =>
   expectContract(
     Exercise,
@@ -56,7 +57,7 @@ const exercise = async (
 async function planned(
   user: TestUser,
   rule: Progression,
-  equipment: readonly string[] | null = null,
+  equipment: readonly EquipmentSlug[] | null = null,
 ) {
   const bench = await exercise(user, 'Bench', 'weight_reps', equipment)
   const workout = expectContract(Workout, await post(user, '/workouts', { name: 'Push' }))

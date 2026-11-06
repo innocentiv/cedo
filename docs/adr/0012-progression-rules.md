@@ -163,7 +163,7 @@ the prescription alone.
   session cannot earn a promotion — otherwise logging one set of an intended three would advance
   the weight.
 - Adding a rule kind means extending the union and `progress`, with **no migration**.
-- At a target's ceiling (`MAX_WEIGHT_G`, `MAX_DURATION_S`, …) every rule holds: a suggestion past
+- At a target's ceiling (`MAX_WEIGHT_G`, `MAX_DURATION_S`, …) every rule holds: a step past
   it would fail the API's own response schema, and with it the plan's whole progression and the
   logger's pre-fill.
 - Because the rule is read back from JSONB, `progress` guards its switch with a `never` check that

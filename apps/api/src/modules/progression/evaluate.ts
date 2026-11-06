@@ -91,21 +91,21 @@ function targetOf(
 ): EntryTarget {
   const working = prescribed.filter((s) => !s.isWarmup)
   const now = againstOf(entry.progression, working)
-  const plan = prescriptionIn(now)
+  const prescription = prescriptionIn(now)
   const { target, step } = standingTarget(latest, now)
   const load = loadFor(entry)
-  const shown = loadableTarget(load, plan)
+  const prescriptionShown = loadableTarget(load, prescription).target
   // The rule never moves reps in reserve: the target asks what the plan asks of it.
-  const reached = loadableTarget(load, { ...target, reserve: plan.reserve })
+  const reached = loadableTarget(load, { ...target, reserve: prescription.reserve })
   return {
     entryId: entry.id,
     exerciseId: entry.exerciseId,
     exerciseName: entry.exerciseName,
     tracking: entry.tracking,
     rule: entry.progression,
-    prescribed: plan,
+    prescribed: prescription,
     target: reached.target,
-    changed: !sameTarget(shown.target, reached.target),
+    changed: !sameTarget(prescriptionShown, reached.target),
     held: step?.held ?? null,
     limit: reached.limit,
     // Behind the step while it counts; a target restarted from the plan has nothing behind it.
@@ -114,7 +114,7 @@ function targetOf(
     warmups: warmupsFor(
       prescribed.filter((s) => s.isWarmup).map((w) => setTargetOf(w)),
       // Unsnapped, both: snapping a 22.5 kg plan to 22 is not progress for a warm-up to follow.
-      plan,
+      prescription,
       target,
       load,
     ),

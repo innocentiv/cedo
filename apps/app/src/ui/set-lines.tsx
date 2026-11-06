@@ -1,5 +1,5 @@
 import {
-  type SetTarget,
+  type EntryTarget,
   type TrackingMode,
   fieldsOf,
   formatEffort,
@@ -28,7 +28,7 @@ interface LinesProps {
   readonly tracking: TrackingMode
   readonly onChange: (entry: EntryDraft) => void
   /** The viewer's own target on the entry: what their next session asks of each warm-up. */
-  readonly own: { readonly warmups: readonly SetTarget[] } | null
+  readonly own: Pick<EntryTarget, 'warmups'> | null
   readonly testID: string
 }
 
