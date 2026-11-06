@@ -49,6 +49,13 @@ is typed, and when it gives way to the parent's value. `typing.test.ts` drives i
 the screen does, in milliseconds — including the case on native where the value changes under a
 focused field, which no e2e journey can reach.
 
+So is what the workout screen shows (#24): the focus (`workoutView`), how what the athlete chose
+changes (`choicesAfter`), and what the logger asks of the focus (`loggerAsks`) — the next set, and
+another once an entry has all it asked for, as its last working set asked; its marks; the lines
+beside it; what it is logged against; and the key it starts again by, which a set logged or undone
+changes and a set landing late, or logged on another entry, does not. A journey proves the taps
+reach these rules; it does not re-check them.
+
 `isomorphic.test.ts` additionally asserts the package imports nothing but `zod` — the dependency
 boundary is a test, not a convention.
 
