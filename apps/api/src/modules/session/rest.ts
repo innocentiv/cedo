@@ -10,7 +10,7 @@ import { NO_REST, ownedBy } from './service.ts'
 /**
  * The rest a session has running, as the server keeps it (#38): worked out by the contract's
  * `restOf` — the app's own rule, so the phone and the server agree — after every write to its sets
- * (`writeSessionSets`), then +30 s or skipped as the athlete says (`changeRest`). What the countdown
+ * (`changeSession`), then +30 s or skipped as the athlete says (`changeRest`). What the countdown
  * counts to, on every device. See docs/adr/0025-rest-kept-by-the-server.md.
  */
 

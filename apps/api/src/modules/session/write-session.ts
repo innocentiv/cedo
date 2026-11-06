@@ -2,18 +2,99 @@ import { and, eq, isNotNull, sql } from 'drizzle-orm'
 import type { SessionUpdate, WorkoutSession } from '@cedo/contract'
 import { type Transaction, db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
-import { notFound } from '../../lib/error.ts'
+import { conflict, notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { type StepScope, retakeSteps } from '../progression/service.ts'
 import { keepRest } from './rest.ts'
-import { NO_REST, lockInProgress, lockOwn, ownedBy, readOwn } from './service.ts'
+import { NO_REST, ownedBy, readOwn } from './service.ts'
 
 /**
- * The writes to a whole session that move a person's targets (ADR-0026): finishing it takes its
- * steps, and deleting a finished one takes the steps after it again — each in the transaction that
- * makes the change.
+ * A change to a session (#24, #31; ADR-0026): every write that changes what it holds, or whether it
+ * is over — a set logged, corrected or removed, the session finished, deleted, or logged whole —
+ * goes through `changeSession`, which keeps what each must: the session's lock, its steps, its rest.
  */
 
+/** What a change asks of the session it changes. */
+export interface Change {
+  /** Only a session in progress takes it — a set logged, a finish — and one finished is refused. */
+  readonly inProgress: boolean
+  /** It finishes the session: what the session trained takes its steps. */
+  readonly finishes?: boolean
+}
+
+/** Said of every change only a session in progress takes. */
+const FINISHED = 'That session has already been finished'
+
+/**
+ * A change to one of the caller's sessions, in one transaction:
+ *
+ * - under the session's row lock, so changes are taken in turn — the next set's number is read from
+ *   the sets as they stand — and a change only a session in progress takes is refused once it is
+ *   finished: locked, then checked, so a finish cannot land between the check and the write;
+ * - the steps of every entry it trained taken again, with every step after them (ADR-0026) — of a
+ *   session finished before the change, what it trained BEFORE it, read before the write, since a
+ *   set removed, its entry's last there, or the session deleted is not there to read after; of one
+ *   the change finishes, what it trained once finished. A session in progress takes none.
+ *
+ * Thrown, nothing is written. Then the rest it has running is worked out again and kept
+ * (`keepRest`, #38), after the commit, outside the lock: two changes at once may keep theirs in
+ * either order, and the next change puts it right.
+ */
+export async function changeSession<T>(
+  caller: Caller,
+  id: string,
+  change: Change,
+  write: (tx: Transaction) => Promise<T>,
+): Promise<T> {
+  const written = await db.transaction(async (tx) => await changeIn(tx, caller, id, change, write))
+  await keepRest(caller, id)
+  return written
+}
+
+/** `changeSession`, in a transaction already open: a session logged whole, started in it. */
+export async function changeIn<T>(
+  tx: Transaction,
+  caller: Caller,
+  id: string,
+  { inProgress, finishes = false }: Change,
+  write: (tx: Transaction) => Promise<T>,
+): Promise<T> {
+  const [locked] = await tx
+    .select({ endedAt: workoutSessions.endedAt })
+    .from(workoutSessions)
+    .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
+    .for('update')
+  if (locked === undefined) throw notFound('session')
+  const finished = locked.endedAt !== null
+  if (inProgress && finished) throw conflict(FINISHED)
+  const before = finished ? await trainedBy(tx, caller, id) : null
+  const result = await write(tx)
+  await retakeSteps(tx, caller, finishes ? await trainedBy(tx, caller, id) : before)
+  return result
+}
+
+/**
+ * Which entries a session of the caller's trained, and when it started: what its steps cover. The
+ * session's to say — its tables — and progression's to take (ADR-0026).
+ */
+async function trainedBy(tx: Transaction, caller: Caller, id: string): Promise<StepScope | null> {
+  const [session] = await tx
+    .select({ startedAt: workoutSessions.startedAt })
+    .from(workoutSessions)
+    .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
+    .limit(1)
+  if (session === undefined) return null
+  const trained = await tx
+    .selectDistinct({ entryId: setLogs.entryId })
+    .from(setLogs)
+    .where(and(eq(setLogs.sessionId, id), isNotNull(setLogs.entryId)))
+  return {
+    entryIds: trained.flatMap((t) => (t.entryId === null ? [] : [t.entryId])),
+    startedAt: session.startedAt,
+  }
+}
+
+/** A session finished, or its notes amended — or both. */
 export async function update(
   caller: Caller,
   id: string,
@@ -41,98 +122,34 @@ export async function update(
    */
   if (Object.keys(columns).length === 0) return await readOwn(caller, id)
 
-  await db.transaction(async (tx) => {
-    // Finishing is final, and once: only a session in progress is finished. Notes are not a
-    // change to what was logged, so they need neither the lock nor a session in progress.
-    if (patch.endedAt !== undefined) await lockInProgress(tx, caller, id)
-    const written = await tx
+  const written = async (tx: Transaction) => {
+    const rows = await tx
       .update(workoutSessions)
       .set(columns)
       .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
       .returning({ id: workoutSessions.id })
-    if (written.length === 0) throw notFound('session')
-    // Finishing is what takes the session's steps (ADR-0026), under the same lock.
-    if (patch.endedAt !== undefined) await takeStepsOf(tx, caller, id)
-  })
+    if (rows.length === 0) throw notFound('session')
+  }
+  // Finishing is a change, and final: once, of a session in progress, and it takes its steps.
+  // Notes change nothing logged, so they need neither the lock nor a session in progress.
+  if (patch.endedAt === undefined) await db.transaction(written)
+  else await changeSession(caller, id, { inProgress: true, finishes: true }, written)
 
   return await readOwn(caller, id)
 }
 
 /**
  * A whole session deleted (#31) — one started by mistake, or logged twice — and its sets with it,
- * in progress or finished. Its row lock is the one every write to its sets takes, so a set being
- * logged lands before it, and goes with it, or finds no session.
+ * in progress or finished. Under its lock, the one every change to its sets takes, a set being
+ * logged lands before it, and goes with it, or finds no session. A finished session's steps go
+ * with it, and those after it are taken again.
  */
 export async function remove(caller: Caller, id: string): Promise<void> {
-  await db.transaction(async (tx) => {
-    // Locked first, then read: a finished session's steps go with it, and those after it are
-    // taken again — read before they go. One in progress took none.
-    const { finished } = await lockOwn(tx, caller, id)
-    const scope = finished ? await stepScopeOf(tx, caller, id) : null
+  await changeSession(caller, id, { inProgress: false }, async (tx) => {
     const deleted = await tx
       .delete(workoutSessions)
       .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
       .returning({ id: workoutSessions.id })
     if (deleted.length === 0) throw notFound('session')
-    await retakeSteps(tx, caller, scope)
   })
-}
-
-/**
- * Which entries a session of the caller's trained, and when it started: what its steps cover. The
- * session's to say — its tables — and progression's to take (ADR-0026).
- */
-async function stepScopeOf(tx: Transaction, caller: Caller, id: string): Promise<StepScope | null> {
-  const [session] = await tx
-    .select({ startedAt: workoutSessions.startedAt })
-    .from(workoutSessions)
-    .where(and(ownedBy(caller), eq(workoutSessions.id, id)))
-    .limit(1)
-  if (session === undefined) return null
-  const trained = await tx
-    .selectDistinct({ entryId: setLogs.entryId })
-    .from(setLogs)
-    .where(and(eq(setLogs.sessionId, id), isNotNull(setLogs.entryId)))
-  return {
-    entryIds: trained.flatMap((t) => (t.entryId === null ? [] : [t.entryId])),
-    startedAt: session.startedAt,
-  }
-}
-
-/** A session's steps, taken: when it is finished, or logged whole — in that write's transaction. */
-export async function takeStepsOf(tx: Transaction, caller: Caller, id: string): Promise<void> {
-  await retakeSteps(tx, caller, await stepScopeOf(tx, caller, id))
-}
-
-/**
- * Every write to a session's sets (#24, #31): under the session's row lock — so they are taken in
- * turn, and the next set's number is read from the sets as they stand — then the rest it has
- * running worked out again and kept (`keepRest`, #38). `inProgress` refuses a finished session; a
- * correction or a removal takes either. Thrown, nothing is written, and the rest is as it was. The
- * rest is kept after the write is committed, outside the lock, as it always was: two writes at once
- * may keep theirs in either order, and the next write puts it right.
- *
- * A finished session's steps follow what it is corrected to (ADR-0026), and every step after it:
- * what it trained is read BEFORE the write — so the entry of a set removed, its last there, is
- * still taken again — and its steps re-taken after it, in the same transaction.
- */
-export async function writeSessionSets<T>(
-  caller: Caller,
-  sessionId: string,
-  { inProgress }: { readonly inProgress: boolean },
-  write: (tx: Transaction) => Promise<T>,
-): Promise<T> {
-  const written = await db.transaction(async (tx) => {
-    if (inProgress) {
-      await lockInProgress(tx, caller, sessionId)
-      return await write(tx)
-    }
-    const { finished } = await lockOwn(tx, caller, sessionId)
-    const scope = finished ? await stepScopeOf(tx, caller, sessionId) : null
-    const result = await write(tx)
-    await retakeSteps(tx, caller, scope)
-    return result
-  })
-  await keepRest(caller, sessionId)
-  return written
 }

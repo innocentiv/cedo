@@ -7,7 +7,7 @@ import type { Caller } from '../../plugins/auth.ts'
 import { assertLoggable, assertWeightFor } from './loggable.ts'
 import { nextNumber } from './numbering.ts'
 import { ownedBy, readOwn, rethrowMissingEntry } from './service.ts'
-import { writeSessionSets } from './write-session.ts'
+import { changeSession } from './write-session.ts'
 
 /**
  * One performed set. With an `idempotencyKey`, a repeat of a key already stored in this session is
@@ -32,7 +32,7 @@ export async function logSet(
   await assertLoggable(caller, session.workoutId, [input])
 
   // `workout_id` never changes after a session starts, so the validation above needs no lock.
-  const created = await writeSessionSets(caller, sessionId, { inProgress: true }, async (tx) => {
+  const created = await changeSession(caller, sessionId, { inProgress: true }, async (tx) => {
     const setIndex = await nextNumber(tx, caller, { id: sessionId, ...session }, input)
     // A key stored meanwhile — two sends of one set at once — is skipped, and answered below.
     const [row] = await tx
@@ -92,7 +92,7 @@ export async function amendLog(
   logId: string,
   patch: SetLogUpdate,
 ): Promise<SetLog> {
-  await writeSessionSets(caller, sessionId, { inProgress: false }, async (tx) => {
+  await changeSession(caller, sessionId, { inProgress: false }, async (tx) => {
     // Drizzle throws on `.set({})`; an empty correction changes nothing, and answers the set.
     if (Object.keys(patch).length === 0) return
     const [amended] = await tx
@@ -114,7 +114,7 @@ export async function amendLog(
  * finished (#31). Under the session's lock, so undoing the last set frees its number for the next.
  */
 export async function removeLog(caller: Caller, sessionId: string, logId: string): Promise<void> {
-  await writeSessionSets(caller, sessionId, { inProgress: false }, async (tx) => {
+  await changeSession(caller, sessionId, { inProgress: false }, async (tx) => {
     const deleted = await tx
       .delete(setLogs)
       .where(and(eq(setLogs.id, logId), eq(setLogs.sessionId, sessionId)))
