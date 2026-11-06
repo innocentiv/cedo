@@ -5,11 +5,13 @@ import {
   EntryTarget,
   Exercise,
   SessionEntryTarget,
+  SessionLogInput,
   Workout,
   WorkoutSession,
 } from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestUser, makeApi } from '../../test/harness.ts'
+import { logWhole } from '../session/log-whole.ts'
 
 /**
  * A person's target, stored as steps (ADR-0026): the rule runs once, when a session is finished,
@@ -201,44 +203,87 @@ describe('a plan edit restarts a target — reversibly', () => {
   })
 })
 
-/** Any change to a finished session takes its steps again, and every step after it (ADR-0026). */
-describe('a correction takes the steps after it again', () => {
+/**
+ * Any change to a session takes again the steps of what it trained — finished before it, or by it
+ * — and every step after it, in the transaction that makes it (ADR-0026): each leaves the target
+ * where the same sessions, done in order, would. One table, one row a change.
+ */
+describe('a change to a session moves the steps it trained, and every one after', () => {
   const setsOf = async (sessionId: string) =>
-    expectContract(
-      WorkoutSession,
-      await (async () => (await alice.wire(`/sessions/${sessionId}`)).body)(),
-    ).logs.map((l) => l.id)
-
-  test('a set corrected in an earlier session moves every target since', async () => {
-    const p = await planned()
+    expectContract(WorkoutSession, (await alice.wire(`/sessions/${sessionId}`)).body).logs.map(
+      (l) => l.id,
+    )
+  /** An earlier session at 8 met the target, a later one at 9 the next: the target asks 10. */
+  const twoSessions = async (p: Plan) => {
     const first = await trained(p, 8)
     await trained(p, 9)
     expect((await shown(p))?.target.reps).toBe(10)
-    // 8 typed for 7: the first session did not meet 8, so the second met it, and asks 9.
-    for (const id of await setsOf(first)) {
-      // oxlint-disable-next-line no-await-in-loop -- one set after another.
-      await send(`/sessions/${first}/logs/${id}`, { reps: 7 }, 'PATCH')
-    }
-    expect((await shown(p))?.target.reps).toBe(9)
+    return first
+  }
+  const eight = (p: Plan) => ({
+    exerciseId: p.exerciseId,
+    entryId: p.entryId,
+    weightG: 55_000,
+    reps: 8,
   })
 
-  test('a set removed from an earlier session moves every target since', async () => {
-    const p = await planned()
-    const first = await trained(p, 8)
-    await trained(p, 9)
-    const [one] = await setsOf(first)
-    await send(`/sessions/${first}/logs/${one ?? ''}`, {}, 'DELETE')
-    // Two sets of three: short of the target, so the second session is what met it.
-    expect((await shown(p))?.target.reps).toBe(9)
-  })
+  /** Each change, and the target it leaves: 9 — the 8s met once — throughout. */
+  const changes: readonly (readonly [string, (p: Plan) => Promise<void>])[] = [
+    [
+      'finished: its own steps, none while it was in progress',
+      async (p) => {
+        const id = await start(p)
+        for (let i = 0; i < 3; i += 1) {
+          // oxlint-disable-next-line no-await-in-loop -- sets in order, as they are logged.
+          await send(`/sessions/${id}/logs`, eight(p))
+        }
+        expect((await shown(p))?.target.reps).toBe(8)
+        await send(`/sessions/${id}`, { endedAt: new Date().toISOString() }, 'PATCH')
+      },
+    ],
+    [
+      'logged whole: its steps, as a finish takes them',
+      async (p) => {
+        const set = eight(p)
+        await logWhole(
+          alice.caller,
+          SessionLogInput.parse({ workoutId: p.workoutId, dayId: p.dayId, sets: [set, set, set] }),
+        )
+      },
+    ],
+    [
+      // 8 typed for 7: the earlier session did not meet 8, so the later one met it.
+      'an earlier session’s sets corrected: every step since',
+      async (p) => {
+        const first = await twoSessions(p)
+        for (const id of await setsOf(first)) {
+          // oxlint-disable-next-line no-await-in-loop -- one set after another.
+          await send(`/sessions/${first}/logs/${id}`, { reps: 7 }, 'PATCH')
+        }
+      },
+    ],
+    [
+      // Two sets of three: short of the target, so the later session is what met it.
+      'a set of an earlier session removed: every step since',
+      async (p) => {
+        const first = await twoSessions(p)
+        const [one] = await setsOf(first)
+        await send(`/sessions/${first}/logs/${one ?? ''}`, {}, 'DELETE')
+      },
+    ],
+    [
+      'an earlier session deleted: every step since',
+      async (p) => {
+        await send(`/sessions/${await twoSessions(p)}`, {}, 'DELETE')
+        expect((await shown(p))?.sessions).toBe(1)
+      },
+    ],
+  ]
 
-  test('an earlier session deleted moves every target since', async () => {
+  test.each(changes)('%s', async (_, change) => {
     const p = await planned()
-    const first = await trained(p, 8)
-    await trained(p, 9)
-    await send(`/sessions/${first}`, {}, 'DELETE')
+    await change(p)
     expect((await shown(p))?.target.reps).toBe(9)
-    expect((await shown(p))?.sessions).toBe(1)
   })
 })
 

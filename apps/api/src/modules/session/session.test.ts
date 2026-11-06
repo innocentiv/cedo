@@ -749,14 +749,15 @@ describe("a session's targets", () => {
     reps.map((count) => ({ reps: count, weightG: kgToG(60), durationS: null, distanceMm: null }))
 
   /**
-   * A past mistake fixed (#31): 8 reps typed for 7 earned a rep more; corrected, the rep is gone
-   * and last time says 7 — carried over the sessions as they stand, never as first logged.
+   * A past mistake fixed (#31): 8 reps typed for 7, corrected, and last time says 7 — read from the
+   * sessions as they stand, never as first logged. What a correction does to the target is
+   * `progression/steps.test.ts`'s, one row a change.
    */
-  test('follow a set of an earlier session corrected, or the session deleted', async () => {
+  test('last time follows a set of an earlier session corrected, or the session deleted', async () => {
     const workout = await aPlannedWorkout(alice, await anExercise(alice))
     const earlier = await aSession(alice, workout, [8, 8, 8])
     const id = await aSession(alice, workout, [], false)
-    expect((await targetsOf(alice, id))[0]?.target.reps).toBe(9)
+    expect((await targetsOf(alice, id))[0]?.last).toEqual(sets(8, 8, 8))
 
     const read = expectContract(WorkoutSession, (await alice.wire(`/sessions/${earlier}`)).body)
     for (const log of read.logs.filter((l) => !l.isWarmup)) {
@@ -766,10 +767,7 @@ describe("a session's targets", () => {
       })
       expect(fixed.status).toBe(200)
     }
-    const [after] = await targetsOf(alice, id)
-    expect(after?.target.reps).toBe(8)
-    expect(after?.changed).toBe(false)
-    expect(after?.last).toEqual(sets(7, 7, 7))
+    expect((await targetsOf(alice, id))[0]?.last).toEqual(sets(7, 7, 7))
 
     expect((await alice.wire(`/sessions/${earlier}`, { method: 'DELETE' })).status).toBe(200)
     expect((await targetsOf(alice, id))[0]?.last).toBeNull()
