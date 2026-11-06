@@ -1,5 +1,4 @@
 import { z } from 'zod'
-import { TrackingMode } from './exercise.ts'
 import { TargetDistanceMm, TargetDurationS, TargetReps, TargetWeightG } from './measurement.ts'
 import { Reserve } from './rpe.ts'
 import { PLAN_WORDS } from './plan-words.ts'
@@ -153,34 +152,6 @@ export const Held = z.discriminatedUnion('reason', [
   }),
 ])
 export type Held = z.output<typeof Held>
-
-/**
- * The caller's target on one workout entry (ADR-0026), alongside the prescription it starts from.
- * Returned by `GET /workouts/:id/progression` and by the `workout_progression` MCP tool — the AI's
- * entry point for "evaluate my progression and set next week's numbers".
- */
-export const ProgressionSuggestion = z.object({
-  entryId: z.uuid(),
-  exerciseId: z.uuid(),
-  exerciseName: z.string(),
-  /** So a reader renders targets in the exercise's terms — `formatEffort(target, tracking, unit)`. */
-  tracking: TrackingMode,
-  rule: Progression,
-  current: SetTarget,
-  suggested: SetTarget,
-  /** False when the rule held rather than advanced. */
-  changed: z.boolean(),
-  /** Why it held, when something held it — so a prescription held for effort is not read as a stall. */
-  held: Held.nullable(),
-  /** How many past sessions were considered. Zero means there is no history to judge from. */
-  sessionsConsidered: z.int().nonnegative(),
-  /**
-   * What each warm-up asks of the next session, in set order: its weight following the target in
-   * proportion (`warmupsFor`, ADR-0026) — what the editor shows beside the plan's.
-   */
-  warmups: z.array(SetTarget),
-})
-export type ProgressionSuggestion = z.output<typeof ProgressionSuggestion>
 
 /** One logged set. Every measurement is optional; only what the exercise tracks is recorded. */
 export interface SetAttempt {

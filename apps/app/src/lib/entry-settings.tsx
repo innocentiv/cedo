@@ -1,4 +1,4 @@
-import { type Exercise, type ProgressionSuggestion, restPlace } from '@cedo/contract'
+import { type EntryTarget, type Exercise, restPlace } from '@cedo/contract'
 import {
   Choice,
   EntryEditor,
@@ -49,7 +49,7 @@ export function EntrySettings({
   // The viewer's own target on it, once read; none for an entry not saved yet.
   const targets = useTargetsById(workoutId)
   if (day === undefined || entry === undefined) return null
-  const suggestion = entry.id === undefined ? undefined : targets.get(entry.id)
+  const shown = entry.id === undefined ? undefined : targets.get(entry.id)
   return (
     <Placed
       workoutId={workoutId}
@@ -59,7 +59,7 @@ export function EntrySettings({
       day={day}
       entry={entry}
       exercise={exercise}
-      suggestion={suggestion}
+      shown={shown}
       onChange={onChange}
     />
   )
@@ -74,7 +74,7 @@ function Placed({
   day,
   entry,
   exercise,
-  suggestion,
+  shown,
   onChange,
 }: {
   readonly workoutId: string
@@ -84,12 +84,13 @@ function Placed({
   readonly day: DayDraft
   readonly entry: EntryDraft
   readonly exercise: Exercise
-  readonly suggestion: ProgressionSuggestion | undefined
+  /** The viewer's own target on it, once read; none for an entry not saved yet. */
+  readonly shown: EntryTarget | undefined
   readonly onChange: (days: readonly DayDraft[]) => void
 }): React.JSX.Element {
   // What a new weight rule adds: a step of the athlete's equipment for it, when known (#36).
   const load = useLoads()(exercise)
-  const own = useEntryTarget(workoutId, entry, suggestion)
+  const { own, change, restartedFrom } = useEntryTarget(workoutId, entry, shown)
   const id = `plan-entry-${String(at.day)}-${String(at.entry)}`
   // Where the logger counts its rest: a superset's earlier entry's only when it ends the round (#48).
   const rest = restPlace(day.entries, at.entry)
@@ -104,8 +105,8 @@ function Placed({
         entry={entry}
         rest={rest}
         tracking={exercise.tracking}
-        target={own.target}
-        change={own.change}
+        own={own}
+        change={change}
         testID={id}
       />
     )
@@ -120,9 +121,9 @@ function Placed({
         onChange={(next) => {
           onChange(withEntries(replaceAt(day.entries, at.entry, next)))
         }}
-        target={own.target}
-        change={own.change}
-        restartedFrom={own.restartedFrom}
+        own={own}
+        change={change}
+        restartedFrom={restartedFrom}
         testID={id}
       />
       <Stack gap="sm">

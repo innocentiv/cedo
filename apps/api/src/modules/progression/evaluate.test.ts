@@ -6,18 +6,13 @@ import {
   againstOf,
   loadOf,
 } from '@cedo/contract'
-import {
-  type EntryToEvaluate,
-  type LatestStep,
-  type PrescribedSet,
-  suggest,
-  targetsFrom,
-} from './evaluate.ts'
+import { type EntryToEvaluate, type LatestStep, type PrescribedSet, targetsOf } from './evaluate.ts'
 
 /**
- * Reading a target, without a database (ADR-0026): the latest step while it still counts against
- * the plan as it stands, else the prescription — in weights the athlete can load. Taking steps is
- * tested in the contract (`step`) and through the routes (`steps.test.ts`).
+ * Reading a target, without a database (ADR-0026) — every rule of it is here: the latest step while
+ * it still counts against the plan as it stands, else the prescription — in weights the athlete can
+ * load — and what each set asks. Taking steps is tested in the contract (`takeSteps`); which steps
+ * are read, and the run behind the latest, in SQL, through the routes (`steps.test.ts`).
  */
 
 const LINEAR: Progression = { kind: 'linear', incrementG: 2500, afterSuccesses: 1 }
@@ -76,28 +71,29 @@ const stepped = (target: SetTarget, sets = plan(), more: Partial<LatestStep> = {
     sets.filter((s) => !s.isWarmup),
   ),
   sessions: 1,
+  byHand: false,
   ...more,
 })
 
 const read = (sets: PrescribedSet[], steps: LatestStep[], held = UNDESCRIBED) => {
-  const [suggestion] = suggest([entry()], sets, steps, (exercise) => loadOf(exercise, held, 'kg'))
-  return suggestion
+  const [shown] = targetsOf([entry()], sets, steps, (exercise) => loadOf(exercise, held, 'kg'))
+  return shown
 }
 
 describe('reading a target', () => {
   test('with no step yet, the prescription — its first working set, never a warm-up', () => {
-    const suggestion = read(plan(), [])
-    expect(suggestion?.current).toMatchObject({ weightG: 60_000, reps: 8 })
-    expect(suggestion?.suggested).toEqual(suggestion?.current)
-    expect(suggestion?.changed).toBe(false)
-    expect(suggestion?.sessionsConsidered).toBe(0)
+    const shown = read(plan(), [])
+    expect(shown?.prescribed).toMatchObject({ weightG: 60_000, reps: 8 })
+    expect(shown?.target).toEqual(shown?.prescribed)
+    expect(shown?.changed).toBe(false)
+    expect(shown?.sessions).toBe(0)
   })
 
   test('the latest step, while the plan stands as it was taken against', () => {
-    const suggestion = read(plan(), [stepped(at(65_000), plan(), { sessions: 3 })])
-    expect(suggestion?.suggested).toMatchObject({ weightG: 65_000, reps: 8 })
-    expect(suggestion?.changed).toBe(true)
-    expect(suggestion?.sessionsConsidered).toBe(3)
+    const shown = read(plan(), [stepped(at(65_000), plan(), { sessions: 3 })])
+    expect(shown?.target).toMatchObject({ weightG: 65_000, reps: 8 })
+    expect(shown?.changed).toBe(true)
+    expect(shown?.sessions).toBe(3)
   })
 
   test('says why the latest step held', () => {
@@ -107,34 +103,54 @@ describe('reading a target', () => {
 
   /** Resets are derived, never written: nothing changed but the plan, and back again. */
   test('the prescription once the plan moved under the step — and the step once it is put back', () => {
-    const step = stepped(at(65_000))
+    const step = stepped(at(65_000), plan(), { sessions: 3, byHand: true })
     const typo = read(plan(6_000), [step])
-    expect(typo?.suggested).toMatchObject({ weightG: 6_000 })
+    expect(typo?.target).toMatchObject({ weightG: 6_000 })
     expect(typo?.changed).toBe(false)
     expect(typo?.held).toBeNull()
-    expect(read(plan(), [step])?.suggested).toMatchObject({ weightG: 65_000 })
+    // #66: nothing stands behind the prescription — not the sessions behind the step.
+    expect(typo).toMatchObject({ sessions: 0, byHand: false })
+    expect(read(plan(), [step])).toMatchObject({
+      target: { weightG: 65_000 },
+      sessions: 3,
+      byHand: true,
+    })
   })
 
   test('asks the reserve the plan asks, which no rule moves', () => {
     const step = stepped({ ...at(65_000), reserve: 4 })
-    expect(read(plan(), [step])?.suggested.reserve).toBe(2)
+    expect(read(plan(), [step])?.target.reserve).toBe(2)
   })
 
   /** #36: shown in a weight the athlete can load, the prescription and the step alike. */
   test('in weights the athlete can load: 22.5 is 22, and a step at 24 stays 24', () => {
     const sets = plan(22_500)
     const none = read(sets, [], DUMBBELLS)
-    expect(none?.suggested.weightG).toBe(22_000)
+    expect(none?.target.weightG).toBe(22_000)
     expect(none?.changed).toBe(false)
-    expect(read(sets, [stepped(at(24_000), sets)], DUMBBELLS)?.suggested.weightG).toBe(24_000)
+    expect(read(sets, [stepped(at(24_000), sets)], DUMBBELLS)?.target.weightG).toBe(24_000)
+  })
+
+  /** #66: why a target stopped moving — a step at the heaviest dumbbell said nothing. */
+  test('at the heaviest the athlete can load, says so: trained up to it, or planned at it', () => {
+    const sets = plan(28_000)
+    expect(read(sets, [stepped(at(30_000), sets)], DUMBBELLS)).toMatchObject({
+      target: { weightG: 30_000 },
+      limit: 'heaviest',
+    })
+    expect(read(plan(30_000), [], DUMBBELLS)?.limit).toBe('heaviest')
+    expect(read(sets, [], DUMBBELLS)?.limit).toBeNull()
   })
 })
 
-/** What a session asks of each warm-up (ADR-0026): following the working target, worked out here. */
+/**
+ * What a session asks of each warm-up (ADR-0026): following the working target, worked out here —
+ * the logger's pre-fill and the editor's Your next session read the same.
+ */
 describe("a session's warm-ups", () => {
   test('follow the working target in proportion, and ask as planned before any step', () => {
     const asked = (steps: LatestStep[]) =>
-      targetsFrom([entry()], plan(), steps, () => null, new Map())[0]?.warmups
+      targetsOf([entry()], plan(), steps, () => null)[0]?.warmups
     expect(asked([])).toEqual([at(20_000, 5)])
     expect(asked([stepped(at(75_000))])).toEqual([at(25_000, 5)])
   })
@@ -151,7 +167,7 @@ describe("a session's warm-ups, against the equipment", () => {
       ...[1, 2, 3].map(() => prescribed(22_500, 8)),
     ]
     const loadFor = (exercise: Parameters<typeof loadOf>[0]) => loadOf(exercise, DUMBBELLS, 'kg')
-    const [asked] = targetsFrom([entry()], sets, [], loadFor, new Map())
+    const [asked] = targetsOf([entry()], sets, [], loadFor)
     expect(asked?.warmups.map((w) => w.weightG)).toEqual([20_000])
   })
 })
@@ -165,7 +181,7 @@ describe("a session's working sets, each its own", () => {
   const ramp = [2, 1, 0].map((targetReserve) => prescribed(60_000, 8, { targetReserve }))
 
   test("under a rule: the target, with each set's own reps in reserve", () => {
-    const [asked] = targetsFrom([entry()], ramp, [stepped(at(62_500), ramp)], () => null, new Map())
+    const [asked] = targetsOf([entry()], ramp, [stepped(at(62_500), ramp)], () => null)
     expect(asked?.working).toEqual(
       [2, 1, 0].map((reserve) => Object.assign(at(62_500), { reserve })),
     )
@@ -178,18 +194,10 @@ describe("a session's working sets, each its own", () => {
       prescribed(80_500, 8),
     ]
     const loadFor = (exercise: Parameters<typeof loadOf>[0]) => loadOf(exercise, DUMBBELLS, 'kg')
-    const [asked] = targetsFrom([entry({ kind: 'none' })], top, [], loadFor, new Map())
+    const [asked] = targetsOf([entry({ kind: 'none' })], top, [], loadFor)
     // 90 is past the heaviest dumbbell (30); 80.5 too — each asked as it can be loaded.
     expect(asked?.working).toEqual([{ ...at(30_000, 6), reserve: 1 }, at(30_000), at(30_000)])
-    const [unloaded] = targetsFrom([entry({ kind: 'none' })], top, [], () => null, new Map())
+    const [unloaded] = targetsOf([entry({ kind: 'none' })], top, [], () => null)
     expect(unloaded?.working).toEqual([{ ...at(90_000, 6), reserve: 1 }, at(80_500), at(80_500)])
-  })
-})
-
-/** The editor's Your next session column shows the warm-ups as the next session asks them. */
-describe('a target, as the editor reads it', () => {
-  test('carries its warm-ups, following the working target in proportion', () => {
-    expect(read(plan(), [stepped(at(75_000))])?.warmups).toEqual([at(25_000, 5)])
-    expect(read(plan(), [])?.warmups).toEqual([at(20_000, 5)])
   })
 })

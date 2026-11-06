@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import {
   MISSING_EQUIPMENT,
+  type EntryTarget,
   type Exercise,
-  type SetTarget,
   entryLine,
   formatPrescription,
   nameToKeep,
@@ -104,7 +104,7 @@ export function DayHead({
 export function EntryLine({
   entry,
   exercise,
-  target,
+  own,
   current,
   onPress,
   onRemove,
@@ -113,7 +113,7 @@ export function EntryLine({
   readonly entry: EntryDraft
   readonly exercise: Exercise | undefined
   /** The viewer's own target on it: said after the plan, only where it moved (ADR-0026). */
-  readonly target: { readonly suggested: SetTarget; readonly changed: boolean } | undefined
+  readonly own: Pick<EntryTarget, 'target' | 'changed'> | undefined
   readonly current: boolean
   readonly onPress: (() => void) | undefined
   /** None for a reader: the plan is not theirs to change. */
@@ -146,7 +146,7 @@ export function EntryLine({
       </Stack>
     )
   }
-  const line = entryLine(sets, entry.progression, exercise.tracking, unit, target ?? null)
+  const line = entryLine(sets, entry.progression, exercise.tracking, unit, own ?? null)
   return (
     <ListRow
       title={`${entry.supersetGroup === null ? '' : `${entry.supersetGroup} · `}${exercise.name}`}

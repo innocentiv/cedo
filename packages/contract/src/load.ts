@@ -100,7 +100,11 @@ export function steppedOn(load: Load, value: number | null, by: 1 | -1): number 
   return within(load, point(load, by === 1 ? stepsBelow(load, at) + 1 : stepsAbove(load, at) - 1))
 }
 
-/** Why a target is not the plan's weight's nearest below: past the heaviest, or under the lightest. */
+/**
+ * Where the athlete's equipment stops a target: at their heaviest — asked it or more, there is
+ * nothing heavier to move to, so a rule adding weight stops there (#66) — or under their lightest.
+ * Not at the lightest: a target never moves down, so only a lighter plan reaches it.
+ */
 export const LoadLimit = z.enum(['heaviest', 'lightest'])
 export type LoadLimit = z.output<typeof LoadLimit>
 
@@ -119,10 +123,7 @@ export function loadable(
   grams: number,
 ): { readonly weightG: number; readonly limit: LoadLimit | null } {
   if (load === null) return { weightG: grams, limit: null }
-  // Told by what was asked, not by where it lands: 25 kg asked of dumbbells topping out at 24 lands
-  // on the heaviest, and is short of what the plan wants.
-  const slack = load.stepG * SLACK
-  if (grams > top(load) + slack) return { weightG: top(load), limit: 'heaviest' }
-  if (grams < floor(load) - slack) return { weightG: floor(load), limit: 'lightest' }
-  return { weightG: within(load, point(load, stepsBelow(load, grams))), limit: null }
+  if (grams < floor(load) - load.stepG * SLACK) return { weightG: floor(load), limit: 'lightest' }
+  const weightG = within(load, point(load, stepsBelow(load, grams)))
+  return { weightG, limit: weightG === top(load) ? 'heaviest' : null }
 }

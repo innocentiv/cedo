@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { z } from 'zod'
 import {
+  ApiError,
   EntryTarget,
   Exercise,
-  ProgressionSuggestion,
+  SessionEntryTarget,
   Workout,
   WorkoutSession,
 } from '@cedo/contract'
@@ -90,20 +91,27 @@ async function trained(p: Plan, reps: number, weightG = 55_000): Promise<string>
 const asked = async (p: Plan) => {
   const id = await start(p)
   const [target] = expectContract(
-    z.array(EntryTarget),
+    z.array(SessionEntryTarget),
     (await alice.wire(`/sessions/${id}/targets`)).body,
   )
   return target
 }
 
 /** What `workout_progression` reads, through its route. */
-const suggested = async (p: Plan) => {
-  const [suggestion] = expectContract(
-    z.array(ProgressionSuggestion),
+const shown = async (p: Plan) => {
+  const [target] = expectContract(
+    z.array(EntryTarget),
     (await alice.wire(`/workouts/${p.workoutId}/progression`)).body,
   )
-  return suggestion
+  return target
 }
+
+/** The caller's own target on the entry, set by hand. */
+const setBy = (p: Plan, target: unknown) =>
+  alice.wire(`/workouts/${p.workoutId}/entries/${p.entryId}/target`, {
+    method: 'PUT',
+    body: JSON.stringify(target),
+  })
 
 describe('a target accumulates across finished sessions', () => {
   /**
@@ -116,7 +124,7 @@ describe('a target accumulates across finished sessions', () => {
       // oxlint-disable-next-line no-await-in-loop -- sessions in order: what is under test.
       await trained(p, reps)
     }
-    expect((await suggested(p))?.suggested).toMatchObject({ reps: 11, weightG: 55_000 })
+    expect((await shown(p))?.target).toMatchObject({ reps: 11, weightG: 55_000 })
     const target = await asked(p)
     expect(target?.prescribed).toMatchObject({ reps: 8, weightG: 55_000 })
     expect(target?.target).toMatchObject({ reps: 11, weightG: 55_000 })
@@ -148,11 +156,11 @@ describe('a plan edit restarts a target — reversibly', () => {
   test('a typo fixed before anyone trains loses nothing', async () => {
     const p = await planned()
     await trained(p, 8)
-    expect((await suggested(p))?.suggested).toMatchObject({ reps: 9, weightG: 55_000 })
+    expect((await shown(p))?.target).toMatchObject({ reps: 9, weightG: 55_000 })
     await replanned(p, 5_500)
-    expect((await suggested(p))?.suggested).toMatchObject({ reps: 8, weightG: 5_500 })
+    expect((await shown(p))?.target).toMatchObject({ reps: 8, weightG: 5_500 })
     await replanned(p, 55_000)
-    expect((await suggested(p))?.suggested).toMatchObject({ reps: 9, weightG: 55_000 })
+    expect((await shown(p))?.target).toMatchObject({ reps: 9, weightG: 55_000 })
   })
 
   test('an edit trained against starts the target again from the new plan, for good', async () => {
@@ -160,9 +168,9 @@ describe('a plan edit restarts a target — reversibly', () => {
     await trained(p, 8)
     await replanned(p, 60_000)
     await trained(p, 8, 60_000)
-    expect((await suggested(p))?.suggested).toMatchObject({ reps: 9, weightG: 60_000 })
+    expect((await shown(p))?.target).toMatchObject({ reps: 9, weightG: 60_000 })
     await replanned(p, 55_000)
-    expect((await suggested(p))?.suggested).toMatchObject({ reps: 8, weightG: 55_000 })
+    expect((await shown(p))?.target).toMatchObject({ reps: 8, weightG: 55_000 })
   })
 
   test('another working set added keeps the target', async () => {
@@ -189,7 +197,7 @@ describe('a plan edit restarts a target — reversibly', () => {
       },
       'PUT',
     )
-    expect((await suggested(p))?.suggested).toMatchObject({ reps: 9, weightG: 55_000 })
+    expect((await shown(p))?.target).toMatchObject({ reps: 9, weightG: 55_000 })
   })
 })
 
@@ -205,13 +213,13 @@ describe('a correction takes the steps after it again', () => {
     const p = await planned()
     const first = await trained(p, 8)
     await trained(p, 9)
-    expect((await suggested(p))?.suggested.reps).toBe(10)
+    expect((await shown(p))?.target.reps).toBe(10)
     // 8 typed for 7: the first session did not meet 8, so the second met it, and asks 9.
     for (const id of await setsOf(first)) {
       // oxlint-disable-next-line no-await-in-loop -- one set after another.
       await send(`/sessions/${first}/logs/${id}`, { reps: 7 }, 'PATCH')
     }
-    expect((await suggested(p))?.suggested.reps).toBe(9)
+    expect((await shown(p))?.target.reps).toBe(9)
   })
 
   test('a set removed from an earlier session moves every target since', async () => {
@@ -221,7 +229,7 @@ describe('a correction takes the steps after it again', () => {
     const [one] = await setsOf(first)
     await send(`/sessions/${first}/logs/${one ?? ''}`, {}, 'DELETE')
     // Two sets of three: short of the target, so the second session is what met it.
-    expect((await suggested(p))?.suggested.reps).toBe(9)
+    expect((await shown(p))?.target.reps).toBe(9)
   })
 
   test('an earlier session deleted moves every target since', async () => {
@@ -229,29 +237,23 @@ describe('a correction takes the steps after it again', () => {
     const first = await trained(p, 8)
     await trained(p, 9)
     await send(`/sessions/${first}`, {}, 'DELETE')
-    expect((await suggested(p))?.suggested.reps).toBe(9)
-    expect((await suggested(p))?.sessionsConsidered).toBe(1)
+    expect((await shown(p))?.target.reps).toBe(9)
+    expect((await shown(p))?.sessions).toBe(1)
   })
 })
 
 /** A target set by hand anchors what follows (ADR-0026): a step of its own, by the same rules. */
 describe('a target set by hand', () => {
-  const setBy = (p: Plan, target: unknown) =>
-    alice.wire(`/workouts/${p.workoutId}/entries/${p.entryId}/target`, {
-      method: 'PUT',
-      body: JSON.stringify(target),
-    })
-
   test('is where the next session is judged from', async () => {
     const p = await planned()
     await trained(p, 8)
     const set = await setBy(p, { reps: 11 })
-    expect(expectContract(ProgressionSuggestion, set.body).suggested).toMatchObject({
+    expect(expectContract(EntryTarget, set.body).target).toMatchObject({
       reps: 11,
       weightG: 55_000,
     })
     await trained(p, 11)
-    expect((await suggested(p))?.suggested).toMatchObject({ reps: 12, weightG: 55_000 })
+    expect((await shown(p))?.target).toMatchObject({ reps: 12, weightG: 55_000 })
   })
 
   test('is refused for what the rule does not move, saying why — and nothing is set', async () => {
@@ -261,7 +263,19 @@ describe('a target set by hand', () => {
     expect(JSON.stringify(res.body)).toContain(
       'Double 8–12 asks 8 to 12 reps, not 14: set reps inside it',
     )
-    expect((await suggested(p))?.suggested).toMatchObject({ reps: 8, weightG: 55_000 })
+    expect((await shown(p))?.target).toMatchObject({ reps: 8, weightG: 55_000 })
+  })
+
+  test('is set only on an entry of the workout it names', async () => {
+    const p = await planned()
+    const other = await planned()
+    const res = await alice.wire(`/workouts/${other.workoutId}/entries/${p.entryId}/target`, {
+      method: 'PUT',
+      body: JSON.stringify({ reps: 10 }),
+    })
+    expect(res.status).toBe(404)
+    expectContract(ApiError, res.body)
+    expect((await shown(p))?.target.reps).toBe(8)
   })
 
   test('is not anyone else’s to set', async () => {
@@ -272,5 +286,49 @@ describe('a target set by hand', () => {
       body: JSON.stringify({ reps: 10 }),
     })
     expect(res.status).toBe(404)
+  })
+})
+
+/**
+ * The sessions behind a target (#66): the run since it last started — from the plan's
+ * prescription, or set by hand — never every session the entry ever took. What
+ * `workout_progression` says as "from 3 sessions"; worked out in SQL (`latestSteps`).
+ */
+describe('the sessions behind a target', () => {
+  test('each session of the run, every one building on the last', async () => {
+    const p = await planned()
+    await trained(p, 8)
+    await trained(p, 9)
+    expect(await shown(p)).toMatchObject({ sessions: 2, byHand: false })
+  })
+
+  test('none once a plan edit restarts it — and the run again once the plan is put back', async () => {
+    const p = await planned()
+    await trained(p, 8)
+    await trained(p, 9)
+    await replanned(p, 60_000)
+    expect(await shown(p)).toMatchObject({ sessions: 0, byHand: false })
+    await replanned(p, 55_000)
+    expect(await shown(p)).toMatchObject({ sessions: 2 })
+  })
+
+  test('a plan moved away and back counts from its return, where the target restarted', async () => {
+    const p = await planned()
+    await trained(p, 8)
+    await replanned(p, 60_000)
+    await trained(p, 8, 60_000)
+    await replanned(p, 55_000)
+    await trained(p, 8)
+    // Judged from 55 kg's prescription again: the step at 60 kg did not count against it.
+    expect(await shown(p)).toMatchObject({ target: { reps: 9 }, sessions: 1 })
+  })
+
+  test('set by hand: says so, and counts the sessions since', async () => {
+    const p = await planned()
+    await trained(p, 8)
+    await setBy(p, { reps: 11 })
+    expect(await shown(p)).toMatchObject({ sessions: 0, byHand: true })
+    await trained(p, 11)
+    expect(await shown(p)).toMatchObject({ target: { reps: 12 }, sessions: 1, byHand: true })
   })
 })

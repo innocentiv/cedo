@@ -8,8 +8,8 @@ import {
   IDEMPOTENCY_KEY_HEADER,
   LogSetInput,
   MAX_SET_INDEX,
-  ProgressionSuggestion,
   SessionDetail,
+  SessionEntryTarget,
   SessionLogInput,
   SetLog,
   Workout,
@@ -624,9 +624,12 @@ describe('exercise history', () => {
   })
 })
 
-/** The loop closes here: prescription → logged reality → the next prescription. */
-describe('progression suggestions', () => {
-  const Suggestions = z.array(ProgressionSuggestion)
+/**
+ * A plan's targets through its route (`workout_progression`'s): the wiring, and whose steps are
+ * read. How a target is read is evaluate.test.ts's; how steps are taken, the contract's.
+ */
+describe("a plan's targets", () => {
+  const Shown = z.array(EntryTarget)
 
   async function logWholeSession(user: TestUser, workout: Workout, reps: number[]): Promise<void> {
     const entry = workout.days[0]?.entries[0]
@@ -656,117 +659,15 @@ describe('progression suggestions', () => {
 
   test('with no history at all, it holds and says so', async () => {
     const workout = await aPlannedWorkout(alice, await anExercise(alice))
-    const [suggestion] = expectContract(
-      Suggestions,
+    const [shown] = expectContract(
+      Shown,
       (await alice.wire(`/workouts/${workout.id}/progression`)).body,
     )
 
-    expect(suggestion?.sessionsConsidered).toBe(0)
-    expect(suggestion?.changed).toBe(false)
-    expect(suggestion?.current.reps).toBe(8)
-    expect(suggestion?.suggested).toEqual(suggestion?.current)
-  })
-
-  test('clearing every working set climbs one rep', async () => {
-    const workout = await aPlannedWorkout(alice, await anExercise(alice))
-    await logWholeSession(alice, workout, [8, 8, 8])
-
-    const [suggestion] = expectContract(
-      Suggestions,
-      (await alice.wire(`/workouts/${workout.id}/progression`)).body,
-    )
-    expect(suggestion?.sessionsConsidered).toBe(1)
-    expect(suggestion?.changed).toBe(true)
-    expect(suggestion?.suggested.reps).toBe(9)
-    expect(suggestion?.suggested.weightG).toBe(kgToG(60))
-  })
-
-  test('missing one set holds the target', async () => {
-    const workout = await aPlannedWorkout(alice, await anExercise(alice))
-    await logWholeSession(alice, workout, [8, 8, 6])
-
-    const [suggestion] = expectContract(
-      Suggestions,
-      (await alice.wire(`/workouts/${workout.id}/progression`)).body,
-    )
-    expect(suggestion?.changed).toBe(false)
-    expect(suggestion?.suggested.reps).toBe(8)
-  })
-
-  /** A run (#14): the distance goes up a step, and its time with it, at the prescribed pace. */
-  test('a run covered within its time goes further, at the same pace', async () => {
-    const run = expectContract(
-      Exercise,
-      (
-        await alice.wire('/exercises', {
-          method: 'POST',
-          body: JSON.stringify({
-            name: 'Easy Run',
-            tracking: 'distance_duration',
-            muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
-          }),
-        })
-      ).body,
-    )
-    const created = expectContract(
-      Workout,
-      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Run' }) }))
-        .body,
-    )
-    const workout = expectContract(
-      Workout,
-      (
-        await alice.wire(`/workouts/${created.id}/plan`, {
-          method: 'PUT',
-          body: JSON.stringify({
-            days: [
-              {
-                name: 'Run',
-                entries: [
-                  {
-                    exerciseId: run.id,
-                    progression: { kind: 'linear_distance', incrementMm: 500_000 },
-                    sets: [{ targetDistanceMm: 5_000_000, targetDurationS: 1800 }],
-                  },
-                ],
-              },
-            ],
-          }),
-        })
-      ).body,
-    )
-    const entry = workout.days[0]?.entries[0]
-    const session = expectContract(
-      WorkoutSession,
-      (await startSession(alice, { workoutId: workout.id, dayId: workout.days[0]?.id })).body,
-    )
-    await alice.wire(`/sessions/${session.id}/logs`, {
-      method: 'POST',
-      body: JSON.stringify({
-        exerciseId: run.id,
-        entryId: entry?.id,
-        distanceMm: 5_000_000,
-        durationS: 1770,
-      }),
-    })
-    await alice.wire(`/sessions/${session.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ endedAt: new Date().toISOString() }),
-    })
-
-    const [suggestion] = expectContract(
-      Suggestions,
-      (await alice.wire(`/workouts/${workout.id}/progression`)).body,
-    )
-    expect(suggestion?.rule).toEqual({
-      kind: 'linear_distance',
-      incrementMm: 500_000,
-      afterSuccesses: 1,
-    })
-    expect(suggestion?.changed).toBe(true)
-    expect([suggestion?.suggested.distanceMm, suggestion?.suggested.durationS]).toEqual([
-      5_500_000, 1980,
-    ])
+    expect(shown?.sessions).toBe(0)
+    expect(shown?.changed).toBe(false)
+    expect(shown?.prescribed.reps).toBe(8)
+    expect(shown?.target).toEqual(shown?.prescribed)
   })
 
   test("uses the caller's own history, never someone else's", async () => {
@@ -796,62 +697,27 @@ describe('progression suggestions', () => {
     await logWholeSession(alice, workout, [8, 8, 8])
 
     const forAlice = expectContract(
-      Suggestions,
+      Shown,
       (await alice.wire(`/workouts/${workout.id}/progression`)).body,
     )
     const forBob = expectContract(
-      Suggestions,
+      Shown,
       (await bob.wire(`/workouts/${workout.id}/progression`)).body,
     )
 
     expect(forAlice[0]?.changed).toBe(true)
-    expect(forBob[0]?.sessionsConsidered).toBe(0)
+    expect(forBob[0]?.sessions).toBe(0)
     expect(forBob[0]?.changed).toBe(false)
-  })
-
-  test('warm-ups do not count toward the working sets', async () => {
-    const exerciseId = await anExercise(alice)
-    const workout = await aPlannedWorkout(alice, exerciseId)
-    const entry = workout.days[0]?.entries[0]
-    if (entry === undefined) throw new Error('no entry')
-
-    const session = expectContract(
-      WorkoutSession,
-      (await startSession(alice, { workoutId: workout.id, dayId: workout.days[0]?.id })).body,
-    )
-    // A ramp, then only TWO of the three working sets.
-    for (const [reps, weight, isWarmup] of [
-      [10, 20, true],
-      [8, 60, false],
-      [8, 60, false],
-    ]) {
-      await alice.wire(`/sessions/${session.id}/logs`, {
-        method: 'POST',
-        body: JSON.stringify({
-          exerciseId,
-          entryId: entry.id,
-          weightG: kgToG(Number(weight)),
-          reps: Number(reps),
-          isWarmup: Boolean(isWarmup),
-        }),
-      })
-    }
-
-    const [suggestion] = expectContract(
-      Suggestions,
-      (await alice.wire(`/workouts/${workout.id}/progression`)).body,
-    )
-    // Three working sets were prescribed; only two were logged.
-    expect(suggestion?.changed).toBe(false)
   })
 })
 
 /**
- * What a session asks of each entry — what the logger is pre-filled with: the plan's prescription
- * carried forward over the sessions BEFORE this one, and what was done last time. See `EntryTarget`.
+ * What a session asks of each entry — what the logger is pre-filled with: the caller's target as
+ * the steps of the sessions BEFORE this one left it, and what was done last time. See
+ * `SessionEntryTarget`.
  */
 describe("a session's targets", () => {
-  const Targets = z.array(EntryTarget)
+  const Targets = z.array(SessionEntryTarget)
   const targetsOf = async (user: TestUser, sessionId: string) =>
     expectContract(Targets, (await user.wire(`/sessions/${sessionId}/targets`)).body)
 

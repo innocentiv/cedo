@@ -1,5 +1,5 @@
 import {
-  type SetTarget,
+  type EntryTarget,
   type TrackingMode,
   fieldsOf,
   formatEffort,
@@ -27,7 +27,8 @@ interface LinesProps {
   readonly entry: EntryDraft
   readonly tracking: TrackingMode
   readonly onChange: (entry: EntryDraft) => void
-  readonly target: { readonly warmups: readonly SetTarget[] } | null
+  /** The viewer's own target on the entry: what their next session asks of each warm-up. */
+  readonly own: Pick<EntryTarget, 'warmups'> | null
   readonly testID: string
 }
 
@@ -62,13 +63,7 @@ function SetFields({
 }
 
 /** Each warm-up its own line; under a rule, what the next session asks of it beside. */
-export function Warmups({
-  entry,
-  tracking,
-  onChange,
-  target,
-  testID,
-}: LinesProps): React.JSX.Element {
+export function Warmups({ entry, tracking, onChange, own, testID }: LinesProps): React.JSX.Element {
   const unit = useWeightUnit()
   const ruled = hasTarget(entry.progression)
   const names = setNames(entry.sets)
@@ -76,7 +71,7 @@ export function Warmups({
     <>
       {warmupsAt(entry).map(({ set, at }, i) => {
         const n = i + 1
-        const next = target?.warmups[i]
+        const next = own?.warmups[i]
         return (
           <Stack key={at} gap="xs">
             <Label>{names[at] ?? ''}</Label>

@@ -1,7 +1,7 @@
 import type { TrackingMode } from './exercise.ts'
 import { type WeightUnit, formatDistance, formatDuration, formatWeight } from './units.ts'
 
-/** The measured quantities a prescribed target, a logged set or a suggestion carries. */
+/** The measured quantities a prescribed set, a logged set or a target carries. */
 export interface Effort {
   readonly reps: number | null
   readonly weightG: number | null
@@ -23,7 +23,7 @@ export const startingEffort = (asked: Effort, tracking: TrackingMode): Effort =>
 })
 
 /**
- * One line for a target, a logged set or a suggestion, in the terms its tracking mode measures:
+ * One line for a prescribed set, a logged set or a target, in the terms its tracking mode measures:
  * `8 × 60 kg`, `10 × bodyweight`, `6 × bodyweight +20 kg`, `1:00`, `5 km in 25:00`.
  *
  * Every screen used to write `${reps ?? '—'} × ${weight ?? 'bodyweight'}` for itself, which

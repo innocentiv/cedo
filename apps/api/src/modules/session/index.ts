@@ -1,7 +1,6 @@
 import { Elysia } from 'elysia'
 import { z } from 'zod'
 import {
-  EntryTarget,
   ExerciseHistory,
   ExerciseHistoryQuery,
   Id,
@@ -9,6 +8,7 @@ import {
   LogSetHeaders,
   LogSetInput,
   RestChange,
+  SessionEntryTarget,
   SessionQuery,
   SessionStart,
   SessionUpdate,
@@ -56,10 +56,10 @@ export const sessionRoutes = new Elysia({ prefix: '/sessions', tags: ['sessions'
   })
   .get('/:id/targets', ({ caller, params: { id } }) => targetsForSession(caller, id), {
     params,
-    response: z.array(EntryTarget),
+    response: z.array(SessionEntryTarget),
     detail: {
       summary:
-        "What the session asks of each entry of its day — the plan carried forward by its rule over the sessions before this one — and last time's sets",
+        "What the session asks of each entry of its day — the caller's target, as the steps of the sessions before this one left it (ADR-0026) — and last time's sets",
     },
   })
   .patch('/:id', ({ caller, params: { id }, body }) => updateSession(caller, id, body), {

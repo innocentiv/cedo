@@ -89,11 +89,16 @@ describe('a target as it can be loaded', () => {
     expect(loadable(barbell, 61_000)).toEqual({ weightG: 60_000, limit: null })
   })
 
-  test('above the heaviest it is the heaviest, and says so', () => {
+  test('at or above the heaviest it is the heaviest, and says so', () => {
     expect(loadable(dumbbells, 32_500)).toEqual({ weightG: 30_000, limit: 'heaviest' })
-    // Landing on the heaviest is not enough: it is still less than was asked.
     expect(loadable(dumbbells, 30_500)).toEqual({ weightG: 30_000, limit: 'heaviest' })
-    expect(loadable(dumbbells, 30_000)).toEqual({ weightG: 30_000, limit: null })
+    // #66: there is nothing heavier to move to — the reason a target stops moving.
+    expect(loadable(dumbbells, 30_000)).toEqual({ weightG: 30_000, limit: 'heaviest' })
+    expect(loadable(dumbbells, 29_000)).toEqual({ weightG: 28_000, limit: null })
+  })
+
+  test('with no heaviest, never at it', () => {
+    expect(loadable(barbell, 300_000)).toEqual({ weightG: 300_000, limit: null })
   })
 
   test('under the lightest it is the lightest — nothing lighter exists — and says so', () => {
@@ -134,8 +139,9 @@ describe('in pounds', () => {
       assisted: false,
       unit: 'lb',
     }
-    expect(loadable(lbDumbbells, lbToG(100)).limit).toBeNull()
+    expect(loadable(lbDumbbells, lbToG(100)).limit).toBe('heaviest')
     expect(shown(loadable(lbDumbbells, lbToG(100)).weightG)).toBe('100 lb')
+    expect(loadable(lbDumbbells, lbToG(95)).limit).toBeNull()
     expect(loadable(lbDumbbells, lbToG(105)).limit).toBe('heaviest')
   })
 })

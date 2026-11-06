@@ -3645,7 +3645,7 @@ test(
 
       // Theirs alone: the coach's own next session is the plan's still.
       const [coachs] = await coach.api.workouts.progression(plan.id)
-      expect(coachs?.suggested.reps).toBe(8)
+      expect(coachs?.target.reps).toBe(8)
     })
   },
   E2E_TIMEOUT_MS,

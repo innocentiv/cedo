@@ -60,6 +60,20 @@ export const prescriptionIn = (against: Against): SetTarget => ({
 })
 
 /**
+ * A person's target (GLOSSARY.md, "Target"): their latest step while it still counts against the
+ * plan as it stands (`stillCounts`), else that plan's prescription, with no step behind it. The one
+ * definition: a session's step is taken from it (`takeSteps`), and a target is read as it.
+ */
+export function standingTarget<S extends { readonly target: SetTarget; readonly against: Against }>(
+  latest: S | null | undefined,
+  now: Against,
+): { readonly target: SetTarget; readonly step: S | null } {
+  return latest !== null && latest !== undefined && stillCounts(latest.against, now)
+    ? { target: latest.target, step: latest }
+    : { target: prescriptionIn(now), step: null }
+}
+
+/**
  * Whether a step still counts: what it was taken against stands as the plan does now — the rule
  * and its settings, what the rule moves or judges (`judgedBy`: a timed rule never judges a plank's
  * weight), and the reserve of every working set both have. Not the number of working sets: adding a

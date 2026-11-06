@@ -101,7 +101,7 @@ const effort = (set: number, reserve: number, asked: number) =>
   ({ reason: 'effort', set, reserve, asked }) as const
 const LINEAR: Progression = { kind: 'linear', incrementG: kgToG(2.5), afterSuccesses: 1 }
 
-describe('taking steps —double progression (3 sets of 8-12, +2.5kg)', () => {
+describe('taking steps — double progression (3 sets of 8-12, +2.5kg)', () => {
   const run = (t: SetTarget, ...sessions: SessionAttempts[]) =>
     targetOf({ rule: DOUBLE, target: t, workingSets: 3, sessions })
 
@@ -195,7 +195,7 @@ describe('taking steps —double progression (3 sets of 8-12, +2.5kg)', () => {
   })
 })
 
-describe('taking steps —linear progression', () => {
+describe('taking steps — linear progression', () => {
   test('a session that clears the prescription adds weight', () => {
     const result = targetOf({
       rule: LINEAR,
@@ -238,7 +238,7 @@ describe('taking steps —linear progression', () => {
  * judged on its reps and weight alone. Whole, both sides (ADR-0027), so there is no allowance. See
  * docs/adr/0012-progression-rules.md.
  */
-describe('taking steps —a prescribed reserve is a floor', () => {
+describe('taking steps — a prescribed reserve is a floor', () => {
   const at = (reserve: number | null, t: SetTarget): SetTarget => ({ ...t, reserve })
   const double = (t: SetTarget, ...sessions: SessionAttempts[]) =>
     targetOf({ rule: DOUBLE, target: t, workingSets: 3, sessions })
@@ -315,7 +315,7 @@ describe('taking steps —a prescribed reserve is a floor', () => {
  * against its own — not every set against the first's. A plan whose last set may go to failure
  * held for effort every session while it was judged against set 1.
  */
-describe('taking steps —each working set is judged against its own reserve', () => {
+describe('taking steps — each working set is judged against its own reserve', () => {
   const ramp = { ...target(12, 60), reserve: 2 }
   const judged = (reserves: readonly (number | null)[], session: SessionAttempts) =>
     afterSteps({ rule: DOUBLE, target: ramp, workingSets: 3, reserves, sessions: [session] })
@@ -344,7 +344,7 @@ describe('taking steps —each working set is judged against its own reserve', (
  * athlete nor the AI reads a prescription held for effort as a stall. None when it advanced, or had
  * nothing to judge.
  */
-describe('taking steps —why a prescription held', () => {
+describe('taking steps — why a prescription held', () => {
   const top = { ...target(12, 60), reserve: 2 }
   const why = (rule: Progression, t: SetTarget, ...sessions: SessionAttempts[]) =>
     afterSteps({ rule, target: t, workingSets: 3, sessions }).held
@@ -425,7 +425,7 @@ describe('taking steps —why a prescription held', () => {
   })
 })
 
-describe('taking steps —invariants that must hold for every rule', () => {
+describe('taking steps — invariants that must hold for every rule', () => {
   const rules: Progression[] = [{ kind: 'none' }, LINEAR, DOUBLE]
   const histories: SessionAttempts[][] = [
     [],
@@ -471,7 +471,7 @@ describe('taking steps —invariants that must hold for every rule', () => {
   })
 })
 
-describe('taking steps —warm-up sets are excluded entirely', () => {
+describe('taking steps — warm-up sets are excluded entirely', () => {
   const warmup = (weightKg: number, reps: number) => ({
     weightG: kgToG(weightKg),
     reps,
@@ -505,7 +505,7 @@ describe('taking steps —warm-up sets are excluded entirely', () => {
   })
 })
 
-describe('taking steps —linear_duration (planks, dead hangs, carries)', () => {
+describe('taking steps — linear_duration (planks, dead hangs, carries)', () => {
   const RULE: Progression = { kind: 'linear_duration', incrementS: 5, afterSuccesses: 1 }
   const timedSets = (...seconds: number[]): SessionAttempts =>
     seconds.map((durationS) => ({ durationS }))
@@ -567,7 +567,7 @@ describe('taking steps —linear_duration (planks, dead hangs, carries)', () => 
  * so a volume step never hides a pace jump. Going faster is left to the user or the AI — a shorter
  * target time would break advance-or-hold. See docs/adr/0012-progression-rules.md.
  */
-describe('taking steps —linear_distance (runs, rows)', () => {
+describe('taking steps — linear_distance (runs, rows)', () => {
   const RULE: Progression = { kind: 'linear_distance', incrementMm: 500_000, afterSuccesses: 1 }
   const covered = (metres: number, seconds: number | null): SetTarget => ({
     reps: null,
@@ -665,11 +665,11 @@ describe('taking steps —linear_distance (runs, rows)', () => {
 })
 
 /**
- * A suggestion past what a target may hold would be refused by the API's own response schema — a
+ * A step past what a target may hold would be refused by the API's own response schema — a
  * 500 for the whole plan's progression, and for the logger's pre-fill. At the ceiling, every rule
  * holds instead.
  */
-describe('taking steps —a target at its ceiling holds', () => {
+describe('taking steps — a target at its ceiling holds', () => {
   test('a weight that would pass the heaviest target', () => {
     const t: SetTarget = { ...target(5, null), weightG: MAX_WEIGHT_G - 1000 }
     expect(

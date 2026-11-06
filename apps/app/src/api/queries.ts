@@ -6,7 +6,6 @@ import {
   useQuery,
 } from '@tanstack/react-query'
 import type {
-  EntryTarget,
   Exercise,
   ExerciseInput,
   ExerciseHistory,
@@ -21,6 +20,7 @@ import type {
   PersonalAccessToken,
   PersonalAccessTokenCreate,
   Source,
+  SessionEntryTarget,
   SessionQuery,
   SessionStart,
   Workout,
@@ -99,7 +99,7 @@ export function useWorkout(id: string): UseQueryResult<Workout> {
 export function useSessionTargets(
   sessionId: string,
   enabled: boolean,
-): UseQueryResult<EntryTarget[]> {
+): UseQueryResult<SessionEntryTarget[]> {
   return useQuery({
     queryKey: keys.sessionTargets(sessionId),
     queryFn: async () => await api.sessions.targets(sessionId),

@@ -1,7 +1,8 @@
 import type {
   AthleteEquipment,
+  EntryTarget,
   Load,
-  ProgressionSuggestion,
+  Progression,
   TrackingMode,
   WeightUnit,
   Workout,
@@ -39,7 +40,7 @@ export const workoutLine = (workout: WorkoutSummary, groupNameOf: GroupNameOf): 
   ` | ${flagsOf(workout, groupNameOf)} | ${workout.id}`
 
 /** A rule as the editor says it: `Double 8–12, +2.5 kg`, `Linear, +0:15`, `Manual`. */
-const ruleWords = (rule: ProgressionSuggestion['rule'], unit: WeightUnit): string =>
+const ruleWords = (rule: Progression, unit: WeightUnit): string =>
   describeProgression(rule, (grams) => formatWeight(grams, unit))
 
 const setLine = (
@@ -73,7 +74,7 @@ export function workoutDetail(
   equipment: AthleteEquipment,
   groupNameOf: GroupNameOf,
   /** The caller's own targets — none when it is read for an athlete (docs/07-mcp.md). */
-  targets: readonly ProgressionSuggestion[],
+  targets: readonly EntryTarget[],
 ): string {
   const header = `${workout.name}  (${workout.id})  ${flagsOf(workout, groupNameOf)}`
   const notes = workout.notes === null ? [] : [`notes: ${workout.notes}`]
@@ -96,7 +97,7 @@ export function workoutDetail(
       const next =
         target?.changed === true
           ? [
-              `      next: ${formatEffort(target.suggested, target.tracking, unit)} — your target; reps in reserve as each set asks`,
+              `      next: ${formatEffort(target.target, target.tracking, unit)} — your target; reps in reserve as each set asks`,
             ]
           : []
       return [
@@ -116,30 +117,34 @@ export function workoutDetail(
 
 /**
  * Each entry's next target for the caller, beside what the plan says, and why its latest step held,
- * per set (`heldWords`) — the logger's words. A manual entry is the plan's numbers. Reps in reserve
- * are not said: they are the plan's, set by set, which no rule moves — one number here read a ramp
- * of 2, 1, 0 as 2 for every set.
+ * per set (`heldWords`) — the logger's words; where the athlete's equipment stopped it (#66), so
+ * a target at their heaviest is not read as a stall. A manual entry is the plan's numbers. Reps in
+ * reserve are not said: they are the plan's, set by set, which no rule moves — one number here read
+ * a ramp of 2, 1, 0 as 2 for every set.
  */
-export function suggestionLines(
-  suggestions: readonly ProgressionSuggestion[],
-  unit: WeightUnit,
-): string {
-  if (suggestions.length === 0) return 'This workout has no entries yet.'
-  return suggestions.map((s) => suggestionLine(s, unit)).join('\n')
+export function nextTargetLines(targets: readonly EntryTarget[], unit: WeightUnit): string {
+  if (targets.length === 0) return 'This workout has no entries yet.'
+  return targets.map((t) => nextTargetLine(t, unit)).join('\n')
 }
 
-export function suggestionLine(s: ProgressionSuggestion, unit: WeightUnit): string {
-  const plan = formatEffort(s.current, s.tracking, unit)
-  const head = `${s.exerciseName} (${ruleWords(s.rule, unit)})`
-  if (s.rule.kind === 'none') {
+export function nextTargetLine(t: EntryTarget, unit: WeightUnit): string {
+  const plan = formatEffort(t.prescribed, t.tracking, unit)
+  const head = `${t.exerciseName} (${ruleWords(t.rule, unit)})`
+  if (t.rule.kind === 'none') {
     return `${head}: ${plan}, the plan’s numbers — change the plan to change them`
   }
-  const next = formatEffort(s.suggested, s.tracking, unit)
-  const target = s.changed
+  const limit = t.limit === null ? '' : ` (${LOAD_LIMIT_WORDS[t.limit]})`
+  const next = `${formatEffort(t.target, t.tracking, unit)}${limit}`
+  const target = t.changed
     ? `next ${next}; the plan says ${plan}`
     : `next ${next}, as the plan says`
-  const why = s.held === null ? '' : ` — ${heldWords(s.held, s.tracking, unit)}`
-  const n = s.sessionsConsidered
-  const basis = n === 0 ? 'no session yet' : `from ${n} session${n === 1 ? '' : 's'}`
-  return `${head}: ${target}${why}  (${basis})`
+  const why = t.held === null ? '' : ` — ${heldWords(t.held, t.tracking, unit)}`
+  return `${head}: ${target}${why}  (${basisOf(t)})`
+}
+
+/** What stands behind a target (#66): the sessions since it last started, and if set by hand. */
+function basisOf({ sessions, byHand }: EntryTarget): string {
+  const since = `${sessions} session${sessions === 1 ? '' : 's'}`
+  if (byHand) return sessions === 0 ? 'set by hand' : `set by hand, then ${since}`
+  return sessions === 0 ? 'no session yet' : `from ${since}`
 }

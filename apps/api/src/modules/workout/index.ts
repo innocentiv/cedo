@@ -2,8 +2,8 @@ import { Elysia } from 'elysia'
 import { z } from 'zod'
 import {
   DuplicateInput,
+  EntryTarget,
   Id,
-  ProgressionSuggestion,
   TargetByHand,
   TransferInput,
   Workout,
@@ -70,10 +70,10 @@ export const workoutRoutes = new Elysia({ prefix: '/workouts', tags: ['workouts'
   )
   .get(
     '/:id/progression',
-    ({ caller, params: { id } }) => ProgressionService.suggestForWorkout(caller, id),
+    ({ caller, params: { id } }) => ProgressionService.targetsForWorkout(caller, id),
     {
       params,
-      response: z.array(ProgressionSuggestion),
+      response: z.array(EntryTarget),
       detail: {
         summary: "Each entry's target, as the caller's steps left it (ADR-0026)",
       },
@@ -86,7 +86,7 @@ export const workoutRoutes = new Elysia({ prefix: '/workouts', tags: ['workouts'
     {
       params: z.object({ id: Id, entryId: Id }),
       body: TargetByHand,
-      response: ProgressionSuggestion,
+      response: EntryTarget,
       detail: {
         summary:
           'Set your own target on an entry by hand: only what its rule moves. Writes your step, never the plan (ADR-0026)',

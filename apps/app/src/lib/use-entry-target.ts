@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import {
-  type ProgressionSuggestion,
+  type EntryTarget,
   type WorkoutEntryInput,
   formatEffort,
   hasTarget,
@@ -23,9 +23,9 @@ import { useWeightUnit } from './weight-unit.ts'
 export function useEntryTarget(
   workoutId: string,
   entry: WorkoutEntryInput,
-  suggestion: ProgressionSuggestion | undefined,
+  shown: EntryTarget | undefined,
 ): {
-  readonly target: EntryTargetView | null
+  readonly own: EntryTargetView | null
   readonly change: ChangeTarget | null
   readonly restartedFrom: string | null
 } {
@@ -34,13 +34,13 @@ export function useEntryTarget(
   const { busy, error, submit } = useSubmit()
   const [opened] = useState(entry)
   const [wasAt, setWasAt] = useState<string | null>(null)
-  if (wasAt === null && suggestion?.changed === true) {
-    setWasAt(formatEffort(suggestion.suggested, suggestion.tracking, unit))
+  if (wasAt === null && shown?.changed === true) {
+    setWasAt(formatEffort(shown.target, shown.tracking, unit))
   }
   const { id } = entry
-  const saved = id !== undefined && suggestion !== undefined
+  const saved = id !== undefined && shown !== undefined
   return {
-    target: saved ? { suggested: suggestion.suggested, warmups: suggestion.warmups } : null,
+    own: saved ? shown : null,
     change:
       !saved || !hasTarget(entry.progression)
         ? null
@@ -62,7 +62,7 @@ export function useEntryTarget(
  * The viewer's own targets on a plan, by entry id — the outline's `· next` and the editor's Your
  * next session read the same answer. Empty while it is being read.
  */
-export function useTargetsById(workoutId: string): ReadonlyMap<string, ProgressionSuggestion> {
+export function useTargetsById(workoutId: string): ReadonlyMap<string, EntryTarget> {
   const { data } = useTargets(workoutId)
   return new Map((data ?? []).map((t) => [t.entryId, t]))
 }

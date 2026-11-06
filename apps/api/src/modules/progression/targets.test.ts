@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { z } from 'zod'
-import { EntryTarget, Exercise, Workout, WorkoutSession } from '@cedo/contract'
+import { Exercise, SessionEntryTarget, Workout, WorkoutSession } from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
@@ -83,7 +83,7 @@ async function trained(p: Plan, weightG: number, reserve: number | null = null):
 const targetOf = async (p: Plan) => {
   const id = await start(p)
   const [target] = expectContract(
-    z.array(EntryTarget),
+    z.array(SessionEntryTarget),
     (await alice.wire(`/sessions/${id}/targets`)).body,
   )
   return target
@@ -124,6 +124,20 @@ describe("targets in the athlete's weights", () => {
     const target = await targetOf(await planned(25_000))
     expect(target?.target.weightG).toBe(24_000)
     expect(target?.limit).toBe('heaviest')
+  })
+
+  /** #66: trained up to the heaviest dumbbell, it stayed there and never said why. */
+  test('trained up to the heaviest dumbbell, it stays there, and says so', async () => {
+    await dumbbells()
+    const p = await planned(28_000)
+    await trained(p, 28_000)
+    await trained(p, 30_000)
+    // 28 cleared asks 30; 30 cleared asks 32.5, which no dumbbell weighs: it stays at 30.
+    expect(await targetOf(p)).toMatchObject({
+      target: { weightG: 30_000 },
+      changed: true,
+      limit: 'heaviest',
+    })
   })
 
   test('with the weights not known, the plan stands — and 22 is still short of 22.5', async () => {

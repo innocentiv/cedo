@@ -77,7 +77,7 @@ export const assistance = {
  */
 export interface DimensionField extends Typing {
   readonly dimension: Dimension
-  /** Where the value lives on an `Effort` — a logged set, a suggestion. */
+  /** Where the value lives on an `Effort` — a logged set, a target. */
   readonly key: keyof Effort
   /** Where it lives on a prescribed set in a plan. */
   readonly targetKey: TargetKey

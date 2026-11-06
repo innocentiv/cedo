@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import {
+  type EquipmentSlug,
   Exercise,
   PLAN_WORDS,
   PlanSave,
@@ -32,20 +33,33 @@ beforeEach(async () => {
 const DOUBLE: Progression = { kind: 'double', repRange: [8, 12], incrementG: 2500 }
 const LINEAR: Progression = { kind: 'linear', incrementG: 2500, afterSuccesses: 1 }
 
-/** An exercise of `user`'s, measured as `tracking`. */
-const exercise = async (user: TestUser, name: string, tracking = 'weight_reps') =>
+/** An exercise of `user`'s, measured as `tracking`, needing `equipment`. */
+const exercise = async (
+  user: TestUser,
+  name: string,
+  tracking = 'weight_reps',
+  equipment: readonly EquipmentSlug[] | null = null,
+) =>
   expectContract(
     Exercise,
     await post(user, '/exercises', {
       name,
       tracking,
+      equipment,
       muscles: [{ muscle: 'pectoralis_major', loadPct: 100 }],
     }),
   )
 
-/** A workout of one day, one entry of 3 × 8 at 60 kg asking 2 in reserve, under `rule`. */
-async function planned(user: TestUser, rule: Progression) {
-  const bench = await exercise(user, 'Bench')
+/**
+ * A workout of one day, one entry of 3 × 8 at 60 kg asking 2 in reserve, under `rule` — of an
+ * exercise needing `equipment`, if any.
+ */
+async function planned(
+  user: TestUser,
+  rule: Progression,
+  equipment: readonly EquipmentSlug[] | null = null,
+) {
+  const bench = await exercise(user, 'Bench', 'weight_reps', equipment)
   const workout = expectContract(Workout, await post(user, '/workouts', { name: 'Push' }))
   const set = { targetReps: 8, targetWeightG: 60_000, targetReserve: 2 }
   const plan = expectContract(
@@ -216,6 +230,30 @@ describe('workout_progression says each step, and each hold by its set', () => {
     const p = await planned(alice, DOUBLE)
     expect(await progression(pat, p)).toBe(
       'Bench (Double 8–12, +2.5 kg): next 8 × 60 kg, as the plan says  (no session yet)',
+    )
+  })
+
+  /** #66: what stands behind a target — set by hand, not the sessions it counted before. */
+  test('set by hand: says so, and the sessions since', async () => {
+    const p = await planned(alice, DOUBLE)
+    await callTool(pat, 'target_set', { workoutId: p.workoutId, entryId: p.entryId, reps: 10 })
+    expect(await progression(pat, p)).toBe(
+      'Bench (Double 8–12, +2.5 kg): next 10 × 60 kg; the plan says 8 × 60 kg  (set by hand)',
+    )
+    await trained(pat, p, [10, 10, 10])
+    expect(await progression(pat, p)).toBe(
+      'Bench (Double 8–12, +2.5 kg): next 11 × 60 kg; the plan says 8 × 60 kg  (set by hand, then 1 session)',
+    )
+  })
+
+  /** #66: where the athlete's equipment stops a target, which it never said. */
+  test('at the heaviest the athlete can load, says so', async () => {
+    const p = await planned(alice, LINEAR, ['dumbbells'])
+    await callTool(pat, 'equipment_set', {
+      items: [{ slug: 'dumbbells', weights: { stepG: 2000, minG: 2000, maxG: 60_000 } }],
+    })
+    expect(await progression(pat, p)).toBe(
+      'Bench (Linear, +2.5 kg): next 8 × 60 kg (your heaviest), as the plan says  (no session yet)',
     )
   })
 
