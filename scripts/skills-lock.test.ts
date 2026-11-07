@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { installsFromLock, skillsAddCommand } from './skills-lock.ts'
+import { SKILLS_CLI, installsFromLock, skillsAddCommand } from './skills-lock.ts'
 
 const SHA = '4ae2317ddb22b046e26455e4f9c9b3aaaf62212d'
 const OTHER = '0000000000000000000000000000000000000abc'
@@ -69,6 +69,7 @@ describe('skillsAddCommand', () => {
 
   test('runs a pinned version of the skills CLI, on Bun, so no global Node is needed', () => {
     const command = skillsAddCommand({ from: `mattpocock/skills#${SHA}`, names: ['pr'] })
-    expect(command.slice(0, 3)).toEqual(['bunx', '--bun', 'skills@1.7.6'])
+    expect(command.slice(0, 3)).toEqual(['bunx', '--bun', SKILLS_CLI])
+    expect(SKILLS_CLI).toMatch(/^skills@\d+\.\d+\.\d+$/u)
   })
 })

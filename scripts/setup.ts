@@ -3,14 +3,17 @@
  *
  * Each step says what it needs when it fails. It is safe to re-run: `.env` is never overwritten, no
  * database is wiped (the dev database is started, migrated and seeded, all idempotent), and the
- * agent skills are reinstalled at the commits `skills-lock.json` pins. Nothing outside the repo is
- * touched: no git identity, no shell profile, no global packages, and no Node — the skills CLI runs
- * on Bun.
+ * agent skills are reinstalled at the commits `skills-lock.json` pins. It changes no configuration
+ * outside the repo (no git identity, shell profile or global package) and needs no Node: the
+ * skills CLI runs on Bun. Outside the repo it only fills Bun's package cache, a temporary clone of
+ * the skills, and Docker's containers and volumes.
+ *
+ * Every failure ends on one `✗` line saying what failed and what to look at.
  *
  * The same script whoever runs it, a contributor or an agent, so no two setups drift. The
  * `.claude/skills/setup` skill only runs it and helps when a step fails.
  */
-import { installsFromLock, skillsAddCommand } from './skills-lock.ts'
+import { type SkillInstall, installsFromLock, skillsAddCommand } from './skills-lock.ts'
 
 interface Step {
   readonly title: string
@@ -22,19 +25,29 @@ interface Step {
 
 const DOCKER_HINT =
   'Is Docker running, and are ports 55432 and 55433 free? See README.md, "If something goes wrong".'
+const DATABASE_HINT = 'The output above names it; if it could not connect, is Docker running?'
+
+function fail(what: string, hint: string, code = 1): never {
+  console.error(`\n✗ ${what}. ${hint}`)
+  process.exit(code)
+}
+
+/**
+ * Bun loaded `.env` into this process, so a child handed all of it would inherit
+ * NODE_ENV=development as if the shell had exported it, and a `bun test` would keep it. Each child
+ * loads `.env` itself; it gets everything else.
+ */
+const { NODE_ENV: _loadedFromDotEnv, ...inherited } = process.env
 
 async function run(step: Step): Promise<void> {
   console.log(`\n▸ ${step.title}`)
   const child = Bun.spawn([...step.command], {
     stdout: 'inherit',
     stderr: 'inherit',
-    env: { ...process.env, ...step.env },
+    env: { ...inherited, ...step.env },
   })
   const code = await child.exited
-  if (code !== 0) {
-    console.error(`\n✗ ${step.title} failed (exit ${code}). ${step.hint}`)
-    process.exit(code)
-  }
+  if (code !== 0) fail(`${step.title} failed (exit ${code})`, step.hint, code)
 }
 
 /** Whether a command runs at all, quietly: for prerequisites. */
@@ -52,7 +65,8 @@ async function wantedBun(): Promise<string> {
   const engines = typeof pkg === 'object' && pkg !== null && 'engines' in pkg ? pkg.engines : null
   const bun =
     typeof engines === 'object' && engines !== null && 'bun' in engines ? engines.bun : null
-  if (typeof bun !== 'string') throw new Error('package.json has no engines.bun')
+  if (typeof bun !== 'string')
+    return fail('package.json has no engines.bun', 'Restore it from git.')
   return bun
 }
 
@@ -69,16 +83,24 @@ async function prerequisites(): Promise<void> {
     missing.push('a running Docker daemon: start Docker, then re-run')
   }
   if (missing.length > 0) {
-    console.error(
-      `Before setup can run, install or start:\n${missing.map((m) => `  - ${m}`).join('\n')}`,
+    fail('Prerequisites missing', `Install or start:\n${missing.map((m) => `  - ${m}`).join('\n')}`)
+  }
+}
+
+/** Read before any step runs, so a lock edited by hand fails at once rather than mid-setup. */
+async function skillInstalls(): Promise<SkillInstall[]> {
+  try {
+    return installsFromLock(await Bun.file('skills-lock.json').json())
+  } catch (error) {
+    return fail(
+      'skills-lock.json cannot be used',
+      String(error instanceof Error ? error.message : error),
     )
-    process.exit(1)
   }
 }
 
 await prerequisites()
-
-const lock: unknown = await Bun.file('skills-lock.json').json()
+const installs = await skillInstalls()
 
 const steps: Step[] = [
   {
@@ -88,9 +110,9 @@ const steps: Step[] = [
   },
   { title: '.env', command: ['bun', 'run', 'env:init'], hint: 'Is .env.example there?' },
   { title: 'Both databases', command: ['bun', 'run', 'db:up'], hint: DOCKER_HINT },
-  { title: 'Migrations', command: ['bun', 'run', 'db:migrate'], hint: DOCKER_HINT },
-  { title: 'The starter library', command: ['bun', 'run', 'db:seed'], hint: DOCKER_HINT },
-  ...installsFromLock(lock).map((install) => ({
+  { title: 'Migrations', command: ['bun', 'run', 'db:migrate'], hint: DATABASE_HINT },
+  { title: 'The starter library', command: ['bun', 'run', 'db:seed'], hint: DATABASE_HINT },
+  ...installs.map((install) => ({
     title: `Agent skills from ${install.from} (${install.names.length})`,
     command: skillsAddCommand(install),
     hint: 'It clones from GitHub: check the network, then re-run.',

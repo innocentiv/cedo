@@ -6,10 +6,11 @@
  * contributors never run different instructions under the same name: without a `ref`, the CLI
  * installs whatever its source's default branch holds that day.
  *
- * In `skills` 1.7.6 the restore command (`experimental_install`) writes only `.agents/skills`, which
- * Claude Code does not read, so setup runs `add` with the names from the lock instead. Pin the
- * skills or move them to a new commit with the same command:
- * `bunx --bun skills@1.7.6 add <source>#<40-hex sha> -a claude-code codex -y -s <names…>`.
+ * In the CLI pinned below, the restore command (`experimental_install`) writes only
+ * `.agents/skills`, which Claude Code does not read, so setup runs `add` with the names from the lock
+ * instead. To pin the skills, or move them to a new commit, run the command `skillsAddCommand`
+ * builds with the new `<source>#<40-hex sha>`: the CLI rewrites the lock. A new CLI version is run on
+ * Bun by hand once before it is pinned here, since it declares Node in its engines.
  */
 
 /** The CLI version setup runs: pinned, as the skills are. */
