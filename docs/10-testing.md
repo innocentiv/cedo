@@ -117,7 +117,18 @@ new is not covered. See `docs/adr/0019-visible-relations.md`.
 `bun test --parallel` each worker gets its own database (`cedo_test_w3`), created on demand by
 `ensureDatabaseExists`; migrations run once per worker, and every table except `muscles` is truncated
 between tests. `TEST_DATABASE_URL` is a safety interlock: with `NODE_ENV=test`, `DATABASE_URL` is
-ignored entirely, so a stray `bun test` cannot truncate a real instance.
+ignored entirely, so a stray `bun test` cannot truncate a real instance. Bun sets `NODE_ENV=test`
+only when nothing has: an exported `NODE_ENV`, or one inherited from a parent that loaded `.env`,
+once sent the suite to the development database. So two guards hold it:
+
+- `test/preload.ts`, loaded by `bunfig.toml`, sets `NODE_ENV=test` for every run from the repository
+  root (`test/environment.test.ts`). Bun reads `bunfig.toml` only from the working directory.
+- `makeApi` in the harness refuses to start unless `NODE_ENV=test`, wherever `bun test` was started
+  (`apps/api/src/test/harness-guard.test.ts`).
+
+Both regression tests run a child `bun test` on a `*.probe.ts` file, a suffix a bare `bun test` does
+not collect, so the probe runs only when its test starts it. Tests also live beside plain scripts:
+`scripts/skills-lock.test.ts` covers what `bun run setup` reads from `skills-lock.json`.
 
 ## Why the perf and e2e files are named `.perf.ts` and `.e2e.ts`
 

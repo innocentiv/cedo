@@ -49,6 +49,7 @@ offline use. Details are in [docs/09-deployment.md](docs/09-deployment.md#instal
 | --- | --- | --- |
 | **[Bun](https://bun.sh) 1.4+** | runtime, package manager, test runner, bundler | `bun --version` |
 | **Docker** with compose v2 | Postgres, nothing else | `docker compose version` |
+| **git** | cloning, and fetching the agent skills | `git --version` |
 
 Nothing else — no global Node, no `npm i -g`, no database installed on your machine.
 
@@ -59,8 +60,10 @@ git clone <this repo> && cd cedo
 bun run setup
 ```
 
-`setup` installs dependencies, creates `.env` from the template, starts both Postgres containers,
-migrates and seeds. It is safe to re-run; it will not overwrite an existing `.env`.
+`setup` checks for Bun, git and Docker, installs dependencies, creates `.env` from the template,
+starts both Postgres containers, migrates and seeds. It then installs the agent skills that
+`skills-lock.json` pins, for Claude Code and Codex, and ends by running `bun run check`. It is safe
+to re-run: it never overwrites an existing `.env` or wipes a database.
 
 Then:
 
@@ -101,9 +104,9 @@ its own URL for the containers; the one in `.env` is for the API **you** run wit
 | `cedo` | 55432 | `bun run dev` — your data, survives restarts |
 | `cedo_test` | 55433 | `bun run check` — **truncated between every test** |
 
-They are separate on purpose. When `NODE_ENV=test` (which `bun test` sets on its own) `DATABASE_URL`
-is ignored entirely and `TEST_DATABASE_URL` is used, so a stray test run cannot reach your
-development data.
+They are separate on purpose. When `NODE_ENV=test` (which every `bun test` from the root sets)
+`DATABASE_URL` is ignored entirely and `TEST_DATABASE_URL` is used, so a stray test run cannot reach
+your development data. Started anywhere else, the tests refuse to run without `NODE_ENV=test`.
 
 ### The commands you will actually use
 

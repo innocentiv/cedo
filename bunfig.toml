@@ -4,3 +4,5 @@ exact = true
 
 [test]
 coverageThreshold = 0
+# NODE_ENV=test for every run, whatever the environment says: the test-database interlock.
+preload = ["./test/preload.ts"]

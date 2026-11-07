@@ -26,7 +26,9 @@ export type Env = z.output<typeof Env>
  *
  * This is a safety interlock, not a convenience: the test harness truncates every table, so it
  * must be impossible for a stray `bun test` to reach a development or production database.
- * `bun test` sets NODE_ENV=test on its own, so this cannot be forgotten.
+ * Every `bun test` from the repository root runs as NODE_ENV=test, even when the environment it
+ * inherited says otherwise (`test/preload.ts`), and the harness refuses to run without it from
+ * anywhere else (`makeApi`): see docs/10-testing.md.
  *
  * Under `bun test --parallel` each worker gets its own database, since workers run concurrently
  * and would otherwise truncate each other's rows mid-test.
