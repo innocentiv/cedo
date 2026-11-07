@@ -51,6 +51,10 @@ Each line does something the others do not:
 
 ## Deploying on push
 
+This is how the maintainer's own instance deploys, and it is optional: an instance upgraded by hand,
+as above, runs exactly the same. Follow it only if you want every push to `main` of your own fork to
+reach your server.
+
 `scripts/deploy.sh` is the upgrade path above as one command, run on the server in its checkout. It
 pulls the latest Postgres minor release, rebuilds `api` and `web` on fresh base images, and starts
 them with `up --wait`, which returns only once every service is healthy. So a build or a migration
