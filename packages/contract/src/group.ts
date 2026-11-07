@@ -102,5 +102,10 @@ export type GroupAddMember = z.output<typeof GroupAddMember>
 export const Me = z.object({
   user: Account,
   groups: z.array(GroupMembership),
+  /**
+   * Whether they curate this instance: the shared library, its diagnostics, and its sign-up
+   * (#71). Said by the server, so the app offers the curator's switches without knowing the rule.
+   */
+  curator: z.boolean(),
 })
 export type Me = z.output<typeof Me>

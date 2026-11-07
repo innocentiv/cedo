@@ -15,6 +15,7 @@ export const ERROR_CODES = [
   'payload_too_large',
   'unsupported_media_type',
   'rate_limited',
+  'sign_up_closed',
   'internal',
 ] as const
 
@@ -41,6 +42,9 @@ export type ApiError = z.output<typeof ApiError>
  * There is deliberately no `forbidden`. A resource the caller may not see returns `not_found`,
  * because a 403 confirms the resource exists and leaks that fact to a stranger.
  * See docs/02-conventions.md.
+ *
+ * `sign_up_closed` is the one 403. It refuses a new account (#71), and whether an instance takes
+ * accounts is already public (`GET /instance`), so saying so leaks nothing.
  */
 export const HTTP_STATUS_BY_ERROR_CODE: Readonly<Record<ErrorCode, number>> = {
   validation_failed: 422,
@@ -50,5 +54,6 @@ export const HTTP_STATUS_BY_ERROR_CODE: Readonly<Record<ErrorCode, number>> = {
   payload_too_large: 413,
   unsupported_media_type: 415,
   rate_limited: 429,
+  sign_up_closed: 403,
   internal: 500,
 }

@@ -1,9 +1,11 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
+import { InstancePatch } from '@cedo/contract'
 import { DomainError } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import * as InstanceService from '../../modules/instance/service.ts'
 import { platformStatus, slowQueries } from '../../modules/review/diagnostics.ts'
-import { READ, text } from '../format.ts'
+import { READ, REPLACES, text } from '../format.ts'
 
 /**
  * OBJECTIVE 3 — telling an AI what is actually happening inside a running instance.
@@ -77,6 +79,27 @@ export function registerDiagnosticTools(server: McpServer, caller: Caller, versi
         if (error instanceof DomainError && error.code === 'conflict') return text(error.message)
         throw error
       }
+    },
+  )
+
+  server.registerTool(
+    'instance_sign_up_set',
+    {
+      title: 'Open or close sign-up',
+      description:
+        'Whether this instance takes new accounts. Open it while testers register, then close it ' +
+        'again: while it is open, anyone who reaches the instance can create an account. Curator ' +
+        'only.',
+      inputSchema: InstancePatch,
+      annotations: REPLACES,
+    },
+    async (patch) => {
+      const { signUp } = await InstanceService.update(caller, patch)
+      return text(
+        signUp === 'open'
+          ? 'Sign-up is open: anyone who reaches this instance can create an account.'
+          : 'Sign-up is closed: nobody new can create an account.',
+      )
     },
   )
 }

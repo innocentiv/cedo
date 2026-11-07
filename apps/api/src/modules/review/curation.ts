@@ -230,3 +230,9 @@ export async function requireCurator(caller: Caller): Promise<string> {
   }
   return id
 }
+
+/** The same rule as `requireCurator`, answered rather than enforced: `Me.curator` (#71). */
+export async function isCurator(caller: Caller): Promise<boolean> {
+  const id = await sharedGroupId()
+  return id !== null && caller.editorGroupIds.includes(id)
+}

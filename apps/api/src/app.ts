@@ -13,6 +13,7 @@ import { coachingRoutes, reviewRoutes } from './modules/coaching/index.ts'
 import { athleteEquipmentRoutes, equipmentRoutes } from './modules/equipment/index.ts'
 import { exerciseRoutes } from './modules/exercise/index.ts'
 import { groupRoutes } from './modules/group/index.ts'
+import { instanceRoutes } from './modules/instance/index.ts'
 import { mediaBlobRoutes, mediaRoutes } from './modules/media/index.ts'
 import { noteRoutes } from './modules/note/index.ts'
 import { weighInRoutes } from './modules/weigh-in/index.ts'
@@ -57,6 +58,7 @@ export function createApp() {
     .use(exerciseRoutes)
     .use(exerciseHistoryRoutes)
     .use(groupRoutes)
+    .use(instanceRoutes)
     .use(mediaBlobRoutes)
     .use(mediaRoutes)
     .use(noteRoutes)

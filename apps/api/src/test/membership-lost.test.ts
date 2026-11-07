@@ -239,6 +239,8 @@ const all = async (reads: Promise<string>[]): Promise<string> =>
 
 const ROUTES: Record<string, Case> = {
   'GET /health': { named: false, read: async () => await http('/health') },
+  // Public, and about the instance: it names no group, member or owned row.
+  'GET /instance': { named: false, read: async () => await http('/instance') },
   'GET /openapi': { named: false, read: async () => await http('/openapi') },
   'GET /openapi/json': { named: false, read: async () => await http('/openapi/json') },
   'GET /auth/me': { named: true, read: async () => await http('/auth/me') },

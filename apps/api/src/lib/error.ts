@@ -26,6 +26,10 @@ export const notFound = (what: string): DomainError =>
 
 export const conflict = (message: string): DomainError => new DomainError('conflict', message)
 
+/** A new account on an instance whose curator has closed sign-up (#71). */
+export const signUpClosed = (): DomainError =>
+  new DomainError('sign_up_closed', 'This instance is not taking new accounts: ask its curator.')
+
 export const unauthenticated = (message = 'Authentication required'): DomainError =>
   new DomainError('unauthenticated', message)
 

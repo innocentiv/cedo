@@ -148,6 +148,13 @@
       "when": 1793731920245,
       "tag": "0020_progression_steps",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794059708960,
+      "tag": "0021_instance_sign_up",
+      "breakpoints": true
     }
   ]
 }

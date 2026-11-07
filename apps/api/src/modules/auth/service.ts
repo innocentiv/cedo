@@ -17,6 +17,7 @@ import { burnTime, hashPassword, verifyPassword } from '../../lib/password.ts'
 import { hashToken, mintToken } from '../../lib/token.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import * as GroupService from '../group/service.ts'
+import * as InstanceService from '../instance/service.ts'
 
 const SESSION_DAYS = 90
 
@@ -101,6 +102,8 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
   const passwordHash = await hashPassword(input.password)
 
   const user = await db.transaction(async (tx) => {
+    // First, so a closed instance refuses before anything is written (#71).
+    const admitted = await InstanceService.admit(tx)
     const personal = await createPersonalGroup(tx, input.displayName)
     /**
      * Uniqueness is decided by the index, not by a prior SELECT. A check-then-insert lets two
@@ -123,16 +126,17 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
       .insert(groupMembers)
       .values({ groupId: personal.id, userId: created.id, role: 'editor' })
 
-    // Everyone reads the seeded starter library.
+    // Everyone reads the seeded starter library; a fresh instance's first account curates it, and
+    // sign-up closes behind them (#71, ADR-0029).
     const [shared] = await tx
       .select()
       .from(groups)
       .where(eq(groups.slug, DEFAULT_GROUP_SLUG))
       .limit(1)
     if (shared !== undefined) {
-      await tx
-        .insert(groupMembers)
-        .values({ groupId: shared.id, userId: created.id, role: 'reader' })
+      const role = admitted === 'first' ? 'editor' : 'reader'
+      await tx.insert(groupMembers).values({ groupId: shared.id, userId: created.id, role })
+      if (admitted === 'first') await InstanceService.closeBehindFirst(tx)
     }
 
     return created
@@ -175,7 +179,11 @@ export async function me(caller: Caller): Promise<Me> {
     .where(eq(users.id, caller.userId))
     .limit(1)
   if (row === undefined) throw notFound('user')
-  return { user: toAccount(row), groups: await GroupService.list(caller) }
+  return {
+    user: toAccount(row),
+    groups: await GroupService.list(caller),
+    curator: await InstanceService.curates(caller),
+  }
 }
 
 /**
