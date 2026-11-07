@@ -3227,13 +3227,19 @@ test(
 test(
   'without a signal, the installed app still opens',
   async () => {
-    await withApp('offline-shell', async (page) => {
-      const app = screens(page)
-      await app.install.workerScope()
-      page.cutNetwork()
-      await page.goto('/')
-      await app.auth.onLoginScreen()
-    })
+    await withApp(
+      'offline-shell',
+      async (page) => {
+        const app = screens(page)
+        await app.install.workerScope()
+        page.cutNetwork()
+        await page.goto('/')
+        await app.auth.onLoginScreen()
+      },
+      // The login screen asks the instance whether to offer sign-up (#71): the one request a cut
+      // network must fail. Unanswered, it offers it.
+      { allowErrors: [/\[network\] Load failed/u] },
+    )
   },
   E2E_TIMEOUT_MS,
 )
