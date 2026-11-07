@@ -83,6 +83,10 @@ closes sign-up behind it. A group member is an `editor` or a `reader`; only edit
 `first` on a fresh instance, then `open` or `closed` at the curator's word. Registration locks it,
 so a fresh instance has exactly one first account. See ADR-0029.
 
+**Failed logins** are `login_failures`: client address (an IPv6 one by its /64), username and when,
+kept only for the 15-minute window the login limit counts over, indexed by address and time, by
+address, username and time, and by time for the prune. Not owned by anyone. See ADR-0031.
+
 **Who can see a group's members:** an editor sees all of them; a reader sees the editors and
 themselves. Because everyone reads the library, "any member sees every member" made `GET
 /groups/:id/members` a list of every account on the instance. `memberCount` counts the same members

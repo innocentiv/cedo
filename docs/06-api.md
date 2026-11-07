@@ -10,7 +10,8 @@ src/
   env.ts              Zod-validated environment; refuses to boot if invalid
   plugins/auth.ts     the `auth` macro — resolves the caller in ONE query
   plugins/openapi.ts  spec generation from Zod
-  lib/                error, password, token, keyset (cursors, LIKE escaping), media, storage/
+  lib/                error, password, token, keyset (cursors, LIKE escaping), media, storage/,
+                      client-address (who a request came from, for the login limit)
   modules/<name>/     index.ts (routes) + service.ts (logic) + tests beside them. Not every
                       module has both halves: ownable/ is the lifecycle exercise/ and workout/
                       configure; progression/ is reached through the workout routes (its
@@ -120,7 +121,7 @@ password included, with a `Retry-After` header in seconds (ADR-0031). `ERROR_COD
 in the union so a client's exhaustive switch does not break the day one is.
 
 Services throw the typed helpers in `lib/error.ts` (`notFound`, `conflict`, `unauthenticated`,
-`invalid`). There is deliberately no `forbidden`.
+`invalid`, `signUpClosed`, `rateLimited`). There is deliberately no `forbidden`.
 
 **Validation details never echo the submitted value.** Elysia's `ValidationError.all` carries the
 input on every issue, which on a registration includes the plaintext password; only `path` and
