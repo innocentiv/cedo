@@ -159,6 +159,12 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
 - **`e2e` and `shot` serve `apps/app/dist`, so both rebuild first.** They used not to, which meant
   editing a screen and running either tested the PREVIOUS bundle and passed. Use `e2e:only` to skip
   the rebuild when you know the bundle is current.
+- **A Bun script that spawns `bun` hands it the `.env` it loaded.** Bun loads `.env` into the
+  script's own environment, so a child given `process.env` inherits `NODE_ENV=development` as if
+  the shell had exported it. `bun test` then kept it, and the suite truncated the dev database:
+  the first `bun run setup` did exactly that, twice, and showed only as 550 deadlocked tests.
+  `test/preload.ts` now forces `NODE_ENV=test`; still, read a mass of deadlocks as "the wrong
+  database", not a flaky suite.
 
 ## Documentation map
 
