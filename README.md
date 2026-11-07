@@ -169,7 +169,7 @@ The three rules worth knowing before you type anything:
 
 Before 1.0, maintained by one person, and in daily use on the maintainer's own instance. There are
 no releases or version numbers yet: `main` is what runs, and an instance upgrades by pulling it.
-Versioned releases come with the native app.
+Versioned releases are planned with the native app (#10).
 
 All milestones complete: contract, database, API, exercises and media, workouts and logs, MCP,
 performance, frontend, and deployment. The app is web only: there is no native build configuration
@@ -180,11 +180,10 @@ signal (see above).
 
 ## Exposing it to the internet
 
-- **HTTPS, behind a reverse proxy**: [docs/09-deployment.md](docs/09-deployment.md).
-- **The first account curates the instance, and sign-up closes behind it.** Open it from Settings
-  only while the people you expect register, then close it again
-  ([ADR-0029](docs/adr/0029-sign-up-and-the-first-curator.md)).
-- **Logins have no rate limit yet** (#72): use long passwords, or limit `/api/auth/*` at your proxy.
+Serve it over HTTPS ([docs/09-deployment.md](docs/09-deployment.md)). Its first account curates it,
+and sign-up closes behind that account: open it from Settings only while the people you expect
+register. Before you do, read "Before exposing an instance to the internet" in
+[SECURITY.md](SECURITY.md): what is not protected yet, and what to do about it.
 
 ## Security
 
@@ -192,7 +191,7 @@ Report a vulnerability privately: see [SECURITY.md](SECURITY.md).
 
 ## Contributing
 
-Issues are open to collaborators only for now, and pull requests come after an agreed issue: see
+Issues, pull requests and comments are limited to collaborators for now: see
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence

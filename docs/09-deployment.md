@@ -53,7 +53,8 @@ Each line does something the others do not:
 
 This is how the maintainer's own instance deploys, and it is optional: an instance upgraded by hand,
 as above, runs exactly the same. Follow it only if you want every push to `main` of your own fork to
-reach your server.
+reach your server, and change the repository name in the deploy job's condition: as shipped, it
+runs only in `innocentiv/cedo` (below).
 
 `scripts/deploy.sh` is the upgrade path above as one command, run on the server in its checkout. It
 pulls the latest Postgres minor release, rebuilds `api` and `web` on fresh base images, and starts

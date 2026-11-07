@@ -5,16 +5,15 @@ built, and learn from it.
 
 ## Where things stand
 
-- **Issues are open to collaborators only, for now.** If you find a bug, or want something, and
-  cannot open an issue, it is not you.
+- **Issues, pull requests and comments are limited to collaborators, for now.** If you find a bug,
+  or want something, and cannot open an issue, it is not you.
 - **Security problems** go through private vulnerability reporting: see [SECURITY.md](SECURITY.md).
-- **Pull requests come after an agreed issue.** A PR with no issue agreed first is closed with a
-  link here: this codebase holds strict invariants, and it is cheaper to agree the shape before the
-  code than after.
-- **Before outside contributions open, a contribution licence will be chosen.** The code is
-  AGPL-3.0-or-later; the maintainer also ships it to app stores, whose terms the AGPL's do not mix
-  with, so a contribution has to come with rights that allow that. Until it is decided, outside code
-  cannot be merged.
+- **When contributions open, a pull request comes after an agreed issue.** This codebase holds
+  strict invariants, and it is cheaper to agree the shape of a change before the code than after.
+- **Before then, a contribution licence will be chosen.** The code is AGPL-3.0-or-later, and the
+  maintainer means to ship it to app stores, whose terms do not mix with the AGPL's; so a
+  contribution has to come with rights that allow that. Until it is decided, outside code cannot be
+  merged. See [ADR-0030](docs/adr/0030-agpl-and-a-contribution-licence.md).
 
 ## Working on it
 
@@ -31,9 +30,6 @@ Then [docs/01-architecture.md](docs/01-architecture.md), and the playbook for wh
 
 ## What a public repository asks of every change
 
-Everything here — code, history, issues and comments — is public. So
-[docs/02-conventions.md](docs/02-conventions.md), "Public repository", applies to every commit:
-
-- No personal, contact or health details, and no real figures from anyone's training, even as
-  examples: use invented people.
-- No live domain, host, provider or secret.
+Treat everything here — code, history, issues and comments — as public: every commit follows
+[docs/02-conventions.md](docs/02-conventions.md), "Public repository". In short, examples use
+invented people, and deployments are described as anyone's.

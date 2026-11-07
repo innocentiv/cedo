@@ -10,7 +10,7 @@ maintainer, who answers as soon as they can: there is no team and no promised re
 
 ## What is in scope
 
-- The API server (`apps/api`), including its MCP server at `/mcp`.
+- The API server (`apps/api`), including its MCP server, reached at `/api/mcp`.
 - The app (`apps/app`), as the web app and as it installs to a phone.
 - The deployment this repository ships: `docker-compose.yml`, the Caddy configuration and the
   scripts in `scripts/`.
@@ -23,6 +23,8 @@ Only `main`. There are no releases yet, so a fix lands on `main` and a self-host
 by upgrading (`docs/09-deployment.md`).
 
 ## Before exposing an instance to the internet
+
+The one list of what to know first; the README points here.
 
 - Serve it over HTTPS, behind a reverse proxy (`docs/09-deployment.md`).
 - Sign-up closes behind the instance's first account, which curates it. Open it only while the
