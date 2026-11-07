@@ -167,9 +167,35 @@ The three rules worth knowing before you type anything:
 
 ## Status
 
+Before 1.0, maintained by one person, and in daily use on the maintainer's own instance. There are
+no releases or version numbers yet: `main` is what runs, and an instance upgrades by pulling it.
+Versioned releases come with the native app.
+
 All milestones complete: contract, database, API, exercises and media, workouts and logs, MCP,
 performance, frontend, and deployment. The app is web only: there is no native build configuration
 (no `eas.json`, no bundle ids). On the web it calls `/api` on its own origin; a native build would
 need the server address fixed when it is built, one build per instance. A native app with the
 address entered at runtime is issue #10. The web app installs to a home screen and opens without a
 signal (see above).
+
+## Exposing it to the internet
+
+- **HTTPS, behind a reverse proxy**: [docs/09-deployment.md](docs/09-deployment.md).
+- **The first account curates the instance, and sign-up closes behind it.** Open it from Settings
+  only while the people you expect register, then close it again
+  ([ADR-0029](docs/adr/0029-sign-up-and-the-first-curator.md)).
+- **Logins have no rate limit yet** (#72): use long passwords, or limit `/api/auth/*` at your proxy.
+
+## Security
+
+Report a vulnerability privately: see [SECURITY.md](SECURITY.md).
+
+## Contributing
+
+Issues are open to collaborators only for now, and pull requests come after an agreed issue: see
+[CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Licence
+
+[AGPL-3.0-or-later](LICENSE). Run it, change it and share it; if you run a changed version for
+others, over a network, offer them its source.
