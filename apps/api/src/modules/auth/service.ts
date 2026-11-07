@@ -17,6 +17,7 @@ import { hashToken, mintToken } from '../../lib/token.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import * as GroupService from '../group/service.ts'
 import * as InstanceService from '../instance/service.ts'
+import * as LoginLimit from './login-limit.ts'
 import { isCurator } from '../review/curation.ts'
 
 const SESSION_DAYS = 90
@@ -136,7 +137,16 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
   return { user: toUser(user), token, expiresAt: expiresAt.toISOString() }
 }
 
-export async function login(input: LoginInput): Promise<AuthResult> {
+/**
+ * From `address`, the client the request came from: the login limit counts by it (#72). The attempt
+ * is a failure until its password is right — `admit` writes it down first — so a wrong one needs
+ * nothing more.
+ */
+export async function login(input: LoginInput, address: string): Promise<AuthResult> {
+  const attempt = { address, username: input.username }
+  LoginLimit.noteAttempt(address)
+  await LoginLimit.admit(attempt)
+
   // The one query that legitimately reads password_hash. Nothing here reaches the wire.
   const [found] = await db
     .select({ ...ACCOUNT_COLUMNS, passwordHash: users.passwordHash })
@@ -153,6 +163,7 @@ export async function login(input: LoginInput): Promise<AuthResult> {
     throw unauthenticated('Incorrect username or password')
   }
 
+  await LoginLimit.forgive(attempt)
   const { token, expiresAt } = await issueSession(found.id)
   return { user: toUser(found), token, expiresAt: expiresAt.toISOString() }
 }

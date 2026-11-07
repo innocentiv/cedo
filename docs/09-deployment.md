@@ -88,7 +88,17 @@ name in the job's `if:` and add the four secrets there.
 Behind a reverse proxy that already serves other sites, set `WEB_BIND=127.0.0.1` in `.env`, so the
 app is reachable only through that proxy, and let the proxy terminate TLS. Send the whole host to
 `127.0.0.1:${WEB_PORT}`. Allow request bodies of at least 16 MB, since uploads are 12 MB plus
-multipart framing. Forward `Host` and `X-Forwarded-Proto`.
+multipart framing. Forward `Host` and `X-Forwarded-Proto`, and **set** `X-Forwarded-For` to the
+client's address — in nginx, `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`.
+
+Then set `CEDO_TRUSTED_PROXIES=private_ranges` in `.env`. The login limit counts failures per
+client address (ADR-0031), and Caddy believes `X-Forwarded-For` only from the proxies that
+variable names — none by default. Unset behind a proxy, every client arrives as the proxy and they
+share one count: fifty failed logins from anyone lock everyone out for a quarter of an hour. But set it only
+behind a proxy that **sets** the header as above: one that passes on whatever the client wrote would
+let a client claim any address it likes. Behind a CDN, add its ranges to the variable. The
+curator's `platform_status` shows where the last login attempt came from: a real client's address,
+not the proxy's, is the sign it works.
 
 ## Installing the app
 

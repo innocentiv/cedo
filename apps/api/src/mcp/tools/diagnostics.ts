@@ -20,7 +20,8 @@ export function registerDiagnosticTools(server: McpServer, caller: Caller, versi
       title: 'Instance status',
       description:
         'Postgres version, installed extensions, migrations applied, row counts per table, ' +
-        'database size, and the planner settings that decide whether indexes get used. Curator only.',
+        'database size, the planner settings that decide whether indexes get used, and where the ' +
+        'last login attempt came from. Curator only.',
       inputSchema: z.object({}),
       annotations: READ,
     },
@@ -42,6 +43,11 @@ export function registerDiagnosticTools(server: McpServer, caller: Caller, versi
           status.extensions.includes('pg_stat_statements')
             ? 'Query statistics are available — call db_slow_queries.'
             : 'pg_stat_statements is NOT installed, so query statistics are unavailable.',
+          '',
+          status.lastLoginAddress === null
+            ? 'No login attempt since the server started.'
+            : `The last login attempt came from ${status.lastLoginAddress}. If that is the proxy ` +
+              'in front of Caddy, every client shares one login limit: see docs/09-deployment.md.',
         ].join('\n'),
       )
     },

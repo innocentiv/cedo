@@ -56,6 +56,8 @@ export interface WireResponse {
   readonly status: number
   /** Exactly what a `fetch` client receives — no revival, no transformation. */
   readonly body: unknown
+  /** As sent: `Retry-After` on a rate limit, `Cache-Control` on media. */
+  readonly headers: Headers
 }
 
 /**
@@ -116,12 +118,13 @@ function wireFor(app: ReturnType<typeof createApp>, token: string | undefined): 
 
     const response = await app.handle(new Request(`http://localhost${path}`, { ...init, headers }))
     const text = await response.text()
-    if (text === '') return { status: response.status, body: null }
+    const { status, headers: sent } = response
+    if (text === '') return { status, body: null, headers: sent }
     try {
-      return { status: response.status, body: JSON.parse(text) }
+      return { status, body: JSON.parse(text), headers: sent }
     } catch {
       // Not every route serves JSON — /openapi returns the Scalar UI as HTML.
-      return { status: response.status, body: text }
+      return { status, body: text, headers: sent }
     }
   }
 }

@@ -29,5 +29,7 @@ The one list of what to know first; the README points here.
 - Serve it over HTTPS, behind a reverse proxy (`docs/09-deployment.md`).
 - Sign-up closes behind the instance's first account, which curates it. Open it only while the
   people you expect are registering (ADR-0029).
-- Logins have no rate limit yet (#72): use long passwords, or limit `/api/auth/*` at the proxy.
+- Failed logins are limited per client address (ADR-0031). Behind your own proxy, every client
+  shares one limit until the proxy sets `X-Forwarded-For` and `CEDO_TRUSTED_PROXIES` trusts it
+  (`docs/09-deployment.md`).
 - There is no way yet to change or recover a password (#69).

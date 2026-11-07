@@ -1,13 +1,28 @@
 # The single published surface. Everything the browser sees is one origin, so there is no CORS
 # configuration anywhere in this project and no preflight on any mutation.
 # See docs/09-deployment.md.
+
+# Who a client is, for the login limit (#72, ADR-0031), is decided here and nowhere else. Caddy
+# believes `X-Forwarded-For` only from the proxies CEDO_TRUSTED_PROXIES names — none unless it is set,
+# e.g. `private_ranges` behind a host's nginx that sets the header — reading it from the right past
+# them (`trusted_proxies_strict`), so an address a client wrote ahead of its own is never believed.
+# The answer goes to the API as `X-Client-Ip`, overwriting any a client sent.
+{
+	servers {
+		trusted_proxies static {$CEDO_TRUSTED_PROXIES}
+		trusted_proxies_strict
+	}
+}
+
 :80 {
 	encode zstd gzip
 	root * /srv
 
 	handle /api/* {
 		uri strip_prefix /api
-		reverse_proxy api:3000
+		reverse_proxy api:3000 {
+			header_up X-Client-Ip {client_ip}
+		}
 	}
 
 	# Build output — the bundle under /_expo/static and the exported images and fonts under /assets

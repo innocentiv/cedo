@@ -35,5 +35,10 @@ export const PlatformStatus = z.object({
   databaseSize: z.string(),
   /** The planner settings that decide whether the indexes get used at all. */
   settings: z.record(z.string(), z.string()),
+  /**
+   * Where the last login attempt came from, since the server started (#72): a real client's address,
+   * or the proxy's in front of Caddy — in which case every client shares one login limit.
+   */
+  lastLoginAddress: z.string().nullable(),
 })
 export type PlatformStatus = z.output<typeof PlatformStatus>

@@ -8,12 +8,20 @@ import { HTTP_STATUS_BY_ERROR_CODE, type ApiError, type ErrorCode } from '@cedo/
 export class DomainError extends Error {
   readonly code: ErrorCode
   readonly details: ApiError['error']['details']
+  /** Seconds before trying again, sent as `Retry-After`: a rate limit's alone (#72). */
+  readonly retryAfterS: number | null
 
-  constructor(code: ErrorCode, message: string, details: ApiError['error']['details'] = null) {
+  constructor(
+    code: ErrorCode,
+    message: string,
+    details: ApiError['error']['details'] = null,
+    retryAfterS: number | null = null,
+  ) {
     super(message)
     this.name = 'DomainError'
     this.code = code
     this.details = details
+    this.retryAfterS = retryAfterS
   }
 }
 
@@ -25,6 +33,18 @@ export const notFound = (what: string): DomainError =>
   new DomainError('not_found', `No such ${what}`)
 
 export const conflict = (message: string): DomainError => new DomainError('conflict', message)
+
+/**
+ * Too many failed logins from one address (#72, ADR-0031): refused, even with the right password,
+ * until `retryAfterS` seconds have passed — sent as `Retry-After`.
+ */
+export const rateLimited = (retryAfterS: number): DomainError =>
+  new DomainError(
+    'rate_limited',
+    'Too many failed sign-ins from here: try again later.',
+    null,
+    retryAfterS,
+  )
 
 /** A new account on an instance whose curator has closed sign-up (#71). */
 export const signUpClosed = (): DomainError =>
@@ -80,10 +100,20 @@ export function isUniqueViolation(error: unknown, index: string): boolean {
   )
 }
 
-export function toApiError(error: DomainError): { status: number; body: ApiError } {
+/** A response's headers beyond the envelope: only a rate limit's `Retry-After`, today. */
+export type ErrorHeaders = Readonly<Record<string, string>>
+
+export function toApiError(error: DomainError): {
+  status: number
+  body: ApiError
+  headers?: ErrorHeaders
+} {
   return {
     status: HTTP_STATUS_BY_ERROR_CODE[error.code],
     body: { error: { code: error.code, message: error.message, details: error.details } },
+    ...(error.retryAfterS === null
+      ? {}
+      : { headers: { 'retry-after': String(error.retryAfterS) } }),
   }
 }
 

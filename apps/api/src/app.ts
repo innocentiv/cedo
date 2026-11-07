@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { sql as raw } from 'drizzle-orm'
 import { type ApiError, MCP_PATH } from '@cedo/contract'
 import { db } from './db/client.ts'
-import { DomainError, toApiError } from './lib/error.ts'
+import { DomainError, type ErrorHeaders, toApiError } from './lib/error.ts'
 import { mcpHandler, withCaller } from './mcp/index.ts'
 import { resolveTokenCaller } from './mcp/token.ts'
 import { createOpenapiPlugin } from './plugins/openapi.ts'
@@ -37,8 +37,9 @@ export function createApp() {
   return new Elysia()
     .use(createOpenapiPlugin())
     .onError(({ error, code, set }) => {
-      const { status, body } = describeError(error, code)
+      const { status, body, headers } = describeError(error, code)
       set.status = status
+      if (headers !== undefined) Object.assign(set.headers, headers)
       return body
     })
     .get(
@@ -103,7 +104,7 @@ export type App = ReturnType<typeof createApp>
 export function describeError(
   error: unknown,
   code: string | number,
-): { status: number; body: ApiError } {
+): { status: number; body: ApiError; headers?: ErrorHeaders } {
   if (error instanceof DomainError) return toApiError(error)
 
   if (code === 'VALIDATION') {
