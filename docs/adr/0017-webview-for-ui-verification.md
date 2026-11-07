@@ -92,7 +92,7 @@ Behaviour the app owns and no backend can — who is signed in on this device: t
 restoring it at startup, a late 401 for the previous person's token, a keychain that throws — had no
 tier at all. It lived in React effects, so a unit test needed a fake DOM, which this record rejects;
 and it is not reproducible in the WebView harness without test hooks in production code. Two of its
-rules were fixed with no test (52260d8).
+rules were fixed with no test (c97961b).
 
 So it moved into a plain module, `apps/app/src/auth/session.ts`, which imports neither React nor
 React Native, and is unit-tested beside it with `bun test`, a fake keychain and a fake API. **That is

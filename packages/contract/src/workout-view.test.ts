@@ -332,7 +332,7 @@ describe('what the workout shows', () => {
       expect([pick.shown, focusId(pick)]).toEqual([null, 'dip'])
     })
 
-    /** c0fb1fe: a choice held to the latest set's id was lost as a set logged offline landed. */
+    /** 743206a: a choice held to the latest set's id was lost as a set logged offline landed. */
     test('a choice outlasts a set that changes id as it reaches the server', () => {
       const waiting = set('squat')
       const choices = after(logged, tapped({ entry: 'rdl' }))

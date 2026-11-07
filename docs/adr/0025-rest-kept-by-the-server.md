@@ -55,7 +55,7 @@ signal needed, and a Live Activity counts down to the same time.
 What was removed (migration `0014_no_web_push`): `rest_alerted_at` and the index over it, the
 sender, `push_subscriptions`, `instance_secrets` and its key pair, the `VAPID_*` variables, the
 `/push` routes, the service worker's push handlers, and the opt-in on the rest band and in
-Settings. It was built in 7c5a8f1..34511e3 and removed in the commit that adds this section — the
+Settings. It was built in f465ef8..3bf57f5 and removed in the commit that adds this section — the
 starting point should the server ever need to tell other devices too, by APNs.
 
 What stays is the rest the server keeps: +30 s and skip still reach every device and survive a

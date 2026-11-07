@@ -2264,7 +2264,7 @@ async function startTwoEntryDay(page: Page): Promise<void> {
  * The focus follows what the athlete does (GLOSSARY.md, "Focus"). The screen sends each thing done to
  * the contract's `choicesAfter`, whose rules its unit tests hold; this proves each is sent — a tap,
  * the picker opened, exercises picked, a set undone, a set logged. It starts where only a browser
- * shows it (c0fb1fe): a set logged without a signal is known by its key until the server has it,
+ * shows it (743206a): a set logged without a signal is known by its key until the server has it,
  * then by the server's id, and a choice made meanwhile outlasts the change.
  */
 test(
