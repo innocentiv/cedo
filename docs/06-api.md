@@ -114,9 +114,10 @@ One envelope, produced by a single `onError` handler. Handlers never build an er
 | Registering while the instance's sign-up is closed (ADR-0029) | `sign_up_closed` | 403 |
 | Anything unhandled | `internal` | 500 |
 
-`ERROR_CODES` also reserves `payload_too_large` (413), `unsupported_media_type` (415) and
-`rate_limited` (429). No service throws them yet; they are in the union so a client's exhaustive
-switch does not break the day one is.
+`rate_limited` (429) refuses a login after too many failures from the client's address, the right
+password included, with a `Retry-After` header in seconds (ADR-0031). `ERROR_CODES` also reserves
+`payload_too_large` (413) and `unsupported_media_type` (415). No service throws them yet; they are
+in the union so a client's exhaustive switch does not break the day one is.
 
 Services throw the typed helpers in `lib/error.ts` (`notFound`, `conflict`, `unauthenticated`,
 `invalid`). There is deliberately no `forbidden`.
