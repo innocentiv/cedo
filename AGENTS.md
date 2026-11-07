@@ -6,4 +6,5 @@ not only Claude.
 It is deliberately not duplicated here: two copies drift, and the invariants in that file are the
 one thing this codebase cannot afford to have two versions of.
 
-Start there, then read [docs/01-architecture.md](docs/01-architecture.md).
+Start there, then read [docs/01-architecture.md](docs/01-architecture.md). A fresh clone is set up,
+agent skills included, with `bun run setup`.

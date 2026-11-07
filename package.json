@@ -7,7 +7,7 @@
   ],
   "type": "module",
   "scripts": {
-    "setup": "bun install && bun run env:init && bun run db:up && bun run db:migrate && bun run db:seed",
+    "setup": "bun run scripts/setup.ts",
     "dev": "bun run scripts/dev.ts",
     "dev:api": "bun --watch apps/api/src/index.ts",
     "dev:app": "cd apps/app && ./node_modules/.bin/expo start --web",

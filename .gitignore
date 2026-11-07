@@ -22,6 +22,13 @@ apps/app/dist/
 # AI/verification artifacts — screenshots and perf reports (see docs/10-testing.md)
 .artifacts/
 
+# Agent skills: installed by `bun run setup` from skills-lock.json, as node_modules is from bun.lock.
+# Only the repo's own skill is tracked. `.claude/skills/` itself must stay un-ignored, or git could
+# not re-include the one below.
+.agents/
+.claude/skills/*
+!.claude/skills/setup/
+
 # os
 .DS_Store
 

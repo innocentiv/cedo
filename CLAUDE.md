@@ -45,6 +45,7 @@ is designed to prevent.
 
 | Command | Use |
 | --- | --- |
+| `bun run setup` | Fresh clone → a passing gate: dependencies, `.env`, databases, agent skills. Safe to re-run. |
 | `bun run check` | The gate. Run after every feature. |
 | `bun run test:changed` | Inner loop — only tests affected by your diff. |
 | `bun run db:reset` | Empty volume → migrate → seed, in one command. |
@@ -188,6 +189,11 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
 To add a new entity end to end, follow `docs/playbooks/add-entity.md` exactly.
 
 ## Agent skills
+
+The skills these notes name (`/code-review`, `/triage`, `/wayfinder`, `/domain-modeling` and the
+rest) are `mattpocock/skills`, pinned to one commit in `skills-lock.json` and installed by
+`bun run setup` for Claude Code and Codex. Only the repo's own `setup` skill is committed; to move
+the pin, see `scripts/skills-lock.ts`.
 
 ### Issue tracker
 

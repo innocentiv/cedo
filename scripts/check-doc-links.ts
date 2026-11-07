@@ -16,8 +16,9 @@ import { dirname, join, normalize, relative, resolve } from 'node:path'
 
 const ROOT = resolve(import.meta.dir, '..')
 /**
- * Not this project's documents. `.claude/` holds agent skills installed from elsewhere, whose
- * examples link to files in their authors' projects — it failed the gate on a clean checkout.
+ * Not this project's documents. `.agents/` and `.claude/` hold agent skills installed from
+ * elsewhere by `bun run setup`, whose examples link to files in their authors' projects — each failed
+ * the gate on a clean checkout.
  */
 const SKIP = new Set([
   'node_modules',
@@ -27,6 +28,7 @@ const SKIP = new Set([
   '.expo',
   '.artifacts',
   '.tsbuild',
+  '.agents',
   '.claude',
 ])
 const MARKDOWN_LINK = /\[[^\]]*\]\(([^)\s#]+)(?:#[^)]*)?\)/gu
