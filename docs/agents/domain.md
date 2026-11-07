@@ -8,7 +8,7 @@ How the engineering skills should consume this repo's domain documentation when 
 - **[`docs/03-domain-model.md`](../03-domain-model.md)**: the tables, relations and invariants behind those terms — the `ownable()` columns, visible relations, base units.
 - **[`docs/adr/`](../adr/README.md)**: read ADRs that touch the area you're about to work in.
 
-`GLOSSARY.md` and `docs/03-domain-model.md` must never define the same term differently. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`) adds a term when one is resolved; if a resolved term changes the model, update `docs/03-domain-model.md` in the same change.
+`GLOSSARY.md` and `docs/03-domain-model.md` must never define the same term differently. The `/domain-modeling` skill (reached via `/grill-with-docs` and `/improve-codebase-architecture`, all installed by `bun run setup`) adds a term when one is resolved; if a resolved term changes the model, update `docs/03-domain-model.md` in the same change.
 
 ## File structure
 
