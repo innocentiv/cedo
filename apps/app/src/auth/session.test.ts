@@ -5,7 +5,7 @@ import { type SessionAuth, type TokenStore, createSession } from './session.ts'
 
 /**
  * Who is signed in, without React and without a network: a fake keychain and a fake API. These are
- * the rules that lived in effects and two module-level variables, two of them fixed in 52260d8 with
+ * the rules that lived in effects and two module-level variables, two of them fixed in c97961b with
  * no test — "not reproducible in the web harness without test hooks in production code".
  */
 
@@ -180,7 +180,7 @@ describe('restoring a session at startup', () => {
     expect(session.snapshot().status).toBe('signed-out')
   })
 
-  /** Regression (52260d8): an unguarded read left the app on the boot spinner forever. */
+  /** Regression (c97961b): an unguarded read left the app on the boot spinner forever. */
   test('with a keychain that throws, signed out — and said', async () => {
     const store = {
       ...aStore(),
@@ -410,7 +410,7 @@ describe('a credential the server rejects', () => {
     expect(store.held()).toBeNull()
   })
 
-  /** Regression (52260d8): a slow request with the previous user's token signed the next one out. */
+  /** Regression (c97961b): a slow request with the previous user's token signed the next one out. */
   test("is ignored when it was the previous person's", async () => {
     const bob = me('bob')
     const session = aSession(aStore(), { a: me('alice'), b: bob })
