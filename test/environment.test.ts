@@ -32,16 +32,18 @@ describe('the test-database interlock', () => {
   /**
    * Regression: `bun test` sets NODE_ENV=test only when nothing has. A parent that loaded `.env`
    * (NODE_ENV=development) and passed its environment on — `bun run setup` did — sent the suite,
-   * which truncates every table, to the development database (apps/api/src/env.ts).
+   * which truncates every table, to the development database (apps/api/src/env.ts). The preload
+   * covers a run from the repository root; `apps/api/src/test/harness-guard.test.ts`, the rest.
    */
-  test('a bun test that inherits NODE_ENV=development still runs as test', async () => {
+  test('from the root, a bun test inheriting NODE_ENV=development runs as test', async () => {
+    const { BUN_TEST_WORKER_ID: _worker, ...inherited } = process.env
     const child = Bun.spawn(['bun', 'test', './test/fixtures/node-env.probe.ts'], {
-      env: { ...process.env, NODE_ENV: 'development' },
+      env: { ...inherited, NODE_ENV: 'development' },
       stdout: 'ignore',
       stderr: 'pipe',
     })
     const [code, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()])
-    expect(stderr).toContain('1 pass')
+    expect(stderr).toMatch(/^ 1 pass$/mu)
     expect(code).toBe(0)
   })
 })

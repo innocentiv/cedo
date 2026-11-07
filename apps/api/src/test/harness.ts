@@ -3,6 +3,7 @@ import { treaty } from '@elysiajs/eden'
 import { createApp } from '../app.ts'
 import { db } from '../db/client.ts'
 import { ensureDatabaseExists } from '../db/ensure.ts'
+import { env, isTest } from '../env.ts'
 import { runMigrations } from '../db/migrate.ts'
 import { groupMembers } from '../db/schema.ts'
 import { seedCore } from '../db/seed.ts'
@@ -120,9 +121,24 @@ function wireFor(app: ReturnType<typeof createApp>, token: string | undefined): 
 }
 
 /**
+ * The harness truncates every table, so it runs only with NODE_ENV=test: the one case in which
+ * `env.ts` gives it TEST_DATABASE_URL rather than DATABASE_URL. `test/preload.ts` sets it, but only
+ * for a `bun test` started at the repository root (Bun reads `bunfig.toml` from the working
+ * directory), so from anywhere else an inherited NODE_ENV=development reaches this point (#73).
+ */
+function refuseOutsideTest(): void {
+  if (isTest) return
+  throw new Error(
+    `The test harness truncates every table, and NODE_ENV is ${env.NODE_ENV}, so it would ` +
+      'truncate DATABASE_URL. Run `bun test` from the repository root, or with NODE_ENV=test.',
+  )
+}
+
+/**
  * Resets to a known state and returns a client. Call at the top of each test file's `beforeEach`.
  */
 export async function makeApi(): Promise<TestApi> {
+  refuseOutsideTest()
   await ensureSchema()
   await truncateVolatileTables()
   const { userId: systemUserId, groupId } = await seedCore()

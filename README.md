@@ -104,9 +104,9 @@ its own URL for the containers; the one in `.env` is for the API **you** run wit
 | `cedo` | 55432 | `bun run dev` — your data, survives restarts |
 | `cedo_test` | 55433 | `bun run check` — **truncated between every test** |
 
-They are separate on purpose. When `NODE_ENV=test` (which every `bun test` run sets) `DATABASE_URL`
-is ignored entirely and `TEST_DATABASE_URL` is used, so a stray test run cannot reach your
-development data.
+They are separate on purpose. When `NODE_ENV=test` (which every `bun test` from the root sets)
+`DATABASE_URL` is ignored entirely and `TEST_DATABASE_URL` is used, so a stray test run cannot reach
+your development data. Started anywhere else, the tests refuse to run without `NODE_ENV=test`.
 
 ### The commands you will actually use
 

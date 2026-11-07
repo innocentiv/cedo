@@ -163,8 +163,8 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   script's own environment, so a child given `process.env` inherits `NODE_ENV=development` as if
   the shell had exported it. `bun test` then kept it, and the suite truncated the dev database:
   the first `bun run setup` did exactly that, twice, and showed only as 550 deadlocked tests.
-  `test/preload.ts` now forces `NODE_ENV=test`; still, read a mass of deadlocks as "the wrong
-  database", not a flaky suite.
+  `test/preload.ts` now forces `NODE_ENV=test` from the root, and the harness refuses without it;
+  still, read a mass of deadlocks as "the wrong database", not a flaky suite.
 
 ## Documentation map
 
