@@ -191,8 +191,7 @@ Report a vulnerability privately: see [SECURITY.md](SECURITY.md).
 
 ## Contributing
 
-Only collaborators open issues for now, and pull requests from outside wait until contributions
-open: see [CONTRIBUTING.md](CONTRIBUTING.md).
+Only collaborators open issues and pull requests for now: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Licence
 

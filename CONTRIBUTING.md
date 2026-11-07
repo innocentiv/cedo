@@ -5,12 +5,11 @@ built, and learn from it.
 
 ## Where things stand
 
-- **Only collaborators open issues, for now.** If you find a bug, or want something, and cannot open
-  an issue, it is not you. Anyone may comment on an issue that exists.
+- **Only collaborators open issues and pull requests, for now.** If you find a bug, or want
+  something, and cannot open an issue, it is not you. Anyone may comment on one that exists.
 - **Security problems** go through private vulnerability reporting: see [SECURITY.md](SECURITY.md).
-- **Pull requests from outside are closed until contributions open**, with a link here. Then a pull
-  request comes after an agreed issue: this codebase holds strict invariants, and it is cheaper to
-  agree the shape of a change before the code than after.
+- **When contributions open, a pull request comes after an agreed issue.** This codebase holds
+  strict invariants, and it is cheaper to agree the shape of a change before the code than after.
 - **Before then, a contribution licence will be chosen.** The code is AGPL-3.0-or-later, and the
   maintainer means to ship it to app stores, whose terms do not mix with the AGPL's; so a
   contribution has to come with rights that allow that. Until it is decided, outside code cannot be

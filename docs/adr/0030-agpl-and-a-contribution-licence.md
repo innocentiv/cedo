@@ -20,8 +20,8 @@ on their own instance, and its maintainer means to ship native builds to app sto
 - **Outside code waits for a contribution licence.** Code contributed under the AGPL alone would end
   that freedom for every build that included it. Before outside contributions open, a contribution
   agreement — or a sign-off granting the maintainer wider rights — is chosen and written into
-  `CONTRIBUTING.md`. Until then only collaborators open issues (the repository's issue permission),
-  and pull requests from outside are closed.
+  `CONTRIBUTING.md`. Until then only collaborators open issues and pull requests (the repository's
+  issue and pull request permissions); anyone may comment.
 
 ## Rejected
 
