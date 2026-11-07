@@ -27,3 +27,21 @@ describe('runtime prerequisites', () => {
     expect(await Bun.password.verify('wrong', hash)).toBe(false)
   })
 })
+
+describe('the test-database interlock', () => {
+  /**
+   * Regression: `bun test` sets NODE_ENV=test only when nothing has. A parent that loaded `.env`
+   * (NODE_ENV=development) and passed its environment on — `bun run setup` did — sent the suite,
+   * which truncates every table, to the development database (apps/api/src/env.ts).
+   */
+  test('a bun test that inherits NODE_ENV=development still runs as test', async () => {
+    const child = Bun.spawn(['bun', 'test', './test/fixtures/node-env.probe.ts'], {
+      env: { ...process.env, NODE_ENV: 'development' },
+      stdout: 'ignore',
+      stderr: 'pipe',
+    })
+    const [code, stderr] = await Promise.all([child.exited, new Response(child.stderr).text()])
+    expect(stderr).toContain('1 pass')
+    expect(code).toBe(0)
+  })
+})
