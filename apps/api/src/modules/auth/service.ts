@@ -1,6 +1,5 @@
 import { and, eq, lt } from 'drizzle-orm'
 import {
-  DEFAULT_GROUP_SLUG,
   type Account,
   type AuthResult,
   type LoginInput,
@@ -18,6 +17,7 @@ import { hashToken, mintToken } from '../../lib/token.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import * as GroupService from '../group/service.ts'
 import * as InstanceService from '../instance/service.ts'
+import { isCurator } from '../review/curation.ts'
 
 const SESSION_DAYS = 90
 
@@ -126,18 +126,8 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
       .insert(groupMembers)
       .values({ groupId: personal.id, userId: created.id, role: 'editor' })
 
-    // Everyone reads the seeded starter library; a fresh instance's first account curates it, and
-    // sign-up closes behind them (#71, ADR-0029).
-    const [shared] = await tx
-      .select()
-      .from(groups)
-      .where(eq(groups.slug, DEFAULT_GROUP_SLUG))
-      .limit(1)
-    if (shared !== undefined) {
-      const role = admitted === 'first' ? 'editor' : 'reader'
-      await tx.insert(groupMembers).values({ groupId: shared.id, userId: created.id, role })
-      if (admitted === 'first') await InstanceService.closeBehindFirst(tx)
-    }
+    // Everyone reads the starter library; a fresh instance's first account curates it (ADR-0029).
+    await InstanceService.joinLibrary(tx, created.id, admitted)
 
     return created
   })
@@ -182,7 +172,7 @@ export async function me(caller: Caller): Promise<Me> {
   return {
     user: toAccount(row),
     groups: await GroupService.list(caller),
-    curator: await InstanceService.curates(caller),
+    curator: await isCurator(caller),
   }
 }
 

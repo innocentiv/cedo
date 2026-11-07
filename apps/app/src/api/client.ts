@@ -60,8 +60,9 @@ import type { QueryInput, SendRequest } from './transport.ts'
 import { instance } from './instance-client.ts'
 
 /**
- * Every call the app can make, named after the route it hits and typed by the contract schema the
- * API validates against. Adding a method without a contract schema is not possible — the response
+ * Every call the app can make (the instance's in `instance-client.ts`, which keeps this file under
+ * its line limit), named after the route it hits and typed by the contract schema the API validates
+ * against. Adding a method without a contract schema is not possible — the response
  * parser needs one, which is the point. See docs/adr/0015-no-eden-treaty.md.
  *
  * Built over a `SendRequest` rather than holding one, so the same table serves two adapters: the app's

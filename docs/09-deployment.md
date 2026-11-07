@@ -269,4 +269,6 @@ writes the configuration with both filled in (`docs/07-mcp.md`).
 
 The check worth doing by hand, because it is the invariant everything else rests on: register a
 second user and confirm they see the seeded library but **not** the first user's personal exercises,
-and get `404` rather than `403` when they ask for one by id.
+and get `404` rather than `403` when they ask for one by id. Sign-up closed behind the first
+account, which curates the instance: open it from Settings for the second, then close it again
+(ADR-0029).

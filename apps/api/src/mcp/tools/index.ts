@@ -5,6 +5,7 @@ import { registerCoachingTools } from './coaching.ts'
 import { registerDiagnosticTools } from './diagnostics.ts'
 import { registerEquipmentTools } from './equipment.ts'
 import { registerGroupTools } from './groups.ts'
+import { registerInstanceTools } from './instance.ts'
 import { registerLibraryTools } from './library.ts'
 import { registerNoteTools, registerWeighInTools } from './athlete-file.ts'
 import { registerSessionTools } from './session.ts'
@@ -21,4 +22,5 @@ export function registerTools(server: McpServer, caller: Caller): void {
   registerNoteTools(server, caller)
   registerWeighInTools(server, caller)
   registerDiagnosticTools(server, caller, VERSION)
+  registerInstanceTools(server, caller)
 }

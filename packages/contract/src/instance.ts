@@ -14,7 +14,7 @@ export const SIGN_UP_STATES = ['first', 'open', 'closed'] as const
 export type SignUpState = (typeof SIGN_UP_STATES)[number]
 
 /** How sign-up is shown: `first` takes an account, so to a client it is open. */
-export const SignUp = z.enum(['open', 'closed'])
+export const SignUp = z.enum(SIGN_UP_STATES).exclude(['first'])
 export type SignUp = z.output<typeof SignUp>
 
 export function signUpOf(state: SignUpState): SignUp {

@@ -3622,8 +3622,10 @@ test(
         await app.auth.stopsOfferingSignUp()
         await page.screenshot('sign-up-closed-login')
       } finally {
-        // The e2e database is the whole run's: every other journey registers.
+        // The e2e database is the whole run's: every other journey registers, and none expects
+        // another curator in the library.
         await mine.instance.update({ signUp: 'open' })
+        await makeCurator(curator, false)
       }
       await page.goto('/login')
       expect(await app.auth.offersSignUp()).toBe(true)

@@ -16,7 +16,10 @@ export const GROUP_ROLES = ['editor', 'reader'] as const
 export const GroupRole = z.enum(GROUP_ROLES)
 export type GroupRole = z.output<typeof GroupRole>
 
-/** The seeded group that carries the starter exercise library. Every user joins it as a reader. */
+/**
+ * The seeded group that carries the starter exercise library. Every user joins it as a reader, but
+ * a fresh instance's first account, which joins as its editor: the curator (ADR-0029).
+ */
 export const DEFAULT_GROUP_SLUG = 'cedo'
 
 export const Group = z.object({

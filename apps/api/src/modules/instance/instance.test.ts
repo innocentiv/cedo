@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { and, eq, sql } from 'drizzle-orm'
-import { ApiError, AuthResult, Instance, Me } from '@cedo/contract'
+import { ApiError, AuthResult, DEFAULT_GROUP_SLUG, Instance, Me } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { groupMembers, instanceSettings, users } from '../../db/schema.ts'
+import { groupMembers, groups, instanceSettings, users } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { TEST_PASSWORD, type TestApi, makeApi } from '../../test/harness.ts'
 import { callTool, mintPat, textOf } from '../../test/mcp-wire.ts'
@@ -105,6 +105,18 @@ describe("a fresh instance's first account", () => {
     )
     expect(tries.filter((t) => t.status === 'fulfilled')).toHaveLength(1)
     expect(await curators()).toHaveLength(1)
+  })
+
+  /**
+   * Before the library is seeded there is nothing to curate. Left a reader, the first account would
+   * leave the instance `first`, and the next to register would curate it.
+   */
+  test('is refused before the library exists, and the instance stays fresh', async () => {
+    await h.signUp('first')
+    await db.delete(groups).where(eq(groups.slug, DEFAULT_GROUP_SLUG))
+    expect((await register('ada')).status).toBe(500)
+    const [row] = await db.select({ signUp: instanceSettings.signUp }).from(instanceSettings)
+    expect(row?.signUp).toBe('first')
   })
 
   test('is not a later account on an instance already in use, curator or not', async () => {

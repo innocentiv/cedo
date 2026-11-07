@@ -223,16 +223,17 @@ export async function sharedGroupId(): Promise<string | null> {
   return row?.id ?? null
 }
 
+/** The one rule: an editor of the shared group, if there is one. */
+const curates = (caller: Caller, sharedId: string | null): sharedId is string =>
+  sharedId !== null && caller.editorGroupIds.includes(sharedId)
+
 export async function requireCurator(caller: Caller): Promise<string> {
   const id = await sharedGroupId()
-  if (id === null || !caller.editorGroupIds.includes(id)) {
-    throw notFound('curator access')
-  }
+  if (!curates(caller, id)) throw notFound('curator access')
   return id
 }
 
 /** The same rule as `requireCurator`, answered rather than enforced: `Me.curator` (#71). */
 export async function isCurator(caller: Caller): Promise<boolean> {
-  const id = await sharedGroupId()
-  return id !== null && caller.editorGroupIds.includes(id)
+  return curates(caller, await sharedGroupId())
 }

@@ -1,4 +1,10 @@
-import type { ExerciseHistory, WeightUnit, MuscleWork, TrainingReview } from '@cedo/contract'
+import type {
+  ExerciseHistory,
+  WeightUnit,
+  MuscleWork,
+  SignUp,
+  TrainingReview,
+} from '@cedo/contract'
 import {
   AT_LEAST_SESSIONS,
   driftLine,
@@ -22,6 +28,12 @@ import { aboutLine } from './format-file.ts'
  */
 
 export const text = (body: string) => ({ content: [{ type: 'text' as const, text: body }] })
+
+/** Sign-up, said to the curator who just changed it (#71). */
+export const signUpLine = (signUp: SignUp): string =>
+  signUp === 'open'
+    ? 'Sign-up is open: anyone who reaches this instance can create an account.'
+    : 'Sign-up is closed: nobody new can create an account.'
 
 export const json = (value: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }],

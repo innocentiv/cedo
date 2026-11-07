@@ -1,3 +1,4 @@
+import type { SignUp } from '@cedo/contract'
 import type { Page } from '../harness.ts'
 import { nav } from './nav.ts'
 
@@ -11,7 +12,7 @@ export const settings = (page: Page) => ({
     return await page.exists('settings-sign-up')
   },
   /** Opens or closes sign-up from Settings, and waits until the instance says so. */
-  setSignUp: async (signUp: 'open' | 'closed'): Promise<void> => {
+  setSignUp: async (signUp: SignUp): Promise<void> => {
     await page.goto('/settings')
     await page.waitFor(`sign-up-${signUp}`)
     await page.click(`[data-testid="sign-up-${signUp}"]`)

@@ -10,7 +10,7 @@ import * as InstanceService from './service.ts'
  */
 export const instanceRoutes = new Elysia({ prefix: '/instance', tags: ['instance'] })
   .use(authPlugin)
-  .get('', () => InstanceService.describe(), {
+  .get('', () => InstanceService.current(), {
     response: Instance,
     detail: { summary: 'What this server is, its version, and whether it takes new accounts' },
   })

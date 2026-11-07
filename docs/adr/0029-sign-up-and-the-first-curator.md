@@ -40,8 +40,12 @@ The owner also wants to open an instance for testers and close it again, without
 ## Consequences
 
 - A fresh instance needs no variable and no restart to have a curator, and its sign-up closes on its
-  own. The username-takeover gap remains only on an upgraded instance that has no curator yet and
-  sets `CEDO_CURATOR_USERNAME` before the account exists.
+  own. `CEDO_CURATOR_USERNAME` now promotes only where there is no curator yet: on an instance that
+  has one, an account registered under that name while sign-up is open cannot become a second at the
+  next restart. The username-takeover gap remains only on an upgraded instance with no curator, open
+  sign-up, and the variable set before the account exists.
+- Before the library is seeded there is nothing to curate, so a fresh instance refuses its first
+  account rather than leave it a reader with the instance still `first`.
 - Registrations take turns at one row. They are rare, so the lock costs nothing that matters.
 - The test harness truncates every table, which would leave every test on a `first` instance whose
   first `as()` became curator. The harness, and the e2e database, start `open`; tests set another

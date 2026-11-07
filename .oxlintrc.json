@@ -86,6 +86,7 @@
       "files": [
         "**/modules/workout/service.ts",
         "**/modules/exercise/service.ts",
+        "**/modules/auth/service.ts",
         "**/modules/session/index.ts",
         "**/mcp/tools/library.ts",
         "**/mcp/tools/training.ts"

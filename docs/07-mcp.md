@@ -268,7 +268,8 @@ athlete who stops sharing is a refusal on the next call. See
 
 ### 3. Diagnosing a running instance
 
-`platform_status` · `db_slow_queries`
+`platform_status` · `db_slow_queries` · and beside them `instance_sign_up_set`: the curator
+opens sign-up while testers register, then closes it (ADR-0029)
 
 Honest about the value: during local development this adds nothing, because psql, the source and the
 tests are right there. It earns its place when the instance belongs to **someone else** and there is

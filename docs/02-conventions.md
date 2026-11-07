@@ -89,7 +89,8 @@ needs a case for every new GET route or read-only MCP tool. See
 [adr/0019](adr/0019-visible-relations.md).
 
 Not-found and not-permitted both return **404**, never 403 — a 403 confirms the resource exists and
-leaks its existence to a stranger.
+leaks its existence to a stranger. The one 403 is `sign_up_closed`, which refuses no resource: it
+says the instance takes no new accounts, which `GET /instance` already says to anyone (ADR-0029).
 
 ## Errors
 

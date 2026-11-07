@@ -120,7 +120,8 @@ One envelope for every failure:
 `code` is a member of a closed union, so a client can switch exhaustively. Codes are generic
 (`not_found`, not `exercise_not_found`) — the resource is named in `message`. There is deliberately
 no `forbidden`: a resource the caller may not see returns `not_found`, because a 403 confirms it
-exists.
+exists. `sign_up_closed` (403) refuses an operation, not a resource, and leaks nothing: whether an
+instance takes accounts is public (ADR-0029).
 
 ## Contract drift, and how it surfaces
 
