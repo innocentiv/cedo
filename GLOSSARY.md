@@ -26,7 +26,8 @@ and keeps belonging, which is why any shared plan may use them.
 _Avoid_: catalogue, defaults
 
 **Curator**:
-An editor of the library's group, who may audit and tidy the library.
+An editor of the library's group, who may audit and tidy the library, read the instance's
+diagnostics, and open or close its sign-up. A fresh instance's first account (ADR-0029).
 _Avoid_: admin, moderator
 
 **Owning group**:

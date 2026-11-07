@@ -27,6 +27,7 @@ that says so and links back.
 | [0026](0026-targets-and-steps.md) | A person's target is stored as steps; a plan only says where it starts | Accepted |
 | [0027](0027-reps-in-reserve-whole-everywhere.md) | How hard a set was is reps in reserve, whole, for people and AI alike | Accepted |
 | [0028](0028-prose-parsed-in-the-contract.md) | Long text is Markdown, read in the contract and drawn by the app | Accepted |
+| [0029](0029-sign-up-and-the-first-curator.md) | Sign-up is the instance's setting, and a fresh instance's first account curates it | Accepted |
 
 The numbering has gaps: decisions that were planned an ADR (such as 0005, the three-container
 deployment shape) are recorded in the relevant doc instead — `docs/01-architecture.md` for that

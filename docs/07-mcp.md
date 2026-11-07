@@ -285,22 +285,23 @@ machinery. Nothing here needs to change to accommodate them.
 ## Curator rights
 
 There is **no admin flag**. Being an **editor of the seeded `cedo` group** is the curator capability:
-it grants writing to the shared library and reading diagnostics.
+it grants writing to the shared library, reading diagnostics, and opening or closing sign-up.
 
-```
-CEDO_CURATOR_USERNAME=alice
-```
+**A fresh instance's first account is its curator** (ADR-0029): it joins the library as an editor,
+and sign-up closes behind it. Every later account joins as a reader, and the library's members do
+not change through the API at all (`docs/03-domain-model.md`).
 
-The seed promotes that account to editor on every boot. Register the account first, then restart —
-the server logs a clear warning if the name does not exist yet. It is the only way to make a
-curator: every account is already a reader of the library, there is no role change, and its members
-do not change through the API at all (`docs/03-domain-model.md`).
+An instance set up before that keeps the old way, now deprecated: `CEDO_CURATOR_USERNAME` names an
+account the seed promotes to editor on every boot. Register the account first, then restart — the
+server logs a warning if the name does not exist yet.
 
-**Why this matters:** without it, nobody can edit the shared library at all. The system account owns
-those rows but is not a member of the group, and registration only ever grants `reader`.
+**Why this matters:** without a curator, nobody can edit the shared library at all. The system
+account owns those rows but is not a member of the group.
 
 The same rights gate `GET /admin/status` and `GET /admin/slow-queries`, which return exactly what
-`platform_status` and `db_slow_queries` return — the AI and a person read the same numbers.
+`platform_status` and `db_slow_queries` return — the AI and a person read the same numbers — and
+`PATCH /instance` with its twin `instance_sign_up_set`: open sign-up while testers register, then
+close it.
 
 ## Designing a tool
 

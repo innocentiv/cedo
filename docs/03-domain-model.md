@@ -76,7 +76,12 @@ Every user gets a `kind: 'personal'` group at registration. There is no "owned b
 there is exactly one ACL code path rather than two.
 
 The seeded `cedo` group (`kind: 'shared'`) carries the starter library; every user joins it as a
-`reader`. A group member is an `editor` or a `reader`; only editors may write.
+`reader`, except a fresh instance's first account, which joins as its `editor`, the curator, and
+closes sign-up behind it. A group member is an `editor` or a `reader`; only editors may write.
+
+**Whether an instance takes new accounts** is `instance_settings`, one row and not owned by anyone:
+`first` on a fresh instance, then `open` or `closed` at the curator's word. Registration locks it,
+so a fresh instance has exactly one first account. See ADR-0029.
 
 **Who can see a group's members:** an editor sees all of them; a reader sees the editors and
 themselves. Because everyone reads the library, "any member sees every member" made `GET

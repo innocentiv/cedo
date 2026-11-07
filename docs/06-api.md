@@ -111,6 +111,7 @@ One envelope, produced by a single `onError` handler. Handlers never build an er
 | Missing or invalid credentials | `unauthenticated` | 401 |
 | Missing, **or present but not yours** | `not_found` | 404 |
 | Duplicate, or a rule that forbids the change | `conflict` | 409 |
+| Registering while the instance's sign-up is closed (ADR-0029) | `sign_up_closed` | 403 |
 | Anything unhandled | `internal` | 500 |
 
 `ERROR_CODES` also reserves `payload_too_large` (413), `unsupported_media_type` (415) and
@@ -208,6 +209,15 @@ is deliberately no version of this that an AI can see and a person cannot.
 Both require a **curator** — an editor of the seeded `cedo` group, see `docs/07-mcp.md` — and answer
 `404` rather than `403` to anyone else: whether an instance has a curator at all is not something an
 ordinary caller needs to learn.
+
+## The instance
+
+`GET /instance` is public: `{ product, version, signUp }`, asked before anyone signs in — the app,
+to offer sign-up or not; a native app (#10), to recognise a cedo server. `PATCH /instance` opens or
+closes sign-up, for the curator only, and is the twin of the `instance_sign_up_set` tool. Sign-up's
+rules, and why a fresh instance's first account curates it, are ADR-0029.
+
+## Slow-query privacy
 
 `pg_stat_statements` stores normalised statements (`$1` placeholders, never literal values), so the
 slow query log cannot disclose anyone's data. This exists for one situation: someone self-hosting

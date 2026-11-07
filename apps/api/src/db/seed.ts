@@ -230,10 +230,11 @@ export async function seedCore(): Promise<{ userId: string; groupId: string }> {
 /**
  * Makes `CEDO_CURATOR_USERNAME` an editor of the shared `cedo` group.
  *
- * Without this NOBODY can edit the shared library: the system account owns those rows but is not a
- * member of the group, and registration only ever grants `reader`. Idempotent, and a no-op when the
- * variable is unset or names an account that does not exist yet — register first, then restart.
- * See docs/07-mcp.md.
+ * Deprecated (ADR-0029): a fresh instance's first account is its curator. This remains for an
+ * instance set up before that, which may have none: the system account owns the library's rows but
+ * is not a member of its group, and every other account joins it as a `reader`. Idempotent, and a
+ * no-op when the variable is unset or names an account that does not exist yet — register first,
+ * then restart. See docs/07-mcp.md.
  */
 export async function promoteCurator(sharedGroupId: string): Promise<boolean> {
   const username = env.CEDO_CURATOR_USERNAME

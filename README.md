@@ -86,7 +86,7 @@ Three you might touch:
 
 | Variable | When |
 | --- | --- |
-| `CEDO_CURATOR_USERNAME` | To curate the **shared** exercise library. Register the account first, then set this and restart — the account is promoted on the next seed. |
+| `CEDO_CURATOR_USERNAME` | Rarely. A fresh instance's first account already curates the **shared** exercise library, and sign-up closes behind it. Only for an instance set up before that: register the account first, then set this and restart. |
 | `PORT` | The API port, if 3000 is taken. Also set `CEDO_DEV_API_ORIGIN=http://127.0.0.1:<port>` in the shell running `bun run dev`, or the web app's dev proxy keeps calling :3000 and every request fails. |
 | `POSTGRES_PORT` | The database port, if 55432 is taken. Change `DATABASE_URL` to match. |
 
