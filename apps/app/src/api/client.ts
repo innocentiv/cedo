@@ -57,6 +57,7 @@ import {
   page,
 } from '@cedo/contract'
 import type { QueryInput, SendRequest } from './transport.ts'
+import { instance } from './instance-client.ts'
 
 /**
  * Every call the app can make, named after the route it hits and typed by the contract schema the
@@ -108,7 +109,7 @@ function verbs(request: SendRequest) {
   }
 }
 
-type Verbs = ReturnType<typeof verbs>
+export type Verbs = ReturnType<typeof verbs>
 
 const auth = ({ GET, POST, PATCH }: Verbs) => ({
   register: async (body: RegisterInput) => await POST('/auth/register', AuthResult, body),
@@ -278,6 +279,7 @@ export function createApi(request: SendRequest) {
   const v = verbs(request)
   return {
     auth: auth(v),
+    instance: instance(v),
     exercises: exercises(v),
     workouts: workouts(v),
     sessions: sessions(v),

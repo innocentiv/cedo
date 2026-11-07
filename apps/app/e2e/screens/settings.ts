@@ -1,9 +1,33 @@
 import type { Page } from '../harness.ts'
 import { nav } from './nav.ts'
 
-/** Settings: the weight unit, and access tokens. */
+/** Settings: the weight unit, access tokens, and the curator's sign-up switch. */
 
 export const settings = (page: Page) => ({
+  /** Whether Settings offers the sign-up switch (#71), which only the curator is shown. */
+  offersSignUpSwitch: async (): Promise<boolean> => {
+    await page.goto('/settings')
+    await page.waitFor('settings-screen')
+    return await page.exists('settings-sign-up')
+  },
+  /** Opens or closes sign-up from Settings, and waits until the instance says so. */
+  setSignUp: async (signUp: 'open' | 'closed'): Promise<void> => {
+    await page.goto('/settings')
+    await page.waitFor(`sign-up-${signUp}`)
+    await page.click(`[data-testid="sign-up-${signUp}"]`)
+    const mine = await page.client()
+    await page.until(
+      async () => (await mine.instance.get()).signUp,
+      (saved) => saved === signUp,
+    )
+  },
+  /** Signs out from Settings, and lands on the login screen. */
+  signOut: async (): Promise<void> => {
+    await nav(page).tab('settings')
+    await page.waitFor('settings-screen')
+    await page.click('[data-testid="sign-out"]')
+    await page.waitFor('login-screen')
+  },
   /** Chooses a unit from the Settings tab, and waits until the account has saved it. */
   chooseUnit: async (unit: 'kg' | 'lb'): Promise<void> => {
     await nav(page).tab('settings')

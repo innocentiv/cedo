@@ -33,6 +33,7 @@ export type Source =
   | 'equipment'
   | 'note'
   | 'weighIn'
+  | 'instance'
 
 export interface ReadSources {
   /** The source the read is OF. A write to it must be read back before the next write. */
@@ -112,6 +113,8 @@ export const READS = {
   groups: { of: 'group', embeds: [] },
   /** A group's members, as the caller may see them. */
   groupMembers: { of: 'group', embeds: [] },
+  /** The instance itself (#71): whether it takes new accounts, which only its curator changes. */
+  instance: { of: 'instance', embeds: [] },
 } as const satisfies Record<string, ReadSources>
 
 export type Read = keyof typeof READS

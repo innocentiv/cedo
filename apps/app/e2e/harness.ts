@@ -161,6 +161,26 @@ export async function signUp(
   return { user: created.user, api: await clientAs(created.token) }
 }
 
+/**
+ * Makes `username` the curator (#71), through a script in `apps/api` run as its own process, as the
+ * database is prepared: an account becomes one only through its instance's first sign-up, or a
+ * restart, and the e2e database is shared by the whole run.
+ */
+export async function makeCurator(username: string): Promise<void> {
+  await sharedApi()
+  const run = Bun.spawn(['bun', 'run', 'apps/api/src/db/curate-for-test.ts', username], {
+    cwd: ROOT,
+    env: childEnv(),
+    stdout: 'ignore',
+    stderr: 'pipe',
+  })
+  if ((await run.exited) !== 0) {
+    throw new Error(
+      `Could not make ${username} a curator:\n${await new Response(run.stderr).text()}`,
+    )
+  }
+}
+
 /** How long a wait may take before it fails, unless it says otherwise. */
 const WAIT_MS = 8000
 

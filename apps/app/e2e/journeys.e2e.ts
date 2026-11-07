@@ -16,6 +16,7 @@ import {
   E2E_STARTUP_TIMEOUT_MS,
   E2E_TIMEOUT_MS,
   type Page,
+  makeCurator,
   sharedApi,
   signUp,
   stopSharedApi,
@@ -3590,6 +3591,36 @@ test(
       // Theirs alone: the coach's own next session is the plan's still.
       const [coachs] = await coach.api.workouts.progression(plan.id)
       expect(coachs?.target.reps).toBe(8)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+test(
+  'a curator closes sign-up from Settings, and the front door stops offering an account (#71)',
+  async () => {
+    await withApp('sign-up-closed', async (page) => {
+      const app = screens(page)
+      const curator = unique('cur')
+      // Its own session, kept for reopening sign-up after the page's has signed out.
+      const { api: mine } = await signUp(curator)
+      await app.auth.signIn(curator, `${curator}-password`)
+      // Only the curator is offered the switch: until then, this account is a reader.
+      expect(await app.settings.offersSignUpSwitch()).toBe(false)
+
+      await makeCurator(curator)
+      try {
+        await app.settings.setSignUp('closed')
+        await page.screenshot('sign-up-closed-settings')
+        await app.settings.signOut()
+        await app.auth.stopsOfferingSignUp()
+        await page.screenshot('sign-up-closed-login')
+      } finally {
+        // The e2e database is the whole run's: every other journey registers.
+        await mine.instance.update({ signUp: 'open' })
+      }
+      await page.goto('/login')
+      expect(await app.auth.offersSignUp()).toBe(true)
     })
   },
   E2E_TIMEOUT_MS,
