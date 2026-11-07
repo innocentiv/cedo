@@ -87,6 +87,10 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    environment:
+      # The proxies Caddy believes about who a client is, for the login limit (ADR-0031). Unset,
+      # none: set it only behind a proxy that SETS X-Forwarded-For — see .env.example.
+      CEDO_TRUSTED_PROXIES: ${CEDO_TRUSTED_PROXIES:-}
     ports:
       # The ONLY host mapping. Browser, API and MCP all arrive here. WEB_BIND=127.0.0.1 behind a
       # reverse proxy on the same host, which terminates TLS — see docs/09-deployment.md.

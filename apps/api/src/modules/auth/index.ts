@@ -19,7 +19,7 @@ export const authRoutes = new Elysia({ prefix: '/auth', tags: ['auth'] })
   .post(
     '/login',
     ({ body, headers, request, server }) => {
-      const address = clientAddress(headers['x-forwarded-for'], server?.requestIP(request)?.address)
+      const address = clientAddress(headers['x-client-ip'], server?.requestIP(request)?.address)
       return AuthService.login(body, address)
     },
     {

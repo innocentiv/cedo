@@ -26,11 +26,12 @@ in the contract for this.
 - **In Postgres**, `login_failures`, a row per failure, pruned as it ages out: the counts survive a
   deploy or a restart, and need nothing new to run. The window's arithmetic is Postgres's, which
   dated the rows.
-- **The client address comes from `X-Forwarded-For`**, read from the right past every proxy on a
-  private network (`lib/client-address.ts`). Only Caddy reaches the API, and Caddy trusts a private
-  proxy in front of it to name the client (`trusted_proxies static private_ranges`), overwriting the
-  header from anyone else. Anything left of the first public address could have been written by the
-  client, so it is ignored.
+- **Caddy decides who the client is**, and sends it to the API as `X-Client-Ip` (its
+  `{client_ip}`), overwriting any a client wrote; only Caddy reaches the API. It believes
+  `X-Forwarded-For` only from the proxies `CEDO_TRUSTED_PROXIES` names — **none by default** —
+  reading it from the right past them (`trusted_proxies_strict`), so an address a client wrote ahead
+  of its own is never believed. Behind a host's proxy that sets the header, the variable is set to
+  `private_ranges`.
 - **`platform_status` shows where the last login attempt came from**, so a curator can see the
   proxy's own address arriving instead of a client's.
 - **A password reset code (#69) is counted the same way**, in the same table, per address and
@@ -38,14 +39,16 @@ in the contract for this.
 
 ## Consequences
 
-- An outer proxy must **set** `X-Forwarded-For` (nginx: `$proxy_add_x_forwarded_for`). One that only
-  passes the request's headers on lets a client write its own and be counted as any address it
-  likes; one that sends none makes every client its own address, sharing one count, so fifty
-  failures from anyone lock everyone out for the window. `docs/09-deployment.md` says what to send.
-- A CDN or proxy on a public address in front (Cloudflare's, say) is not trusted, so every client
-  arrives as the CDN's edge: shared counts, as above. Such a setup must trust its ranges in Caddy.
-- On a private network, a client can write its own `X-Forwarded-For` and be counted as someone else.
-  The limit is for the internet; a LAN is trusted as far as this goes.
+- **Untrusted by default, behind a proxy every client is the proxy**, sharing one count: fifty
+  failures from anyone lock everyone out for the window. The safer failure — a limit that holds
+  rather than one a client can dodge — and `platform_status` shows it. Setting
+  `CEDO_TRUSTED_PROXIES` ends it, but only behind a proxy that **sets** `X-Forwarded-For` (nginx:
+  `$proxy_add_x_forwarded_for`): trusting one that passes the client's header on would let a client
+  name any address. Trust by default was rejected for that: Docker Desktop, rootless Docker, some
+  load balancers and IPv6 through Docker's port forwarding make any client look private.
+- A CDN in front (Cloudflare's, say) is trusted by listing its ranges in the same variable.
+- Behind a trusted proxy on a private network, a client on that network can write its own
+  `X-Forwarded-For` and be counted as someone else. The limit is for the internet.
 - Clients behind one address — a carrier's NAT, an office — share its counts: fifty failures
   among them lock them all out for the window.
 

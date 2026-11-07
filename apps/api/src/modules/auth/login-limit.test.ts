@@ -19,10 +19,11 @@ beforeEach(async () => {
 const HERE = '203.0.113.7'
 const ELSEWHERE = '198.51.100.20'
 
-const login = async (username: string, password: string, forwardedFor = HERE) =>
+/** A login as Caddy passes it on: the client it decided on, in `X-Client-Ip`. */
+const login = async (username: string, password: string, client = HERE, extra = {}) =>
   await h.wire('/auth/login', {
     method: 'POST',
-    headers: { 'x-forwarded-for': forwardedFor },
+    headers: { 'x-client-ip': client, ...extra },
     body: JSON.stringify({ username, password }),
   })
 
@@ -133,19 +134,19 @@ describe('the window', () => {
 })
 
 describe('the address counted', () => {
-  test("is the client's from X-Forwarded-For, never one the client wrote ahead of it", async () => {
+  test("is Caddy's word, never an X-Forwarded-For the client wrote", async () => {
     await h.as('alice')
-    const spoofed = (n: number) => `10.0.0.${n}, 192.0.2.${n}, ${HERE}, 172.18.0.1`
     for (let n = 1; n <= PER_ADDRESS_AND_USERNAME; n++) {
-      expect((await login('alice', 'wrong', spoofed(n))).status).toBe(401)
+      const claimed = { 'x-forwarded-for': `192.0.2.${n}` }
+      expect((await login('alice', 'wrong', HERE, claimed)).status).toBe(401)
     }
-    refused(await login('alice', TEST_PASSWORD, `${HERE}, 172.18.0.1`))
+    refused(await login('alice', TEST_PASSWORD))
   })
 
   test("is shown to the curator, so a proxy's own address is noticed", async () => {
     const carol = await h.as('carol')
     await h.curator(carol)
-    await login('carol', TEST_PASSWORD, `${ELSEWHERE}, 172.18.0.1`)
+    await login('carol', TEST_PASSWORD, ELSEWHERE)
     const status = expectContract(PlatformStatus, (await carol.wire('/admin/status')).body)
     expect(status.lastLoginAddress).toBe(ELSEWHERE)
   })
