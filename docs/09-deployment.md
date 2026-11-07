@@ -76,6 +76,10 @@ server pulls the repository with a read-only deploy key of its own. The workflow
 repository secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` (the private half of the pinned
 key) and `DEPLOY_KNOWN_HOSTS` (`ssh-keyscan <host>`, so the runner refuses an impostor).
 
+The deploy job also runs only in the maintainer's repository, `innocentiv/cedo`, so a fork with
+Actions on does not attempt a deploy it has no secrets for. To deploy from your own fork, put its
+name in the job's `if:` and add the four secrets there.
+
 Behind a reverse proxy that already serves other sites, set `WEB_BIND=127.0.0.1` in `.env`, so the
 app is reachable only through that proxy, and let the proxy terminate TLS. Send the whole host to
 `127.0.0.1:${WEB_PORT}`. Allow request bodies of at least 16 MB, since uploads are 12 MB plus
@@ -212,9 +216,10 @@ Two things that each cost a failed first run:
   group. If it doesn't, `sudo systemctl restart user@$(id -u).service` restarts it. Your own login
   sessions are not touched by that, and neither are system services that run outside it.
 - **`journalctl --user-unit`, not `journalctl --user -u`.** On a host whose journal is kept in memory
-  (no `/var/log/journal`, the default on some distributions), a user unit's lines go to the system journal.
-  `--user -u` then says "No journal files were found", while `--user-unit` reads them wherever they
-  are. Kept in memory, they are gone after a reboot. The backups themselves are files and stay.
+  (no `/var/log/journal`, the default on some distributions), a user unit's lines go to the system
+  journal. `--user -u` then says "No journal files were found", while `--user-unit` reads them
+  wherever they are. Kept in memory, they are gone after a reboot. The backups themselves are files
+  and stay.
 
 These backups stay on the server. They guard against a bad migration or a mistake, not against
 losing the server: copy `~/backups/cedo` elsewhere for that.

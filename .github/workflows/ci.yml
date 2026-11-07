@@ -6,8 +6,9 @@
 #
 # `deploy` runs only on `main` of innocentiv/cedo, only once `check` has passed, and deploys that
 # exact commit: the runner SSHes in with a key the server pins to scripts/deploy-ssh.sh, which
-# accepts `deploy <sha>` for a commit on main and nothing else. The build runs on the server, which keeps its .env and
-# volumes; nothing secret leaves it. See docs/09-deployment.md, "Deploying on push".
+# accepts `deploy <sha>` for a commit on main and nothing else. The build runs on the server, which
+# keeps its .env and volumes; nothing secret leaves it. See docs/09-deployment.md, "Deploying on
+# push".
 #
 # Secrets: DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY (the private half of that pinned key) and
 # DEPLOY_KNOWN_HOSTS (`ssh-keyscan <host>`, so the runner refuses an impostor).
@@ -43,7 +44,6 @@ jobs:
 
   deploy:
     needs: check
-    # Only the maintainer's repository deploys: a fork with Actions on has none of the secrets.
     if: >-
       github.repository == 'innocentiv/cedo' && github.ref == 'refs/heads/main' &&
       github.event_name != 'pull_request'
