@@ -1,6 +1,7 @@
 import { Elysia } from 'elysia'
 import { AuthResult, LoginInput, Me, MeUpdate, RegisterInput } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
+import { clientAddress } from '../../lib/client-address.ts'
 import { bearerToken } from '../../lib/token.ts'
 import * as AuthService from './service.ts'
 
@@ -15,11 +16,18 @@ export const authRoutes = new Elysia({ prefix: '/auth', tags: ['auth'] })
     response: AuthResult,
     detail: { summary: 'Create an account, its personal group, and a session' },
   })
-  .post('/login', ({ body }) => AuthService.login(body), {
-    body: LoginInput,
-    response: AuthResult,
-    detail: { summary: 'Exchange credentials for a bearer token' },
-  })
+  .post(
+    '/login',
+    ({ body, headers, request, server }) => {
+      const address = clientAddress(headers['x-forwarded-for'], server?.requestIP(request)?.address)
+      return AuthService.login(body, address)
+    },
+    {
+      body: LoginInput,
+      response: AuthResult,
+      detail: { summary: 'Exchange credentials for a bearer token' },
+    },
+  )
   .post(
     '/logout',
     async ({ headers }) => {

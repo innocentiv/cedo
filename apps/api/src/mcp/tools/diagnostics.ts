@@ -42,6 +42,11 @@ export function registerDiagnosticTools(server: McpServer, caller: Caller, versi
           status.extensions.includes('pg_stat_statements')
             ? 'Query statistics are available — call db_slow_queries.'
             : 'pg_stat_statements is NOT installed, so query statistics are unavailable.',
+          '',
+          status.lastLoginAddress === null
+            ? 'No login since the server started.'
+            : `The last login came from ${status.lastLoginAddress}. If that is the proxy in front ` +
+              'of Caddy, every client shares one login limit: see docs/09-deployment.md.',
         ].join('\n'),
       )
     },

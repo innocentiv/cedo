@@ -1,6 +1,18 @@
 # The single published surface. Everything the browser sees is one origin, so there is no CORS
 # configuration anywhere in this project and no preflight on any mutation.
 # See docs/09-deployment.md.
+
+# A proxy on a private network in front of Caddy — a host's nginx, a NAS's reverse proxy — is
+# trusted to say who its client was, so `X-Forwarded-For` reaches the API with the real address, and
+# the login limit counts per client rather than per proxy (#72, ADR-0031). Anything else that writes
+# the header is overwritten with the address Caddy saw. apps/api/src/lib/client-address.ts reads the
+# result with the same private ranges.
+{
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
 :80 {
 	encode zstd gzip
 	root * /srv
