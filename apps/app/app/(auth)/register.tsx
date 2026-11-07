@@ -9,11 +9,13 @@ import {
   Stack,
   Text,
 } from '../../src/ui/index.ts'
+import { useInstance } from '../../src/api/queries.ts'
 import { useAuth } from '../../src/auth/auth-provider.tsx'
 import { useSubmit } from '../../src/lib/use-submit.ts'
 
 export default function Register(): React.JSX.Element {
   const { register } = useAuth()
+  const instance = useInstance()
   const [username, setUsername] = useState('')
   const [displayName, setDisplayName] = useState('')
   const [password, setPassword] = useState('')
@@ -31,6 +33,12 @@ export default function Register(): React.JSX.Element {
         <Text variant="heading" accessibilityRole="header">
           Create an account
         </Text>
+        {/* Reached by its address while sign-up is closed (#71): the server would refuse it. */}
+        {instance.data?.signUp === 'closed' ? (
+          <Text tone="muted" testID="register-closed-notice">
+            This instance is not taking new accounts: ask its curator.
+          </Text>
+        ) : null}
         <Field
           label="Username"
           error={fieldError('username')}

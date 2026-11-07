@@ -1,11 +1,12 @@
 import { sql as raw } from 'drizzle-orm'
+import type { SignUpState } from '@cedo/contract'
 import { treaty } from '@elysiajs/eden'
 import { createApp } from '../app.ts'
 import { db } from '../db/client.ts'
 import { ensureDatabaseExists } from '../db/ensure.ts'
 import { env, isTest } from '../env.ts'
 import { runMigrations } from '../db/migrate.ts'
-import { groupMembers } from '../db/schema.ts'
+import { groupMembers, instanceSettings } from '../db/schema.ts'
 import { seedCore } from '../db/seed.ts'
 import { type Caller, resolveCaller } from '../plugins/auth.ts'
 
@@ -81,6 +82,11 @@ export interface TestApi {
    * registration and still says reader.
    */
   readonly curator: (user: TestUser) => Promise<Caller>
+  /**
+   * Sets the instance's sign-up (#71). Every test starts `open`: truncated, the instance would be
+   * `first`, and the first `as()` would become its curator and close sign-up behind it.
+   */
+  readonly signUp: (state: SignUpState) => Promise<void>
   readonly groupId: string
   readonly systemUserId: string
 }
@@ -142,6 +148,7 @@ export async function makeApi(): Promise<TestApi> {
   await ensureSchema()
   await truncateVolatileTables()
   const { userId: systemUserId, groupId } = await seedCore()
+  await setSignUp('open')
 
   const app = createApp()
   const api = treaty(app)
@@ -181,7 +188,15 @@ export async function makeApi(): Promise<TestApi> {
 
   const curator = async (user: TestUser) => await makeCurator(groupId, user)
 
-  return { api, wire: makeWire(), as, curator, groupId, systemUserId }
+  return { api, wire: makeWire(), as, curator, signUp: setSignUp, groupId, systemUserId }
+}
+
+/** `TestApi.signUp`: the instance row, written as the migration would leave it. */
+async function setSignUp(state: SignUpState): Promise<void> {
+  await db
+    .insert(instanceSettings)
+    .values({ signUp: state })
+    .onConflictDoUpdate({ target: instanceSettings.one, set: { signUp: state } })
 }
 
 /** `TestApi.curator`: an editor of the shared group, and their caller resolved afresh. */

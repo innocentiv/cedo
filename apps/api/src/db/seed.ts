@@ -1,12 +1,11 @@
 import { and, eq, isNull, sql } from 'drizzle-orm'
 import { DEFAULT_GROUP_SLUG, ExerciseCreate, MUSCLES, parseMediaUrl } from '@cedo/contract'
 import { type Transaction, closeDatabase, db } from './client.ts'
-import { env } from '../env.ts'
+import { promoteCurator } from './promote-curator.ts'
 import {
   exerciseMedia,
   exerciseMuscles,
   exercises,
-  groupMembers,
   groups,
   media,
   muscles,
@@ -225,40 +224,6 @@ export async function seedCore(): Promise<{ userId: string; groupId: string }> {
   const core = await seedSystemUser()
   await promoteCurator(core.groupId)
   return core
-}
-
-/**
- * Makes `CEDO_CURATOR_USERNAME` an editor of the shared `cedo` group.
- *
- * Without this NOBODY can edit the shared library: the system account owns those rows but is not a
- * member of the group, and registration only ever grants `reader`. Idempotent, and a no-op when the
- * variable is unset or names an account that does not exist yet — register first, then restart.
- * See docs/07-mcp.md.
- */
-export async function promoteCurator(sharedGroupId: string): Promise<boolean> {
-  const username = env.CEDO_CURATOR_USERNAME
-  if (username === undefined) return false
-
-  const [user] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.username, username.toLowerCase()))
-    .limit(1)
-  if (user === undefined) {
-    console.warn(
-      `CEDO_CURATOR_USERNAME='${username}' does not exist yet — register that account, then restart to grant it curator rights.`,
-    )
-    return false
-  }
-
-  await db
-    .insert(groupMembers)
-    .values({ groupId: sharedGroupId, userId: user.id, role: 'editor' })
-    .onConflictDoUpdate({
-      target: [groupMembers.groupId, groupMembers.userId],
-      set: { role: 'editor' },
-    })
-  return true
 }
 
 /** Adds the starter library on top of `seedCore`. Returns how many exercises were new. */

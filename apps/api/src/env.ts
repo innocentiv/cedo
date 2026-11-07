@@ -11,10 +11,10 @@ const Env = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('production'),
   UPLOAD_DIR: z.string().min(1).default('/data/uploads'),
   /**
-   * Promoted to editor of the seeded `cedo` group on every seed run, which is what makes someone a
-   * platform curator: they can edit the shared exercise library and read diagnostics. Everyone else
-   * joins that group as a reader. Optional — an instance with no curator still works, its library
-   * is just fixed at whatever shipped. See docs/07-mcp.md.
+   * Deprecated: a fresh instance's first account is its curator (ADR-0029). For an instance set up
+   * before that, promoted to editor of the seeded `cedo` group on every seed run, which is what makes
+   * someone a curator: they edit the shared exercise library, read diagnostics, and open or close
+   * sign-up. Optional. See docs/07-mcp.md.
    */
   CEDO_CURATOR_USERNAME: z.string().min(1).optional(),
 })

@@ -25,9 +25,34 @@ export const auth = (page: Page) => ({
     await nav(page).onToday()
   },
 
+  /** Signs in through the form, and lands on Today signed in. */
+  signIn: async (username: string, password: string): Promise<void> => {
+    await page.goto('/login')
+    await page.waitFor('login-username')
+    await page.fill('login-username', username)
+    await page.fill('login-password', password)
+    await page.click('[data-testid="login-submit"]')
+    await nav(page).onToday()
+  },
+
   /** Waits for the login screen — where a forgotten credential sends you. */
   onLoginScreen: async (): Promise<void> => {
     await page.waitFor('login-screen')
+  },
+
+  /** Whether the login screen offers to create an account, as it does until told sign-up is closed. */
+  offersSignUp: async (): Promise<boolean> => {
+    await page.waitFor('login-screen')
+    return await page.exists('to-register')
+  },
+
+  /** Waits for the login screen to stop offering an account: the instance has said it is closed. */
+  stopsOfferingSignUp: async (): Promise<void> => {
+    await page.waitFor('login-screen')
+    await page.until(
+      async () => await page.exists('to-register'),
+      (offered) => !offered,
+    )
   },
 
   /** Waits for "can't reach your server" — signed in, with nothing answering. */

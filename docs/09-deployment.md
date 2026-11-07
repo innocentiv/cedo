@@ -159,7 +159,7 @@ readable message rather than throwing something obscure on the first request.
 | `POSTGRES_USER`, `POSTGRES_DB` | Default to `cedo`. |
 | `WEB_PORT` | Host port. Default 8080. |
 | `POSTGRES_PORT`, `POSTGRES_BIND` | Where Postgres is published on the host: `127.0.0.1:55432` by default, so only the machine itself can reach it. The containers never use this mapping. Set `POSTGRES_BIND=0.0.0.0` only to reach the database from another machine, deliberately. |
-| `CEDO_CURATOR_USERNAME` | Promoted to curator of the shared library on every seed run. Register the account first, then restart. Leave unset for a personal instance. |
+| `CEDO_CURATOR_USERNAME` | Deprecated. A fresh instance's first account is its curator, and sign-up then closes; the curator reopens it from Settings (ADR-0029). Only for an instance set up before that: promoted to curator on every seed run; register the account first, then restart. |
 
 `DATABASE_URL` is **composed inside `docker-compose.yml`**, not read from `.env`. The host inside the
 network is always the service name, and a `DATABASE_URL` left pointing at `localhost` — the value a
@@ -269,4 +269,6 @@ writes the configuration with both filled in (`docs/07-mcp.md`).
 
 The check worth doing by hand, because it is the invariant everything else rests on: register a
 second user and confirm they see the seeded library but **not** the first user's personal exercises,
-and get `404` rather than `403` when they ask for one by id.
+and get `404` rather than `403` when they ask for one by id. Sign-up closed behind the first
+account, which curates the instance: open it from Settings for the second, then close it again
+(ADR-0029).

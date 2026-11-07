@@ -16,7 +16,10 @@ export const GROUP_ROLES = ['editor', 'reader'] as const
 export const GroupRole = z.enum(GROUP_ROLES)
 export type GroupRole = z.output<typeof GroupRole>
 
-/** The seeded group that carries the starter exercise library. Every user joins it as a reader. */
+/**
+ * The seeded group that carries the starter exercise library. Every user joins it as a reader, but
+ * a fresh instance's first account, which joins as its editor: the curator (ADR-0029).
+ */
 export const DEFAULT_GROUP_SLUG = 'cedo'
 
 export const Group = z.object({
@@ -102,5 +105,10 @@ export type GroupAddMember = z.output<typeof GroupAddMember>
 export const Me = z.object({
   user: Account,
   groups: z.array(GroupMembership),
+  /**
+   * Whether they curate this instance: the shared library, its diagnostics, and its sign-up
+   * (#71). Said by the server, so the app offers the curator's switches without knowing the rule.
+   */
+  curator: z.boolean(),
 })
 export type Me = z.output<typeof Me>

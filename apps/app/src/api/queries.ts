@@ -15,6 +15,7 @@ import type {
   GroupCreate,
   GroupMember,
   GroupMembership,
+  Instance,
   Media,
   Page,
   PersonalAccessToken,
@@ -23,6 +24,7 @@ import type {
   SessionEntryTarget,
   SessionQuery,
   SessionStart,
+  SignUp,
   Workout,
   WorkoutCreate,
   PlanSave,
@@ -161,6 +163,15 @@ export function useSession(id: string): UseQueryResult<SessionDetail> {
     enabled: id !== '',
   })
 }
+
+/** The instance itself (#71), signed in or not: whether it takes new accounts. */
+export function useInstance(): UseQueryResult<Instance> {
+  return useQuery({ queryKey: keys.instance, queryFn: async () => await api.instance.get() })
+}
+
+/** The curator opens sign-up, or closes it (#71). */
+export const useSetSignUp = () =>
+  useWriteTo('instance', async (signUp: SignUp) => await api.instance.update({ signUp }))
 
 export function useGroups(): UseQueryResult<GroupMembership[]> {
   return useQuery({ queryKey: keys.groups, queryFn: async () => await api.groups.list() })

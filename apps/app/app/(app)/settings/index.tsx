@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { type WeightUnit, equipmentCount } from '@cedo/contract'
+import { type SignUp, type WeightUnit, equipmentCount } from '@cedo/contract'
 import {
   Button,
   type ChoiceOption,
@@ -12,7 +12,7 @@ import {
   Stack,
   Text,
 } from '../../../src/ui/index.ts'
-import { useGroups } from '../../../src/api/queries.ts'
+import { useGroups, useInstance, useSetSignUp } from '../../../src/api/queries.ts'
 import { useEquipment } from '../../../src/api/equipment-queries.ts'
 import { useAuth } from '../../../src/auth/auth-provider.tsx'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
@@ -21,6 +21,11 @@ import { useWeightUnit } from '../../../src/lib/weight-unit.ts'
 const UNIT_OPTIONS: readonly ChoiceOption<WeightUnit>[] = [
   { value: 'kg', label: 'Kilograms' },
   { value: 'lb', label: 'Pounds' },
+]
+
+const SIGN_UP_OPTIONS: readonly ChoiceOption<SignUp>[] = [
+  { value: 'open', label: 'Open' },
+  { value: 'closed', label: 'Closed' },
 ]
 
 export default function Settings(): React.JSX.Element {
@@ -106,6 +111,8 @@ export default function Settings(): React.JSX.Element {
           />
         </Stack>
 
+        {me?.curator === true ? <SignUpSetting /> : null}
+
         <Button
           title="Sign out"
           variant="danger"
@@ -116,6 +123,38 @@ export default function Settings(): React.JSX.Element {
         />
       </Stack>
     </Screen>
+  )
+}
+
+/**
+ * The curator's switch (#71): open sign-up while testers register, then close it. Shown only to the
+ * curator, as `Me.curator` says; the server refuses anyone else.
+ */
+function SignUpSetting(): React.JSX.Element {
+  const instance = useInstance()
+  const setSignUp = useSetSignUp()
+  const { submit, error } = useSubmit()
+  return (
+    <Stack gap="sm">
+      <ListRow
+        title="Sign-up"
+        subtitle="Whether anyone who reaches this instance can create an account"
+        testID="settings-sign-up"
+      />
+      {instance.data === undefined ? null : (
+        <Choice
+          options={SIGN_UP_OPTIONS}
+          value={instance.data.signUp}
+          onChange={(chosen) => {
+            void submit(async () => {
+              await setSignUp.mutateAsync(chosen)
+            })
+          }}
+          testID="sign-up"
+        />
+      )}
+      <FormError message={error} testID="sign-up-error" />
+    </Stack>
   )
 }
 

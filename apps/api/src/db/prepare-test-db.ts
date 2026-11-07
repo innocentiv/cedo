@@ -1,4 +1,5 @@
-import { closeDatabase } from './client.ts'
+import { closeDatabase, db } from './client.ts'
+import { instanceSettings } from './schema.ts'
 import { ensureDatabaseExists } from './ensure.ts'
 import { runMigrations } from './migrate.ts'
 import { env } from '../env.ts'
@@ -16,5 +17,11 @@ if (env.NODE_ENV !== 'test') {
 
 await ensureDatabaseExists()
 await runMigrations()
+// A test database takes every account its tests register (#71). Left as the migration started it,
+// `first`, the first to register would become its curator and close sign-up behind them.
+await db
+  .insert(instanceSettings)
+  .values({ signUp: 'open' })
+  .onConflictDoUpdate({ target: instanceSettings.one, set: { signUp: 'open' } })
 console.log(`Prepared ${new URL(env.DATABASE_URL).pathname.slice(1)}.`)
 await closeDatabase()

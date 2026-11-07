@@ -19,6 +19,7 @@ const me = (username: string): Me => ({
     birthYear: null,
   },
   groups: [],
+  curator: false,
 })
 
 const rejected = () => new ApiError(401, 'unauthenticated', 'Authentication required', null)
