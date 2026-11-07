@@ -210,10 +210,9 @@ Two things that each cost a failed first run:
   it started with, so a backup it runs cannot reach Docker. It fails silently, straight after its
   first line. `grep Groups /proc/$(pgrep -u "$USER" -x systemd)/status` shows whether it has the
   group. If it doesn't, `sudo systemctl restart user@$(id -u).service` restarts it. Your own login
-  sessions are not touched by that, and neither are services that run outside it, such as a
-  `pm2-<user>` system service.
+  sessions are not touched by that, and neither are system services that run outside it.
 - **`journalctl --user-unit`, not `journalctl --user -u`.** On a host whose journal is kept in memory
-  (no `/var/log/journal`, the Oracle Linux default), a user unit's lines go to the system journal.
+  (no `/var/log/journal`, the default on some distributions), a user unit's lines go to the system journal.
   `--user -u` then says "No journal files were found", while `--user-unit` reads them wherever they
   are. Kept in memory, they are gone after a reboot. The backups themselves are files and stay.
 
