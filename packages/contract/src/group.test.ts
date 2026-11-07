@@ -5,7 +5,7 @@ const words = { personal: 'mine', library: 'library' } as const
 
 describe('sayGroup', () => {
   test('a personal group is said in the words for the caller’s own, not by its name', () => {
-    expect(sayGroup({ kind: 'personal', slug: 'valerio', name: 'valerio' }, words)).toBe('mine')
+    expect(sayGroup({ kind: 'personal', slug: 'alice', name: 'alice' }, words)).toBe('mine')
   })
 
   test('the starter library is said as the library, not by its name', () => {
