@@ -1,29 +1,42 @@
 import { type SQL, and, desc, eq, gt, lt, sql } from 'drizzle-orm'
 import { db } from '../../db/client.ts'
 import { loginFailures } from '../../db/schema.ts'
+import { addressKey } from '../../lib/client-address.ts'
 import { rateLimited } from '../../lib/error.ts'
 
 /**
  * The login limit (#72, ADR-0031). Failed logins are counted per client address and username, and
  * per address alone — never per username alone, or anyone could lock its owner out by failing on
  * purpose. Over either limit, a login is refused, the right password included, until enough of its
- * failures have aged out of the window. A success clears its address and username's failures.
+ * failures have aged out of the window.
  *
- * Two logins racing at the limit may both be let through: each counts before it fails. That costs an
- * attacker one or two guesses, which argon2 already makes slow, and saves a lock on every login.
+ * Each login is written down as a failure BEFORE its password is checked, and counts itself: a burst
+ * of logins at once then counts each other, so no more than the limit get a guess. Checking first
+ * and writing after the password let thirty at once all through. A refused login takes its row back;
+ * a success forgives its address and username's, its own included.
  */
 
 export const WINDOW_S = 15 * 60
 export const PER_ADDRESS_AND_USERNAME = 10
 export const PER_ADDRESS = 50
 
-const inWindow = gt(loginFailures.at, sql`now() - make_interval(secs => ${WINDOW_S})`)
+/** A login, as the limit counts it. */
+export interface LoginFrom {
+  readonly address: string
+  readonly username: string
+}
+
+/** As counted: an IPv6 address by its /64 (`addressKey`). */
+const counted = (from: LoginFrom): LoginFrom => ({ ...from, address: addressKey(from.address) })
+
+const windowStart = sql`now() - make_interval(secs => ${WINDOW_S})`
+const inWindow = gt(loginFailures.at, windowStart)
 
 /**
- * Seconds until fewer than `limit` of these failures are left in the window: when the `limit`-th
- * newest ages out. Null while under the limit. Worked out by Postgres, which dated them.
+ * The `n`-th newest of these failures still in the window, as seconds until it ages out — or null
+ * when there are fewer than `n`. Worked out by Postgres, which dated them.
  */
-async function wait(failures: SQL | undefined, limit: number): Promise<number | null> {
+async function nthNewest(failures: SQL | undefined, n: number): Promise<number | null> {
   const [row] = await db
     .select({
       seconds: sql`greatest(1, ceil(extract(epoch from
@@ -32,32 +45,48 @@ async function wait(failures: SQL | undefined, limit: number): Promise<number | 
     .from(loginFailures)
     .where(and(failures, inWindow))
     .orderBy(desc(loginFailures.at))
-    .offset(limit - 1)
+    .offset(n - 1)
     .limit(1)
   return row?.seconds ?? null
 }
 
-/** Refuses a login from `address` as `username` while either count is at its limit. */
-export async function assertUnderLimit(address: string, username: string): Promise<void> {
+function counts({ address, username }: LoginFrom) {
   const fromHere = eq(loginFailures.address, address)
-  const waits = await Promise.all([
-    wait(and(fromHere, eq(loginFailures.username, username)), PER_ADDRESS_AND_USERNAME),
-    wait(fromHere, PER_ADDRESS),
-  ])
-  const longest = Math.max(0, ...waits.map((w) => w ?? 0))
-  if (longest > 0) throw rateLimited(longest)
+  return [
+    {
+      failures: and(fromHere, eq(loginFailures.username, username)),
+      limit: PER_ADDRESS_AND_USERNAME,
+    },
+    { failures: fromHere, limit: PER_ADDRESS },
+  ]
 }
 
-/** A failed login: counted, after those that no longer count are pruned. */
-export async function recordFailure(address: string, username: string): Promise<void> {
-  await db
-    .delete(loginFailures)
-    .where(lt(loginFailures.at, sql`now() - make_interval(secs => ${WINDOW_S})`))
-  await db.insert(loginFailures).values({ address, username })
+/**
+ * Lets a login try its password, written down as a failure until it succeeds — or refuses it,
+ * taking its row back, while either count is over its limit. `Retry-After` is when the `limit`-th
+ * newest of the rest ages out.
+ */
+export async function admit(from: LoginFrom): Promise<void> {
+  const login = counted(from)
+  await db.delete(loginFailures).where(lt(loginFailures.at, windowStart))
+  const [own] = await db.insert(loginFailures).values(login).returning({ id: loginFailures.id })
+  const over = await Promise.all(
+    counts(login).map(
+      async ({ failures, limit }) => (await nthNewest(failures, limit + 1)) !== null,
+    ),
+  )
+  if (!over.some(Boolean)) return
+
+  if (own !== undefined) await db.delete(loginFailures).where(eq(loginFailures.id, own.id))
+  const waits = await Promise.all(
+    counts(login).map(async ({ failures, limit }) => (await nthNewest(failures, limit)) ?? 0),
+  )
+  throw rateLimited(Math.max(1, ...waits))
 }
 
-/** A successful login forgives its own address and username, and nobody else's. */
-export async function clearFailures(address: string, username: string): Promise<void> {
+/** A successful login forgives its own address and username, its own attempt included. */
+export async function forgive(from: LoginFrom): Promise<void> {
+  const { address, username } = counted(from)
   await db
     .delete(loginFailures)
     .where(and(eq(loginFailures.address, address), eq(loginFailures.username, username)))
@@ -74,4 +103,4 @@ export function noteAttempt(address: string): void {
   lastAddress = address
 }
 
-export const lastLoginAddress = (): string | null => lastAddress
+export const lastLoginAttemptAddress = (): string | null => lastAddress

@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { and, eq, sql } from 'drizzle-orm'
+import { sql } from 'drizzle-orm'
 import { ApiError, PlatformStatus } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { loginFailures } from '../../db/schema.ts'
+import { DomainError } from '../../lib/error.ts'
 import { expectContract } from '../../test/contract.ts'
 import { TEST_PASSWORD, type TestApi, makeApi } from '../../test/harness.ts'
 import { PER_ADDRESS, PER_ADDRESS_AND_USERNAME, WINDOW_S } from './login-limit.ts'
+import * as AuthService from './service.ts'
 
 /** The login limit (#72, ADR-0031), through the route, with the address as Caddy passes it on. */
 
@@ -64,15 +66,19 @@ describe('per address and username', () => {
     expect((await login('alice', TEST_PASSWORD, ELSEWHERE)).status).toBe(200)
   })
 
-  test('a success forgives its own address and username', async () => {
+  test("a success forgives its own address and username, and nobody else's", async () => {
     await h.as('alice')
     await fail('alice', PER_ADDRESS_AND_USERNAME - 1)
+    await failed([{ username: 'bob' }, { username: 'alice', address: ELSEWHERE }])
     expect((await login('alice', TEST_PASSWORD)).status).toBe(200)
     const left = await db
-      .select()
+      .select({ address: loginFailures.address, username: loginFailures.username })
       .from(loginFailures)
-      .where(and(eq(loginFailures.address, HERE), eq(loginFailures.username, 'alice')))
-    expect(left).toHaveLength(0)
+      .orderBy(loginFailures.username)
+    expect(left).toEqual([
+      { address: ELSEWHERE, username: 'alice' },
+      { address: HERE, username: 'bob' },
+    ])
   })
 })
 
@@ -82,6 +88,15 @@ describe('per address', () => {
     await failed(Array.from({ length: PER_ADDRESS }, (_, i) => ({ username: `guess${i}` })))
     refused(await login('alice', TEST_PASSWORD))
     expect((await login('alice', TEST_PASSWORD, ELSEWHERE)).status).toBe(200)
+  })
+
+  test('an IPv6 client is counted by its /64, so stepping through its addresses gains nothing', async () => {
+    await h.as('alice')
+    for (let n = 1; n <= PER_ADDRESS_AND_USERNAME; n++) {
+      expect((await login('alice', 'wrong', `2001:db8:1:2::${n}`)).status).toBe(401)
+    }
+    refused(await login('alice', TEST_PASSWORD, '2001:db8:1:2::ffff'))
+    expect((await login('alice', TEST_PASSWORD, '2001:db8:1:3::1')).status).toBe(200)
   })
 })
 
@@ -103,12 +118,9 @@ describe('the window', () => {
         secondsAgo: WINDOW_S - 60 - i,
       })),
     )
-    const res = await h.api.auth.login.post(
-      { username: 'alice', password: TEST_PASSWORD },
-      { headers: { 'x-forwarded-for': HERE } },
-    )
-    expect(res.status).toBe(429)
-    const retryAfter = Number(res.response.headers.get('retry-after'))
+    const res = await login('alice', TEST_PASSWORD)
+    refused(res)
+    const retryAfter = Number(res.headers.get('retry-after'))
     expect(retryAfter).toBeGreaterThanOrEqual(55)
     expect(retryAfter).toBeLessThanOrEqual(61)
   })
@@ -136,5 +148,30 @@ describe('the address counted', () => {
     await login('carol', TEST_PASSWORD, `${ELSEWHERE}, 172.18.0.1`)
     const status = expectContract(PlatformStatus, (await carol.wire('/admin/status')).body)
     expect(status.lastLoginAddress).toBe(ELSEWHERE)
+  })
+})
+
+/**
+ * Regression: the limit was checked before the password and the failure written after it, so a
+ * burst of logins all passed the check together and every one was a guess. Driven through the
+ * service, the pool warmed first, so they truly overlap (CLAUDE.md, working notes).
+ */
+describe('a burst of logins at once', () => {
+  test('gets no more guesses than the limit', async () => {
+    await h.as('alice')
+    await Promise.all(Array.from({ length: 30 }, async () => await db.execute(sql`select 1`)))
+    const tries = await Promise.allSettled(
+      Array.from(
+        { length: 30 },
+        async () => await AuthService.login({ username: 'alice', password: 'wrong' }, HERE),
+      ),
+    )
+    const codes = tries.map((t) =>
+      t.status === 'fulfilled' ? 'ok' : t.reason instanceof DomainError ? t.reason.code : 'other',
+    )
+    expect(codes.filter((c) => c === 'unauthenticated').length).toBeLessThanOrEqual(
+      PER_ADDRESS_AND_USERNAME,
+    )
+    expect(codes.filter((c) => c === 'rate_limited').length).toBeGreaterThan(0)
   })
 })

@@ -137,10 +137,15 @@ export async function register(input: RegisterInput): Promise<AuthResult> {
   return { user: toUser(user), token, expiresAt: expiresAt.toISOString() }
 }
 
-/** From `address`, the client the request came from: the login limit counts by it (#72). */
+/**
+ * From `address`, the client the request came from: the login limit counts by it (#72). The attempt
+ * is a failure until its password is right — `admit` writes it down first — so a wrong one needs
+ * nothing more.
+ */
 export async function login(input: LoginInput, address: string): Promise<AuthResult> {
+  const attempt = { address, username: input.username }
   LoginLimit.noteAttempt(address)
-  await LoginLimit.assertUnderLimit(address, input.username)
+  await LoginLimit.admit(attempt)
 
   // The one query that legitimately reads password_hash. Nothing here reaches the wire.
   const [found] = await db
@@ -152,15 +157,13 @@ export async function login(input: LoginInput, address: string): Promise<AuthRes
   if (found === undefined) {
     // Spend the same time as a real verification so latency does not reveal which users exist.
     await burnTime(input.password)
-    await LoginLimit.recordFailure(address, input.username)
     throw unauthenticated('Incorrect username or password')
   }
   if (!(await verifyPassword(input.password, found.passwordHash))) {
-    await LoginLimit.recordFailure(address, input.username)
     throw unauthenticated('Incorrect username or password')
   }
 
-  await LoginLimit.clearFailures(address, input.username)
+  await LoginLimit.forgive(attempt)
   const { token, expiresAt } = await issueSession(found.id)
   return { user: toUser(found), token, expiresAt: expiresAt.toISOString() }
 }

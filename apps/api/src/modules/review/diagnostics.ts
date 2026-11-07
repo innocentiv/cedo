@@ -4,7 +4,7 @@ import type { PlatformStatus, SlowQuery } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { conflict } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { lastLoginAddress } from '../auth/login-limit.ts'
+import { lastLoginAttemptAddress } from '../auth/login-limit.ts'
 import { requireCurator } from './curation.ts'
 
 /**
@@ -81,7 +81,7 @@ export async function platformStatus(caller: Caller, version: string): Promise<P
         .parse(settings)
         .map((r) => [r.table, r.rows]),
     ),
-    lastLoginAddress: lastLoginAddress(),
+    lastLoginAddress: lastLoginAttemptAddress(),
   }
 }
 

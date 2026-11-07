@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { clientAddress, isPrivateAddress } from './client-address.ts'
+import { addressKey, clientAddress, isPrivateAddress } from './client-address.ts'
 
 describe('clientAddress', () => {
   test('a client reaching Caddy directly: the one address Caddy wrote', () => {
@@ -44,5 +44,24 @@ describe("isPrivateAddress, as Caddy's private_ranges", () => {
     ['not an address', false],
   ])('%s → %p', (address, expected) => {
     expect(isPrivateAddress(address)).toBe(expected)
+  })
+})
+
+/**
+ * What the limit counts an address as. An IPv6 client is usually handed a whole /64, so counted per
+ * address it would have unlimited guesses: it is counted per /64 instead.
+ */
+describe('addressKey', () => {
+  test.each([
+    ['203.0.113.7', '203.0.113.7'],
+    ['203.0.113.7:51234', '203.0.113.7'],
+    ['::ffff:203.0.113.7', '203.0.113.7'],
+    ['2001:db8:1:2:aaaa:bbbb:cccc:dddd', '2001:db8:1:2::/64'],
+    ['2001:db8:1:2::9', '2001:db8:1:2::/64'],
+    ['[2001:DB8:1:2::9]:443', '2001:db8:1:2::/64'],
+    ['2001:db8::1', '2001:db8:0:0::/64'],
+    ['unknown', 'unknown'],
+  ])('%s → %s', (address, key) => {
+    expect(addressKey(address)).toBe(key)
   })
 })

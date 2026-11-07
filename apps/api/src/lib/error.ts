@@ -9,13 +9,19 @@ export class DomainError extends Error {
   readonly code: ErrorCode
   readonly details: ApiError['error']['details']
   /** Seconds before trying again, sent as `Retry-After`: a rate limit's alone (#72). */
-  retryAfterS: number | null = null
+  readonly retryAfterS: number | null
 
-  constructor(code: ErrorCode, message: string, details: ApiError['error']['details'] = null) {
+  constructor(
+    code: ErrorCode,
+    message: string,
+    details: ApiError['error']['details'] = null,
+    retryAfterS: number | null = null,
+  ) {
     super(message)
     this.name = 'DomainError'
     this.code = code
     this.details = details
+    this.retryAfterS = retryAfterS
   }
 }
 
@@ -32,14 +38,13 @@ export const conflict = (message: string): DomainError => new DomainError('confl
  * Too many failed logins from one address (#72, ADR-0031): refused, even with the right password,
  * until `retryAfterS` seconds have passed — sent as `Retry-After`.
  */
-export function rateLimited(retryAfterS: number): DomainError {
-  const error = new DomainError(
+export const rateLimited = (retryAfterS: number): DomainError =>
+  new DomainError(
     'rate_limited',
     'Too many failed sign-ins from here: try again later.',
+    null,
+    retryAfterS,
   )
-  error.retryAfterS = retryAfterS
-  return error
-}
 
 /** A new account on an instance whose curator has closed sign-up (#71). */
 export const signUpClosed = (): DomainError =>
