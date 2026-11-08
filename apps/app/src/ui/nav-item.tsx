@@ -1,5 +1,11 @@
 import type { Ref } from 'react'
-import { Pressable, type PressableProps, StyleSheet, type ViewInstance } from 'react-native'
+import {
+  Platform,
+  Pressable,
+  type PressableProps,
+  StyleSheet,
+  type ViewInstance,
+} from 'react-native'
 import { CONTROL_HEIGHT, color, radius, space } from './tokens.ts'
 import { Text } from './text.tsx'
 
@@ -43,6 +49,13 @@ export function NavItem({
         variant="label"
         tone={isFocused ? 'default' : 'muted'}
         align={horizontal ? 'center' : 'left'}
+        // A tab's label is one line. A browser lets a word wider than its room spill into the
+        // padding; iOS broke it inside the word, "Worko / uts" (#77). Narrower padding gives it
+        // the room, and on a narrower phone, or with larger text, iOS shrinks it to fit. The web
+        // keeps its own way: there one line would end a label in "…".
+        {...(horizontal && Platform.OS !== 'web'
+          ? { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.8 }
+          : {})}
       >
         {label}
       </Text>
@@ -58,7 +71,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  horizontal: { flex: 1 },
+  horizontal: { flex: 1, paddingHorizontal: space.xs },
   /** In the sidebar an item fills the width and reads from the left, like every sidebar. */
   stacked: { alignSelf: 'stretch', alignItems: 'flex-start' },
   focused: { backgroundColor: color.surfaceRaised },

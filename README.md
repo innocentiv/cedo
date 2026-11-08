@@ -172,11 +172,10 @@ no releases or version numbers yet: `main` is what runs, and an instance upgrade
 Versioned releases are planned with the native app (#10).
 
 All milestones complete: contract, database, API, exercises and media, workouts and logs, MCP,
-performance, frontend, and deployment. The app is web only: there is no native build configuration
-(no `eas.json`, no bundle ids). On the web it calls `/api` on its own origin; a native build would
-need the server address fixed when it is built, one build per instance. A native app with the
-address entered at runtime is issue #10. The web app installs to a home screen and opens without a
-signal (see above).
+performance, frontend, and deployment. The web app installs to a home screen and opens without a
+signal (see above). An iOS app is under way (#10, ADR-0032): a development build runs on the
+simulator and on a phone (`docs/08-frontend.md`, "The native app"). Until #78 its server is fixed
+when it is built; it will be distributed through AltStore Classic, from every instance (#79).
 
 ## Exposing it to the internet
 

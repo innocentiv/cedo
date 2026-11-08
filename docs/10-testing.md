@@ -6,7 +6,7 @@ suite becomes slow, flaky, or quietly stops proving anything.
 | Tier | Where | Answers | Cost |
 | ---- | ----- | ------- | ---- |
 | T1 contract | `packages/contract/**/*.test.ts` | Is the domain arithmetic right? | milliseconds |
-| T1 app modules | `apps/app/src/**/*.test.ts` | Do the app's own rules — who is signed in, what the installed app keeps, when a set is sent again — hold? | milliseconds |
+| T1 app modules | `apps/app/src/**/*.test.ts` | Do the app's own rules — who is signed in, what the installed app keeps, when a set is sent again — hold? Does the native app's engine get what it lacks? | milliseconds |
 | T2 integration | `apps/api/src/**/*.test.ts` | Does the API behave, and does it match the contract? | seconds |
 | T3 UI | `apps/app/e2e/*.e2e.ts` | Does every route render without exploding? | seconds |
 | T4 performance | `apps/api/src/test/perf/*.perf.ts` | Will this survive real data on cheap hardware? | minutes |
@@ -36,6 +36,11 @@ stored one, waiting, held up, and whether the next set waits for its first send 
 the queue itself: sets logged offline, sent once back online, and one whose answer is lost still
 stored once. Components are still never tested: see
 the amendment to `docs/adr/0017-webview-for-ui-verification.md`.
+
+One plain module beside them is not the app's state but its engine's: **what Hermes, the native
+app's engine, lacks** (#77). `src/lib/hermes-builtins.ts` gives it `toSorted` before anything runs,
+tested against what the built-in does, and its test fails on the first use, in the app or the
+contract, of a built-in Hermes still lacks — Bun runs every other test, and has them all.
 
 ## T1 — contract
 

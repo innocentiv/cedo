@@ -152,6 +152,9 @@ export function Screen({
             underBar ? { paddingTop: space.sm } : null,
           ]}
           keyboardShouldPersistTaps="handled"
+          // A browser moves a focused field above the keyboard itself; iOS does it only when asked,
+          // and left the sign-in form's Password under the keyboard (#77). Ignored on the web.
+          automaticallyAdjustKeyboardInsets
           testID="screen-scroll"
         >
           {body}

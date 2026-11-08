@@ -4,17 +4,26 @@
     "slug": "cedo",
     "version": "0.0.0",
     "scheme": "cedo",
+    "icon": "./assets/icon.png",
     "orientation": "default",
     "userInterfaceStyle": "dark",
     "plugins": [
       ["expo-router", { "asyncRoutes": { "web": false } }],
-      "expo-secure-store",
+      ["expo-secure-store", { "faceIDPermission": false }],
       [
         "expo-image-picker",
         {
           "photosPermission": "cedo uses your photos to attach an image to an exercise.",
           "cameraPermission": false,
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false,
+          "recordAudioAndroid": false,
+          "enableBackgroundPlayback": false
         }
       ]
     ],
@@ -23,7 +32,14 @@
       "output": "single"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "io.github.innocentiv.cedo",
+      "infoPlist": {
+        "NSLocalNetworkUsageDescription": "cedo connects to your server when it is on your local network."
+      }
+    },
+    "android": {
+      "package": "io.github.innocentiv.cedo"
     },
     "experiments": {
       "typedRoutes": false

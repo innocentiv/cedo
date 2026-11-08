@@ -43,6 +43,7 @@ do in production. See `docs/01-architecture.md`.
 ## Layout
 
 ```
+index.ts                     the entry: what Hermes lacks first, then Expo Router's (#77)
 app/_layout.tsx              ErrorBoundary > SafeAreaProvider > QueryClient > AuthProvider > Slot
 app/index.tsx                the only cold-start redirect
 app/(auth)/_layout.tsx       bounces a signed-in visitor out
@@ -61,7 +62,8 @@ src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-
                              athlete-queries.ts (a coach's reads of an athlete's training),
                              equipment-queries.ts (what you, or an athlete, train with),
                              target-queries.ts (your own targets on a plan, and Change),
-                             retry.ts and pending.ts (+ their unit tests)
+                             retry.ts and pending.ts (+ their unit tests), device-state.ts
+                             (the network and the app's focus, on native)
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
 src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ its unit test), forms,
@@ -69,7 +71,9 @@ src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ it
                              screen's parts: the workout's, Today's, Progress's, a workout's
                              outline, an exercise's (exercise-detail.tsx, exercise-about.tsx,
                              exercise-media.tsx), the desktop sidebar's (sidebar.tsx), an
-                             athlete's, read by their coach (athlete.tsx)
+                             athlete's, read by their coach (athlete.tsx); chime.ts and
+                             chime-tone.ts (the rest's end), hermes-builtins.ts (+ its unit test)
+scripts/chime-wav.ts         renders assets/chime.wav, the native chime, from chime-tone.ts
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts,
                              harness.e2e.ts (the harness's own tests), journeys.test.ts (the rules
                              journeys obey), screens/ (one driver per screen; test ids live here)
@@ -176,9 +180,15 @@ opens. The rest's clock is `useRestClock`
 (`src/lib/rest-clock.ts`), read by `useJustDone` (`src/lib/just-done.ts`) in the focus's column; it
 and the session's clock read `useNow` (`src/lib/use-now.ts`), a clock of its own that ticks once a
 second only while it must — so the focus re-renders while a rest runs, not the day beside it. The tone at the end of a rest is `src/lib/chime.ts`, made by the
-browser, nothing bundled — three beeps, played through iOS's silent switch where Safari lets a page
+browser on the web — three beeps, played through iOS's silent switch where Safari lets a page
 say its sound is a short alert (`navigator.audioSession`, `transient`: it lowers the athlete's
 music for a moment, where `playback` would stop it), and a buzz where `navigator.vibrate` exists.
+On native (#77) the same beeps are `assets/chime.wav`, rendered from the numbers in
+`src/lib/chime-tone.ts` by `scripts/chime-wav.ts`, and played by expo-audio through the silent
+switch, the music ducked while they play; the buzz is three taps of expo-haptics. The file is in
+the web export too, and never fetched there. `expo-audio`'s
+config plugin is told to add no microphone permission and no background audio: the chime plays only
+with the app open.
 
 Sets logged without a signal (#9) count as done on the workout — the next set comes up, rest
 starts — through `src/api/pending.ts`: app-owned state with no React in it, so unit-tested beside
@@ -855,8 +865,9 @@ is TanStack Query's own queue, kept in memory, with no persistence library:
 - A session's sets and its finish share one `scope` (`sessionQueue` in `src/api/write-to.ts`), so
   they run one at a time, in the order made. A finish never overtakes a set logged before it.
   Finishing without a signal therefore waits too, and goes once the sets before it have.
-- Offline, they wait (TanStack's `onlineManager`, from the browser's online and offline events), and
-  go when the signal is back.
+- Offline, they wait (TanStack's `onlineManager`: the browser's online and offline events on the
+  web, expo-network on native, where TanStack sees no network of its own — `src/api/device-state.ts`),
+  and go when the signal is back.
 - A set's `Idempotency-Key` is made once, when it is logged. A send that gets no answer, or a 5xx,
   is retried under it, up to ten sends, with TanStack's own wait between them: a second, doubling to
   thirty (`src/api/retry.ts`, a plain module with its unit test). A refusal is not retried. Neither
@@ -926,6 +937,66 @@ shape exists to avoid. Without the proxy the app came up looking fine and every 
 against Metro. See `docs/09-deployment.md`.
 
 `CEDO_DEV_API_ORIGIN` overrides the target if the API is not on :3000.
+
+## The native app
+
+iOS only, through AltStore Classic (ADR-0032); Android has its package name and nothing else. A
+development build is made on a Mac with Xcode, CocoaPods and a free Apple ID — no Expo account,
+no EAS. Setting up a Mac for it is in `docs/research/2026-11-native-app.md`, "Setting up this Mac".
+
+```bash
+bun run dev:api                                    # the API on :3000
+cd apps/app
+bunx expo run:ios --no-bundler                     # prebuild, pods, build, install on the simulator
+EXPO_PUBLIC_API_URL=http://localhost:8081/api bunx expo start --dev-client
+                                                   # Metro, whose /api proxy reaches the API
+```
+
+- **The server is still fixed when the bundle is made**, by `EXPO_PUBLIC_API_URL`, until it is
+  asked for at runtime (#78). On the simulator it is Metro's own `/api`; on a phone, Metro at the
+  Mac's address on the Wi-Fi.
+- **On your iPhone**: `bunx expo run:ios --device`, signed by the free Personal Team of the Apple ID
+  in Xcode. The first install is trusted under Settings → General → VPN & Device Management, and
+  the phone asks for local network access. A free team's install stops opening after seven days:
+  run it again. If the app says "The Internet connection appears to be offline" while Safari on the
+  phone reaches Metro and Local Network lists cedo as allowed, restart the phone: once, iOS applied
+  the permission only after a restart.
+- **`ios/` and `android/` are never committed** (Continuous Native Generation). Every native setting
+  is in `app.json` and its config plugins. `expo run:ios` does not apply a changed plugin option to
+  an `ios/` that exists: regenerate it with `bunx expo prebuild --platform ios --clean`.
+- **A native module is never reached on the web.** It is imported lazily behind `Platform.OS`, as
+  `token-storage.ts` and `chime.ts` do, or it has a web implementation of its own, as expo-crypto
+  and expo-network have.
+- **The contract runs on Hermes too**, React Native's engine, which lacks a few built-ins Bun and
+  every browser have. `index.ts`, the app's entry, gives it `Array.prototype.toSorted` before any
+  module runs (`src/lib/hermes-builtins.ts`); the others it lacks are listed there, and
+  `hermes-builtins.test.ts` fails on the first use of one in the app or the contract — all but the
+  RegExp `v` flag, which no pattern can tell from a path such as `/vi/` in a string.
+- **What differs on native**: a set's idempotency key takes its random bytes from expo-crypto, since
+  React Native has no `crypto`; TanStack Query hears the network from expo-network and the app's
+  focus from `AppState` (`src/api/device-state.ts`); the rest's end is a bundled sound and
+  expo-haptics (`src/lib/chime.ts`); a video opens outside the app, from its picture or the button
+  below it.
+- **The keyboard is the app's to manage**, where a browser does it unasked. Every scroll moves a
+  focused field above the keyboard (`automaticallyAdjustKeyboardInsets`); a numeric field's number
+  pad, which has no key to lower it, gets a bar with Done, as Safari's has (`TypedNumber`); a tab's
+  label is held to one line, where iOS broke "Workouts" in the middle (`NavItem`). A pinned footer
+  stays under the keyboard, as it does in Safari: Done, Return or a tap elsewhere lowers it.
+- **`bun run shot`, `gallery` and `e2e` are web only.** They prove the screens both platforms share.
+  Nothing proves native layout, the keyboard, safe areas or sound but a device.
+
+**After a native change, on the phone** — the smoke test:
+
+1. Sign in. Kill the app and open it again: still signed in.
+2. Start a session and log a set. The rest counts down and ends in three beeps and three taps,
+   heard with the silent switch on, any music lowered while they play. Undo it.
+3. In flight mode, log a set: it shows as not sent yet. Leave flight mode: it is sent.
+4. An exercise's image shows. Its video's picture, and Watch the video below it, open the video
+   outside the app.
+5. Settings → Connect your AI shows this server's MCP address.
+6. Nothing sits under the clock or the home indicator. On sign-in, Password can be reached with the
+   keyboard up. A weight or reps field's number pad has Done above it, and Done brings Log back
+   into sight.
 
 ## Seeing what you built
 

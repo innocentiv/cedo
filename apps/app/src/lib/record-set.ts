@@ -1,3 +1,4 @@
+import { getRandomValues } from 'expo-crypto'
 import type { LoggedHere } from '../ui/index.ts'
 import { newIdempotencyKey } from '../api/retry.ts'
 import { useLogSet } from '../api/session-queries.ts'
@@ -22,8 +23,9 @@ export function useRecordSet(sessionId: string) {
       // The tap that logs a set starts the sound its rest will end with: iOS asks for a tap.
       primeChime()
       // Its key and its time are made here, once: however many times it is sent, it is this one set
-      // (#9), and its rest counts from now however often it is read.
-      const key = newIdempotencyKey()
+      // (#9), and its rest counts from now however often it is read. Its random bytes are
+      // expo-crypto's: React Native has no `crypto` of its own (#77).
+      const key = newIdempotencyKey(getRandomValues)
       const loggedAt = new Date().toISOString()
       void submit(async () => {
         await logSet.mutateAsync({

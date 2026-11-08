@@ -27,10 +27,12 @@ export const sendAgain = (failures: number, error: unknown): boolean =>
 /**
  * A version 4 UUID from random bytes. Not `crypto.randomUUID`, which exists only in a secure
  * context — HTTPS or localhost — and the app also runs over plain HTTP on a home network.
+ *
+ * `fill` is where the bytes come from, and has no default: React Native installs no `crypto`, so a
+ * default of `crypto.getRandomValues` threw on native at every set logged (#77). The app passes
+ * expo-crypto's, the browser's own on the web; a test passes its own.
  */
-export function newIdempotencyKey(
-  fill: (bytes: Uint8Array) => Uint8Array = (bytes) => crypto.getRandomValues(bytes),
-): string {
+export function newIdempotencyKey(fill: (bytes: Uint8Array) => Uint8Array): string {
   const bytes = fill(new Uint8Array(16))
   bytes[6] = ((bytes[6] ?? 0) & 0x0f) | 0x40
   bytes[8] = ((bytes[8] ?? 0) & 0x3f) | 0x80

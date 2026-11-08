@@ -1,18 +1,30 @@
 import { Platform } from 'react-native'
+import type * as ExpoAudio from 'expo-audio'
+import restOver from '../../assets/chime.wav'
+import { BEEP_S, BEEP_STARTS_S, BUZZ_MS, FADE_TO, PITCH_HZ, VOLUME } from './chime-tone.ts'
 
 /**
- * The tone when a rest is over (#24, #37): three short beeps, made by the browser — nothing
- * bundled, nothing fetched — and a buzz where the device has one. Only while the app is open: in the
- * background, a home-screen web app cannot be relied on to sound at all (#38).
+ * The tone when a rest is over (#24, #37): three short beeps (`chime-tone.ts`), and a buzz in their
+ * rhythm where the device has one. Only while the app is open: told with it closed is #39.
  *
- * iOS lets a page make sound only from an audio context started by a tap. So the context is started
- * on the tap that logs a set (`primeChime`), and the beeps after that set's rest play through it;
- * until a set is logged on this open, the rest is silent. And iOS mutes a page's sound with the
- * silent switch, unless the page says its sound is an alert (Safari 17's `audioSession`).
+ * **On the web** the browser makes the beeps: the native app's sound file is in the export, never
+ * fetched. iOS lets a page
+ * make sound only from an audio context started by a tap. So the context is started on the tap that
+ * logs a set (`primeChime`), and the beeps after that set's rest play through it; until a set is
+ * logged on this open, the rest is silent. And iOS mutes a page's sound with the silent switch,
+ * unless the page says its sound is an alert (Safari 17's `audioSession`).
+ *
+ * **On native** (#77) they are `assets/chime.wav`, rendered from the same numbers, played by
+ * expo-audio through the silent switch, with the athlete's music lowered while they play and given
+ * back after — expo-audio ends its session when playback completes. The buzz is three taps of
+ * expo-haptics at the beeps' starts. Both modules are imported lazily, so the web never evaluates
+ * them.
  */
+const isWeb = Platform.OS === 'web'
+
 let audio: AudioContext | null = null
 
-const supported = (): boolean => Platform.OS === 'web' && typeof AudioContext !== 'undefined'
+const supported = (): boolean => isWeb && typeof AudioContext !== 'undefined'
 
 /**
  * Heard through the silent switch, where the browser lets a page say what its sound is: a short
@@ -24,32 +36,69 @@ function asAlert(): void {
   if (typeof session === 'object' && session !== null) Reflect.set(session, 'type', 'transient')
 }
 
-/** Called from a tap: starts — or resumes — the context the beeps will play through. */
+/** Native: the player, made once — on the first tap that logs a set, or the first rest's end. */
+let player: Promise<ExpoAudio.AudioPlayer> | null = null
+
+async function makePlayer(): Promise<ExpoAudio.AudioPlayer> {
+  const { createAudioPlayer, setAudioModeAsync } = await import('expo-audio')
+  await setAudioModeAsync({
+    playsInSilentMode: true,
+    interruptionMode: 'duckOthers',
+    shouldPlayInBackground: false,
+  })
+  return createAudioPlayer(restOver)
+}
+
+function nativePlayer(): Promise<ExpoAudio.AudioPlayer> {
+  player ??= makePlayer().catch((error: unknown) => {
+    // Tried again at the next rest's end, rather than silent for the rest of the session.
+    player = null
+    throw error
+  })
+  return player
+}
+
+async function playNative(): Promise<void> {
+  const ready = await nativePlayer()
+  await ready.seekTo(0)
+  ready.play()
+}
+
+async function buzzNative(): Promise<void> {
+  const { impactAsync, ImpactFeedbackStyle } = await import('expo-haptics')
+  for (const start of BEEP_STARTS_S) {
+    setTimeout(() => {
+      void impactAsync(ImpactFeedbackStyle.Heavy)
+    }, start * 1000)
+  }
+}
+
+/** Called from a tap: starts — or resumes — what the beeps will play through. */
 export function primeChime(): void {
+  if (!isWeb) {
+    nativePlayer().catch((error: unknown) => {
+      console.warn('[chime] the rest-over sound could not be loaded', error)
+    })
+    return
+  }
   if (!supported()) return
   asAlert()
   audio ??= new AudioContext()
   if (audio.state === 'suspended') void audio.resume()
 }
 
-const BEEPS = 3
-const BEEP_S = 0.18
-const GAP_S = 0.14
-/** A2 on a clock's beeper: high enough to cut through a gym, loud enough to be heard there. */
-const PITCH_HZ = 880
-const VOLUME = 0.5
-/** The buzz keeps the beeps' rhythm: on for each, off between. */
-const BUZZ_MS = Array.from({ length: BEEPS * 2 - 1 }, (_, i) =>
-  Math.round((i % 2 === 0 ? BEEP_S : GAP_S) * 1000),
-)
-
 export function chime(): void {
-  // A buzz where there is one — not an iPhone, from a web app — whether or not sound can play.
-  if (Platform.OS === 'web' && typeof navigator.vibrate === 'function') {
-    navigator.vibrate(BUZZ_MS)
+  if (!isWeb) {
+    void buzzNative()
+    playNative().catch((error: unknown) => {
+      console.warn('[chime] the rest-over sound could not be played', error)
+    })
+    return
   }
+  // A buzz where there is one — not an iPhone, from a web app — whether or not sound can play.
+  if (typeof navigator.vibrate === 'function') navigator.vibrate([...BUZZ_MS])
   if (audio?.state !== 'running') return
-  for (let i = 0; i < BEEPS; i += 1) beep(audio, audio.currentTime + i * (BEEP_S + GAP_S))
+  for (const start of BEEP_STARTS_S) beep(audio, audio.currentTime + start)
 }
 
 function beep(context: AudioContext, at: number): void {
@@ -57,7 +106,7 @@ function beep(context: AudioContext, at: number): void {
   const volume = context.createGain()
   tone.frequency.value = PITCH_HZ
   volume.gain.setValueAtTime(VOLUME, at)
-  volume.gain.exponentialRampToValueAtTime(0.0001, at + BEEP_S)
+  volume.gain.exponentialRampToValueAtTime(FADE_TO, at + BEEP_S)
   tone.connect(volume).connect(context.destination)
   tone.start(at)
   tone.stop(at + BEEP_S)

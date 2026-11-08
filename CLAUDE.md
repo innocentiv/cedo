@@ -1,8 +1,8 @@
 # cedo
 
 Self-hosted workout tracker. Bun + Elysia + Postgres backend, Expo (React Native) frontend — shipped
-as a web app that installs to a home screen; native iOS and Android builds are not configured yet
-(#10) — with an MCP server so an AI can plan, review and adjust training (`docs/07-mcp.md`).
+as a web app that installs to a home screen, and becoming an iOS app distributed through AltStore
+Classic (#10, ADR-0032) — with an MCP server so an AI can plan, review and adjust training (`docs/07-mcp.md`).
 
 **Read `docs/01-architecture.md` before writing any code.** The conventions below are load-bearing;
 breaking one produces a codebase that drifts from itself, which is the specific failure this project
@@ -37,7 +37,8 @@ is designed to prevent.
    and how such a set counts on the workout, and when a plan edited in place is saved — which
    lives in plain modules (`apps/app/src/auth/session.ts`, `apps/app/src/pwa/shell-cache.ts`,
    `apps/app/src/api/retry.ts`, `apps/app/src/api/pending.ts`, `apps/app/src/lib/plan-sync.ts`;
-   no React, no React Native) and is unit-tested beside them.
+   no React, no React Native) and is unit-tested beside them — as is what the native app's engine
+   lacks (`apps/app/src/lib/hermes-builtins.ts`).
    Components are never unit-tested; lint refuses it. See `docs/10-testing.md` and the amendment
    to `docs/adr/0017-webview-for-ui-verification.md`.
 
@@ -171,6 +172,14 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
 - **`e2e` and `shot` serve `apps/app/dist`, so both rebuild first.** They used not to, which meant
   editing a screen and running either tested the PREVIOUS bundle and passed. Use `e2e:only` to skip
   the rebuild when you know the bundle is current.
+- **The contract also runs on Hermes, in the native app.** Hermes lacks `toSorted` (given by
+  `apps/app/index.ts`), `Intl.PluralRules`/`ListFormat`/`RelativeTimeFormat`/`Segmenter` and
+  `Array.fromAsync`, which Bun and the browsers have, so only `hermes-builtins.test.ts` stands
+  between a new use and a crash on the phone. It lacks the RegExp `v` flag too, which that test
+  cannot see: write `u`. The exercise picker threw on `toSorted` the first time it opened natively.
+- **To read a value from the native app's runtime, log it.** Metro prints the device's console
+  (`console.log` in the root layout, then the inverse `Edit`). Its inspector socket answers a
+  script's connection with a 401 whatever `Origin` it sends: that cost a cycle on #77.
 - **A Bun script that spawns `bun` hands it the `.env` it loaded.** Bun loads `.env` into the
   script's own environment, so a child given `process.env` inherits `NODE_ENV=development` as if
   the shell had exported it. `bun test` then kept it, and the suite truncated the dev database:

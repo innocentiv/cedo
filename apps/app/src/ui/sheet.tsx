@@ -48,7 +48,13 @@ export function Sheet({ open, onClose, title, children, testID }: SheetProps): R
               testID={`${testID}-close`}
             />
           </Stack>
-          <ScrollView contentContainerStyle={[styles.gutter, styles.body]}>{children}</ScrollView>
+          {/* A focused field above the keyboard, as a browser keeps it: see `Screen`. */}
+          <ScrollView
+            contentContainerStyle={[styles.gutter, styles.body]}
+            automaticallyAdjustKeyboardInsets
+          >
+            {children}
+          </ScrollView>
         </View>
       </View>
     </Modal>
