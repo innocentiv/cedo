@@ -108,9 +108,13 @@ not the proxy's, is the sign it works.
 A release is a tag, `v0.x.y`, cut by the maintainer from `main` (ADR-0032):
 
 ```bash
-bun run release 0.2.0          # sets VERSION and the iPhone app's version, commits, tags v0.2.0
-git push origin main v0.2.0    # deploys main, as any push does — and builds the iPhone app
+bun run release 0.2.0                  # sets VERSION and the app's version, commits, tags v0.2.0
+git push --atomic origin main v0.2.0   # deploys main, as any push does — and builds the iPhone app
 ```
+
+`bun run release` refuses unless `main` is clean and is `origin/main`, the tag is free and the
+version goes up; it commits nothing it would have to take back. The push is atomic, so the tag is
+never published without the `main` it was cut from.
 
 - **The number.** `0.x` while AltStore is the only way the iPhone app is installed: a minor when the
   contract changes, so an installed app could not read what the server says, a patch otherwise.
@@ -119,7 +123,13 @@ git push origin main v0.2.0    # deploys main, as any push does — and builds t
 - **The iPhone app.** The tag runs `.github/workflows/ios.yml` on macOS: an unsigned `.ipa`, the
   AltStore source that lists it, and the icon, attached to the tag's release
   (`apps/app/scripts/build-ipa.sh`, which a Mac runs just the same). It refuses a tag that is not
-  `VERSION`. Run by hand from the Actions tab, it builds the same and publishes nothing.
+  `VERSION`. The build holds no write access; a second job attaches the files, only for a tag
+  pushed here, and can be run again. Run by hand from the Actions tab, it builds the same and
+  publishes nothing.
+- **The minutes between.** `main` deploys in a few minutes; the iOS build takes longer. Until it has
+  attached its files, an instance on the new release offers AltStore a source that is not there
+  yet, and AltStore says so; the next refresh finds it. If the build fails, fix it and run it
+  again on the same tag.
 - **Every instance built from the tag** sends `/altstore/source.json` to that release
   (`apps/app/Caddyfile`, with the line `apps/app/scripts/altstore-caddy.ts` writes when the image is
   built). Built from `0.0.0`, before any release, it offers nothing.

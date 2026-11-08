@@ -65,9 +65,9 @@ them without being asked:
   by the review's signals (#6).
 - **Working offline.** A set logged without a signal is kept and sent when one returns (#9), but
   nothing else is: starting a session, editing a plan and reading history need the server.
-- **A native app.** The app is a web app, installable on a phone's home screen. Native
-  iOS and Android builds — with the server address entered at runtime, so one build serves every
-  instance — are #10.
+- **A native app in a store, or on Android.** The iPhone app — one build for every instance, the
+  server entered at runtime — is installed with AltStore Classic, from each instance (ADR-0032).
+  A listing on the App Store is #81; Android is not built.
 - **Meal planning** — recipes, ingredients, shopping lists, meal prep. Will reuse the ownable/
   sharing machinery unchanged; see `docs/playbooks/add-entity.md`.
 - **Imperial distances.** Everything is stored metric. Weights already read and are typed in kilograms
