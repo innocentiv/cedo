@@ -46,6 +46,10 @@ export class NetworkError extends Error {
  * Deliberately loud. This is the failure Eden Treaty cannot report: compile-time types say nothing
  * about what a running server returns. It lands in `console.error`, which fails the WebView run and
  * hands the exact JSON path to whoever is iterating. See docs/10-testing.md.
+ *
+ * It is also what a person reads when a native app and its server are not one version (#78): one
+ * of them is older, and the message says to update it before the detail. Thrown, it cannot know
+ * the server's version; the native app's Settings names both.
  */
 export class ContractDriftError extends Error {
   readonly path: string
@@ -56,7 +60,9 @@ export class ContractDriftError extends Error {
       .slice(0, 3)
       .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
       .join('; ')
-    super(`The API response for ${path} does not match the contract — ${where}`)
+    super(
+      `This app and your server do not match: update the older one. The API response for ${path} does not match the contract — ${where}`,
+    )
     this.name = 'ContractDriftError'
     this.path = path
     this.issues = error.issues

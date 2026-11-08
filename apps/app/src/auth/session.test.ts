@@ -373,6 +373,41 @@ describe('forgetting', () => {
     return { store, began: began.promise, finish: () => clearing.settle(null) }
   }
 
+  /**
+   * Another server chosen (#78): the token goes from memory too, not only from the keychain, and a
+   * restore still asking the old server who it is cannot sign in with it afterwards.
+   */
+  test('drops the token held, and a restore still asking who it is changes nothing', async () => {
+    const asking = inFlight<Me>()
+    const asked = inFlight<null>()
+    const store = aStore('a')
+    let toldTheServer = false
+    const session = createSession({
+      store,
+      auth: () => ({
+        me: async () => {
+          asked.settle(null)
+          return await asking.promise
+        },
+        logout: async () => {
+          toldTheServer = true
+          return null
+        },
+        updateMe: async () => me('alice'),
+      }),
+    })
+    const restoring = session.restore()
+    await asked.promise
+    await session.forget()
+    asking.settle(me('alice'))
+    await restoring
+    expect(session.snapshot()).toEqual({ status: 'signed-out', me: null })
+    expect(session.token()).toBeNull()
+    expect(store.held()).toBeNull()
+    // This device's alone: the server the token was for is not asked.
+    expect(toldTheServer).toBe(false)
+  })
+
   /** A sign-in that follows must not find the old token still in the keychain. */
   test('says signed out only once the keychain is clear', async () => {
     const keychain = aSlowKeychain()

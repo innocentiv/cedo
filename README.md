@@ -174,8 +174,9 @@ Versioned releases are planned with the native app (#10).
 All milestones complete: contract, database, API, exercises and media, workouts and logs, MCP,
 performance, frontend, and deployment. The web app installs to a home screen and opens without a
 signal (see above). An iOS app is under way (#10, ADR-0032): a development build runs on the
-simulator and on a phone (`docs/08-frontend.md`, "The native app"). Until #78 its server is fixed
-when it is built; it will be distributed through AltStore Classic, from every instance (#79).
+simulator and on a phone (`docs/08-frontend.md`, "The native app"). It is one build for every
+instance, asking for your server on its first screen (#78); it will be distributed through
+AltStore Classic, from every instance (#79).
 
 ## Exposing it to the internet
 

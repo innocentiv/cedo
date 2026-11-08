@@ -130,6 +130,26 @@ An upgrade reaches the installed app one opening late. It opens at once from the
 fetches the new one in the background for the next time. That is the price of opening without
 waiting for the network.
 
+### The iPhone app
+
+A native iPhone app is on its way (#10, ADR-0032); until it is distributed (#79) it is a
+development build (`docs/08-frontend.md`, "The native app"). It is one app for every instance: its
+first screen asks for your server as you open it in a browser — `cedo.example.com`, or
+`192.168.1.20:8080` — and checks that it is cedo before keeping it. Change it from the sign-in
+screen; Settings shows it, and this app's version beside the server's.
+
+- **HTTPS, except on your own network.** Plain `http://` is accepted only to an IP address, a
+  `.local` name or `localhost`: anywhere else your password would cross the network unprotected.
+  The one HTTPS name the web app needs serves the phone too.
+- **A self-signed certificate** is trusted as iOS trusts any: install your certificate authority as
+  a profile, then turn on full trust for it under Settings → General → About → Certificate Trust
+  Settings. iOS asks that the certificate name the server in its Subject Alternative Name, allow
+  server authentication, and last 825 days at most. The app adds no exception of its own.
+- **On your home network** iOS asks once whether cedo may find devices there; allow it later under
+  Settings → Privacy & Security → Local Network.
+- **A different version** from the server is said in Settings, naming which to update, and never
+  stops you: the server checks every request, so an older app cannot write what it does not accept.
+
 ## Why one origin
 
 The browser talks only to Caddy. `/api/*` is proxied to the API container; everything else is the
@@ -141,8 +161,8 @@ static export. Three things follow, and all of them matter for software handed t
 - **One port to open.** The API is on the compose network only, and the database is published
   solely on the host's loopback interface (for local tooling), never on the network.
 
-Native builds have no such proxy and must be told where the server is, with
-`EXPO_PUBLIC_API_URL`. That has to be **dot access** in the source — see `docs/08-frontend.md`.
+The native app has no such proxy. It asks for the server on its first screen and keeps it, so no
+build is made for one instance (#78): see "Installing the app".
 
 ## The images
 

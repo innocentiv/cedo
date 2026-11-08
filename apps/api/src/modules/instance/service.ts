@@ -5,13 +5,13 @@ import {
   type InstancePatch,
   PRODUCT,
   type SignUpState,
+  VERSION,
   signUpOf,
 } from '@cedo/contract'
 import { type Transaction, db } from '../../db/client.ts'
 import { groupMembers, groups, instanceSettings } from '../../db/schema.ts'
 import { signUpClosed } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { VERSION } from '../../version.ts'
 import { requireCurator } from '../review/curation.ts'
 
 /**

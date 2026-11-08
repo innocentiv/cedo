@@ -1,9 +1,8 @@
 import { Elysia } from 'elysia'
 import { z } from 'zod'
-import { PlatformStatus, SlowQuery, SlowQueryQuery } from '@cedo/contract'
+import { PlatformStatus, SlowQuery, SlowQueryQuery, VERSION } from '@cedo/contract'
 import { authPlugin } from '../../plugins/auth.ts'
 import { platformStatus, slowQueries } from '../review/diagnostics.ts'
-import { VERSION } from '../../version.ts'
 
 /**
  * Diagnostics over HTTP, mirroring the MCP tools exactly.

@@ -23,6 +23,15 @@ export function signUpOf(state: SignUpState): SignUp {
 
 export const PRODUCT = 'cedo'
 
+/**
+ * The version, of the server and of the app built beside it: what `/instance`, `/admin/status`
+ * and the MCP handshake report, and what a native app compares with its server's (#78).
+ *
+ * One constant, in the one place both read, because a stranger reporting a problem gives whichever
+ * number their client shows, and sources that could drift would make that number useless.
+ */
+export const VERSION = '0.0.0'
+
 /** `GET /instance`, signed in or not. */
 export const Instance = z.object({
   product: z.literal(PRODUCT),

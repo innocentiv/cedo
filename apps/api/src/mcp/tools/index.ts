@@ -1,6 +1,6 @@
 import type { McpServer } from '@modelcontextprotocol/server'
+import { VERSION } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
-import { VERSION } from '../../version.ts'
 import { registerCoachingTools } from './coaching.ts'
 import { registerDiagnosticTools } from './diagnostics.ts'
 import { registerEquipmentTools } from './equipment.ts'

@@ -1,9 +1,11 @@
 import { Platform } from 'react-native'
 import type * as SecureStore from 'expo-secure-store'
+import type { ServerStore } from './server.ts'
 import type { TokenStore } from './session.ts'
 
 /**
- * Where the session token lives: the OS keychain on native, `localStorage` on web.
+ * Where the session token lives — and, on native, which server issued it (#78): the OS keychain on
+ * native, `localStorage` on web.
  *
  * **Branching on `Platform.OS` rather than a `.web.ts` file split, deliberately.** Metro picks
  * platform variants by extension, and this repo imports with explicit `.ts` extensions everywhere —
@@ -18,8 +20,6 @@ import type { TokenStore } from './session.ts'
  * the login handler, and nothing else.
  */
 
-const KEY = 'cedo.session'
-
 const isWeb = Platform.OS === 'web'
 
 /**
@@ -31,38 +31,44 @@ async function secureStore(): Promise<typeof SecureStore> {
   return await import('expo-secure-store')
 }
 
-async function readToken(): Promise<string | null> {
-  if (!isWeb) return await (await secureStore()).getItemAsync(KEY)
-  try {
-    return globalThis.localStorage?.getItem(KEY) ?? null
-  } catch {
-    return null
-  }
-}
-
-async function writeToken(token: string): Promise<void> {
-  if (!isWeb) {
-    await (await secureStore()).setItemAsync(KEY, token)
-    return
-  }
-  try {
-    globalThis.localStorage?.setItem(KEY, token)
-  } catch {
-    // A session that does not survive a reload is worse than one that does, not worse than none.
-  }
-}
-
-async function clearToken(): Promise<void> {
-  if (!isWeb) {
-    await (await secureStore()).deleteItemAsync(KEY)
-    return
-  }
-  try {
-    globalThis.localStorage?.removeItem(KEY)
-  } catch {
-    // If it could not be written it cannot have been stored.
+/** One string kept between launches, under `key`. */
+function kept(key: string): TokenStore {
+  return {
+    read: async () => {
+      if (!isWeb) return await (await secureStore()).getItemAsync(key)
+      try {
+        return globalThis.localStorage?.getItem(key) ?? null
+      } catch {
+        return null
+      }
+    },
+    write: async (value) => {
+      if (!isWeb) {
+        await (await secureStore()).setItemAsync(key, value)
+        return
+      }
+      try {
+        globalThis.localStorage?.setItem(key, value)
+      } catch {
+        // A session that does not survive a reload is worse than one that does, not worse than none.
+      }
+    },
+    clear: async () => {
+      if (!isWeb) {
+        await (await secureStore()).deleteItemAsync(key)
+        return
+      }
+      try {
+        globalThis.localStorage?.removeItem(key)
+      } catch {
+        // If it could not be written it cannot have been stored.
+      }
+    },
   }
 }
 
 /** The keychain, as the session reads and writes it. */
-export const tokenStore: TokenStore = { read: readToken, write: writeToken, clear: clearToken }
+export const tokenStore: TokenStore = kept('cedo.session')
+
+/** The server the token was issued by, as the native app keeps it (`server.ts`). */
+export const serverStore: ServerStore = kept('cedo.server')

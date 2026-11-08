@@ -43,6 +43,12 @@ export interface Session {
   readonly adopt: (token: string) => Promise<void>
   readonly signOut: () => Promise<void>
   /**
+   * Ends the session on this device alone, its server not told: when another server is chosen, or
+   * none is kept (#78). The token goes from memory as from the keychain, and anything still in
+   * flight for it — a restore asking who it is — is overtaken.
+   */
+  readonly forget: () => Promise<void>
+  /**
    * Saved to the account — their weight unit, the year they were born — so it follows them to every
    * device, and to what the AI writes them.
    */
@@ -190,6 +196,7 @@ export function createSession({
         .catch(() => null)
       await held.forget()
     },
+    forget: held.forget,
     update: async (patch) => {
       const updating = held.generation()
       const updated = await auth().updateMe(patch)

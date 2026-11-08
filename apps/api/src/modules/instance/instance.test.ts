@@ -1,12 +1,11 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { and, eq, sql } from 'drizzle-orm'
-import { ApiError, AuthResult, DEFAULT_GROUP_SLUG, Instance, Me } from '@cedo/contract'
+import { ApiError, AuthResult, DEFAULT_GROUP_SLUG, Instance, Me, VERSION } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { groupMembers, groups, instanceSettings, users } from '../../db/schema.ts'
 import { expectContract } from '../../test/contract.ts'
 import { TEST_PASSWORD, type TestApi, makeApi } from '../../test/harness.ts'
 import { callTool, mintPat, textOf } from '../../test/mcp-wire.ts'
-import { VERSION } from '../../version.ts'
 import * as AuthService from '../auth/service.ts'
 
 /** Sign-up as an instance setting, and a fresh instance's first account as its curator (#71). */

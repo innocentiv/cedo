@@ -1,8 +1,7 @@
 import { type AuthInfo, McpServer, createMcpHandler } from '@modelcontextprotocol/server'
 import { z } from 'zod'
-import { WeightUnit } from '@cedo/contract'
+import { VERSION, WeightUnit } from '@cedo/contract'
 import type { Caller } from '../plugins/auth.ts'
-import { VERSION } from '../version.ts'
 import { registerTools } from './tools/index.ts'
 
 /**
