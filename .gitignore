@@ -35,3 +35,7 @@ apps/app/dist/
 # expo
 apps/app/dist/
 apps/app/.expo/
+# Continuous Native Generation: `expo prebuild` (and `expo run:ios`) writes these from app.json and
+# the config plugins. They are output, never edited and never committed (ADR-0032).
+apps/app/ios/
+apps/app/android/
