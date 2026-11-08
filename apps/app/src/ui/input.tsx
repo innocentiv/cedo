@@ -74,6 +74,8 @@ export interface InputProps {
   readonly secure?: boolean
   readonly autoFocus?: boolean
   readonly autoCapitalize?: 'none' | 'sentences'
+  /** The keyboard: `url` for a server's address (#78), with `/` and `.` at hand. */
+  readonly inputMode?: 'text' | 'url'
   /**
    * What the field holds, for the password manager: an account's `username`, the password it
    * signs in with, or a `new-password` it is about to have — so the iOS Keychain offers to fill
@@ -109,6 +111,7 @@ export function Input({
   secure = false,
   autoFocus = false,
   autoCapitalize = 'none',
+  inputMode = 'text',
   autoComplete,
   multiline = false,
   wraps = false,
@@ -144,6 +147,7 @@ export function Input({
       secureTextEntry={secure}
       autoFocus={autoFocus}
       autoCapitalize={autoCapitalize}
+      inputMode={inputMode}
       autoComplete={autoComplete}
       autoCorrect={false}
       onSubmitEditing={onSubmitEditing}
@@ -249,13 +253,10 @@ export function TypedNumber({
   )
 }
 
-export interface NumberInputProps {
-  /** Null means empty. An empty numeric field is not zero — zero reps is a meaningful log. */
-  readonly value: number | null
-  readonly onChange: (value: number | null) => void
-  readonly placeholder?: string | undefined
-  readonly testID?: string | undefined
-}
+export type NumberInputProps = Pick<
+  TypedNumberProps,
+  'value' | 'onChange' | 'placeholder' | 'testID'
+>
 
 /** A plain whole number — a count. A measured quantity is a `DimensionInput`. */
 export function NumberInput(props: NumberInputProps): React.JSX.Element {

@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { type SignUp, type WeightUnit, equipmentCount } from '@cedo/contract'
+import { Platform } from 'react-native'
+import { type SignUp, VERSION, type WeightUnit, equipmentCount } from '@cedo/contract'
 import {
   Button,
   type ChoiceOption,
@@ -15,6 +16,7 @@ import {
 import { useGroups, useInstance, useSetSignUp } from '../../../src/api/queries.ts'
 import { useEquipment } from '../../../src/api/equipment-queries.ts'
 import { useAuth } from '../../../src/auth/auth-provider.tsx'
+import { type VersionNotice, hostOf, versionNotice } from '../../../src/auth/server.ts'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 import { useWeightUnit } from '../../../src/lib/weight-unit.ts'
 
@@ -113,6 +115,8 @@ export default function Settings(): React.JSX.Element {
 
         {me?.curator === true ? <SignUpSetting /> : null}
 
+        <ServerSetting />
+
         <Button
           title="Sign out"
           variant="danger"
@@ -191,4 +195,33 @@ function BirthYear(): React.JSX.Element {
       <FormError message={error} testID="birth-year-error" />
     </Stack>
   )
+}
+
+/**
+ * On native, which server — read here only; changing it is done signed out, from the sign-in
+ * screen — and this app's version beside the server's (#78). A difference is said, never refused
+ * (ADR-0032), naming the side to update. The web app is its server's own, so never shows it.
+ */
+function ServerSetting(): React.JSX.Element | null {
+  const { server } = useAuth()
+  const instance = useInstance()
+  if (Platform.OS === 'web' || server.base === null) return null
+  const notice = instance.data === undefined ? null : versionNotice(VERSION, instance.data.version)
+  return (
+    <Stack gap="sm">
+      <ListRow title="Server" subtitle={hostOf(server.base)} testID="settings-server" />
+      <Text tone={notice === null ? 'faint' : 'default'} testID="settings-version">
+        {notice === null ? `cedo ${VERSION}` : versionSaid(notice)}
+      </Text>
+    </Stack>
+  )
+}
+
+function versionSaid({ app, server, update }: NonNullable<VersionNotice>): string {
+  if (update === 'app')
+    return `This app is cedo ${app}, and your server ${server}: update this app.`
+  if (update === 'server') {
+    return `Your server is cedo ${server}, and this app ${app}: update the server.`
+  }
+  return `This app is cedo ${app}, and your server ${server}: update the older one.`
 }

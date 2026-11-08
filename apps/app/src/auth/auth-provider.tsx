@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useMemo, useSyncExternalStore } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import type { LoginInput, Me, MeUpdate, RegisterInput } from '@cedo/contract'
-import { api, session } from '../api/http.ts'
+import { api, server, session, startUp } from '../api/http.ts'
 import { WeightUnitProvider } from '../lib/weight-unit.ts'
+import type { Base, ServerSnapshot } from './server.ts'
 import type { AuthStatus } from './session.ts'
 
 /**
@@ -21,6 +22,10 @@ interface AuthValue {
   readonly updateAccount: (patch: MeUpdate) => Promise<void>
   /** When unreachable: asks the server again about the token kept. */
   readonly retry: () => Promise<void>
+  /** On native, which server (#78); on the web never chosen, the page's own. */
+  readonly server: ServerSnapshot
+  /** A server checked by the server screen, kept — the sign-in forgotten first. */
+  readonly chooseServer: (base: Base) => Promise<void>
 }
 
 const AuthContext = createContext<AuthValue | null>(null)
@@ -31,17 +36,23 @@ export function useAuth(): AuthValue {
   return value
 }
 
-export function AuthProvider({
-  children,
-}: {
-  readonly children: React.ReactNode
-}): React.JSX.Element {
-  const { status, me } = useSyncExternalStore(session.subscribe, session.snapshot)
+/**
+ * At mount, which server and who is signed in on it; and the cache emptied whenever either changes,
+ * so nothing one person or one instance was told is shown to the next.
+ */
+function useStartUp(): void {
   const queryClient = useQueryClient()
-
   useEffect(() => {
-    void session.restore()
+    void startUp()
   }, [])
+  // Another server: nothing one instance said may be shown as another's — its sign-up, above all.
+  useEffect(
+    () =>
+      server.subscribe(() => {
+        queryClient.clear()
+      }),
+    [queryClient],
+  )
   // Signed out — by choice or because the server stopped honouring the token: nothing cached for
   // the last person may be shown to the next.
   useEffect(
@@ -51,6 +62,16 @@ export function AuthProvider({
       }),
     [queryClient],
   )
+}
+
+export function AuthProvider({
+  children,
+}: {
+  readonly children: React.ReactNode
+}): React.JSX.Element {
+  const { status, me } = useSyncExternalStore(session.subscribe, session.snapshot)
+  const chosen = useSyncExternalStore(server.subscribe, server.snapshot)
+  useStartUp()
 
   const value = useMemo<AuthValue>(
     () => ({
@@ -65,8 +86,10 @@ export function AuthProvider({
       signOut: session.signOut,
       updateAccount: session.update,
       retry: session.restore,
+      server: chosen,
+      chooseServer: server.choose,
     }),
-    [status, me],
+    [status, me, chosen],
   )
 
   return (

@@ -1,8 +1,9 @@
 import { Platform } from 'react-native'
 import { createApi } from './client.ts'
 import { transport } from './transport.ts'
+import { createServerChoice } from '../auth/server.ts'
 import { createSession } from '../auth/session.ts'
-import { tokenStore } from '../auth/token-storage.ts'
+import { serverStore, tokenStore } from '../auth/token-storage.ts'
 
 /**
  * The app's adapter for the client: where the API is, the session's credential, and what happens
@@ -12,29 +13,32 @@ import { tokenStore } from '../auth/token-storage.ts'
  */
 
 /**
- * Same-origin on web: Caddy proxies `/api` to the API container, so nothing about the deployment
- * host is baked into the bundle and the same image works on any NAS at any hostname.
- *
- * Native has no such proxy and must be told where the server is. `EXPO_PUBLIC_` is Expo's inlining
- * prefix, so this is resolved at bundle time.
+ * Which server the native app talks to: the one its person typed and the app checked, kept in the
+ * keychain beside the sign-in (#78, `../auth/server.ts`). The sign-in is forgotten before another
+ * server is kept, so a token goes only to the server that issued it.
  */
-function resolveBaseUrl(): string {
-  // DOT access, deliberately: Expo substitutes `EXPO_PUBLIC_*` only for static member access, and
-  // `process.env['NAME']` silently stays undefined in a built app. See types/env.d.ts.
-  const configured = process.env.EXPO_PUBLIC_API_URL
-  if (configured !== undefined && configured !== '') return configured.replace(/\/$/u, '')
+export const server = createServerChoice({ store: serverStore, forgetSignIn: tokenStore.clear })
+
+/**
+ * Same-origin on web: Caddy proxies `/api` to the API container, so nothing about the deployment
+ * host is baked into the bundle and the same image works on any NAS at any hostname. On native,
+ * the server chosen — read at every request, since it can be changed. One build serves every
+ * instance (ADR-0032).
+ */
+function base(): string {
   if (Platform.OS === 'web') return '/api'
-  throw new Error(
-    'EXPO_PUBLIC_API_URL must be set for native builds — there is no same-origin proxy outside the browser.',
-  )
+  const chosen = server.base()
+  if (chosen === null) throw new Error('No server is chosen yet: the server screen comes first.')
+  return chosen
 }
 
-let baseUrl: string | undefined
-
-/** Lazy so importing this module on native without the variable set does not crash at load. */
-function base(): string {
-  baseUrl ??= resolveBaseUrl()
-  return baseUrl
+/**
+ * At startup: on native, which server first — none kept, and the sign-in kept without it is
+ * forgotten — then who is signed in on it.
+ */
+export async function startUp(): Promise<void> {
+  if (Platform.OS !== 'web') await server.restore()
+  await session.restore()
 }
 
 /**
