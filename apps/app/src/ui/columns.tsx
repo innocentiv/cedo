@@ -70,6 +70,8 @@ export function ScrollingColumns({
         style={WIDTHS[narrow].main}
         contentContainerStyle={styles.scrolled}
         keyboardShouldPersistTaps="handled"
+        // A focused field above the keyboard, as a browser keeps it: see `Screen`.
+        automaticallyAdjustKeyboardInsets
       >
         {main}
       </ScrollView>
@@ -79,6 +81,7 @@ export function ScrollingColumns({
         style={WIDTHS[narrow].side}
         contentContainerStyle={styles.scrolled}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
       >
         {side}
       </ScrollView>
