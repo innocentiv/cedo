@@ -32,6 +32,9 @@ export const PRODUCT = 'cedo'
  */
 export const VERSION = '0.0.0'
 
+/** The version of a checkout no release was cut from: nothing is published for it (#79). */
+export const UNRELEASED = '0.0.0'
+
 /** `GET /instance`, signed in or not. */
 export const Instance = z.object({
   product: z.literal(PRODUCT),

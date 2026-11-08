@@ -19,8 +19,9 @@ Out of scope: someone else's deployment of cedo, and the services it runs beside
 
 ## What is supported
 
-Only `main`. There are no releases yet, so a fix lands on `main` and a self-hosted instance takes it
-by upgrading (`docs/09-deployment.md`).
+The latest release, `v0.x.y`, which a self-hosted instance runs. A fix lands on `main` and reaches
+instances in the next release, cut as soon as the fix is in; an instance takes it by upgrading
+(`docs/09-deployment.md`). Older releases are not patched.
 
 ## Before exposing an instance to the internet
 
