@@ -855,8 +855,9 @@ is TanStack Query's own queue, kept in memory, with no persistence library:
 - A session's sets and its finish share one `scope` (`sessionQueue` in `src/api/write-to.ts`), so
   they run one at a time, in the order made. A finish never overtakes a set logged before it.
   Finishing without a signal therefore waits too, and goes once the sets before it have.
-- Offline, they wait (TanStack's `onlineManager`, from the browser's online and offline events), and
-  go when the signal is back.
+- Offline, they wait (TanStack's `onlineManager`: the browser's online and offline events on the
+  web, expo-network on native, where TanStack sees no network of its own — `src/api/device-state.ts`),
+  and go when the signal is back.
 - A set's `Idempotency-Key` is made once, when it is logged. A send that gets no answer, or a 5xx,
   is retried under it, up to ten sends, with TanStack's own wait between them: a second, doubling to
   thirty (`src/api/retry.ts`, a plain module with its unit test). A refusal is not retried. Neither

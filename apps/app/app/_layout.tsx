@@ -3,6 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { Slot } from 'expo-router'
 import { Platform, StatusBar } from 'react-native'
+import { watchDeviceState } from '../src/api/device-state.ts'
 import { createQueryClient } from '../src/api/query-client.ts'
 import { AuthProvider } from '../src/auth/auth-provider.tsx'
 import { registerShell } from '../src/pwa/register.ts'
@@ -24,6 +25,7 @@ export default function RootLayout(): React.JSX.Element {
 
   useEffect(() => {
     if (Platform.OS === 'web' && !__DEV__) registerShell()
+    watchDeviceState()
   }, [])
 
   return (
