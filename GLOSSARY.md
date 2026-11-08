@@ -5,6 +5,12 @@ tables and invariants behind them are in `docs/03-domain-model.md`, and the two 
 
 ## Ownership and access
 
+**Instance**:
+One self-hosted cedo, with its own accounts, groups, library and sign-up. An account exists on
+exactly one instance.
+_Avoid_: deployment, tenant, server (the machine it runs on: the app says "your server" only where
+it asks for the instance's address or cannot reach it)
+
 **Group**:
 People who own things together. Every person has a personal group of their own, so "mine" and
 "shared" are the same mechanism.
