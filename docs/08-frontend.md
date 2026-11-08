@@ -43,6 +43,7 @@ do in production. See `docs/01-architecture.md`.
 ## Layout
 
 ```
+index.ts                     the entry: what Hermes lacks first, then Expo Router's (#77)
 app/_layout.tsx              ErrorBoundary > SafeAreaProvider > QueryClient > AuthProvider > Slot
 app/index.tsx                the only cold-start redirect
 app/(auth)/_layout.tsx       bounces a signed-in visitor out
@@ -61,7 +62,8 @@ src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-
                              athlete-queries.ts (a coach's reads of an athlete's training),
                              equipment-queries.ts (what you, or an athlete, train with),
                              target-queries.ts (your own targets on a plan, and Change),
-                             retry.ts and pending.ts (+ their unit tests)
+                             retry.ts and pending.ts (+ their unit tests), device-state.ts
+                             (the network and the app's focus, on native)
 src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
 src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ its unit test), forms,
@@ -69,7 +71,9 @@ src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ it
                              screen's parts: the workout's, Today's, Progress's, a workout's
                              outline, an exercise's (exercise-detail.tsx, exercise-about.tsx,
                              exercise-media.tsx), the desktop sidebar's (sidebar.tsx), an
-                             athlete's, read by their coach (athlete.tsx)
+                             athlete's, read by their coach (athlete.tsx); chime.ts and
+                             chime-tone.ts (the rest's end), hermes-builtins.ts (+ its unit test)
+scripts/chime-wav.ts         renders assets/chime.wav, the native chime, from chime-tone.ts
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts,
                              harness.e2e.ts (the harness's own tests), journeys.test.ts (the rules
                              journeys obey), screens/ (one driver per screen; test ids live here)
@@ -176,12 +180,13 @@ opens. The rest's clock is `useRestClock`
 (`src/lib/rest-clock.ts`), read by `useJustDone` (`src/lib/just-done.ts`) in the focus's column; it
 and the session's clock read `useNow` (`src/lib/use-now.ts`), a clock of its own that ticks once a
 second only while it must — so the focus re-renders while a rest runs, not the day beside it. The tone at the end of a rest is `src/lib/chime.ts`, made by the
-browser, nothing bundled — three beeps, played through iOS's silent switch where Safari lets a page
+browser on the web — three beeps, played through iOS's silent switch where Safari lets a page
 say its sound is a short alert (`navigator.audioSession`, `transient`: it lowers the athlete's
 music for a moment, where `playback` would stop it), and a buzz where `navigator.vibrate` exists.
 On native (#77) the same beeps are `assets/chime.wav`, rendered from the numbers in
 `src/lib/chime-tone.ts` by `scripts/chime-wav.ts`, and played by expo-audio through the silent
-switch, the music ducked while they play; the buzz is three taps of expo-haptics. `expo-audio`'s
+switch, the music ducked while they play; the buzz is three taps of expo-haptics. The file is in
+the web export too, and never fetched there. `expo-audio`'s
 config plugin is told to add no microphone permission and no background audio: the chime plays only
 with the app open.
 
@@ -936,7 +941,7 @@ against Metro. See `docs/09-deployment.md`.
 ## The native app
 
 iOS only, through AltStore Classic (ADR-0032); Android has its package name and nothing else. A
-development build is made on this Mac with Xcode, CocoaPods and a free Apple ID — no Expo account,
+development build is made on a Mac with Xcode, CocoaPods and a free Apple ID — no Expo account,
 no EAS. Setting up a Mac for it is in `docs/research/2026-11-native-app.md`, "Setting up this Mac".
 
 ```bash
@@ -963,7 +968,8 @@ EXPO_PUBLIC_API_URL=http://localhost:8081/api bunx expo start --dev-client
 - **The contract runs on Hermes too**, React Native's engine, which lacks a few built-ins Bun and
   every browser have. `index.ts`, the app's entry, gives it `Array.prototype.toSorted` before any
   module runs (`src/lib/hermes-builtins.ts`); the others it lacks are listed there, and
-  `hermes-builtins.test.ts` fails on the first use of one in the app or the contract.
+  `hermes-builtins.test.ts` fails on the first use of one in the app or the contract — all but the
+  RegExp `v` flag, which no pattern can tell from a path such as `/vi/` in a string.
 - **What differs on native**: a set's idempotency key takes its random bytes from expo-crypto, since
   React Native has no `crypto`; TanStack Query hears the network from expo-network and the app's
   focus from `AppState` (`src/api/device-state.ts`); the rest's end is a bundled sound and

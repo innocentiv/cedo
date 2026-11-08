@@ -1,5 +1,5 @@
 import { useEffect, useId, useState } from 'react'
-import { Platform, StyleSheet, TextInput, View } from 'react-native'
+import { StyleSheet, TextInput, View } from 'react-native'
 import {
   COUNT,
   type FieldEvent,
@@ -9,7 +9,7 @@ import {
   fieldText,
 } from '@cedo/contract'
 import { CONTROL_HEIGHT, color, radius, space, type } from './tokens.ts'
-import { DoneBar } from './done-bar.tsx'
+import { DoneBar, onDoneBar } from './done-bar.tsx'
 import { GrowingInput } from './growing-input.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
@@ -195,14 +195,14 @@ export function TypedNumber({
   useEffect(() => {
     if (edit.own) send({ kind: 'settled' })
   })
-  const doneBar = useId()
+  const doneBarId = useId()
   const shown = fieldText(edit, typing)
   const input = (
     <>
       <TextInput
         testID={testID}
         value={shown}
-        {...(Platform.OS === 'ios' ? { inputAccessoryViewID: doneBar } : {})}
+        {...onDoneBar(doneBarId)}
         onBlur={() => {
           send({ kind: 'blur' })
         }}
@@ -224,7 +224,7 @@ export function TypedNumber({
         inputMode={typing.decimals ? 'decimal' : 'numeric'}
         style={[styles.input, styles.numeric, size === 'large' ? styles.large : null]}
       />
-      <DoneBar nativeID={doneBar} />
+      <DoneBar id={doneBarId} />
     </>
   )
   if (size === 'regular') return input

@@ -8,9 +8,11 @@
  * no module runs before it; where the engine has its own, it changes nothing.
  *
  * Hermes also lacks `Array.fromAsync`, `Intl.PluralRules`, `Intl.ListFormat`,
- * `Intl.RelativeTimeFormat`, `Intl.Segmenter`, `Intl.DateTimeFormat#formatRange` and the RegExp `v`
- * flag, and formats a unit with `Intl.NumberFormat` wrongly — 2 kg as "4.409#". Nothing uses them,
- * and `hermes-builtins.test.ts` fails on the first use of any of them in the app or the contract.
+ * `Intl.RelativeTimeFormat`, `Intl.Segmenter` and `Intl.DateTimeFormat#formatRange`, and formats a
+ * unit with `Intl.NumberFormat` wrongly — 2 kg as "4.409#". Nothing uses them, and
+ * `hermes-builtins.test.ts` fails on the first use of any of them in the app or the contract. It
+ * lacks the RegExp `v` flag too, which no pattern can tell from a path such as `/vi/` in a string:
+ * that one is the reviewer's to catch.
  */
 
 /** What ES2023's `toSorted` gives: a sorted copy, the array itself untouched. */
@@ -29,7 +31,7 @@ function toSorted<T>(this: ArrayLike<T>, compare?: (a: T, b: T) => number): T[] 
 }
 
 /** Gives `prototype` a `toSorted` when it has none; one it has is left alone. */
-export function giveMissing(prototype: object): void {
+export function giveToSorted(prototype: object): void {
   if ('toSorted' in prototype) return
   Object.defineProperty(prototype, 'toSorted', {
     value: toSorted,
@@ -39,4 +41,4 @@ export function giveMissing(prototype: object): void {
   })
 }
 
-giveMissing(Array.prototype)
+giveToSorted(Array.prototype)

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { giveMissing, sortedCopy } from './hermes-builtins.ts'
+import { giveToSorted, sortedCopy } from './hermes-builtins.ts'
 
 describe('toSorted, for an engine without it', () => {
   test('is a sorted copy, and leaves the array as it was', () => {
@@ -18,7 +18,7 @@ describe('toSorted, for an engine without it', () => {
 
   test('is given to a prototype without one, as a method, unlisted', () => {
     const bare: object = {}
-    giveMissing(bare)
+    giveToSorted(bare)
     const method: unknown = Reflect.get(bare, 'toSorted')
     if (typeof method !== 'function') throw new Error('toSorted was not given')
     expect(Reflect.apply(method, [3, 1, 2], [(a: number, b: number) => a - b])).toEqual([1, 2, 3])
@@ -28,7 +28,7 @@ describe('toSorted, for an engine without it', () => {
   test('is not given over one the engine has', () => {
     const own = (): string => 'its own'
     const has = { toSorted: own }
-    giveMissing(has)
+    giveToSorted(has)
     expect(has.toSorted).toBe(own)
   })
 })

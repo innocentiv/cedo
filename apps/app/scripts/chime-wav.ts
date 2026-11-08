@@ -10,9 +10,8 @@
 import {
   BEEP_S,
   BEEP_STARTS_S,
-  BEEPS,
   FADE_TO,
-  GAP_S,
+  LENGTH_S,
   PITCH_HZ,
   VOLUME,
 } from '../src/lib/chime-tone.ts'
@@ -21,7 +20,7 @@ const RATE = 22_050
 const HEADER_BYTES = 44
 const BYTES_PER_SAMPLE = 2
 
-const length = Math.ceil(((BEEPS - 1) * (BEEP_S + GAP_S) + BEEP_S) * RATE)
+const length = Math.ceil(LENGTH_S * RATE)
 const wav = new DataView(new ArrayBuffer(HEADER_BYTES + length * BYTES_PER_SAMPLE))
 
 function text(at: number, value: string): void {

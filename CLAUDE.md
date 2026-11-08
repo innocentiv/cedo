@@ -37,7 +37,8 @@ is designed to prevent.
    and how such a set counts on the workout, and when a plan edited in place is saved — which
    lives in plain modules (`apps/app/src/auth/session.ts`, `apps/app/src/pwa/shell-cache.ts`,
    `apps/app/src/api/retry.ts`, `apps/app/src/api/pending.ts`, `apps/app/src/lib/plan-sync.ts`;
-   no React, no React Native) and is unit-tested beside them.
+   no React, no React Native) and is unit-tested beside them — as is what the native app's engine
+   lacks (`apps/app/src/lib/hermes-builtins.ts`).
    Components are never unit-tested; lint refuses it. See `docs/10-testing.md` and the amendment
    to `docs/adr/0017-webview-for-ui-verification.md`.
 
@@ -172,10 +173,10 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   editing a screen and running either tested the PREVIOUS bundle and passed. Use `e2e:only` to skip
   the rebuild when you know the bundle is current.
 - **The contract also runs on Hermes, in the native app.** Hermes lacks `toSorted` (given by
-  `apps/app/index.ts`), `Intl.PluralRules`/`ListFormat`/`RelativeTimeFormat`/`Segmenter`,
-  `Array.fromAsync` and the RegExp `v` flag; Bun and the browsers have them all, so only
-  `hermes-builtins.test.ts` stands between a new use and a crash on the phone. The exercise picker
-  threw on `toSorted` the first time it was opened natively.
+  `apps/app/index.ts`), `Intl.PluralRules`/`ListFormat`/`RelativeTimeFormat`/`Segmenter` and
+  `Array.fromAsync`, which Bun and the browsers have, so only `hermes-builtins.test.ts` stands
+  between a new use and a crash on the phone. It lacks the RegExp `v` flag too, which that test
+  cannot see: write `u`. The exercise picker threw on `toSorted` the first time it opened natively.
 - **To read a value from the native app's runtime, log it.** Metro prints the device's console
   (`console.log` in the root layout, then the inverse `Edit`). Its inspector socket answers a
   script's connection with a 401 whatever `Origin` it sends: that cost a cycle on #77.

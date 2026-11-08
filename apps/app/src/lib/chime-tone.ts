@@ -23,6 +23,9 @@ export const BEEP_STARTS_S: readonly number[] = Array.from(
   (_, i) => i * (BEEP_S + GAP_S),
 )
 
+/** From the first beep's start to the last one's end. */
+export const LENGTH_S = (BEEPS - 1) * (BEEP_S + GAP_S) + BEEP_S
+
 /** The buzz keeps the beeps' rhythm: on for each, off between. */
 export const BUZZ_MS: readonly number[] = Array.from({ length: BEEPS * 2 - 1 }, (_, i) =>
   Math.round((i % 2 === 0 ? BEEP_S : GAP_S) * 1000),

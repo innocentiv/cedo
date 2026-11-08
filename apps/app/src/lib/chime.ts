@@ -7,7 +7,8 @@ import { BEEP_S, BEEP_STARTS_S, BUZZ_MS, FADE_TO, PITCH_HZ, VOLUME } from './chi
  * The tone when a rest is over (#24, #37): three short beeps (`chime-tone.ts`), and a buzz in their
  * rhythm where the device has one. Only while the app is open: told with it closed is #39.
  *
- * **On the web** the browser makes the beeps — nothing bundled, nothing fetched. iOS lets a page
+ * **On the web** the browser makes the beeps: the native app's sound file is in the export, never
+ * fetched. iOS lets a page
  * make sound only from an audio context started by a tap. So the context is started on the tap that
  * logs a set (`primeChime`), and the beeps after that set's rest play through it; until a set is
  * logged on this open, the rest is silent. And iOS mutes a page's sound with the silent switch,
