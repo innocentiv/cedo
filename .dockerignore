@@ -4,6 +4,11 @@ node_modules
 .artifacts
 apps/app/dist
 apps/app/.expo
+# What a Mac generates for the iPhone app — the native project, its Pods, the archive — is no
+# part of the web image, and is hundreds of megabytes (#79).
+apps/app/ios
+apps/app/android
+apps/app/build
 **/*.tsbuildinfo
 .env
 .env.local

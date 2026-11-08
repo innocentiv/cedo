@@ -20,8 +20,12 @@ COPY apps/app apps/app
 WORKDIR /app/apps/app
 # The static export, and the service worker that keeps it on an installed phone (src/pwa/).
 RUN bun run export
+# Where this version's iPhone app is offered from, for AltStore (#79): a Caddy line naming the
+# release built from the same commit, or none before the first. See scripts/altstore.ts.
+RUN bun run scripts/altstore-caddy.ts > altstore.caddy
 
 FROM caddy:2-alpine AS runtime
 COPY --from=build /app/apps/app/dist /srv
 COPY apps/app/Caddyfile /etc/caddy/Caddyfile
+COPY --from=build /app/apps/app/altstore.caddy /etc/caddy/altstore.caddy
 EXPOSE 80
