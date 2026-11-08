@@ -32,10 +32,11 @@ is designed to prevent.
    everywhere — see `docs/adr/0020-rpe-is-numeric.md` and
    `docs/adr/0027-reps-in-reserve-whole-everywhere.md`.
 7. **All behaviour is tested on the backend.** UI code stays trivially thin and holds no domain
-   logic. The one exception is state only the app owns — who is signed in on this device, and the
-   app shell it keeps for opening offline, and when a set logged without a signal is sent again,
-   and how such a set counts on the workout, and when a plan edited in place is saved — which
-   lives in plain modules (`apps/app/src/auth/session.ts`, `apps/app/src/pwa/shell-cache.ts`,
+   logic. The one exception is state only the app owns — who is signed in on this device, and on
+   which server, and the app shell it keeps for opening offline, and when a set logged without a
+   signal is sent again, and how such a set counts on the workout, and when a plan edited in place
+   is saved — which lives in plain modules (`apps/app/src/auth/session.ts`,
+   `apps/app/src/auth/server.ts`, `apps/app/src/pwa/shell-cache.ts`,
    `apps/app/src/api/retry.ts`, `apps/app/src/api/pending.ts`, `apps/app/src/lib/plan-sync.ts`;
    no React, no React Native) and is unit-tested beside them — as is what the native app's engine
    lacks (`apps/app/src/lib/hermes-builtins.ts`).
