@@ -31,15 +31,16 @@ describe('a set is sent again', () => {
 
 describe('an idempotency key', () => {
   const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u
+  const random = (bytes: Uint8Array): Uint8Array => crypto.getRandomValues(bytes)
 
   test('is a version 4 UUID, as the API accepts', () => {
-    expect(newIdempotencyKey()).toMatch(UUID_V4)
+    expect(newIdempotencyKey(random)).toMatch(UUID_V4)
   })
 
   /** `crypto.randomUUID` exists only on HTTPS or localhost; the app also runs over plain HTTP. */
   test('is made from random bytes alone, so it works where randomUUID does not', () => {
     const zeros = (bytes: Uint8Array) => bytes.fill(0)
     expect(newIdempotencyKey(zeros)).toBe('00000000-0000-4000-8000-000000000000')
-    expect(newIdempotencyKey()).not.toBe(newIdempotencyKey())
+    expect(newIdempotencyKey(random)).not.toBe(newIdempotencyKey(random))
   })
 })
