@@ -1,12 +1,11 @@
 /**
  * `bun run scripts/altstore-source.ts <built .app> <.ipa>`, from `apps/app`, on macOS — prints the
  * AltStore source a release carries (#79), from the built app's own Info.plist and the `.ipa`'s
- * size and digest. Run by .github/workflows/ios.yml on a tag; what it writes is `altstore.ts`.
+ * size and digest. Run by `build-ipa.sh`; what it writes is `altstore.ts`.
  */
 import { VERSION } from '@cedo/contract'
 import { $ } from 'bun'
-import { z } from 'zod'
-import { sourceFor } from './altstore.ts'
+import { AppInfo, sourceFor } from './altstore.ts'
 
 const [app, ipa] = Bun.argv.slice(2)
 if (app === undefined || ipa === undefined) {
@@ -14,13 +13,7 @@ if (app === undefined || ipa === undefined) {
   process.exit(1)
 }
 
-const Info = z.looseObject({
-  CFBundleIdentifier: z.string(),
-  CFBundleShortVersionString: z.string(),
-  CFBundleVersion: z.string(),
-  MinimumOSVersion: z.string(),
-})
-const info = Info.parse(await $`plutil -convert json -o - ${app}/Info.plist`.json())
+const info = AppInfo.parse(await $`plutil -convert json -o - ${app}/Info.plist`.json())
 const bytes = await Bun.file(ipa).bytes()
 
 const source = sourceFor({

@@ -1,13 +1,16 @@
 # The iPhone app, built for a release (#79, ADR-0032).
 #
-# On a tag `v<version>` — pushed after `bun run release <version>` — it builds the unsigned `.ipa`,
-# the AltStore source that lists it and the icon (apps/app/scripts/build-ipa.sh, which a Mac runs
-# just the same), and attaches the three to that tag's release. Every instance built from the tag
-# sends `/altstore/source.json` there (apps/app/Caddyfile), so the app it offers is its own.
+# On a tag `v<version>` pushed to innocentiv/cedo — after `bun run release <version>` — `ipa` builds
+# the unsigned `.ipa`, the AltStore source that lists it and the icon (apps/app/scripts/build-ipa.sh,
+# which a Mac runs just the same), and `release` attaches the three to that tag's release. Every
+# instance built from the tag sends `/altstore/source.json` there (apps/app/Caddyfile), so the app
+# it offers is its own.
 #
-# Run by hand, it builds the same and keeps the files as this run's artifact, published nowhere: a
-# trial before a first tag. No Expo account and no certificate: AltStore signs every app with its
-# user's own Apple ID.
+# The build holds no write access: it runs code from npm, Expo's plugins and CocoaPods. Only
+# `release`, which runs none, may write, and only for a pushed tag of this repository. Run by hand,
+# from the Actions tab, it builds the same and publishes nothing: the files stay the run's artifact.
+#
+# No Expo account and no certificate: AltStore signs every app with its user's own Apple ID.
 
 name: iOS app
 
@@ -23,49 +26,49 @@ jobs:
   ipa:
     runs-on: macos-26
     timeout-minutes: 60
-    permissions:
-      # To attach the files to the tag's release; nothing else is written.
-      contents: write
     steps:
       # Pinned to commits, as the repository requires; GitHub's own actions and setup-bun only (#70).
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.4.3
       - run: bun install --frozen-lockfile
       - name: The Xcode it builds with
         run: xcodebuild -version
-
-      - name: A tag names the version the app is built as
-        if: startsWith(github.ref, 'refs/tags/')
-        working-directory: apps/app
-        run: |
-          VERSION=$(bun -e "import { VERSION } from '@cedo/contract'; console.log(VERSION)")
-          if [ "$GITHUB_REF_NAME" != "v$VERSION" ]; then
-            echo "The tag is $GITHUB_REF_NAME, but VERSION is $VERSION: cut it with bun run release."
-            exit 1
-          fi
-
       - name: The .ipa, its AltStore source and the icon
-        run: apps/app/scripts/build-ipa.sh
-
-      - name: Attached to the tag's release
-        if: startsWith(github.ref, 'refs/tags/')
         env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "$GITHUB_REF_NAME" --verify-tag \
-            --title "cedo ${GITHUB_REF_NAME#v}" \
-            --notes "The iPhone app, for AltStore Classic: add your instance's source, https://<your server>/altstore/source.json — see docs/09-deployment.md." \
-            apps/app/build/*.ipa apps/app/build/source.json apps/app/build/icon.png
-
-      - name: Kept as the run's artifact, run by hand
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+          # A tag must name the version the app is built as; run by hand, nothing is checked.
+          TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
+        run: apps/app/scripts/build-ipa.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: cedo-ipa
-          path: |
-            apps/app/build/*.ipa
-            apps/app/build/source.json
-            apps/app/build/icon.png
+          path: apps/app/build/release/
           retention-days: 7
+
+  release:
+    needs: ipa
+    if: github.event_name == 'push' && github.repository == 'innocentiv/cedo'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # To attach the files to the tag's release, and nothing else.
+      contents: write
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cedo-ipa
+          path: release
+      - name: Attached to the tag's release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        # Again from the start if a run failed halfway: the release is made once, the files replaced.
+        run: |
+          gh release view "$TAG" > /dev/null 2>&1 ||
+            gh release create "$TAG" --verify-tag --title "cedo ${TAG#v}" \
+              --notes "The iPhone app, for AltStore Classic: add your instance's source, https://<your server>/altstore/source.json — see docs/09-deployment.md."
+          gh release upload "$TAG" --clobber release/*

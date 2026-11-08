@@ -46,6 +46,15 @@ describe('the source a release carries', () => {
     ])
   })
 
+  /** As AltStore matches them: `UsageDescription` anywhere in the key, whatever its value. */
+  test('lists a permission whose key goes on past UsageDescription', () => {
+    const where = { NSLocationTemporaryUsageDescriptionDictionary: { Workouts: 'Your gym' } }
+    const listed = sourceFor({ info: { ...INFO, ...where }, ipa: IPA, version: '0.1.0', date: '' })
+    expect(listed.apps[0]?.appPermissions.privacy).toMatchObject({
+      NSLocationTemporaryUsageDescriptionDictionary: '{"Workouts":"Your gym"}',
+    })
+  })
+
   /** "AltStore will refuse to install any app whose permissions do not match." */
   test('lists every permission the app asks, with what it says, and no entitlement', () => {
     expect(app?.appPermissions).toEqual({

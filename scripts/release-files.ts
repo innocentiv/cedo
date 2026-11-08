@@ -10,8 +10,13 @@ const SEMVER = /^(\d+)\.(\d+)\.(\d+)$/u
 
 const parts = (version: string): number[] => version.split('.').map(Number)
 
+const DECLARED = /^export const VERSION = '([^']*)'$/mu
+
+/** The version `packages/contract/src/instance.ts` declares, or null when it declares none. */
+export const versionIn = (source: string): string | null => DECLARED.exec(source)?.[1] ?? null
+
 /** Why `wanted` cannot follow `current`, or null when it can: three numbers, and after it. */
-export function checkVersion(current: string, wanted: string): string | null {
+export function whyNotNext(current: string, wanted: string): string | null {
   if (!SEMVER.test(wanted)) return `${wanted} is not three numbers, as 0.1.0 is.`
   const [a, b] = [parts(current), parts(wanted)]
   for (let i = 0; i < 3; i += 1) {
@@ -24,9 +29,8 @@ export function checkVersion(current: string, wanted: string): string | null {
 
 /** `packages/contract/src/instance.ts`, with `VERSION` set. */
 export function withVersion(source: string, version: string): string {
-  const declared = /^export const VERSION = '[^']*'$/mu
-  if (!declared.test(source)) throw new Error('No `export const VERSION = ...` line to set.')
-  return source.replace(declared, `export const VERSION = '${version}'`)
+  if (versionIn(source) === null) throw new Error('No `export const VERSION = ...` line to set.')
+  return source.replace(DECLARED, `export const VERSION = '${version}'`)
 }
 
 /**

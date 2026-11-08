@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { checkVersion, withAppVersion, withVersion } from './release-files.ts'
+import { versionIn, whyNotNext, withAppVersion, withVersion } from './release-files.ts'
 
 /** What `bun run release <version>` writes, without a repository: the files as text in and out. */
 
@@ -26,24 +26,29 @@ const APP = `{
 
 describe('a version to release', () => {
   test('is three numbers, after the one released before', () => {
-    expect(checkVersion('0.0.0', '0.1.0')).toBeNull()
-    expect(checkVersion('0.9.0', '0.10.0')).toBeNull()
-    expect(checkVersion('0.1.0', '1.0.0')).toBeNull()
+    expect(whyNotNext('0.0.0', '0.1.0')).toBeNull()
+    expect(whyNotNext('0.9.0', '0.10.0')).toBeNull()
+    expect(whyNotNext('0.1.0', '1.0.0')).toBeNull()
   })
 
   test('is refused when it is not three numbers', () => {
-    expect(checkVersion('0.0.0', 'v0.1.0')).toMatch(/three numbers/u)
-    expect(checkVersion('0.0.0', '0.1')).toMatch(/three numbers/u)
+    expect(whyNotNext('0.0.0', 'v0.1.0')).toMatch(/three numbers/u)
+    expect(whyNotNext('0.0.0', '0.1')).toMatch(/three numbers/u)
   })
 
   /** AltStore offers whatever differs; a release's number only ever goes up, so it is clear which is newer. */
   test('is refused when it is not after the one before', () => {
-    expect(checkVersion('0.2.0', '0.2.0')).toMatch(/after 0\.2\.0/u)
-    expect(checkVersion('0.10.0', '0.9.0')).toMatch(/after 0\.10\.0/u)
+    expect(whyNotNext('0.2.0', '0.2.0')).toMatch(/after 0\.2\.0/u)
+    expect(whyNotNext('0.10.0', '0.9.0')).toMatch(/after 0\.10\.0/u)
   })
 })
 
 describe('the files a release writes', () => {
+  test('read the version the contract declares', () => {
+    expect(versionIn(INSTANCE)).toBe('0.0.0')
+    expect(versionIn('export const OTHER = 1\n')).toBeNull()
+  })
+
   test('give the contract its version', () => {
     expect(withVersion(INSTANCE, '0.1.0')).toContain(`export const VERSION = '0.1.0'`)
     expect(withVersion(INSTANCE, '0.1.0')).toContain(`export const PRODUCT = 'cedo'`)

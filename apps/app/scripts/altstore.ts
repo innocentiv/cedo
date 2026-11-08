@@ -3,7 +3,13 @@
  * the redirect every instance serves to the source of its own version. Pure, and tested
  * (altstore.test.ts); `altstore-source.ts` and `altstore-caddy.ts` are what call it, in the iOS
  * build and in the web image's.
+ *
+ * It reads the app alone: the app is unsigned, so it carries no entitlement, and it has no
+ * extension. AltStore reads both, from the app and from every extension it embeds — so
+ * `build-ipa.sh` refuses an app with an extension until this learns to read them too.
  */
+import { UNRELEASED } from '@cedo/contract'
+import { z } from 'zod'
 
 /** Where a release's files are: this repository's releases, by tag. */
 export const RELEASES = 'https://github.com/innocentiv/cedo/releases/download'
@@ -11,14 +17,14 @@ export const RELEASES = 'https://github.com/innocentiv/cedo/releases/download'
 export const releaseFile = (version: string, name: string): string =>
   `${RELEASES}/v${version}/${name}`
 
-/** What `sourceFor` reads of the built app's Info.plist. */
-export interface AppInfo {
-  readonly CFBundleIdentifier: string
-  readonly CFBundleShortVersionString: string
-  readonly CFBundleVersion: string
-  readonly MinimumOSVersion: string
-  readonly [key: string]: unknown
-}
+/** What `sourceFor` reads of the built app's Info.plist, the rest kept for its permissions. */
+export const AppInfo = z.looseObject({
+  CFBundleIdentifier: z.string(),
+  CFBundleShortVersionString: z.string(),
+  CFBundleVersion: z.string(),
+  MinimumOSVersion: z.string(),
+})
+export type AppInfo = z.output<typeof AppInfo>
 
 export interface Ipa {
   readonly size: number
@@ -88,13 +94,16 @@ const LISTING = {
   category: 'lifestyle',
 } as const
 
-/** Every permission the app asks, with what it says: each `…UsageDescription` of its Info.plist. */
+/**
+ * Every permission the app asks, with what it says: each key of its Info.plist with
+ * `UsageDescription` in its name, as AltStore matches them — `NSLocationTemporaryUsageDescriptionDictionary`
+ * too, whose value is not a sentence and is listed as it is written.
+ */
 function privacyOf(info: AppInfo): Record<string, string> {
   return Object.fromEntries(
-    Object.entries(info).filter(
-      (entry): entry is [string, string] =>
-        entry[0].endsWith('UsageDescription') && typeof entry[1] === 'string',
-    ),
+    Object.entries(info)
+      .filter(([key]) => key.includes('UsageDescription'))
+      .map(([key, said]) => [key, typeof said === 'string' ? said : JSON.stringify(said)]),
   )
 }
 
@@ -104,6 +113,6 @@ function privacyOf(info: AppInfo): Record<string, string> {
  * first release, since nothing is released as 0.0.0.
  */
 export function caddyRedirect(version: string): string {
-  if (version === '0.0.0') return ''
+  if (version === UNRELEASED) return ''
   return `redir /altstore/source.json ${releaseFile(version, 'source.json')} 302`
 }

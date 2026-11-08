@@ -1,4 +1,5 @@
 import { openapi } from '@elysiajs/openapi'
+import { VERSION } from '@cedo/contract'
 import { z } from 'zod'
 
 /**
@@ -21,7 +22,7 @@ export const createOpenapiPlugin = () =>
     documentation: {
       info: {
         title: 'cedo API',
-        version: '0.0.0',
+        version: VERSION,
         description:
           'Self-hosted workout tracker. The same schemas back these routes, the MCP tools at ' +
           '/mcp, and the client — see docs/04-contract.md.',
