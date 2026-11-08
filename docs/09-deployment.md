@@ -21,6 +21,7 @@ Three containers, **one published port**. Verified from a clean `docker compose 
 ## Getting it running
 
 ```bash
+git checkout "$(git tag --list 'v*' --sort=-version:refname | head -1)"   # the latest release
 cp .env.example .env          # then set POSTGRES_PASSWORD
 docker compose up --build -d
 curl -s localhost:8080/api/health          # {"ok":true,"db":true}
@@ -29,10 +30,11 @@ open http://localhost:8080                 # register, and you have a library
 
 That is the whole install. Migrations and seeding run inside the API container before it binds, so a
 container that is accepting traffic is one whose schema is current and whose library is present.
-Both are idempotent, so this is also the upgrade path:
+Both are idempotent, so this is also the upgrade path, to the latest release:
 
 ```bash
-git pull
+git fetch --tags
+git checkout "$(git tag --list 'v*' --sort=-version:refname | head -1)"
 docker compose pull db          # the latest Postgres 18 minor release
 docker compose build --pull     # rebuild api + web on FRESH Bun and Caddy base images
 docker compose up -d
@@ -52,7 +54,8 @@ Each line does something the others do not:
 ## Deploying on push
 
 This is how the maintainer's own instance deploys, and it is optional: an instance upgraded by hand,
-as above, runs exactly the same. Follow it only if you want every push to `main` of your own fork to
+as above, runs exactly the same — at a release, where this runs every commit on `main`, ahead of
+the last one. Follow it only if you want every push to `main` of your own fork to
 reach your server, and change the repository name in the deploy job's condition: as shipped, it
 runs only in `innocentiv/cedo` (below).
 
@@ -100,6 +103,27 @@ let a client claim any address it likes. Behind a CDN, add its ranges to the var
 curator's `platform_status` shows where the last login attempt came from: a real client's address,
 not the proxy's, is the sign it works.
 
+## Releases
+
+A release is a tag, `v0.x.y`, cut by the maintainer from `main` (ADR-0032):
+
+```bash
+bun run release 0.2.0          # sets VERSION and the iPhone app's version, commits, tags v0.2.0
+git push origin main v0.2.0    # deploys main, as any push does — and builds the iPhone app
+```
+
+- **The number.** `0.x` while AltStore is the only way the iPhone app is installed: a minor when the
+  contract changes, so an installed app could not read what the server says, a patch otherwise.
+  `VERSION` lives in the contract (`packages/contract/src/instance.ts`), read by the API and the
+  app alike, and only `bun run release` changes it.
+- **The iPhone app.** The tag runs `.github/workflows/ios.yml` on macOS: an unsigned `.ipa`, the
+  AltStore source that lists it, and the icon, attached to the tag's release
+  (`apps/app/scripts/build-ipa.sh`, which a Mac runs just the same). It refuses a tag that is not
+  `VERSION`. Run by hand from the Actions tab, it builds the same and publishes nothing.
+- **Every instance built from the tag** sends `/altstore/source.json` to that release
+  (`apps/app/Caddyfile`, with the line `apps/app/scripts/altstore-caddy.ts` writes when the image is
+  built). Built from `0.0.0`, before any release, it offers nothing.
+
 ## Installing the app
 
 The web app installs to a phone's home screen: no app store, and the same for every instance. It then
@@ -132,11 +156,29 @@ waiting for the network.
 
 ### The iPhone app
 
-A native iPhone app is on its way (#10, ADR-0032); until it is distributed (#79) it is a
-development build (`docs/08-frontend.md`, "The native app"). It is one app for every instance: its
-first screen asks for your server as you open it in a browser — `cedo.example.com`, or
+There is also a native iPhone app, installed with **AltStore Classic** (ADR-0032): free, signed with
+your own Apple ID, and offered by your own instance. It is one app for every instance: its first
+screen asks for your server as you open it in a browser — `cedo.example.com`, or
 `192.168.1.20:8080` — and checks that it is cedo before keeping it. Change it from the sign-in
 screen; Settings shows it, and this app's version beside the server's.
+
+It suits you if you already sideload; strangers are better served by the web app above. AltStore
+asks for a computer running AltServer (macOS or Windows) to install it and to refresh it every
+seven days, Developer Mode on the phone, your Apple ID's password, typed into AltServer, and one of
+three active app slots, AltStore itself taking another ([AltStore](https://faq.altstore.io)).
+
+**Installing it.** With AltStore on the phone, open this link in Safari there, with your server in
+it — an instance serves its source at `/altstore/source.json`, over HTTPS, which AltStore needs:
+
+```
+altstore-classic://source?url=https://cedo.example.com/altstore/source.json
+```
+
+SideStore takes the same source, as `sidestore://source?url=…`. Then install cedo from the source.
+The source lists the app built from the same release as your instance, so the two are always one
+version: upgrade the instance, and AltStore offers the matching app — an older one too, should you
+go back a release. Until the phone next reaches AltServer, the app it has may be a version behind;
+Settings says so.
 
 - **HTTPS, except on your own network.** Plain `http://` is accepted only to an IP address, a
   `.local` name or `localhost`: anywhere else your password would cross the network unprotected.

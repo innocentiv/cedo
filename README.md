@@ -4,25 +4,27 @@ Self-hosted workout tracker with a first-class MCP server, so an AI can plan and
 training as a real user under real permissions.
 
 Bun + Elysia + Postgres on the back, Expo (React Native) on the front, deployed with
-`docker compose`. The app ships as a web app that installs to a phone's home screen; native iOS and
-Android builds are not configured yet (#10).
+`docker compose`. The app ships as a web app that installs to a phone's home screen, and as an
+iPhone app your own instance offers, installed with AltStore Classic.
 
 ---
 
 ## Run it (no development)
 
 ```bash
+git checkout "$(git tag --list 'v*' --sort=-version:refname | head -1)"   # the latest release
 cp .env.example .env      # set POSTGRES_PASSWORD to anything but the default
 docker compose up --build -d
 open http://localhost:8080
 ```
 
 That is the whole install. Migrations and the starter exercise library run inside the API container
-before it accepts traffic, and both are idempotent, so upgrading is a pull and a rebuild — on fresh
-base images, so Bun and Caddy security patches arrive too:
+before it accepts traffic, and both are idempotent, so upgrading is the next release and a rebuild —
+on fresh base images, so Bun and Caddy security patches arrive too:
 
 ```bash
-git pull && docker compose pull db && docker compose build --pull && docker compose up -d
+git fetch --tags && git checkout "$(git tag --list 'v*' --sort=-version:refname | head -1)" &&
+  docker compose pull db && docker compose build --pull && docker compose up -d
 ```
 
 Details and backup instructions: **[docs/09-deployment.md](docs/09-deployment.md)**.
@@ -167,16 +169,15 @@ The three rules worth knowing before you type anything:
 
 ## Status
 
-Before 1.0, maintained by one person, and in daily use on the maintainer's own instance. There are
-no releases or version numbers yet: `main` is what runs, and an instance upgrades by pulling it.
-Versioned releases are planned with the native app (#10).
+Before 1.0, maintained by one person, and in daily use on the maintainer's own instance. Releases are
+numbered `0.x` and tagged `v0.x.y`: an instance runs the latest, and upgrades by checking out the
+next. `main` is what the maintainer's own instance runs, ahead of the last release.
 
 All milestones complete: contract, database, API, exercises and media, workouts and logs, MCP,
 performance, frontend, and deployment. The web app installs to a home screen and opens without a
-signal (see above). An iOS app is under way (#10, ADR-0032): a development build runs on the
-simulator and on a phone (`docs/08-frontend.md`, "The native app"). It is one build for every
-instance, asking for your server on its first screen (#78); it will be distributed through
-AltStore Classic, from every instance (#79).
+signal (see above). The iPhone app is one build for every instance, asking for your server on its
+first screen; each release builds it, and every instance offers the one of its own version to
+AltStore Classic (ADR-0032, `docs/09-deployment.md`, "The iPhone app").
 
 ## Exposing it to the internet
 
