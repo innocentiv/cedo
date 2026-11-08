@@ -30,6 +30,7 @@ that says so and links back.
 | [0029](0029-sign-up-and-the-first-curator.md) | Sign-up is the instance's setting, and a fresh instance's first account curates it | Accepted |
 | [0030](0030-agpl-and-a-contribution-licence.md) | Licensed AGPL-3.0-or-later; outside code waits for a contribution licence | Accepted |
 | [0031](0031-login-limit.md) | Failed logins are limited per address and per address and username, in Postgres | Accepted |
+| [0032](0032-iphone-app-through-altstore.md) | The iPhone app goes out through AltStore Classic, one build for every instance, with numbered releases | Accepted |
 
 The numbering has gaps: decisions that were planned an ADR (such as 0005, the three-container
 deployment shape) are recorded in the relevant doc instead — `docs/01-architecture.md` for that
