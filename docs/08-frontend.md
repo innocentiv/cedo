@@ -179,6 +179,11 @@ second only while it must — so the focus re-renders while a rest runs, not the
 browser, nothing bundled — three beeps, played through iOS's silent switch where Safari lets a page
 say its sound is a short alert (`navigator.audioSession`, `transient`: it lowers the athlete's
 music for a moment, where `playback` would stop it), and a buzz where `navigator.vibrate` exists.
+On native (#77) the same beeps are `assets/chime.wav`, rendered from the numbers in
+`src/lib/chime-tone.ts` by `scripts/chime-wav.ts`, and played by expo-audio through the silent
+switch, the music ducked while they play; the buzz is three taps of expo-haptics. `expo-audio`'s
+config plugin is told to add no microphone permission and no background audio: the chime plays only
+with the app open.
 
 Sets logged without a signal (#9) count as done on the workout — the next set comes up, rest
 starts — through `src/api/pending.ts`: app-owned state with no React in it, so unit-tested beside
