@@ -10,6 +10,7 @@
   "scripts": {
     "setup": "bun run scripts/setup.ts",
     "dev": "bun run scripts/dev.ts",
+    "release": "bun run scripts/release.ts",
     "dev:api": "bun --watch apps/api/src/index.ts",
     "dev:app": "cd apps/app && ./node_modules/.bin/expo start --web",
     "check": "bun run format && bun run lint && bun run typecheck && bun run docs:links && bun run test",
