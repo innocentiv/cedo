@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "license": "AGPL-3.0-or-later",
-  "main": "expo-router/entry",
+  "main": "./index.ts",
   "scripts": {
     "start": "expo start",
     "web": "expo start --web",
