@@ -30,7 +30,7 @@ export const PRODUCT = 'cedo'
  * One constant, in the one place both read, because a stranger reporting a problem gives whichever
  * number their client shows, and sources that could drift would make that number useless.
  */
-export const VERSION = '0.0.0'
+export const VERSION = '0.1.0'
 
 /** The version of a checkout no release was cut from: nothing is published for it (#79). */
 export const UNRELEASED = '0.0.0'

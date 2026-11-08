@@ -2,7 +2,7 @@
   "expo": {
     "name": "cedo",
     "slug": "cedo",
-    "version": "0.0.0",
+    "version": "0.1.0",
     "scheme": "cedo",
     "icon": "./assets/icon.png",
     "orientation": "default",
@@ -34,6 +34,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "io.github.innocentiv.cedo",
+      "buildNumber": "1",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "cedo connects to your server when it is on your local network."
       }
