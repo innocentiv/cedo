@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Platform } from 'react-native'
 import { Redirect } from 'expo-router'
 import {
   Button,
@@ -29,7 +28,7 @@ export default function Login(): React.JSX.Element {
     })
   }
   // On native, which server comes first (#78).
-  if (Platform.OS !== 'web' && server.status === 'none') return <Redirect href="/server" />
+  if (server.status === 'none') return <Redirect href="/server" />
 
   return (
     <FrontDoor testID="login-screen">

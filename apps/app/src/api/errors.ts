@@ -48,7 +48,8 @@ export class NetworkError extends Error {
  * hands the exact JSON path to whoever is iterating. See docs/10-testing.md.
  *
  * It is also what a person reads when a native app and its server are not one version (#78): one
- * of them is older, and the message says to update it before the detail. Settings names which.
+ * of them is older, and the message says to update it before the detail. Thrown, it cannot know
+ * the server's version; the native app's Settings names both.
  */
 export class ContractDriftError extends Error {
   readonly path: string
@@ -60,7 +61,7 @@ export class ContractDriftError extends Error {
       .map((i) => `${i.path.join('.') || '(root)'}: ${i.message}`)
       .join('; ')
     super(
-      `This app and your server do not match: update the older one (Settings says which). The API response for ${path} does not match the contract — ${where}`,
+      `This app and your server do not match: update the older one. The API response for ${path} does not match the contract — ${where}`,
     )
     this.name = 'ContractDriftError'
     this.path = path

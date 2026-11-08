@@ -3,7 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { LoginInput, Me, MeUpdate, RegisterInput } from '@cedo/contract'
 import { api, server, session, startUp } from '../api/http.ts'
 import { WeightUnitProvider } from '../lib/weight-unit.ts'
-import type { Base, ServerSnapshot } from './server.ts'
+import type { Connection, ServerSnapshot } from './server.ts'
 import type { AuthStatus } from './session.ts'
 
 /**
@@ -22,10 +22,10 @@ interface AuthValue {
   readonly updateAccount: (patch: MeUpdate) => Promise<void>
   /** When unreachable: asks the server again about the token kept. */
   readonly retry: () => Promise<void>
-  /** On native, which server (#78); on the web never chosen, the page's own. */
+  /** On native, which server (#78); on the web `served`, the page's own. */
   readonly server: ServerSnapshot
-  /** A server checked by the server screen, kept — the sign-in forgotten first. */
-  readonly chooseServer: (base: Base) => Promise<void>
+  /** An address as typed: read, checked, and kept if it is cedo — the sign-in forgotten first. */
+  readonly connect: (typed: string) => Promise<Connection>
 }
 
 const AuthContext = createContext<AuthValue | null>(null)
@@ -87,7 +87,7 @@ export function AuthProvider({
       updateAccount: session.update,
       retry: session.restore,
       server: chosen,
-      chooseServer: server.choose,
+      connect: server.connect,
     }),
     [status, me, chosen],
   )

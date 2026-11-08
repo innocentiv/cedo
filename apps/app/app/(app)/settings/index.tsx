@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Platform } from 'react-native'
 import { type SignUp, VERSION, type WeightUnit, equipmentCount } from '@cedo/contract'
 import {
   Button,
@@ -205,13 +204,18 @@ function BirthYear(): React.JSX.Element {
 function ServerSetting(): React.JSX.Element | null {
   const { server } = useAuth()
   const instance = useInstance()
-  if (Platform.OS === 'web' || server.base === null) return null
+  // The web app keeps no server: its page is its server's own.
+  if (server.base === null) return null
   const notice = instance.data === undefined ? null : versionNotice(VERSION, instance.data.version)
   return (
     <Stack gap="sm">
       <ListRow title="Server" subtitle={hostOf(server.base)} testID="settings-server" />
       <Text tone={notice === null ? 'faint' : 'default'} testID="settings-version">
-        {notice === null ? `cedo ${VERSION}` : versionSaid(notice)}
+        {instance.isError
+          ? `This app is cedo ${VERSION}. Your server did not say which it is: update the older one.`
+          : notice === null
+            ? `cedo ${VERSION}`
+            : versionSaid(notice)}
       </Text>
     </Stack>
   )

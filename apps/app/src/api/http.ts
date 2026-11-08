@@ -1,7 +1,7 @@
 import { Platform } from 'react-native'
 import { createApi } from './client.ts'
 import { transport } from './transport.ts'
-import { createServerChoice } from '../auth/server.ts'
+import { createServerChoice, startUp as startUpOn } from '../auth/server.ts'
 import { createSession } from '../auth/session.ts'
 import { serverStore, tokenStore } from '../auth/token-storage.ts'
 
@@ -14,10 +14,18 @@ import { serverStore, tokenStore } from '../auth/token-storage.ts'
 
 /**
  * Which server the native app talks to: the one its person typed and the app checked, kept in the
- * keychain beside the sign-in (#78, `../auth/server.ts`). The sign-in is forgotten before another
- * server is kept, so a token goes only to the server that issued it.
+ * keychain beside the sign-in (#78, `../auth/server.ts`). The session is forgotten on this device —
+ * the token in memory as in the keychain — before another server is kept, so a token goes only to
+ * the server that issued it. The web app's is the page's own.
  */
-export const server = createServerChoice({ store: serverStore, forgetSignIn: tokenStore.clear })
+export const server = createServerChoice({
+  store: serverStore,
+  fetcher: fetch,
+  forgetSignIn: async () => {
+    await session.forget()
+  },
+  served: Platform.OS === 'web',
+})
 
 /**
  * Same-origin on web: Caddy proxies `/api` to the API container, so nothing about the deployment
@@ -32,13 +40,9 @@ function base(): string {
   return chosen
 }
 
-/**
- * At startup: on native, which server first — none kept, and the sign-in kept without it is
- * forgotten — then who is signed in on it.
- */
+/** At startup: which server first, then who is signed in on it (`../auth/server.ts`). */
 export async function startUp(): Promise<void> {
-  if (Platform.OS !== 'web') await server.restore()
-  await session.restore()
+  await startUpOn(server, session.restore)
 }
 
 /**
