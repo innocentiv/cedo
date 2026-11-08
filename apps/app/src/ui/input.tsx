@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { StyleSheet, TextInput, View } from 'react-native'
+import { useEffect, useId, useState } from 'react'
+import { Platform, StyleSheet, TextInput, View } from 'react-native'
 import {
   COUNT,
   type FieldEvent,
@@ -9,6 +9,7 @@ import {
   fieldText,
 } from '@cedo/contract'
 import { CONTROL_HEIGHT, color, radius, space, type } from './tokens.ts'
+import { DoneBar } from './done-bar.tsx'
 import { GrowingInput } from './growing-input.tsx'
 import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
@@ -194,32 +195,37 @@ export function TypedNumber({
   useEffect(() => {
     if (edit.own) send({ kind: 'settled' })
   })
+  const doneBar = useId()
   const shown = fieldText(edit, typing)
   const input = (
-    <TextInput
-      testID={testID}
-      value={shown}
-      onBlur={() => {
-        send({ kind: 'blur' })
-      }}
-      /**
-       * Focusing a prefilled numeric field selects it, so typing REPLACES the prescribed value.
-       * Without it, tapping a field showing "8" and typing 8 logs 88 — into permanent history,
-       * mid-workout, where nobody is checking.
-       */
-      selectTextOnFocus
-      onChangeText={(text) => {
-        const event = { kind: 'type', text } as const
-        send(event)
-        // What a keystroke emits depends on its text alone, so this render's state answers it.
-        const { emit } = editField(edit, event, typing)
-        if (emit !== undefined) onChange(emit)
-      }}
-      placeholder={placeholder}
-      placeholderTextColor={color.textFaint}
-      inputMode={typing.decimals ? 'decimal' : 'numeric'}
-      style={[styles.input, styles.numeric, size === 'large' ? styles.large : null]}
-    />
+    <>
+      <TextInput
+        testID={testID}
+        value={shown}
+        {...(Platform.OS === 'ios' ? { inputAccessoryViewID: doneBar } : {})}
+        onBlur={() => {
+          send({ kind: 'blur' })
+        }}
+        /**
+         * Focusing a prefilled numeric field selects it, so typing REPLACES the prescribed value.
+         * Without it, tapping a field showing "8" and typing 8 logs 88 — into permanent history,
+         * mid-workout, where nobody is checking.
+         */
+        selectTextOnFocus
+        onChangeText={(text) => {
+          const event = { kind: 'type', text } as const
+          send(event)
+          // What a keystroke emits depends on its text alone, so this render's state answers it.
+          const { emit } = editField(edit, event, typing)
+          if (emit !== undefined) onChange(emit)
+        }}
+        placeholder={placeholder}
+        placeholderTextColor={color.textFaint}
+        inputMode={typing.decimals ? 'decimal' : 'numeric'}
+        style={[styles.input, styles.numeric, size === 'large' ? styles.large : null]}
+      />
+      <DoneBar nativeID={doneBar} />
+    </>
   )
   if (size === 'regular') return input
   /**
