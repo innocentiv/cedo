@@ -958,7 +958,9 @@ EXPO_PUBLIC_API_URL=http://localhost:8081/api bunx expo start --dev-client
 - **On your iPhone**: `bunx expo run:ios --device`, signed by the free Personal Team of the Apple ID
   in Xcode. The first install is trusted under Settings → General → VPN & Device Management, and
   the phone asks for local network access. A free team's install stops opening after seven days:
-  run it again.
+  run it again. If the app says "The Internet connection appears to be offline" while Safari on the
+  phone reaches Metro and Local Network lists cedo as allowed, restart the phone: once, iOS applied
+  the permission only after a restart.
 - **`ios/` and `android/` are never committed** (Continuous Native Generation). Every native setting
   is in `app.json` and its config plugins. `expo run:ios` does not apply a changed plugin option to
   an `ios/` that exists: regenerate it with `bunx expo prebuild --platform ios --clean`.
@@ -973,7 +975,8 @@ EXPO_PUBLIC_API_URL=http://localhost:8081/api bunx expo start --dev-client
 - **What differs on native**: a set's idempotency key takes its random bytes from expo-crypto, since
   React Native has no `crypto`; TanStack Query hears the network from expo-network and the app's
   focus from `AppState` (`src/api/device-state.ts`); the rest's end is a bundled sound and
-  expo-haptics (`src/lib/chime.ts`); a video opens outside the app.
+  expo-haptics (`src/lib/chime.ts`); a video opens outside the app, from its picture or the button
+  below it.
 - **The keyboard is the app's to manage**, where a browser does it unasked. Every scroll moves a
   focused field above the keyboard (`automaticallyAdjustKeyboardInsets`); a numeric field's number
   pad, which has no key to lower it, gets a bar with Done, as Safari's has (`TypedNumber`); a tab's
@@ -988,7 +991,8 @@ EXPO_PUBLIC_API_URL=http://localhost:8081/api bunx expo start --dev-client
 2. Start a session and log a set. The rest counts down and ends in three beeps and three taps,
    heard with the silent switch on, any music lowered while they play. Undo it.
 3. In flight mode, log a set: it shows as not sent yet. Leave flight mode: it is sent.
-4. An exercise's image shows; its video opens outside the app.
+4. An exercise's image shows. Its video's picture, and Watch the video below it, open the video
+   outside the app.
 5. Settings → Connect your AI shows this server's MCP address.
 6. Nothing sits under the clock or the home indicator. On sign-in, Password can be reached with the
    keyboard up. A weight or reps field's number pad has Done above it, and Done brings Log back

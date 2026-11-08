@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Platform, Pressable, StyleSheet, View } from 'react-native'
+import { Linking, Platform, Pressable, StyleSheet, View } from 'react-native'
 import { playingUrl } from '@cedo/contract'
 import { Icon } from './icon.tsx'
 import { NavButton } from './nav-button.tsx'
@@ -64,7 +64,18 @@ export function VideoPlayer({
           </View>
         </Pressable>
       ) : thumbnail === null ? null : (
-        <Thumbnail uri={thumbnail} label={label} />
+        // Where it cannot play in place — off the web — the picture opens it, as the button below
+        // does: on the web a tapped picture plays, and a phone's did nothing (#77).
+        <Pressable
+          accessibilityRole="link"
+          accessibilityLabel={`Watch ${label}`}
+          onPress={() => {
+            void Linking.openURL(url)
+          }}
+          testID={`${testID}-picture`}
+        >
+          <Thumbnail uri={thumbnail} label={label} />
+        </Pressable>
       )}
       {playable ? null : <NavButton title="Watch the video" href={url} testID={`${testID}-link`} />}
     </Stack>
