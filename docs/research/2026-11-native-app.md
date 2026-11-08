@@ -1,10 +1,23 @@
 # A native app — November 2026
 
-> **Research, 2026-11-07.** What it takes to ship cedo as a native iOS app (Android noted where it
-> helps), checked against Apple's, Google's and Expo's own pages and against the source of other
-> self-hosted apps. It records **findings** and **recommendations**. Nothing here is decided. A
-> decision goes into an ADR and into #10 (the native app) or #39 (the rest told with the app closed).
-> Once those are recorded, this file is history, as `docs/ux/2026-10-ui-review.md` is.
+> **Decided, 2026-11-08.** Researched on 2026-11-07; the questions for #10 were settled in a design
+> session and recorded where decisions live: ADR-0032 for the iPhone app, how it is distributed and
+> numbered releases; `GLOSSARY.md` for *Instance*. The answers were mostly the recommendations here,
+> with these differences:
+> - **The App Store is left for later**, as its own issue. The paid program, the seller, a demo
+>   instance, account deletion, a privacy policy and EAS are not part of #10.
+> - **The server is recognised by `GET /instance`** (ADR-0029), which already names the product and
+>   its version, not by `/health`.
+> - **The repository has since gone public.** macOS runners cost nothing, and the `.ipa` is attached
+>   to this repository's own releases. The costs and the "public home" below were written while it
+>   was private.
+> - **Self-hosters run release tags**, and an instance's `/altstore/source.json` redirects to the
+>   source published with its own version's release: shape B, with a redirect for a file, since a
+>   source's permissions and size are known only once the `.ipa` is built.
+> - **Open questions 7, 8 and 14–16** — how loud, other devices, the countdown, the alarm's title,
+>   the extension — belong to #39 and stay open there.
+>
+> What follows is the evidence and the reasoning, kept as history.
 
 Read against `main` at 1875297: Expo SDK 58.0.11, React Native 0.88.0, React 19.3
 (`apps/app/package.json`). Pages were read on 2026-11-07 unless a date is given. Where something is
