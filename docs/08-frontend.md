@@ -47,7 +47,7 @@ index.ts                     the entry: what Hermes lacks first, then Expo Route
 app/_layout.tsx              ErrorBoundary > SafeAreaProvider > QueryClient > AuthProvider > Slot
 app/index.tsx                the only cold-start redirect
 app/(auth)/_layout.tsx       bounces a signed-in visitor out
-app/(auth)/login.tsx  register.tsx
+app/(auth)/login.tsx  register.tsx  server.tsx (native: which server, first)
 app/(app)/_layout.tsx        the signed-in shell: bottom bar on phone, sidebar on tablet
 
 app/(app)/today/            index · session/[id]        the live logging screen
@@ -64,7 +64,8 @@ src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-
                              target-queries.ts (your own targets on a plan, and Change),
                              retry.ts and pending.ts (+ their unit tests), device-state.ts
                              (the network and the app's focus, on native)
-src/auth/                    session.ts (+ its unit test), auth-provider.tsx, token-storage.ts
+src/auth/                    session.ts and server.ts (+ their unit tests), auth-provider.tsx,
+                             token-storage.ts
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
 src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ its unit test), forms,
                              pickers, ownership-line.tsx, duplicate-into-my-group.tsx, and each
@@ -774,19 +775,20 @@ source's data needs its row changed by hand.
 
 ### Configuration reaches the bundle only through dot access
 
-`process.env.EXPO_PUBLIC_API_URL` — **never** `process.env['EXPO_PUBLIC_API_URL']`. Expo's Babel
-plugin substitutes `EXPO_PUBLIC_*` for static member access only; bracket access is left alone and
-evaluates to `undefined` in a built app, so a native build threw "EXPO_PUBLIC_API_URL must be set"
-no matter what was set. Verified by grepping the bundle: with bracket access neither the value nor
-the variable name appears in it.
+The app reads no build-time configuration: the native app's server, the one thing it was used for
+(`EXPO_PUBLIC_API_URL`), is asked for at runtime since #78. Should a variable come back, two things
+cost a cycle each before:
 
-`apps/app/types/env.d.ts` declares the variable as a real property, which is what lets dot access
-coexist with `noPropertyAccessFromIndexSignature`.
-
-It is **not** called `expo-env.d.ts`. That filename belongs to the Expo CLI, which regenerates it and
-rewrites `tsconfig.json`'s `include` on every `expo start` / `expo export` — a declaration put there
-is deleted the next time either runs, and the app then fails to typecheck with an index-signature
-error that points nowhere near the cause.
+- `process.env.EXPO_PUBLIC_X` — **never** `process.env['EXPO_PUBLIC_X']`. Expo's Babel plugin
+  substitutes `EXPO_PUBLIC_*` for static member access only; bracket access is left alone and
+  evaluates to `undefined` in a built app, so a native build threw "must be set" no matter what was
+  set. Grep the bundle: with bracket access neither the value nor the name appears in it. Declare
+  the variable as a real property in a file under `apps/app/types/`, which lets dot access coexist
+  with `noPropertyAccessFromIndexSignature`.
+- That file is **not** `expo-env.d.ts`. That filename belongs to the Expo CLI, which regenerates it
+  and rewrites `tsconfig.json`'s `include` on every `expo start` / `expo export` — a declaration put
+  there is deleted the next time either runs, and the app then fails to typecheck with an
+  index-signature error that points nowhere near the cause.
 
 ### A rejected credential ends the session
 
@@ -948,13 +950,14 @@ no EAS. Setting up a Mac for it is in `docs/research/2026-11-native-app.md`, "Se
 bun run dev:api                                    # the API on :3000
 cd apps/app
 bunx expo run:ios --no-bundler                     # prebuild, pods, build, install on the simulator
-EXPO_PUBLIC_API_URL=http://localhost:8081/api bunx expo start --dev-client
-                                                   # Metro, whose /api proxy reaches the API
+bunx expo start --dev-client                       # Metro, whose /api proxy reaches the API
 ```
 
-- **The server is still fixed when the bundle is made**, by `EXPO_PUBLIC_API_URL`, until it is
-  asked for at runtime (#78). On the simulator it is Metro's own `/api`; on a phone, Metro at the
-  Mac's address on the Wi-Fi.
+- **The app's first screen asks for the server** (#78, `app/(auth)/server.tsx`; its rules are
+  `src/auth/server.ts`). In development it is Metro, whose `/api` proxy reaches the API:
+  `localhost:8081` on the simulator, and on a phone the Mac's address on the Wi-Fi, `:8081`. It is
+  kept in the keychain beside the sign-in, shown on the sign-in screen with Change server, and in
+  Settings with this app's version beside the server's.
 - **On your iPhone**: `bunx expo run:ios --device`, signed by the free Personal Team of the Apple ID
   in Xcode. The first install is trusted under Settings → General → VPN & Device Management, and
   the phone asks for local network access. A free team's install stops opening after seven days:
