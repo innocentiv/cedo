@@ -1,4 +1,5 @@
 import { elapsedS } from './session-flow.ts'
+import { formatMinutes } from './units.ts'
 
 /**
  * Weeks as an athlete reads them (#25): Monday to Sunday, in the device's own time — the server does
@@ -112,14 +113,6 @@ export function byWeek<T extends { readonly startedAt: string }>(
           : `Week of ${formatDay(new Date(start)).slice(4)}`,
     items: inWeek,
   }))
-}
-
-/** `52 min`, `1 h 5 min`: how long a session took, as a history row says it. */
-export function formatMinutes(seconds: number): string {
-  const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${String(minutes)} min`
-  const rest = minutes % 60
-  return `${String(Math.floor(minutes / 60))} h${rest === 0 ? '' : ` ${String(rest)} min`}`
 }
 
 /**

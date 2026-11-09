@@ -116,7 +116,20 @@ measurement but a rating — whole, stored as RPE in `numeric(3,1)` (ADR-0020, A
 person or an AI reads or writes says RPE.
 
 **`packages/contract/src/units.ts` is the only file permitted to convert.** If you find yourself
-writing `/ 1000` or `* 2.20462` anywhere else, stop and use a helper from that file.
+writing `/ 1000` or `* 2.20462` anywhere else, stop and use a helper from that file, or add one
+there with its test.
+
+Time is a unit too. A clock (`Date.now()`, `Date.parse`, `setTimeout`) counts milliseconds, and
+every duration we keep is seconds: `msToS` and `sToMs` cross between them, exactly, and the caller
+rounds as it means to. `minutesToS`, `daysToMs`, `formatDuration` and `formatMinutes` are there too.
+A `/ 1000` reads the same whether it turns grams into kilograms or milliseconds into seconds; a
+helper's name says which.
+
+`test/unit-conversions.test.ts` enforces it. It scans the source, but not the tests, for a
+conversion factor beside `*`, `/` or `%`: 60, 1000, 3600, the milliseconds in a minute, an hour or a
+day, a pound or a mile. It names the file and line of each one it finds outside `units.ts`.
+Comments, strings and regular expressions are not read. A test states its own expected values, so
+`59 * 60` is fine there.
 
 Which unit a value is *typed* in — kg for a weight, metres for a distance — is decided once, in
 `DIMENSION_FIELDS` (`packages/contract/src/dimension.ts`), which calls those helpers. A screen

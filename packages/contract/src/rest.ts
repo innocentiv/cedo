@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { Timestamp } from './primitives.ts'
-import { formatDuration } from './units.ts'
+import { formatDuration, msToS } from './units.ts'
 
 /**
  * The rest a plan entry prescribes between its working sets, and what the logger counts down.
@@ -85,7 +85,7 @@ export function restLeft(
     .filter((l) => l.entryId === entry.id && !l.isWarmup)
     .reduce<number | null>((at, l) => Math.max(at ?? 0, Date.parse(l.loggedAt)), null)
   if (latest === null) return null
-  const left = Math.ceil(entry.restSeconds - (now - latest) / 1000)
+  const left = Math.ceil(entry.restSeconds - msToS(now - latest))
   return Math.min(entry.restSeconds, Math.max(0, left))
 }
 
@@ -105,7 +105,7 @@ export const REST_EXTENSION_S = 30
  */
 export function restRemaining(rest: Rest, extensions: number, now: number): number {
   const seconds = rest.seconds + extensions * REST_EXTENSION_S
-  const left = Math.ceil(seconds - (now - Date.parse(rest.since)) / 1000)
+  const left = Math.ceil(seconds - msToS(now - Date.parse(rest.since)))
   return Math.min(seconds, Math.max(0, left))
 }
 
@@ -141,7 +141,7 @@ export function restCounted(
 ): Rest | null {
   const here = counted.seconds + extensions * REST_EXTENSION_S
   const same = kept !== null && Date.parse(kept.since) === Date.parse(counted.since)
-  const there = same ? Math.round((Date.parse(kept.endsAt) - Date.parse(kept.since)) / 1000) : null
+  const there = same ? Math.round(msToS(Date.parse(kept.endsAt) - Date.parse(kept.since))) : null
   // Ending when it began, it was skipped — here before a reload, or on another device.
   if (there === 0) return null
   return { since: counted.since, seconds: Math.max(here, there ?? 0) }

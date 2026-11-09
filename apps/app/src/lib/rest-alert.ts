@@ -1,4 +1,4 @@
-import type { RestAlert, RestPhase } from '@cedo/contract'
+import { type RestAlert, type RestPhase, msToS, sToMs } from '@cedo/contract'
 import type { TokenStore } from '../auth/session.ts'
 import { observed } from './observed.ts'
 
@@ -117,12 +117,12 @@ export function wantedAlert({
   if (kind === 'off') return null
   if (phase.phase === 'over' && !phase.skipped) return 'told'
   if (phase.phase !== 'running') return null
-  return { kind, endsAt: now + phase.left * 1000, sessionId, ...said }
+  return { kind, endsAt: now + sToMs(phase.left), sessionId, ...said }
 }
 
 /** Whole seconds to an end, by this phone's clock — never none: iOS refuses an alert due now. */
 export const secondsUntil = (endsAt: number, now: number): number =>
-  Math.max(1, Math.round((endsAt - now) / 1000))
+  Math.max(1, Math.round(msToS(endsAt - now)))
 
 /**
  * The app's own chime at a rest's end, unless an alarm is set for it, which rings even with the app

@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { Exercise, type TrackingMode, WorkoutSession } from '@cedo/contract'
+import { Exercise, type TrackingMode, WorkoutSession, daysToMs } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { workoutSessions } from '../../db/schema.ts'
 import { resolveCaller } from '../../plugins/auth.ts'
@@ -57,7 +57,7 @@ export function reviewFixture(user: TestUser) {
       // Finished, as past training is — and so the next can start: one is in progress at a time.
       await finish(user, session.id)
       if (daysAgo > 0) {
-        const startedAt = new Date(Date.now() - daysAgo * 86_400_000)
+        const startedAt = new Date(Date.now() - daysToMs(daysAgo))
         await db
           .update(workoutSessions)
           .set({ startedAt, endedAt: new Date(startedAt.getTime() + 3_600_000) })

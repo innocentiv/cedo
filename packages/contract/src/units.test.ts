@@ -1,14 +1,19 @@
 import { describe, expect, test } from 'bun:test'
 import {
   cmToMm,
+  daysToMs,
   formatDuration,
+  formatMinutes,
   formatWeight,
   gToKg,
   gToLb,
   kgToG,
   lbToG,
+  minutesToS,
   mmToCm,
+  msToS,
   roundToIncrement,
+  sToMs,
 } from './units.ts'
 
 describe('weight conversion', () => {
@@ -83,5 +88,30 @@ describe('distance and duration', () => {
 
   test('negative durations clamp rather than rendering nonsense', () => {
     expect(formatDuration(-10)).toBe('0:00')
+  })
+
+  test('how long a session took reads in minutes, and an hour and over as hours and minutes', () => {
+    expect([3540, 3600, 3900, 5400].map((s) => formatMinutes(s))).toEqual([
+      '59 min',
+      '1 h',
+      '1 h 5 min',
+      '1 h 30 min',
+    ])
+  })
+})
+
+/** A clock on the device or the server reads milliseconds; every duration we keep is seconds. */
+describe('time', () => {
+  test('milliseconds and seconds convert both ways, exactly — the caller rounds as it means to', () => {
+    expect(msToS(1500)).toBe(1.5)
+    expect(msToS(90_000)).toBe(90)
+    expect(sToMs(1.5)).toBe(1500)
+    expect(sToMs(90)).toBe(90_000)
+  })
+
+  test('minutes to seconds, and days to milliseconds', () => {
+    expect(minutesToS(15)).toBe(900)
+    expect(daysToMs(1)).toBe(86_400_000)
+    expect(daysToMs(30)).toBe(2_592_000_000)
   })
 })
