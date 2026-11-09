@@ -19,7 +19,8 @@ small as it is.
 > contract, where it is unit-tested with no DOM.
 >
 > No raw `<View>`, `<Text>` or `StyleSheet` in a screen file. No literal colour or pixel value
-> anywhere outside `src/ui/tokens.ts`.
+> anywhere outside `src/ui/tokens.ts` — but in Swift, which cannot read it: `modules/` and
+> `targets/` name the token a colour copies, and size what iOS alone draws.
 
 Every behaviour is proven on the backend (`docs/10-testing.md`). If a screen grows logic worth
 testing, that is the signal it belongs somewhere else.
@@ -65,7 +66,8 @@ src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-
                              retry.ts and pending.ts (+ their unit tests), device-state.ts
                              (the network and the app's focus, on native)
 src/auth/                    session.ts and server.ts (+ their unit tests), auth-provider.tsx,
-                             token-storage.ts
+                             token-storage.ts (the keychain: the sign-in, the server, how a rest's
+                             end is told)
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
 src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ its unit test), forms,
                              pickers, ownership-line.tsx, duplicate-into-my-group.tsx, and each
@@ -73,7 +75,12 @@ src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ it
                              outline, an exercise's (exercise-detail.tsx, exercise-about.tsx,
                              exercise-media.tsx), the desktop sidebar's (sidebar.tsx), an
                              athlete's, read by their coach (athlete.tsx); chime.ts and
-                             chime-tone.ts (the rest's end), hermes-builtins.ts (+ its unit test)
+                             chime-tone.ts (the rest's end), rest-alert.ts (+ its unit test: what
+                             the phone has set to tell a rest's end) and rest-alert-device.ts
+                             (asking iOS for it), observed.ts (a value React subscribes to),
+                             hermes-builtins.ts (+ its unit test)
+modules/rest-alarm/          the app's own native module: a rest's end rung through AlarmKit
+targets/rest-countdown/      the widget extension counting an alarm's rest down on the Lock Screen
 scripts/chime-wav.ts         renders assets/chime.wav, the native chime, from chime-tone.ts
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts,
                              harness.e2e.ts (the harness's own tests), journeys.test.ts (the rules
@@ -151,8 +158,9 @@ or nothing — none chosen is undescribed, #33), `EntryEditor` (one plan entry's
 line in a workout's outline, #26), and the
 workout's (#24) — `FocusLogger` (the exercise in focus: its `SetMarks`, the next set's `Stepper`s,
 one Log button, and the reserve asked before it), `AfterSet` (in Log's place once a set is logged,
-#63: Undo, the rest's countdown and Skip, and `LastSet` under them — the set just logged, a best,
-its reserve as said), `UpNext`
+#63: Undo, the rest's countdown and Skip, "Tell me when rest is over" while nothing tells the
+phone a rest's end, #39, and `LastSet` under them — the set just logged, a best, its reserve as
+said), `UpNext`
 and `AddRow`,
 `SessionHeader` and `ReturnBar`; and Today's (#25) — `WeekStrip`, a week's days as the contract's
 `weekStrip` gives them. They are still presentational — the rules they render (loads

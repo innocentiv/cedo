@@ -6,7 +6,7 @@ suite becomes slow, flaky, or quietly stops proving anything.
 | Tier | Where | Answers | Cost |
 | ---- | ----- | ------- | ---- |
 | T1 contract | `packages/contract/**/*.test.ts` | Is the domain arithmetic right? | milliseconds |
-| T1 app modules | `apps/app/src/**/*.test.ts` | Do the app's own rules — who is signed in, on which server, what the installed app keeps, when a set is sent again — hold? Does the native app's engine get what it lacks? | milliseconds |
+| T1 app modules | `apps/app/src/**/*.test.ts` | Do the app's own rules — who is signed in, on which server, what the installed app keeps, when a set is sent again, what the phone has set to tell a rest's end — hold? Does the native app's engine get what it lacks? | milliseconds |
 | T2 integration | `apps/api/src/**/*.test.ts` | Does the API behave, and does it match the contract? | seconds |
 | T3 UI | `apps/app/e2e/*.e2e.ts` | Does every route render without exploding? | seconds |
 | T4 performance | `apps/api/src/test/perf/*.perf.ts` | Will this survive real data on cheap hardware? | minutes |
