@@ -75,7 +75,8 @@ src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ it
                              outline, an exercise's (exercise-detail.tsx, exercise-about.tsx,
                              exercise-media.tsx), the desktop sidebar's (sidebar.tsx), an
                              athlete's, read by their coach (athlete.tsx); chime.ts and
-                             chime-tone.ts (the rest's end), rest-alert.ts (+ its unit test: what
+                             chime-tone.ts (+ its unit test: the rest's end's sound),
+                             rest-alert.ts (+ its unit test: what
                              the phone has set to tell a rest's end) and rest-alert-device.ts
                              (asking iOS for it), observed.ts (a value React subscribes to),
                              hermes-builtins.ts (+ its unit test)
@@ -188,17 +189,21 @@ lines), `NextSession` (the viewer's target and **Change**), and `EntryRead`, an 
 opens. The rest's clock is `useRestClock`
 (`src/lib/rest-clock.ts`), read by `useJustDone` (`src/lib/just-done.ts`) in the focus's column; it
 and the session's clock read `useNow` (`src/lib/use-now.ts`), a clock of its own that ticks once a
-second only while it must — so the focus re-renders while a rest runs, not the day beside it. The tone at the end of a rest is `src/lib/chime.ts`, made by the
-browser on the web — three beeps, played through iOS's silent switch where Safari lets a page
-say its sound is a short alert (`navigator.audioSession`, `transient`: it lowers the athlete's
-music for a moment, where `playback` would stop it), and a buzz where `navigator.vibrate` exists.
+second only while it must — so the focus re-renders while a rest runs, not the day beside it.
+The tone at the end of a rest is `src/lib/chime.ts`: "Heavy plates", a big steel plate tapped twice
+and a higher one left to ring, chosen by ear in #39. The browser makes it on the web — each
+overtone a sine fading as `toneGain` in `src/lib/chime-tone.ts` draws it — played through iOS's
+silent switch where Safari lets a page say its sound is a short alert (`navigator.audioSession`,
+`transient`: it lowers the athlete's music for a moment, where `playback` would stop it), and a
+buzz where `navigator.vibrate` exists.
 iOS stops an installed app's sound in the background and leaves its audio context `interrupted`,
 or `running` and silent; so once the page has been hidden, the first tap anywhere replaces the
 context with one started by that tap (#39).
-On native (#77) the same beeps are `assets/chime.wav`, rendered from the numbers in
-`src/lib/chime-tone.ts` by `scripts/chime-wav.ts`, and played by expo-audio through the silent
-switch, the music ducked while they play; the buzz is three taps of expo-haptics. The file is in
-the web export too, and never fetched there. `expo-audio`'s
+On native (#77) the same chime is `assets/chime.wav`, rendered from the same numbers and
+envelope by `scripts/chime-wav.ts`, and played by expo-audio through the silent switch, the music
+ducked while it plays; the buzz is a tap of expo-haptics on each tap of the plate. The same file is
+the sound of a rest's end told with the app closed (#39). It is in the web export too, and never
+fetched there. `expo-audio`'s
 config plugin is told to add no microphone permission and no background audio: the chime plays only
 with the app open.
 
@@ -326,8 +331,8 @@ there (#63).
 - **The rest takes Log's place** (#63) when a set is logged: **Undo · countdown · Skip**, a tap on
   the countdown adding 30 s, with the set just logged right under it — its effort, a personal best,
   "+ set" once its entry has all it asked for. The next set's numbers stay above, ready to change
-  during the rest. Undo takes the set back and ends its rest. At zero it beeps three times and
-  buzzes where the device can, if the app is open, and all of it goes: Log is back, and the set just
+  during the rest. Undo takes the set back and ends its rest. At zero it chimes — three taps on a
+  steel plate — and buzzes where the device can, if the app is open, and all of it goes: Log is back, and the set just
   logged is fixed from the list from then on. No colour or banner says the rest is over: the sound
   is the cue. A set with no rest after it — a warm-up, a superset's first, a rest of 0 — keeps
   **Undo · Log** until the next set. Where the rest stands is the contract's `restPhase`. The
@@ -1037,8 +1042,9 @@ bunx expo start --dev-client                       # Metro, whose /api proxy rea
 **After a native change, on the phone** — the smoke test:
 
 1. Sign in. Kill the app and open it again: still signed in.
-2. Start a session and log a set. The rest counts down and ends in three beeps and three taps,
-   heard with the silent switch on, any music lowered while they play. Undo it.
+2. Start a session and log a set. The rest counts down and ends in the chime — three taps on a
+   steel plate — and three buzzes, heard with the silent switch on, any music lowered while it
+   plays. Undo it.
 3. In flight mode, log a set: it shows as not sent yet. Leave flight mode: it is sent.
 4. An exercise's image shows. Its video's picture, and Watch the video below it, open the video
    outside the app.
