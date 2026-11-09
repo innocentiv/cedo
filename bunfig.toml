@@ -1,6 +1,13 @@
 [install]
 # Workspaces are linked from the repo root.
 exact = true
+# Refuse a version published in the last week, when Bun picks one (`bun add`, `bun update`). A
+# hijacked maintainer or a worm is usually caught within days; a week keeps us behind that. It does
+# not stop a package whose name was guessed: docs/dependencies.md and its test do. An exception
+# names one exact version, `name@x.y.z`, with the reason and the date it comes out — never a
+# standing one. See docs/02-conventions.md, "Dependencies".
+minimumReleaseAge = "7d"
+minimumReleaseAgeExcludes = []
 
 [test]
 coverageThreshold = 0

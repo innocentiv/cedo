@@ -131,6 +131,26 @@ schema rather than writing a parallel one.
 Query-parameter schemas must use `z.coerce` — query strings are always strings — and a boolean
 `z.stringbool()`, because `z.coerce.boolean()` reads the string "false" as true.
 
+## Dependencies
+
+**Every package this repository installs has a row in `docs/dependencies.md`**: where it is
+installed, why, and the repository it comes from. `test/dependencies.test.ts` fails on a package
+with no row, a row with no package, and an upstream that is not the repository the installed package
+names.
+
+Before `bun add`, check the package is the one you meant: its repository, its weekly downloads, the
+date it was first published. An agent's guess at a plausible name can be registered by someone
+waiting for exactly that guess, and nothing offline tells the two apart. Then say, in its row, what
+it does that a few lines of our own could not.
+
+Every version is pinned exactly (`exact = true` in `bunfig.toml`), CI installs with
+`--frozen-lockfile`, and **Bun refuses a version published in the last seven days**
+(`minimumReleaseAge`): a hijacked maintainer or a worm is usually caught within that week. The
+refusal reads `blocked by minimum-release-age`. Do not lower it to get past one. An exception is
+for an upgrade that cannot wait, such as a security fix: one exact version in
+`minimumReleaseAgeExcludes` (`"name@x.y.z"`), with a comment giving the reason and the date it
+comes out.
+
 ## Async
 
 Type-aware linting rejects floating promises. Every promise is awaited, returned, or explicitly

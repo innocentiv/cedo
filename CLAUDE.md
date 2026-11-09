@@ -43,6 +43,11 @@ is designed to prevent.
    lacks (`apps/app/src/lib/hermes-builtins.ts`).
    Components are never unit-tested; lint refuses it. See `docs/10-testing.md` and the amendment
    to `docs/adr/0017-webview-for-ui-verification.md`.
+8. **Every package has a written reason before it is installed.** Before `bun add`, check the
+   package is the one you meant — its repository, downloads, first publish — and give it a row in
+   `docs/dependencies.md`; `test/dependencies.test.ts` fails without one. Bun refuses a version
+   published in the last seven days (`minimumReleaseAge`): never lower it to get past one. See
+   `docs/02-conventions.md`, "Dependencies".
 
 ## Public repository
 
@@ -209,6 +214,7 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
 | `docs/08-frontend.md` | Expo router layout, UI primitives, the thinness rule |
 | `docs/09-deployment.md` | Compose, Caddy, env, backup |
 | `docs/10-testing.md` | The four test tiers and what belongs in each |
+| `docs/dependencies.md` | Every package installed, why, and where it comes from |
 | `docs/adr/` | Why each decision was made, and what was rejected |
 | `docs/playbooks/` | Step-by-step recipes — start here to add anything |
 
