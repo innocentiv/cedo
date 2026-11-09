@@ -2,7 +2,7 @@
   "expo": {
     "name": "cedo",
     "slug": "cedo",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "scheme": "cedo",
     "icon": "./assets/icon.png",
     "orientation": "default",
@@ -42,7 +42,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "io.github.innocentiv.cedo",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "NSLocalNetworkUsageDescription": "cedo connects to your server when it is on your local network.",
         "NSAlarmKitUsageDescription": "cedo rings an alarm when a rest is over, if you choose it in Settings.",
