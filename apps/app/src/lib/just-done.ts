@@ -1,6 +1,7 @@
 import {
   type LoggedExercise,
   type Rest,
+  type RestAlert,
   type SessionRest,
   formatWithReserve,
   loggedLabel,
@@ -26,7 +27,7 @@ export interface RestShown {
   /** How many sets the session has — waiting for a signal too: what a tap names (#38). */
   readonly sets: number
   /** What its end says with the app closed (#39): the next set, as the logger asks it. */
-  readonly said: { readonly title: string; readonly body: string }
+  readonly said: RestAlert
 }
 
 /**

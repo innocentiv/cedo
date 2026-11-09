@@ -1,4 +1,4 @@
-import type { RestPhase } from '@cedo/contract'
+import type { RestAlert, RestPhase } from '@cedo/contract'
 import type { TokenStore } from '../auth/session.ts'
 import { observed } from './observed.ts'
 
@@ -82,7 +82,7 @@ export function wantedAlert({
 }: {
   readonly kind: AlertKind
   readonly phase: RestPhase
-  readonly said: { readonly title: string; readonly body: string }
+  readonly said: RestAlert
   readonly sessionId: string
   readonly now: number
 }): Wanted | Told | null {

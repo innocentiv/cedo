@@ -163,7 +163,7 @@ function useView(
     /** What the screen shows, by the contract's rules: the focus, the set shown, "+ set". */
     view,
     /** What a rest's end says with the app closed (#39): the next set, as the logger asks it. */
-    said: restAlertOf(day ?? null, sets.all, targets ?? NO_TARGETS, unit),
+    said: restAlertOf(view.focus, unit),
     /** An entry tapped in Up next, an exercise among those added, or "+ set": put in focus. */
     choose: (chosen: Chosen) => {
       did({ kind: 'tapped', chosen })

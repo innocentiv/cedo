@@ -3,7 +3,7 @@ import { AppState, Platform } from 'react-native'
 import { requireOptionalNativeModule } from 'expo'
 import { router } from 'expo-router'
 import type * as ExpoNotifications from 'expo-notifications'
-import type { RestPhase } from '@cedo/contract'
+import type { RestAlert, RestPhase } from '@cedo/contract'
 import { restAlertStore } from '../auth/token-storage.ts'
 import { ownSession } from './addresses.ts'
 import {
@@ -159,7 +159,7 @@ export function useChooseAlertKind(): {
  */
 export function useRestTold(
   phase: RestPhase,
-  said: { readonly title: string; readonly body: string },
+  said: RestAlert,
   sessionId: string,
 ): { readonly offer: (() => void) | null; readonly refused: string | null } {
   const chosen = useAlertKind()
