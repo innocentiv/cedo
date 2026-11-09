@@ -411,8 +411,8 @@ a set corrected, and cleared by finishing. Every change to a session goes throug
 (`modules/session/write-session.ts`), which keeps it (`keepRest`, in `rest.ts`) in the change's own
 transaction, under the session's lock — so changes at once keep theirs in the order they are made,
 and a change refused keeps none.
-Being told it is over with the app closed waits
-for the native app (#39). See [adr/0025](adr/0025-rest-kept-by-the-server.md).
+The native app tells its end with the app closed from the phone itself, which counts it (#39); the
+server sends nothing. See [adr/0025](adr/0025-rest-kept-by-the-server.md).
 
 ### Logs
 

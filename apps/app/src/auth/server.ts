@@ -1,5 +1,6 @@
 import { PRODUCT } from '@cedo/contract'
 import { z } from 'zod'
+import { observed } from '../lib/observed.ts'
 import type { TokenStore } from './session.ts'
 
 /**
@@ -193,25 +194,6 @@ export interface ServerChoice {
   readonly restore: () => Promise<void>
   /** An address as typed: read, checked, and kept only if it is cedo — the one way to keep one. */
   readonly connect: (typed: string) => Promise<Connection>
-}
-
-/** A value read with `useSyncExternalStore`: the same object until it is set again. */
-function observed<T>(initial: T) {
-  let value = initial
-  const listeners = new Set<() => void>()
-  return {
-    get: () => value,
-    set: (next: T): void => {
-      value = next
-      for (const listener of listeners) listener()
-    },
-    subscribe: (listener: () => void) => {
-      listeners.add(listener)
-      return () => {
-        listeners.delete(listener)
-      }
-    },
-  }
 }
 
 /**

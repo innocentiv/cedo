@@ -18,10 +18,24 @@ import { useAuth } from '../../../src/auth/auth-provider.tsx'
 import { type VersionNotice, hostOf, versionNotice } from '../../../src/auth/server.ts'
 import { useSubmit } from '../../../src/lib/use-submit.ts'
 import { useWeightUnit } from '../../../src/lib/weight-unit.ts'
+import {
+  type AlertKind,
+  ringsAlarms,
+  tellsWhileClosed,
+  useAlertKind,
+  useChooseAlertKind,
+} from '../../../src/lib/rest-alert-device.ts'
 
 const UNIT_OPTIONS: readonly ChoiceOption<WeightUnit>[] = [
   { value: 'kg', label: 'Kilograms' },
   { value: 'lb', label: 'Pounds' },
+]
+
+/** Alarm only where AlarmKit is: iOS 26 and later (#39). */
+const ALERT_OPTIONS: readonly ChoiceOption<AlertKind>[] = [
+  { value: 'off', label: 'Off' },
+  { value: 'notification', label: 'Notification' },
+  ...(ringsAlarms ? [{ value: 'alarm', label: 'Alarm' } as const] : []),
 ]
 
 const SIGN_UP_OPTIONS: readonly ChoiceOption<SignUp>[] = [
@@ -59,6 +73,8 @@ export default function Settings(): React.JSX.Element {
           />
           <FormError message={error} testID="weight-unit-error" />
         </Stack>
+
+        {tellsWhileClosed ? <RestAlertSetting /> : null}
 
         <BirthYear />
 
@@ -157,6 +173,26 @@ function SignUpSetting(): React.JSX.Element {
         />
       )}
       <FormError message={error} testID="sign-up-error" />
+    </Stack>
+  )
+}
+
+/**
+ * How this phone tells a rest's end with cedo closed (#39): kept on the phone, which alone knows
+ * what iOS allows it. The native app's only — a home-screen web app cannot be told anything closed.
+ */
+function RestAlertSetting(): React.JSX.Element {
+  const chosen = useAlertKind()
+  const { choose, refused } = useChooseAlertKind()
+  return (
+    <Stack gap="sm">
+      <ListRow
+        title="Rest over"
+        subtitle="How this phone tells you, with cedo closed"
+        testID="settings-rest-alert"
+      />
+      <Choice options={ALERT_OPTIONS} value={chosen} onChange={choose} testID="rest-alert-kind" />
+      <FormError message={refused} testID="rest-alert-error" />
     </Stack>
   )
 }

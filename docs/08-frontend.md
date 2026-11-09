@@ -19,7 +19,8 @@ small as it is.
 > contract, where it is unit-tested with no DOM.
 >
 > No raw `<View>`, `<Text>` or `StyleSheet` in a screen file. No literal colour or pixel value
-> anywhere outside `src/ui/tokens.ts`.
+> anywhere outside `src/ui/tokens.ts` — but in Swift, which cannot read it: `modules/` and
+> `targets/` name the token a colour copies, and size what iOS alone draws.
 
 Every behaviour is proven on the backend (`docs/10-testing.md`). If a screen grows logic worth
 testing, that is the signal it belongs somewhere else.
@@ -65,7 +66,8 @@ src/api/                     transport.ts, client.ts, http.ts, errors.ts, query-
                              retry.ts and pending.ts (+ their unit tests), device-state.ts
                              (the network and the app's focus, on native)
 src/auth/                    session.ts and server.ts (+ their unit tests), auth-provider.tsx,
-                             token-storage.ts
+                             token-storage.ts (the keychain: the sign-in, the server, how a rest's
+                             end is told)
 src/pwa/                     shell-cache.ts (+ its unit test), service-worker.ts, register.ts
 src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ its unit test), forms,
                              pickers, ownership-line.tsx, duplicate-into-my-group.tsx, and each
@@ -73,7 +75,13 @@ src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ it
                              outline, an exercise's (exercise-detail.tsx, exercise-about.tsx,
                              exercise-media.tsx), the desktop sidebar's (sidebar.tsx), an
                              athlete's, read by their coach (athlete.tsx); chime.ts and
-                             chime-tone.ts (the rest's end), hermes-builtins.ts (+ its unit test)
+                             chime-tone.ts (+ its unit test: the rest's end's sound),
+                             rest-alert.ts (+ its unit test: what
+                             the phone has set to tell a rest's end) and rest-alert-device.ts
+                             (asking iOS for it), observed.ts (a value React subscribes to),
+                             hermes-builtins.ts (+ its unit test)
+modules/rest-alarm/          the app's own native module: a rest's end rung through AlarmKit
+targets/rest-countdown/      the widget extension counting an alarm's rest down on the Lock Screen
 scripts/chime-wav.ts         renders assets/chime.wav, the native chime, from chime-tone.ts
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts,
                              harness.e2e.ts (the harness's own tests), journeys.test.ts (the rules
@@ -151,8 +159,9 @@ or nothing — none chosen is undescribed, #33), `EntryEditor` (one plan entry's
 line in a workout's outline, #26), and the
 workout's (#24) — `FocusLogger` (the exercise in focus: its `SetMarks`, the next set's `Stepper`s,
 one Log button, and the reserve asked before it), `AfterSet` (in Log's place once a set is logged,
-#63: Undo, the rest's countdown and Skip, and `LastSet` under them — the set just logged, a best,
-its reserve as said), `UpNext`
+#63: Undo, the rest's countdown and Skip, "Tell me when rest is over" while nothing tells the
+phone a rest's end, #39, and `LastSet` under them — the set just logged, a best, its reserve as
+said), `UpNext`
 and `AddRow`,
 `SessionHeader` and `ReturnBar`; and Today's (#25) — `WeekStrip`, a week's days as the contract's
 `weekStrip` gives them. They are still presentational — the rules they render (loads
@@ -180,17 +189,21 @@ lines), `NextSession` (the viewer's target and **Change**), and `EntryRead`, an 
 opens. The rest's clock is `useRestClock`
 (`src/lib/rest-clock.ts`), read by `useJustDone` (`src/lib/just-done.ts`) in the focus's column; it
 and the session's clock read `useNow` (`src/lib/use-now.ts`), a clock of its own that ticks once a
-second only while it must — so the focus re-renders while a rest runs, not the day beside it. The tone at the end of a rest is `src/lib/chime.ts`, made by the
-browser on the web — three beeps, played through iOS's silent switch where Safari lets a page
-say its sound is a short alert (`navigator.audioSession`, `transient`: it lowers the athlete's
-music for a moment, where `playback` would stop it), and a buzz where `navigator.vibrate` exists.
+second only while it must — so the focus re-renders while a rest runs, not the day beside it.
+The tone at the end of a rest is `src/lib/chime.ts`: "Heavy plates", a big steel plate tapped twice
+and a higher one left to ring, chosen by ear in #39. The browser makes it on the web — each
+overtone a sine fading as `toneGain` in `src/lib/chime-tone.ts` draws it — played through iOS's
+silent switch where Safari lets a page say its sound is a short alert (`navigator.audioSession`,
+`transient`: it lowers the athlete's music for a moment, where `playback` would stop it), and a
+buzz where `navigator.vibrate` exists.
 iOS stops an installed app's sound in the background and leaves its audio context `interrupted`,
 or `running` and silent; so once the page has been hidden, the first tap anywhere replaces the
 context with one started by that tap (#39).
-On native (#77) the same beeps are `assets/chime.wav`, rendered from the numbers in
-`src/lib/chime-tone.ts` by `scripts/chime-wav.ts`, and played by expo-audio through the silent
-switch, the music ducked while they play; the buzz is three taps of expo-haptics. The file is in
-the web export too, and never fetched there. `expo-audio`'s
+On native (#77) the same chime is `assets/chime.wav`, rendered from the same numbers and
+envelope by `scripts/chime-wav.ts`, and played by expo-audio through the silent switch, the music
+ducked while it plays; the buzz is a tap of expo-haptics on each tap of the plate. The same file is
+the sound of a rest's end told with the app closed (#39). It is in the web export too, and never
+fetched there. `expo-audio`'s
 config plugin is told to add no microphone permission and no background audio: the chime plays only
 with the app open.
 
@@ -318,15 +331,37 @@ there (#63).
 - **The rest takes Log's place** (#63) when a set is logged: **Undo · countdown · Skip**, a tap on
   the countdown adding 30 s, with the set just logged right under it — its effort, a personal best,
   "+ set" once its entry has all it asked for. The next set's numbers stay above, ready to change
-  during the rest. Undo takes the set back and ends its rest. At zero it beeps three times and
-  buzzes where the device can, if the app is open, and all of it goes: Log is back, and the set just
+  during the rest. Undo takes the set back and ends its rest. At zero it chimes — three taps on a
+  steel plate — and buzzes where the device can, if the app is open, and all of it goes: Log is back, and the set just
   logged is fixed from the list from then on. No colour or banner says the rest is over: the sound
   is the cue. A set with no rest after it — a warm-up, a superset's first, a rest of 0 — keeps
   **Undo · Log** until the next set. Where the rest stands is the contract's `restPhase`. The
   server keeps the rest's end (#38; +30 s and skip are writes, queued behind the sets), and the
   countdown takes it when it is later (`restCounted`), so a reload or another device counts the
-  same rest. Being told with the app closed waits for the native app (#39): Web Push never reached
-  an iPhone.
+  same rest.
+- **A rest's end told with the app closed** (#39) is the native app's, and comes from the phone
+  itself: no push, no server (ADR-0032). A home-screen web app cannot be told anything closed — Web
+  Push never reached an iPhone — so the web never offers it. Settings → **Rest over** chooses how:
+  Off · Notification · Alarm, Alarm only on iOS 26 and later. While it is Off, the rest band offers
+  **Tell me when rest is over**, which turns on Notification. iOS asks the first time a kind is
+  chosen; refused, the screen says where to turn it back on. The choice is the phone's, kept in
+  the keychain (`cedo.rest-alert`), not the account's. The notification says "Rest over" and the
+  next set as the logger asks it (the contract's
+  `restAlertOf`), plays cedo's chime, and is set for the end this phone counts — never the server's
+  end read by the phone's clock. It follows the rest: +30 s moves it, the next set's rest replaces
+  it, and Skip, Undo, finishing and deleting the session cancel it. A rest that runs out has been
+  told, and its alert is left: the app sees the end as it goes off, and cancelling it then would
+  silence an alarm as it starts. It is kept as set, so an alarm still ringing stops at the next set,
+  or at finishing. With the app in front iOS shows nothing: the band counts down and the app chimes.
+  One shown while the app was closed is cleared once it is back, which says the rest is over itself.
+  A tap on one opens its session, from a cold start too. **An alarm** is AlarmKit's: "Rest over"
+  with the system's alarm sound, through the silent switch and Focus, until it is stopped. It rings
+  with the app in front too, so the app does not chime beside it — beside one iOS has set, not
+  merely one chosen: refused since in iOS Settings, the rest still ends with the chime. A tap on it
+  opens the app. Until it rings, iOS counts the rest down on the Lock Screen and in the Dynamic
+  Island, drawn by a widget extension, `targets/rest-countdown`, from the alarm alone: the app is
+  not running to count. The rules are `src/lib/rest-alert.ts`, unit-tested; asking iOS is
+  `src/lib/rest-alert-device.ts`, and the alarm the app's own native module, `modules/rest-alarm`.
 - **Reserve is asked before Log** (#37), as one optional row in the logger, under the numbers, and
   only for a working set of an exercise measured in reps — which those are is the contract's, not
   the screen's. Whole reps, none to five, one row of segments; tapping the chosen one again takes it
@@ -973,6 +1008,17 @@ bunx expo start --dev-client                       # Metro, whose /api proxy rea
 - **A native module is never reached on the web.** It is imported lazily behind `Platform.OS`, as
   `token-storage.ts` and `chime.ts` do, or it has a web implementation of its own, as expo-crypto
   and expo-network have.
+- **The app's own native code is a local Expo module** under `modules/` (#39): Swift, autolinked
+  by prebuild, and reached with `requireOptionalNativeModule`, so the web and a build without it
+  get null, never a crash. `modules/rest-alarm` rings a rest's end through AlarmKit, which it links
+  weakly: the app still opens on an iOS before 26, and never offers the alarm there.
+- **An extension is a target under `targets/`**, added to the project by `@bacons/apple-targets`
+  at prebuild: its Swift and its `expo-target.config.json`, nothing generated. The one there is the
+  rest's countdown (#39), a widget that shares no App Group with the app, which AltStore's
+  re-signing would rename (ADR-0032). The release carries it, and the AltStore source lists its
+  permissions with the app's, since AltStore checks both. Prebuild warns that `ios.appleTeamId` is
+  missing: none is committed, since `expo run:ios --device` signs every target, the extension too,
+  with the team it is given, and a release is unsigned.
 - **The contract runs on Hermes too**, React Native's engine, which lacks a few built-ins Bun and
   every browser have. `index.ts`, the app's entry, gives it `Array.prototype.toSorted` before any
   module runs (`src/lib/hermes-builtins.ts`); the others it lacks are listed there, and
@@ -981,7 +1027,9 @@ bunx expo start --dev-client                       # Metro, whose /api proxy rea
 - **What differs on native**: a set's idempotency key takes its random bytes from expo-crypto, since
   React Native has no `crypto`; TanStack Query hears the network from expo-network and the app's
   focus from `AppState` (`src/api/device-state.ts`); the rest's end is a bundled sound and
-  expo-haptics (`src/lib/chime.ts`); a video opens outside the app, from its picture or the button
+  expo-haptics (`src/lib/chime.ts`), and a local notification or an alarm with the app closed
+  (`src/lib/rest-alert-device.ts`, expo-notifications with remote notifications off, and AlarmKit
+  through `modules/rest-alarm`); a video opens outside the app, from its picture or the button
   below it.
 - **The keyboard is the app's to manage**, where a browser does it unasked. Every scroll moves a
   focused field above the keyboard (`automaticallyAdjustKeyboardInsets`); a numeric field's number
@@ -994,8 +1042,9 @@ bunx expo start --dev-client                       # Metro, whose /api proxy rea
 **After a native change, on the phone** — the smoke test:
 
 1. Sign in. Kill the app and open it again: still signed in.
-2. Start a session and log a set. The rest counts down and ends in three beeps and three taps,
-   heard with the silent switch on, any music lowered while they play. Undo it.
+2. Start a session and log a set. The rest counts down and ends in the chime — three taps on a
+   steel plate — and three buzzes, heard with the silent switch on, any music lowered while it
+   plays. Undo it.
 3. In flight mode, log a set: it shows as not sent yet. Leave flight mode: it is sent.
 4. An exercise's image shows. Its video's picture, and Watch the video below it, open the video
    outside the app.

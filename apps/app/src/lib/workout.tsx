@@ -54,6 +54,7 @@ export function sessionColumns(w: Workout): ScreenColumns | undefined {
     kept: session.data.rest,
     sessionId: w.id,
     sets: w.sets.all.length,
+    said: w.said,
   }
   if (day === undefined) {
     return columns(

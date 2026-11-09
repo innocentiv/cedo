@@ -20,11 +20,13 @@ export interface JustDone {
     /** +30 s: a tap on the countdown. */
     readonly onExtend: () => void
     readonly onSkip: () => void
+    /** Offered while nothing tells this phone a rest's end with the app closed (#39). */
+    readonly onTell: (() => void) | null
   } | null
   /** Null while the set waits for a signal: there is nothing on the server to take back yet. */
   readonly onUndo: (() => void) | null
   readonly set: Omit<LastSetProps, 'testID'>
-  /** A +30 s or a skip refused. */
+  /** A +30 s or a skip refused — or notifications, by iOS. */
   readonly error: string | null
 }
 
@@ -85,6 +87,14 @@ export function AfterSet({
           />
         )}
       </View>
+      {rest?.onTell == null ? null : (
+        <Button
+          title="Tell me when rest is over"
+          variant="ghost"
+          onPress={rest.onTell}
+          testID="rest-control-tell"
+        />
+      )}
       <FormError message={after.error} testID="rest-error" />
       <LastSet {...after.set} testID="last-set" />
     </Stack>

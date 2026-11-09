@@ -6,7 +6,7 @@ suite becomes slow, flaky, or quietly stops proving anything.
 | Tier | Where | Answers | Cost |
 | ---- | ----- | ------- | ---- |
 | T1 contract | `packages/contract/**/*.test.ts` | Is the domain arithmetic right? | milliseconds |
-| T1 app modules | `apps/app/src/**/*.test.ts` | Do the app's own rules — who is signed in, on which server, what the installed app keeps, when a set is sent again — hold? Does the native app's engine get what it lacks? | milliseconds |
+| T1 app modules | `apps/app/src/**/*.test.ts` | Do the app's own rules — who is signed in, on which server, what the installed app keeps, when a set is sent again, what the phone has set to tell a rest's end — hold? Does the native app's engine get what it lacks? | milliseconds |
 | T2 integration | `apps/api/src/**/*.test.ts` | Does the API behave, and does it match the contract? | seconds |
 | T3 UI | `apps/app/e2e/*.e2e.ts` | Does every route render without exploding? | seconds |
 | T4 performance | `apps/api/src/test/perf/*.perf.ts` | Will this survive real data on cheap hardware? | minutes |
@@ -37,7 +37,11 @@ set counts on the workout** until it is sent — done, dated once when it was lo
 stored one, waiting, held up, and whether the next set waits for its first send — in
 `src/api/pending.ts`. A journey covers
 the queue itself: sets logged offline, sent once back online, and one whose answer is lost still
-stored once. Components are still never tested: see
+stored once. And **what the phone has set to tell a rest's end** (#39) — set for the end the phone
+counts, moved by +30 s, cancelled when no rest runs or its session is finished but left once it
+runs out, the chime kept from sounding only beside an alarm iOS has set, a kind kept only once iOS
+allows it, one kind at a time, changes applied in order, and the kind kept in the keychain — in
+`src/lib/rest-alert.ts`, with a fake scheduler. Components are still never tested: see
 the amendment to `docs/adr/0017-webview-for-ui-verification.md`.
 
 One plain module beside them is not the app's state but its engine's: **what Hermes, the native

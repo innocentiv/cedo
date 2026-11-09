@@ -1,5 +1,6 @@
 import { Platform } from 'react-native'
 import type * as SecureStore from 'expo-secure-store'
+import type { AlertKindStore } from '../lib/rest-alert.ts'
 import type { ServerStore } from './server.ts'
 import type { TokenStore } from './session.ts'
 
@@ -72,3 +73,6 @@ export const tokenStore: TokenStore = kept('cedo.session')
 
 /** The server the token was issued by, as the native app keeps it (`server.ts`). */
 export const serverStore: ServerStore = kept('cedo.server')
+
+/** How this phone tells a rest's end with the app closed (#39, `src/lib/rest-alert.ts`). */
+export const restAlertStore: AlertKindStore = kept('cedo.rest-alert')

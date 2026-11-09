@@ -4,6 +4,8 @@ import { Button, ErrorNotice, Screen, SessionHeader, Spinner } from '../../../..
 import { ExercisePicker } from '../../../../src/lib/exercise-picker.tsx'
 import { sessionColumns } from '../../../../src/lib/workout.tsx'
 import { useWorkout } from '../../../../src/lib/workout-state.ts'
+import { useRestAlertEnded } from '../../../../src/lib/rest-alert-device.ts'
+import { ApiError } from '../../../../src/api/errors.ts'
 import { HowTo, WorkoutMenu } from '../../../../src/lib/workout-sheets.tsx'
 
 /**
@@ -18,6 +20,11 @@ export default function LiveSession(): React.JSX.Element {
   const goBack = useGoBack('/today')
   const w = useWorkout(id ?? '')
   const { session } = w
+  // Finished — or deleted, from another device or by the AI: no rest runs on it.
+  useRestAlertEnded(
+    w.id,
+    w.ended || (session.error instanceof ApiError && session.error.status === 404),
+  )
 
   if (session.error !== null) {
     return (
