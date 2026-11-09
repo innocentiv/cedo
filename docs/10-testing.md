@@ -37,7 +37,9 @@ set counts on the workout** until it is sent — done, dated once when it was lo
 stored one, waiting, held up, and whether the next set waits for its first send — in
 `src/api/pending.ts`. A journey covers
 the queue itself: sets logged offline, sent once back online, and one whose answer is lost still
-stored once. Components are still never tested: see
+stored once. And **what the phone has set to tell a rest's end** (#39) — set for the end the phone
+counts, moved by +30 s, cancelled when no rest runs, one kind at a time, changes applied in order —
+in `src/lib/rest-alert.ts`, with a fake scheduler. Components are still never tested: see
 the amendment to `docs/adr/0017-webview-for-ui-verification.md`.
 
 One plain module beside them is not the app's state but its engine's: **what Hermes, the native
