@@ -22,13 +22,15 @@ export type { AlertKind } from './rest-alert.ts'
 
 /**
  * The phone's side of telling a rest's end with the app closed (#39): what `rest-alert.ts` decides,
- * asked of iOS — a notification through expo-notifications, imported lazily so the web never
- * evaluates it, or an alarm through AlarmKit (`modules/rest-alarm`, iOS 26 and later). A
- * home-screen web app cannot be told anything closed, so there it is always off.
+ * asked of iOS. A notification, through expo-notifications — imported lazily, so the web never
+ * evaluates it — with the rest counting down beside it on the Lock Screen and in the Dynamic
+ * Island; or an alarm, which rings through the silent switch (AlarmKit, iOS 26 and later). Both
+ * the countdown and the alarm are the app's own native module, `modules/rest-alert`. A home-screen
+ * web app cannot be told anything closed, so there it is always off.
  *
  * With the app in front a notification is not shown: the rest band counts down and the app chimes,
  * as before. An alarm rings even then, and the app does not chime beside it. A tap on a
- * notification told while the app was closed opens its session, even from a cold start.
+ * notification, or on the countdown, opens its session, even from a cold start.
  */
 
 /** Only the native app is told a rest's end while closed. */
@@ -37,20 +39,25 @@ export const tellsWhileClosed = Platform.OS !== 'web'
 /** The one rest alert: scheduling it again replaces the one pending. */
 const REST_OVER = 'rest-over'
 
-/** The app's own AlarmKit module (`modules/rest-alarm`): one alarm, replaced when set again. */
-interface RestAlarmModule {
-  readonly isAvailable: () => boolean
-  readonly requestAuthorization: () => Promise<boolean>
-  readonly schedule: (seconds: number, title: string) => Promise<void>
-  readonly cancel: () => Promise<void>
+/** The app's own native module (`modules/rest-alert`): one countdown, one alarm, each replaced when set again. */
+interface RestAlertModule {
+  /** None where Live Activities are off for cedo: the notification is told all the same. */
+  readonly showCountdown: (seconds: number, next: string, sessionId: string) => Promise<void>
+  readonly endCountdown: () => Promise<void>
+  /** One whose rest is over, once the app is back: it has said so, and goes. */
+  readonly endCountdownIfOver: () => Promise<void>
+  readonly ringsAlarms: () => boolean
+  readonly allowAlarms: () => Promise<boolean>
+  readonly scheduleAlarm: (seconds: number, title: string) => Promise<void>
+  readonly cancelAlarm: () => Promise<void>
 }
 
-const restAlarm = tellsWhileClosed
-  ? requireOptionalNativeModule<RestAlarmModule>('RestAlarm')
+const restAlertModule = tellsWhileClosed
+  ? requireOptionalNativeModule<RestAlertModule>('RestAlert')
   : null
 
 /** Whether this phone rings a rest's end as an alarm: iOS 26 and later, offered only there. */
-export const ringsAlarms = restAlarm?.isAvailable() === true
+export const ringsAlarms = restAlertModule?.ringsAlarms() === true
 
 async function notifications(): Promise<typeof ExpoNotifications> {
   return await import('expo-notifications')
@@ -74,6 +81,9 @@ const TELLERS: Readonly<Record<TellingKind, Teller>> = {
     },
     schedule: async (wanted) => {
       const n = await notifications()
+      const seconds = secondsUntil(wanted.endsAt, Date.now())
+      // The rest counting down beside it, from now: started as the set is logged, in front.
+      await restAlertModule?.showCountdown(seconds, wanted.body, wanted.sessionId)
       await n.scheduleNotificationAsync({
         identifier: REST_OVER,
         content: {
@@ -83,10 +93,7 @@ const TELLERS: Readonly<Record<TellingKind, Teller>> = {
           sound: 'chime.wav',
           data: { sessionId: wanted.sessionId },
         },
-        trigger: {
-          type: n.SchedulableTriggerInputTypes.TIME_INTERVAL,
-          seconds: secondsUntil(wanted.endsAt, Date.now()),
-        },
+        trigger: { type: n.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds },
       })
     },
     cancel: async () => {
@@ -94,16 +101,17 @@ const TELLERS: Readonly<Record<TellingKind, Teller>> = {
       await n.cancelScheduledNotificationAsync(REST_OVER)
       // One told while the app was closed tells a rest that is over now.
       await n.dismissNotificationAsync(REST_OVER)
+      await restAlertModule?.endCountdown()
     },
   },
   alarm: {
-    allow: async () => (await restAlarm?.requestAuthorization()) === true,
-    // The system's alarm sound, and the title alone: an alarm says no more.
+    allow: async () => (await restAlertModule?.allowAlarms()) === true,
+    // cedo's chime, again until stopped, and the title alone: an alarm says no more.
     schedule: async (wanted) => {
-      await restAlarm?.schedule(secondsUntil(wanted.endsAt, Date.now()), wanted.title)
+      await restAlertModule?.scheduleAlarm(secondsUntil(wanted.endsAt, Date.now()), wanted.title)
     },
     cancel: async () => {
-      await restAlarm?.cancel()
+      await restAlertModule?.cancelAlarm()
     },
   },
 }
@@ -180,6 +188,11 @@ export function useRestTold(
   useEffect(() => {
     const wanted = wantedAlert({ kind: chosen, phase, said, sessionId, now: Date.now() })
     alerts.follow(wanted).catch(reportError)
+    // Run out with the app in front, the band and the chime have said so: its countdown goes now,
+    // rather than waiting as "Rest over" on the Lock Screen for whenever the phone is locked.
+    if (wanted === 'told' && AppState.currentState === 'active') {
+      restAlertModule?.endCountdown().catch(reportError)
+    }
   }, [chosen, phase, said, sessionId])
   return {
     offer:
@@ -207,11 +220,13 @@ function openTapped(response: ExpoNotifications.NotificationResponse): void {
 }
 
 /**
- * A rest's end shown while the app was closed tells a rest that is over by the time the app is back,
- * which says so itself: it is cleared, an alarm left as it is.
+ * A rest's end shown while the app was closed — the notification, and its countdown turned "Rest
+ * over" — tells a rest that is over by the time the app is back, which says so itself: both are
+ * cleared, an alarm left as it is. A countdown still running stays: the rest is not over.
  */
 async function clearShown(): Promise<void> {
   await (await notifications()).dismissNotificationAsync(REST_OVER)
+  await restAlertModule?.endCountdownIfOver()
 }
 
 /**

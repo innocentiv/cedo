@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import {
+  ALARM_EVERY_S,
   ATTACK_S,
   BUZZ_MS,
   FADE_TO,
@@ -54,6 +55,12 @@ describe('the chime', () => {
       ),
     )
     expect(loudest * VOLUME).toBeLessThan(1)
+  })
+
+  /** An alarm repeats its sound until stopped: the chime, then a breath before the next. */
+  test('as an alarm, comes round again after a pause', () => {
+    expect(ALARM_EVERY_S - LENGTH_S).toBeGreaterThanOrEqual(1)
+    expect(ALARM_EVERY_S).toBeLessThan(4)
   })
 
   /** The buzz, where there is one, on each tap. */

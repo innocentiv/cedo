@@ -94,6 +94,12 @@ export const TAP_STARTS_S: readonly number[] = TAPS.map((tap) => tap.atS)
 /** From the first tap until the last tone stops. */
 export const LENGTH_S = Math.max(...TONES.map((tone) => tone.atS + tone.stopS))
 
+/**
+ * As an alarm (#39), which repeats its sound until stopped: the chime, then quiet until this many
+ * seconds have passed, so it comes round like a clock's alarm rather than as one clatter.
+ */
+export const ALARM_EVERY_S = 3
+
 /** How long the buzz lasts on each tap, where a browser can vibrate. */
 const BUZZ_ON_MS = 80
 

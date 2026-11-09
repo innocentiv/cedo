@@ -31,7 +31,7 @@
         "expo-notifications",
         {
           "enableRemoteNotifications": false,
-          "sounds": ["./assets/chime.wav"]
+          "sounds": ["./assets/chime.wav", "./assets/rest-alarm.wav"]
         }
       ]
     ],
