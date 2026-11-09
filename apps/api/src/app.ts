@@ -96,8 +96,8 @@ async function serveMcp(request: Request): Promise<Response> {
 
 /**
  * Maps anything thrown anywhere in the API onto the wire envelope. Pure, so it can be reasoned
- * about and tested without a server, and so there is exactly ONE place where a failure becomes a
- * status code. No handler anywhere constructs an error response. See docs/02-conventions.md.
+ * about on its own, and so there is exactly ONE place where a failure becomes a status code. No
+ * handler anywhere constructs an error response. See docs/02-conventions.md.
  */
 function describeError(
   error: unknown,

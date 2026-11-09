@@ -13,9 +13,9 @@ import { basename, dirname, join } from 'node:path'
  */
 
 /** Where a package is installed: a workspace by its folder name, `root`, or `override`. */
-export type Installed = ReadonlyMap<string, ReadonlySet<string>>
+type Installed = ReadonlyMap<string, ReadonlySet<string>>
 
-export interface Row {
+interface Row {
   readonly name: string
   readonly where: ReadonlySet<string>
   readonly why: string
@@ -28,7 +28,7 @@ const REGISTER = 'docs/dependencies.md'
  * What is wrong between what is installed and what the register says, one sentence each.
  * `repositoryOf` reads the `repository` field of the installed package's own package.json.
  */
-export function audit(
+function audit(
   installed: Installed,
   rows: readonly Row[],
   repositoryOf: (name: string) => unknown = () => null,
@@ -71,7 +71,7 @@ const sorted = (places: ReadonlySet<string>): string => [...places].toSorted().j
  * A package.json `repository` — a URL, `github:owner/repo`, `owner/repo`, or `{ url }` — as
  * `host/owner/repo`, lowercased; null when it names none.
  */
-export function repository(field: unknown): string | null {
+function repository(field: unknown): string | null {
   const url = typeof field === 'object' && field !== null && 'url' in field ? field.url : field
   if (typeof url !== 'string' || url === '') return null
   const shorthand = /^(?:(github|gitlab|bitbucket):)?([\w.-]+)\/([\w.-]+)$/u.exec(url)
@@ -161,7 +161,7 @@ async function installedRepositories(names: Iterable<string>): Promise<Map<strin
 }
 
 /** The register's table rows: | `name` | where, where | why | upstream |. */
-export function parseRegister(markdown: string): Row[] {
+function parseRegister(markdown: string): Row[] {
   const rows: Row[] = []
   for (const line of markdown.split('\n')) {
     const cells = /^\|\s*`([^`]+)`\s*\|(.*)\|(.*)\|(.*)\|\s*$/u.exec(line)

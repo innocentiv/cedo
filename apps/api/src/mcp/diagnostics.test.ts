@@ -39,10 +39,12 @@ describe('diagnostic tools, for a curator', () => {
     const out = textOf((await callTool(await mintPat(alice), 'db_slow_queries', { limit: 3 })).body)
     const entries = out.split('\n\n')
 
-    expect(entries.length).toBeGreaterThan(0)
-    expect(entries.length).toBeLessThanOrEqual(3)
+    // Migrating the worker's database alone records more than three statements.
+    expect(entries).toHaveLength(3)
     for (const entry of entries)
       expect(entry).toMatch(/^[\d.]+ms total \| \d+ calls \| [\d.]+ms mean \| \d+ rows\n {2}\S/u)
+    const totals = entries.map((entry) => Number(/^[\d.]+/u.exec(entry)?.[0]))
+    expect(totals).toEqual(totals.toSorted((a, b) => b - a))
   })
 })
 

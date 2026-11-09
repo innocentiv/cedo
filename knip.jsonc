@@ -30,12 +30,17 @@
       "entry": [
         "src/index.ts!",
         "src/mcp/index.ts!",
+        // Started by the e2e harness (apps/app/e2e/harness.ts) with Bun.spawn, as a path in a
+        // string knip cannot follow: the app never imports from the API.
         "src/db/prepare-test-db.ts",
         "src/db/curate-for-test.ts",
+        // Run by the root's perf:seed, perf:report and perf scripts, which point into this
+        // workspace from outside it.
         "src/db/seed-perf/index.ts",
         "src/test/perf/report.ts",
         "src/test/perf/*.perf.ts",
         "src/**/*.test.ts",
+        // Run only by the test that spawns it: `bun test` does not collect the suffix.
         "src/**/*.probe.ts",
       ],
       "project": [

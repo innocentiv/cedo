@@ -156,10 +156,15 @@ on:
 | `useLayout()`, `TABLET_MIN_WIDTH` | the only layout branch: `'phone' | 'tablet'`, and where it switches |
 
 `src/ui/index.ts` exports only what some screen imports, and `bun run deadcode` fails on a name in it
-no screen does. So a primitive above that only `src/ui/` uses is imported there from its own file —
-`Segmented` and `Select` (a screen asks for a `Choice`), `FilterTrigger`, `OptionGrid`,
-`CompactField`, `Icon`, `BrandMark`, and every token but `color`, `space` and
-`HOME_INDICATOR_OVERLAP` — and joins the barrel when a screen first needs it.
+no screen does. A primitive above that no screen uses is not in the barrel:
+- `OptionGrid`, `CompactField`, `Icon` and every token but `color`, `space` and
+  `HOME_INDICATOR_OVERLAP` are imported inside `src/ui/` from their own files.
+- `Segmented` and `Select` are drawn only by the `Choice` in their own file, so a screen asks for a
+  `Choice`.
+- `FilterTrigger` is drawn only by `FilterSheet`, and `BrandMark` only beside `BrandHeading` and
+  `FrontDoor`, each in its own file.
+
+Each one joins the barrel, exported from its file again, when a screen first needs it.
 
 Composites are here rather than in a screen, because each is used from more than one place or
 would otherwise be copied: `MusclePicker`, `EquipmentPicker` (what an exercise needs, by group,

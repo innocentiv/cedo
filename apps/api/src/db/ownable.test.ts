@@ -290,7 +290,7 @@ describe('the owner keys the schema declares are the ones the database enforces'
     expect((await enforced(names)).map((c) => c.kind)).toEqual(['u', 'u', 'u', 'u'])
   })
 
-  test('a favourite is one per person and thing, and goes with either', () => {
+  test('a favourite is one per person and thing, and goes with either', async () => {
     for (const [table, target] of [
       [exerciseFavourites, 'exercises.id'],
       [workoutFavourites, 'workouts.id'],
@@ -299,10 +299,12 @@ describe('the owner keys the schema declares are the ones the database enforces'
       expect(config.primaryKeys.map((pk) => pk.columns.map((c) => c.name))).toEqual([
         ['user_id', 'target_id'],
       ])
-      expect(keysOf(table).map((k) => [k.from, k.to, k.onDelete])).toEqual([
+      const keys = keysOf(table)
+      expect(keys.map((k) => [k.from, k.to, k.onDelete])).toEqual([
         ['target_id', target, 'cascade'],
         ['user_id', 'users.id', 'cascade'],
       ])
+      expect((await enforced(keys.map((k) => k.name))).map((c) => c.onDelete)).toEqual(['c', 'c'])
     }
   })
 

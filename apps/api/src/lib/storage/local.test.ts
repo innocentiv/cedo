@@ -1,18 +1,20 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test'
 import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { dirname, join } from 'node:path'
-import { sha256Of } from './index.ts'
+import { join } from 'node:path'
 import { LocalBlobStore } from './local.ts'
 
 /** The blob store a self-hosted instance runs on: files under one root, named by their digest. */
 let root: string
 let store: LocalBlobStore
 const bytes = new TextEncoder().encode('a photo of a squat rack')
-const digest = sha256Of(bytes)
+// `printf '%s' 'a photo of a squat rack' | shasum -a 256`, sharded two levels.
+const SHARD = '24/e7'
+const NAME = '24e784828bddd25d506216d5491f1c0d40a34e765850aa0b9b831a6a1bdbb173.png'
+const KEY = `${SHARD}/${NAME}`
 
 /** What `attempt` was refused with, or null if it was not. */
-const refused = async (attempt: Promise<unknown>): Promise<string | null> =>
+const refusalOf = async (attempt: Promise<unknown>): Promise<string | null> =>
   await attempt.then(
     () => null,
     (error: unknown) => (error instanceof Error ? error.message : String(error)),
@@ -29,10 +31,9 @@ afterEach(async () => {
 
 describe('LocalBlobStore', () => {
   test('stores bytes under their digest, sharded two levels, and the same bytes twice as one', async () => {
-    const key = await store.put(bytes, 'image/png')
-    expect(key).toBe(`${digest.slice(0, 2)}/${digest.slice(2, 4)}/${digest}.png`)
-    expect(await store.put(bytes, 'image/png')).toBe(key)
-    expect(await readdir(join(root, dirname(key)))).toEqual([`${digest}.png`])
+    expect(await store.put(bytes, 'image/png')).toBe(KEY)
+    expect(await store.put(bytes, 'image/png')).toBe(KEY)
+    expect(await readdir(join(root, SHARD))).toEqual([NAME])
   })
 
   test('reads back what it stored, and nothing once it is deleted', async () => {
@@ -49,9 +50,9 @@ describe('LocalBlobStore', () => {
 
   test('refuses a key that would resolve outside its root', async () => {
     const refusal = 'Refusing to resolve outside the blob root: ../escape.png'
-    expect(await refused(store.get('../escape.png'))).toBe(refusal)
-    expect(await refused(store.exists('../escape.png'))).toBe(refusal)
-    expect(await refused(store.delete('../escape.png'))).toBe(refusal)
+    expect(await refusalOf(store.get('../escape.png'))).toBe(refusal)
+    expect(await refusalOf(store.exists('../escape.png'))).toBe(refusal)
+    expect(await refusalOf(store.delete('../escape.png'))).toBe(refusal)
   })
 
   /**
@@ -60,12 +61,11 @@ describe('LocalBlobStore', () => {
    * and no temporary file beside it.
    */
   test('a write that fails leaves neither the blob nor its temporary file behind', async () => {
-    const key = `${digest.slice(0, 2)}/${digest.slice(2, 4)}/${digest}.png`
     // A directory where the blob would go, with something in it: the rename onto it fails.
-    await mkdir(join(root, key, 'occupied'), { recursive: true })
+    await mkdir(join(root, KEY, 'occupied'), { recursive: true })
 
-    expect(await refused(store.put(bytes, 'image/png'))).not.toBeNull()
-    expect(await readdir(join(root, dirname(key)))).toEqual([`${digest}.png`])
-    expect(await readdir(join(root, key))).toEqual(['occupied'])
+    expect(await refusalOf(store.put(bytes, 'image/png'))).not.toBeNull()
+    expect(await readdir(join(root, SHARD))).toEqual([NAME])
+    expect(await readdir(join(root, KEY))).toEqual(['occupied'])
   })
 })
