@@ -11,7 +11,8 @@ import { BEEP_S, BEEP_STARTS_S, BUZZ_MS, FADE_TO, PITCH_HZ, VOLUME } from './chi
  * fetched. iOS lets a page
  * make sound only from an audio context started by a tap. So the context is started on the tap that
  * logs a set (`primeChime`), and the beeps after that set's rest play through it; until a set is
- * logged on this open, the rest is silent. And iOS mutes a page's sound with the silent switch,
+ * logged on this open, the rest is silent. After the app has been in the background, the first tap
+ * anywhere starts it again (`stale`, below). And iOS mutes a page's sound with the silent switch,
  * unless the page says its sound is an alert (Safari 17's `audioSession`).
  *
  * **On native** (#77) they are `assets/chime.wav`, rendered from the same numbers, played by
@@ -24,7 +25,43 @@ const isWeb = Platform.OS === 'web'
 
 let audio: AudioContext | null = null
 
+/**
+ * The page has been out of sight since the context was started. iOS stops a home-screen app's
+ * sound in the background, and the context it leaves reads `interrupted` — or `running`, and plays
+ * nothing. Only one started from a tap sounds again, so the first tap after coming back starts a
+ * new one, whatever it lands on (#39).
+ */
+let stale = false
+
 const supported = (): boolean => isWeb && typeof AudioContext !== 'undefined'
+
+/** From a tap: a context that will sound — the one kept, or a new one where it may not. */
+function arm(): void {
+  if (!supported()) return
+  asAlert()
+  if (audio !== null && (stale || audio.state !== 'running')) {
+    void audio.close().catch(() => null)
+    audio = null
+  }
+  audio ??= new AudioContext()
+  if (audio.state !== 'running') void audio.resume()
+  stale = false
+}
+
+if (supported()) {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') stale = true
+  })
+  // Only a context the rest has already used is started again; the first is started by the tap
+  // that logs a set.
+  const startAgain = (): void => {
+    if (audio !== null && (stale || audio.state !== 'running')) arm()
+  }
+  // iOS counts the end of a touch, and a click, as a tap that may start sound.
+  for (const tap of ['touchend', 'click'] as const) {
+    document.addEventListener(tap, startAgain, { capture: true, passive: true })
+  }
+}
 
 /**
  * Heard through the silent switch, where the browser lets a page say what its sound is: a short
@@ -81,10 +118,7 @@ export function primeChime(): void {
     })
     return
   }
-  if (!supported()) return
-  asAlert()
-  audio ??= new AudioContext()
-  if (audio.state === 'suspended') void audio.resume()
+  arm()
 }
 
 export function chime(): void {

@@ -184,6 +184,9 @@ second only while it must — so the focus re-renders while a rest runs, not the
 browser on the web — three beeps, played through iOS's silent switch where Safari lets a page
 say its sound is a short alert (`navigator.audioSession`, `transient`: it lowers the athlete's
 music for a moment, where `playback` would stop it), and a buzz where `navigator.vibrate` exists.
+iOS stops an installed app's sound in the background and leaves its audio context `interrupted`,
+or `running` and silent; so once the page has been hidden, the first tap anywhere replaces the
+context with one started by that tap (#39).
 On native (#77) the same beeps are `assets/chime.wav`, rendered from the numbers in
 `src/lib/chime-tone.ts` by `scripts/chime-wav.ts`, and played by expo-audio through the silent
 switch, the music ducked while they play; the buzz is three taps of expo-haptics. The file is in
