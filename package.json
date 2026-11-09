@@ -14,7 +14,7 @@
     "dev:api": "bun --watch apps/api/src/index.ts",
     "dev:app": "cd apps/app && ./node_modules/.bin/expo start --web",
     "check": "bun run format && bun run lint && bun run typecheck && bun run deadcode && bun run docs:links && bun run test",
-    "test": "bun test --parallel",
+    "test": "bun test --parallel --coverage --coverage-reporter=lcov --coverage-dir=.artifacts/coverage && bun run scripts/coverage.ts",
     "test:changed": "bun test --changed",
     "db:up": "docker compose up -d --wait db && docker compose -f docker-compose.test.yml up -d --wait",
     "db:down": "docker compose stop db && docker compose -f docker-compose.test.yml stop",

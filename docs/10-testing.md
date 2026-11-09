@@ -168,6 +168,41 @@ time and cannot hold them, so each one has a check of its own in the gate (#83):
   outside `packages/contract/src/units.ts`, time included (`docs/02-conventions.md`, "Units").
 - **Raw SQL: `db/raw-sql.test.ts`**, above.
 
+## Coverage
+
+"All behaviour is tested on the backend" is measured, not assumed (#83). `bun run test` runs the
+suite with coverage, writes `.artifacts/coverage/lcov.info`, and `scripts/coverage.ts` fails the
+gate on any measured file that breaks this rule:
+
+- **Every file has 90% of its lines and 90% of its functions run by a test.** It is checked per
+  file, because a total lets a well-tested module hide one nobody tests.
+- **A file no test loads counts as none covered.** Bun leaves such a file out of its report
+  entirely, which is how a module nobody tests stays invisible. The script lists what should be
+  there and finds it missing.
+- **Measured:** every file of `packages/*/src` and `apps/api/src`, and the app's plain modules,
+  read from invariant 7 in CLAUDE.md. Name a new plain module there and it is measured.
+- **Left out, each with its reason in the script:**
+  - tests and their probes;
+  - the test and perf harness (`src/test/`);
+  - the table definitions, whose only functions are index callbacks that drizzle-kit runs, and
+    which the migrations and the perf guards check;
+  - the server's boot file, which the e2e journeys run;
+  - the test database's tooling;
+  - the seeds.
+  
+  Components are never loaded by a test, so they need no exclusion.
+- **A file under the floor for a reason** sits in `test/coverage-baseline.json` at its own numbers,
+  with the reason beside them. The gate fails if it falls below those numbers, and fails if it rises
+  above them until the entry is raised to match. So a baselined file only goes up. Once a file
+  reaches the floor, its entry is deleted.
+
+Bun's own `coverageThreshold` is not used. Under it, a run below the threshold exits 1 with no
+message while its summary says "0 fail". It also checks each file only against one number, and
+never sees a file no test imports.
+
+What the rule cannot say is whether a test asserts anything. A line run by a test that checks
+nothing counts as covered. That is what watching each test fail is for (CLAUDE.md, working notes).
+
 ## Why the perf and e2e files are named `.perf.ts` and `.e2e.ts`
 
 `bun test` only collects files with `.test.`, `_test_`, `.spec.` or `_spec_` in the name, so neither
@@ -332,6 +367,6 @@ extension (`$1` placeholders, never literal values), so this cannot disclose any
 
 ```bash
 bun run test:changed   # inner loop
-bun run check          # format, lint, typecheck, dead code, doc links, T1 + T2
+bun run check          # format, lint, typecheck, dead code, doc links, T1 + T2 with coverage
 bun run perf           # T4, before a release
 ```

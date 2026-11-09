@@ -1,0 +1,22 @@
+{
+  "apps/api/src/db/client.ts": {
+    "lines": 92.3,
+    "functions": 75,
+    "reason": "closeDatabase() ends the pool, which only the command-line scripts do: a test that ended it would end it for every test in its worker."
+  },
+  "apps/api/src/db/migrate.ts": {
+    "lines": 54.5,
+    "functions": 100,
+    "reason": "Its command-line part, and the two failures the suite's own database cannot have: no Postgres at all, and no pg_stat_statements. runMigrations() itself runs for every worker."
+  },
+  "apps/api/src/env.ts": {
+    "lines": 81.5,
+    "functions": 83.3,
+    "reason": "Read once, when the process starts. Its two refusals, of a test run with no TEST_DATABASE_URL and of an invalid environment, cannot be reached from a process that started with a valid one."
+  },
+  "apps/api/src/mcp/token.ts": {
+    "lines": 97.5,
+    "functions": 66.6,
+    "reason": "The one function no test runs logs a failure to record when a token was last used: only a database that refuses the write reaches it, and no test here fakes one."
+  }
+}

@@ -1,8 +1,19 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
+import { getTableConfig } from 'drizzle-orm/pg-core'
 import { Exercise, GroupMembership, Workout, page } from '@cedo/contract'
 import { db } from './client.ts'
-import { exerciseMuscles, exercises, workoutDays, workoutEntries, workoutSets } from './schema.ts'
+import {
+  exerciseFavourites,
+  exerciseMedia,
+  exerciseMuscles,
+  exercises,
+  workoutDays,
+  workoutEntries,
+  workoutFavourites,
+  workoutSets,
+  workouts,
+} from './schema.ts'
 import { seedLibrary } from './seed.ts'
 import { isForeignKeyRefusal } from '../lib/error.ts'
 import { expectContract } from '../test/contract.ts'
@@ -215,3 +226,114 @@ describe("a child carries its parent's owner", () => {
     expect(isForeignKeyRefusal(refused)).toBe(true)
   })
 })
+
+/**
+ * ADR-0019's keys as the schema declares them, which is what drizzle-kit writes migrations from,
+ * against what the database enforces. The transfers above prove the cascade happens; this proves
+ * the code says so too, so the next migration generated from it cannot quietly drop it.
+ */
+describe('the owner keys the schema declares are the ones the database enforces', () => {
+  const children = [exerciseMuscles, exerciseMedia, workoutDays, workoutEntries, workoutSets]
+
+  const enforced = async (names: readonly string[]) =>
+    await db.execute<{ name: string; kind: string; onDelete: string; onUpdate: string }>(sql`
+      select conname as name, contype as kind, confdeltype as "onDelete", confupdtype as "onUpdate"
+        from pg_constraint
+       where conname in ${names}
+       order by conname
+    `)
+
+  test("each child's owner key is its parent's (id, owner), cascading on delete and update", async () => {
+    const declared = children.flatMap((table) =>
+      getTableConfig(table)
+        .foreignKeys.filter((fk) => fk.reference().columns.some((c) => c.name === 'owner_group_id'))
+        .map((fk) => ({
+          name: fk.getName(),
+          to: fk.reference().foreignColumns.map((c) => c.name),
+          onDelete: fk.onDelete,
+          onUpdate: fk.onUpdate,
+        })),
+    )
+    const names = declared.map((fk) => fk.name).toSorted((a, b) => a.localeCompare(b))
+    expect(names).toEqual([
+      'exercise_media_exercise_fk',
+      'exercise_muscles_exercise_fk',
+      'workout_days_workout_fk',
+      'workout_entries_day_fk',
+      'workout_sets_entry_fk',
+    ])
+    for (const fk of declared) {
+      expect(fk.to).toEqual(['id', 'owner_group_id'])
+      expect([fk.onDelete, fk.onUpdate]).toEqual(['cascade', 'cascade'])
+    }
+    // Postgres spells a cascade 'c'.
+    expect([...(await enforced(names))]).toEqual(
+      names.map((name) => ({ name, kind: 'f', onDelete: 'c', onUpdate: 'c' })),
+    )
+  })
+
+  test('what an owner key points at is unique on (id, owner), in the schema and the database', async () => {
+    const declared = [exercises, workouts, workoutDays, workoutEntries].flatMap((table) =>
+      getTableConfig(table).uniqueConstraints.map((u) => ({
+        name: u.getName() ?? '(unnamed)',
+        columns: u.columns.map((c) => c.name),
+      })),
+    )
+    const names = declared.map((u) => u.name).toSorted((a, b) => a.localeCompare(b))
+    expect(names).toEqual([
+      'exercises_id_owner_uq',
+      'workout_days_id_owner_uq',
+      'workout_entries_id_owner_uq',
+      'workouts_id_owner_uq',
+    ])
+    for (const u of declared) expect(u.columns).toEqual(['id', 'owner_group_id'])
+    expect((await enforced(names)).map((c) => c.kind)).toEqual(['u', 'u', 'u', 'u'])
+  })
+
+  test('a favourite is one per person and thing, and goes with either', () => {
+    for (const [table, target] of [
+      [exerciseFavourites, 'exercises.id'],
+      [workoutFavourites, 'workouts.id'],
+    ] as const) {
+      const config = getTableConfig(table)
+      expect(config.primaryKeys.map((pk) => pk.columns.map((c) => c.name))).toEqual([
+        ['user_id', 'target_id'],
+      ])
+      expect(keysOf(table).map((k) => [k.from, k.to, k.onDelete])).toEqual([
+        ['target_id', target, 'cascade'],
+        ['user_id', 'users.id', 'cascade'],
+      ])
+    }
+  })
+
+  /** A group or a person with things in their name is never deleted from under those things. */
+  test("an ownable's group and creator refuse to be deleted while it exists", async () => {
+    for (const table of [exercises, workouts]) {
+      const keys = keysOf(table).filter(
+        (k) => k.from === 'owner_group_id' || k.from === 'created_by',
+      )
+      expect(keys.map((k) => [k.from, k.to, k.onDelete])).toEqual([
+        ['created_by', 'users.id', 'restrict'],
+        ['owner_group_id', 'groups.id', 'restrict'],
+      ])
+      // Postgres spells a restrict 'r'.
+      const names = keys.map((k) => k.name)
+      expect((await enforced(names)).map((c) => c.onDelete)).toEqual(['r', 'r'])
+    }
+  })
+})
+
+/** A table's foreign keys as `column → table.column`, by column. */
+function keysOf(table: Parameters<typeof getTableConfig>[0]) {
+  return getTableConfig(table)
+    .foreignKeys.map((fk) => {
+      const reference = fk.reference()
+      return {
+        name: fk.getName(),
+        from: reference.columns.map((c) => c.name).join(),
+        to: `${getTableConfig(reference.foreignTable).name}.${reference.foreignColumns.map((c) => c.name).join()}`,
+        onDelete: fk.onDelete,
+      }
+    })
+    .toSorted((a, b) => a.from.localeCompare(b.from))
+}

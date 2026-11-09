@@ -92,6 +92,19 @@ describe('uploads', () => {
     expect(res.status).toBe(422)
   })
 
+  /** A truncated upload is a different problem from a missing field, and says so. */
+  test('a body that is not multipart at all is a 422 that says so', async () => {
+    const res = await alice.wire('/media', {
+      method: 'POST',
+      headers: { 'content-type': 'multipart/form-data; boundary=cut' },
+      body: '--cut\r\nContent-Disposition: form-data; name="file"; filename="x.png"\r\n\r\nPNG',
+    })
+    expect(res.status).toBe(422)
+    expect(expectContract(ApiError, res.body).error.message).toStartWith(
+      'The request body is not valid multipart/form-data',
+    )
+  })
+
   /** Content-addressed storage: identical bytes are stored once, however many times uploaded. */
   test('uploading the same image twice reuses the stored bytes', async () => {
     const first = expectContract(Media, (await uploadAs(alice, samplePng())).body)

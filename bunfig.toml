@@ -10,6 +10,7 @@ minimumReleaseAge = "7d"
 minimumReleaseAgeExcludes = []
 
 [test]
-coverageThreshold = 0
+# No coverageThreshold: under one, a run below it exits 1 with no message while its summary says
+# "0 fail". `bun run test` writes lcov and scripts/coverage.ts holds the rule (docs/10-testing.md).
 # NODE_ENV=test for every run, whatever the environment says: the test-database interlock.
 preload = ["./test/preload.ts"]

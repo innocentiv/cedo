@@ -204,7 +204,9 @@ describe('no unit converts outside units.ts', () => {
       for (const hit of conversions(await Bun.file(join(ROOT, file)).text()))
         offences.push(
           `${file}:${hit} — a unit conversion outside ${UNITS}. Use, or add, a helper there: ` +
-            'weight, distance and time convert in that one file (invariant 6).',
+            'weight, distance and time convert in that one file (invariant 6). If the number is ' +
+            'no unit at all — tenths of a percent, a count — name it as a constant, which says ' +
+            'what it is and is not read as a factor.',
         )
     }
     expect(offences).toEqual([])

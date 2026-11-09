@@ -129,7 +129,9 @@ helper's name says which.
 conversion factor beside `*`, `/` or `%`: 60, 1000, 3600, the milliseconds in a minute, an hour or a
 day, a pound or a mile. It names the file and line of each one it finds outside `units.ts`.
 Comments, strings and regular expressions are not read. A test states its own expected values, so
-`59 * 60` is fine there.
+`59 * 60` is fine there. A number that is no unit at all, such as tenths of a percent, is given a
+name (`const TENTHS_PER_WHOLE = 1000`). The name says what it is, and the scan does not read a
+named constant as a factor.
 
 Which unit a value is *typed* in — kg for a weight, metres for a distance — is decided once, in
 `DIMENSION_FIELDS` (`packages/contract/src/dimension.ts`), which calls those helpers. A screen
