@@ -30,8 +30,10 @@ const LEFT_OUT: readonly (readonly [RegExp, string])[] = [
     /^apps\/api\/src\/db\/(?:prepare-test-db|curate-for-test|ensure)\.ts$/u,
     "the test database's tooling",
   ],
-  [/^apps\/api\/src\/db\/seed/u, 'seed data and the scripts that load it'],
+  [/^apps\/api\/src\/db\/seed-perf\//u, "the perf suite's own 250k-row seed, run by `perf:seed`"],
 ]
+
+const RULE = 'See docs/10-testing.md, "Coverage".'
 
 function fail(lines: readonly string[]): never {
   for (const line of lines) console.error(line)
@@ -40,7 +42,7 @@ function fail(lines: readonly string[]): never {
 
 const lcov = Bun.file(join(ROOT, LCOV))
 if (!(await lcov.exists()))
-  fail([`No ${LCOV}. It is written by \`bun run test\`, which runs this after the suite.`])
+  fail([`No ${LCOV}. It is written by \`bun run test\`, which runs this after the suite. ${RULE}`])
 
 const measured = new Set<string>()
 for (const pattern of MEASURED)
@@ -54,7 +56,8 @@ const present = await Promise.all(
 const missing: string[] = []
 for (const [i, file] of modules.entries()) {
   if (present[i] === true) measured.add(file)
-  else missing.push(`CLAUDE.md, invariant 7, names ${file}, which does not exist: correct it.`)
+  else
+    missing.push(`CLAUDE.md, invariant 7, names ${file}, which does not exist: correct it. ${RULE}`)
 }
 
 const baseline = parseBaseline(await Bun.file(join(ROOT, 'test/coverage-baseline.json')).json())

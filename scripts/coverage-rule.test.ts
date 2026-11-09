@@ -2,6 +2,8 @@ import { describe, expect, test } from 'bun:test'
 import { judge, parseBaseline, parseLcov, plainModules } from './coverage-rule.ts'
 
 const ROOT = '/repo'
+/** Where every failure points: the rule, written for whoever reads the gate. */
+const RULE = 'See docs/10-testing.md, "Coverage".'
 
 /** One lcov record, as `bun test --coverage --coverage-reporter=lcov` writes it. */
 const record = (file: string, lines: [number, number], functions: [number, number]): string =>
@@ -81,7 +83,8 @@ describe('judge', () => {
       const report = new Map([['env.ts', { lines: 75, functions: 83.3 }]])
       expect(judge(['env.ts'], report, baseline)).toEqual([
         'env.ts: 75% of lines and 83.3% of functions, under its baseline of 81.6% and 83.3% in ' +
-          'test/coverage-baseline.json. A baselined file only goes up: test what you added.',
+          'test/coverage-baseline.json. A baselined file only goes up: test what you added. ' +
+          RULE,
       ])
     })
 
@@ -89,7 +92,8 @@ describe('judge', () => {
       const report = new Map([['env.ts', { lines: 85, functions: 83.3 }]])
       expect(judge(['env.ts'], report, baseline)).toEqual([
         'env.ts: now 85% of lines and 83.3% of functions. Raise its entry in ' +
-          'test/coverage-baseline.json to match, so it cannot fall back.',
+          'test/coverage-baseline.json to match, so it cannot fall back. ' +
+          RULE,
       ])
     })
 
@@ -97,13 +101,15 @@ describe('judge', () => {
       const report = new Map([['env.ts', { lines: 92, functions: 90 }]])
       expect(judge(['env.ts'], report, baseline)).toEqual([
         'env.ts: now at 90% of lines and functions or over. Delete its entry from ' +
-          'test/coverage-baseline.json: the floor holds it from here.',
+          'test/coverage-baseline.json: the floor holds it from here. ' +
+          RULE,
       ])
     })
 
     test('an entry for a file that is not measured fails, until it is deleted', () => {
       expect(judge([], new Map(), baseline)).toEqual([
-        'test/coverage-baseline.json lists env.ts, which is not measured: delete its entry.',
+        'test/coverage-baseline.json lists env.ts, which is not measured: delete its entry. ' +
+          RULE,
       ])
     })
   })

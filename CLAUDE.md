@@ -12,7 +12,8 @@ is designed to prevent.
 
 1. **`bun run check` must pass after every feature.** Format, lint (type-aware on the server),
    typecheck, dead code (`bun run deadcode`: an export nobody imports, a file nothing reaches, a
-   dependency nothing uses), and tests with their coverage. Warnings fail. Never commit with it red.
+   dependency nothing uses), doc links, and tests with their coverage. Warnings fail. Never commit
+   with it red.
 2. **`packages/contract` is the only shared surface.** `apps/app` must NEVER import from `apps/api`
    — not even a type. This is enforced by lint, not just convention. See `docs/01-architecture.md`.
 3. **Schemas are authored once, in Zod, in `packages/contract`.** The DB, HTTP routes, MCP tools and
@@ -46,10 +47,12 @@ is designed to prevent.
    `apps/app/src/lib/plan-sync.ts`, `apps/app/src/lib/rest-alert.ts`;
    no React, no React Native) and is unit-tested beside them — as is what the native app's engine
    lacks (`apps/app/src/lib/hermes-builtins.ts`).
-   Components are never unit-tested; lint refuses it. It is measured: every file of the contract
-   and the API, and each plain module named here, has 90% of its lines and functions run by a test,
-   or the gate fails (`scripts/coverage.ts` reads this list). See `docs/10-testing.md`, "Coverage",
-   and the amendment to `docs/adr/0017-webview-for-ui-verification.md`.
+   Components are never unit-tested; lint refuses it. It is measured: each source file of the
+   contract and the API, and each plain module named here, has 90% of its lines and functions run
+   by a test, or stays at its own numbers in `test/coverage-baseline.json` with its reason, or the
+   gate fails. `scripts/coverage.ts` reads this list, and says what it leaves out and why. See
+   `docs/10-testing.md`, "Coverage", and the amendment to
+   `docs/adr/0017-webview-for-ui-verification.md`.
 8. **Every package has a written reason before it is installed.** Before `bun add`, check the
    package is the one you meant — its repository, downloads, first publish — and give it a row in
    `docs/dependencies.md`; `test/dependencies.test.ts` fails without one. Bun refuses a version

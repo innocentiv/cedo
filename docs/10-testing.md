@@ -188,7 +188,7 @@ gate on any measured file that breaks this rule:
     which the migrations and the perf guards check;
   - the server's boot file, which the e2e journeys run;
   - the test database's tooling;
-  - the seeds.
+  - the perf suite's own seed. The seed an instance runs at boot is measured like any other file.
   
   Components are never loaded by a test, so they need no exclusion.
 - **A file under the floor for a reason** sits in `test/coverage-baseline.json` at its own numbers,

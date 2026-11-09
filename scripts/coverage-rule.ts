@@ -12,7 +12,12 @@ export interface Coverage {
   readonly functions: number
 }
 
-export type Baseline = Readonly<Record<string, Coverage & { readonly reason: string }>>
+/** A file kept under the floor: its numbers, which only go up, and why. */
+export interface BaselineEntry extends Coverage {
+  readonly reason: string
+}
+
+export type Baseline = Readonly<Record<string, BaselineEntry>>
 
 export const FLOOR = 90
 const BASELINE = 'test/coverage-baseline.json'
@@ -76,24 +81,25 @@ export function judge(
     } else if (over) {
       problems.push(
         `${file}: now at ${String(FLOOR)}% of lines and functions or over. Delete its entry from ` +
-          `${BASELINE}: the floor holds it from here.`,
+          `${BASELINE}: the floor holds it from here. ${RULE}`,
       )
     } else if (got.lines < kept.lines || got.functions < kept.functions) {
       problems.push(
         `${file}: ${numbers}, under its baseline of ${String(kept.lines)}% and ` +
           `${String(kept.functions)}% in ${BASELINE}. A baselined file only goes up: test what ` +
-          'you added.',
+          `you added. ${RULE}`,
       )
     } else if (got.lines > kept.lines || got.functions > kept.functions) {
       problems.push(
-        `${file}: now ${numbers}. Raise its entry in ${BASELINE} to match, so it cannot fall back.`,
+        `${file}: now ${numbers}. Raise its entry in ${BASELINE} to match, so it cannot fall ` +
+          `back. ${RULE}`,
       )
     }
   }
   const listed = new Set(measured)
   for (const file of Object.keys(baseline))
     if (!listed.has(file))
-      problems.push(`${BASELINE} lists ${file}, which is not measured: delete its entry.`)
+      problems.push(`${BASELINE} lists ${file}, which is not measured: delete its entry. ${RULE}`)
   return problems
 }
 
@@ -102,8 +108,8 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 /** `test/coverage-baseline.json`, checked: every entry has both numbers and a reason. */
 export function parseBaseline(json: unknown): Baseline {
-  if (!isRecord(json)) throw new Error(`${BASELINE} must be an object of file → entry.`)
-  const baseline: Record<string, Coverage & { reason: string }> = {}
+  if (!isRecord(json)) throw new Error(`${BASELINE} must be an object of file → entry. ${RULE}`)
+  const baseline: Record<string, BaselineEntry> = {}
   for (const [file, entry] of Object.entries(json)) {
     if (
       !isRecord(entry) ||
@@ -114,7 +120,7 @@ export function parseBaseline(json: unknown): Baseline {
     )
       throw new Error(
         `${BASELINE}: ${file} needs { "lines": n, "functions": n, "reason": "why it stays under ` +
-          `${String(FLOOR)}%" }.`,
+          `${String(FLOOR)}%" }. ${RULE}`,
       )
     baseline[file] = {
       lines: entry['lines'],
@@ -139,7 +145,7 @@ export function plainModules(claudeMd: string): string[] {
   if (modules.length === 0)
     throw new Error(
       "Could not read the app's plain modules from CLAUDE.md, invariant 7: it should name each as " +
-        '`apps/app/src/….ts`.',
+        `\`apps/app/src/….ts\`. ${RULE}`,
     )
   return modules
 }
