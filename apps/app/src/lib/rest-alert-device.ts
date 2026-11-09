@@ -10,6 +10,7 @@ import {
   type AlertKind,
   type TellingKind,
   type Wanted,
+  chimesInApp,
   createAlertKind,
   createRestAlerts,
   offersToTell,
@@ -124,6 +125,9 @@ const kind = createAlertKind({
 const reportError = (error: unknown): void => {
   console.error(error)
 }
+
+/** Whether the app chimes at a rest's end now: not beside an alarm iOS has set for it. */
+export const chimesNow = (): boolean => chimesInApp(alerts.current())
 
 /** Read from the keychain once, by whichever screen first asks. */
 let restored: Promise<void> | null = null

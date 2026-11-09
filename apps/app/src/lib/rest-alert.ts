@@ -86,9 +86,10 @@ export interface Wanted {
 }
 
 /**
- * A rest that has run out has been told: its alert is ringing, or shown. It is left, never
- * cancelled — the phone sees the rest end as the alert goes off, and cancelling then would silence
- * an alarm as it starts — and the next rest's replaces it.
+ * A rest that has run out has been told: its alert is ringing, or shown. It is left, not cancelled
+ * as it starts — the phone sees the rest end as the alert goes off — and kept as set, so the next
+ * rest's replaces it, and what ends the rest still cancels it: a still-ringing alarm stops when the
+ * next set has no rest after it, or the session is finished.
  */
 export type Told = 'told'
 
@@ -120,8 +121,11 @@ export function wantedAlert({
 export const secondsUntil = (endsAt: number, now: number): number =>
   Math.max(1, Math.round((endsAt - now) / 1000))
 
-/** The app's own chime at a rest's end, unless an alarm will ring for it — even with the app in front. */
-export const chimesInApp = (kind: AlertKind): boolean => kind !== 'alarm'
+/**
+ * The app's own chime at a rest's end, unless an alarm is set for it, which rings even with the app
+ * in front. Set, not chosen: an alarm iOS refused since, or never set, leaves the rest silent else.
+ */
+export const chimesInApp = (set: Wanted | null): boolean => set?.kind !== 'alarm'
 
 /** What tells the phone: `expo-notifications`, or the alarm module — or a fake. */
 export interface AlertScheduler {
@@ -149,6 +153,8 @@ const same = (a: Wanted | null, b: Wanted | null): boolean =>
 export interface RestAlerts {
   /** Whatever the rest now wants — called as its clock runs; changes only what changed. */
   readonly follow: (wanted: Wanted | Told | null) => Promise<void>
+  /** What iOS has set: for the rest running, or the one just run out — none if setting it failed. */
+  readonly current: () => Wanted | null
   /**
    * A session finished — here or on another device — has no rest to tell: its alert is cancelled,
    * though no clock runs to say so. Another session's is left.
@@ -161,11 +167,7 @@ export function createRestAlerts(scheduler: AlertScheduler): RestAlerts {
   // One change at a time, in the order they came: a set logged, then +30 s, reach the phone so.
   let queue: Promise<void> = Promise.resolve()
   const apply = async (wanted: Wanted | Told | null): Promise<void> => {
-    if (wanted === 'told') {
-      set = null
-      return
-    }
-    if (same(set, wanted)) return
+    if (wanted === 'told' || same(set, wanted)) return
     if (set !== null && set.kind !== wanted?.kind) await scheduler.cancel(set.kind)
     if (wanted !== null) await scheduler.schedule(wanted)
     set = wanted
@@ -188,5 +190,6 @@ export function createRestAlerts(scheduler: AlertScheduler): RestAlerts {
     end: async (sessionId) => {
       await after(() => (set?.sessionId === sessionId ? null : set))
     },
+    current: () => set,
   }
 }

@@ -63,10 +63,38 @@ describe('the alert a rest wants', () => {
 
 describe('the app’s own chime', () => {
   /** An alarm rings even with the app in front; the chime would sound beside it. */
-  test('plays at a rest’s end unless an alarm will ring for it', () => {
-    expect(chimesInApp('off')).toBe(true)
-    expect(chimesInApp('notification')).toBe(true)
-    expect(chimesInApp('alarm')).toBe(false)
+  test('plays at a rest’s end unless an alarm is set for it', () => {
+    const set = (kind: 'notification' | 'alarm'): Wanted => ({
+      kind,
+      endsAt: NOW + 90_000,
+      sessionId: 'session-1',
+      ...SAID,
+    })
+    expect(chimesInApp(null)).toBe(true)
+    expect(chimesInApp(set('notification'))).toBe(true)
+    expect(chimesInApp(set('alarm'))).toBe(false)
+  })
+
+  test('is silent while the alarm rings for the rest just run out', async () => {
+    const alerts = createRestAlerts(aScheduler())
+    await alerts.follow(want(running(90), 'alarm'))
+    await alerts.follow(want({ phase: 'over', skipped: false }, 'alarm'))
+    expect(chimesInApp(alerts.current())).toBe(false)
+  })
+
+  /** Alarms refused since in iOS Settings, or the alarm never set: the rest still ends out loud. */
+  test('plays when the alarm chosen could not be set', async () => {
+    const refusing: AlertScheduler = {
+      schedule: async () => {
+        throw new Error('AlarmKit is not authorized')
+      },
+      cancel: async () => {
+        // Nothing was set to cancel.
+      },
+    }
+    const alerts = createRestAlerts(refusing)
+    await expect(alerts.follow(want(running(90), 'alarm'))).rejects.toThrow(/authorized/u)
+    expect(chimesInApp(alerts.current())).toBe(true)
   })
 })
 
@@ -142,6 +170,24 @@ describe('what this phone has set', () => {
     await alerts.follow(want({ phase: 'over', skipped: false }))
     await alerts.follow(want(running(90)))
     expect(scheduler.asked).toEqual(['notification at +1s', 'notification at +90s'])
+  })
+
+  /** Still ringing, an alarm stops when the next set has no rest after it, or the session ends. */
+  test('run out, is still cancelled by what ends the rest', async () => {
+    const scheduler = aScheduler()
+    const alerts = createRestAlerts(scheduler)
+    await alerts.follow(want(running(1), 'alarm'))
+    await alerts.follow(want({ phase: 'over', skipped: false }, 'alarm'))
+    await alerts.follow(want({ phase: 'none' }, 'alarm'))
+    await alerts.follow(want(running(1), 'alarm'))
+    await alerts.follow(want({ phase: 'over', skipped: false }, 'alarm'))
+    await alerts.end('session-1')
+    expect(scheduler.asked).toEqual([
+      'alarm at +1s',
+      'cancel alarm',
+      'alarm at +1s',
+      'cancel alarm',
+    ])
   })
 
   /** Finished here, or on another device: no clock runs on a finished session to cancel it. */

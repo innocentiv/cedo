@@ -338,14 +338,16 @@ there (#63).
   end read by the phone's clock. It follows the rest: +30 s moves it, the next set's rest replaces
   it, and Skip, Undo and finishing cancel it. A rest that runs out has been told, and its alert is
   left: the app sees the end as it goes off, and cancelling it then would silence an alarm as it
-  starts. With the app in front iOS shows nothing: the band counts down and the app chimes. One
-  shown while the app was closed is cleared once it is back, which says the rest is over itself. A
-  tap on one opens its session, from a cold start too. **An alarm** is AlarmKit's: "Rest over" with
-  the system's alarm sound, through the silent switch and Focus, until it is stopped. It rings
-  with the app in front too, so the app does not chime beside it; a tap on it opens the app. Until
-  it rings, iOS counts the rest down on the Lock Screen and in the Dynamic Island, drawn by a widget
-  extension, `targets/rest-countdown`, from the alarm alone: the app is not running to count. The
-  rules are `src/lib/rest-alert.ts`, unit-tested; asking iOS is `src/lib/rest-alert-device.ts`,
+  starts. It is kept as set, so an alarm still ringing stops at the next set, or at finishing. With
+  the app in front iOS shows nothing: the band counts down and the app chimes. One shown while the
+  app was closed is cleared once it is back, which says the rest is over itself. A tap on one opens
+  its session, from a cold start too. **An alarm** is AlarmKit's: "Rest over" with the system's
+  alarm sound, through the silent switch and Focus, until it is stopped. It rings with the app in
+  front too, so the app does not chime beside it — beside one iOS has set, not merely one chosen:
+  refused since in iOS Settings, the rest still ends with the chime. A tap on it opens the app.
+  Until it rings, iOS counts the rest down on the Lock Screen and in the Dynamic Island, drawn by a
+  widget extension, `targets/rest-countdown`, from the alarm alone: the app is not running to count.
+  The rules are `src/lib/rest-alert.ts`, unit-tested; asking iOS is `src/lib/rest-alert-device.ts`,
   and the alarm the app's own native module, `modules/rest-alarm`.
 - **Reserve is asked before Log** (#37), as one optional row in the logger, under the numbers, and
   only for a working set of an exercise measured in reps — which those are is the contract's, not
