@@ -38,7 +38,9 @@ stored one, waiting, held up, and whether the next set waits for its first send 
 `src/api/pending.ts`. A journey covers
 the queue itself: sets logged offline, sent once back online, and one whose answer is lost still
 stored once. And **what the phone has set to tell a rest's end** (#39) — set for the end the phone
-counts, moved by +30 s, cancelled when no rest runs, one kind at a time, changes applied in order —
+counts, moved by +30 s, cancelled when no rest runs or its session is finished but left once it
+runs out, one kind at a time,
+changes applied in order, and the kind kept in the keychain —
 in `src/lib/rest-alert.ts`, with a fake scheduler. Components are still never tested: see
 the amendment to `docs/adr/0017-webview-for-ui-verification.md`.
 

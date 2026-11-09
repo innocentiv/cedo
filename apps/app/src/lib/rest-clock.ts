@@ -7,6 +7,8 @@ import {
   restPhase,
 } from '@cedo/contract'
 import { chime } from './chime.ts'
+import { chimesInApp } from './rest-alert.ts'
+import { useAlertKind } from './rest-alert-device.ts'
 import { useUntilNextSet } from './until-next-set.ts'
 import { useNow } from './use-now.ts'
 
@@ -45,10 +47,12 @@ export function useRestClock(
   // The rest seen running, by the sets it follows: the one whose end chimes.
   const restAfter = rest === null ? null : sets
   const seen = useRef<number | null>(null)
+  // An alarm rings even with the app in front: the chime would sound beside it (#39).
+  const chimes = chimesInApp(useAlertKind())
   useEffect(() => {
-    if (chimesAtEnd(seen.current, restAfter, phase)) chime()
+    if (chimes && chimesAtEnd(seen.current, restAfter, phase)) chime()
     seen.current = phase.phase === 'running' ? restAfter : null
-  }, [phase, restAfter])
+  }, [phase, restAfter, chimes])
 
   return {
     phase,

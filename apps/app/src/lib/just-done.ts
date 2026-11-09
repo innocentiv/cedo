@@ -9,6 +9,7 @@ import type { PendingLog } from '../api/pending.ts'
 import { useChangeRest } from '../api/session-queries.ts'
 import type { JustDone } from '../ui/index.ts'
 import { exerciseName } from './exercise-name.ts'
+import { useRestTold } from './rest-alert-device.ts'
 import { useRestClock } from './rest-clock.ts'
 import { useSubmit } from './use-submit.ts'
 import type { WorkoutSets } from './workout-state.ts'
@@ -24,6 +25,8 @@ export interface RestShown {
   readonly sessionId: string
   /** How many sets the session has — waiting for a signal too: what a tap names (#38). */
   readonly sets: number
+  /** What its end says with the app closed (#39): the next set, as the logger asks it. */
+  readonly said: { readonly title: string; readonly body: string }
 }
 
 /**
@@ -55,13 +58,14 @@ export function useJustDone({
     })
   })
   const { phase } = clock
+  const told = useRestTold(phase, rest.said, rest.sessionId)
   if (shown === null || phase.phase === 'over') return null
   const { log, exercise } = shown
   const stored = sets.server.find((l) => l.id === log.id)
   return {
     rest:
       phase.phase === 'running'
-        ? { left: phase.left, onExtend: clock.extend, onSkip: clock.skip }
+        ? { left: phase.left, onExtend: clock.extend, onSkip: clock.skip, onTell: told.offer }
         : null,
     onUndo:
       stored === undefined
@@ -76,6 +80,6 @@ export function useJustDone({
       waiting: sets.waiting.has(log.id),
       onAnother,
     },
-    error,
+    error: error ?? told.refused,
   }
 }

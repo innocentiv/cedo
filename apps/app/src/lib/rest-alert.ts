@@ -1,4 +1,6 @@
 import type { RestPhase } from '@cedo/contract'
+import type { TokenStore } from '../auth/session.ts'
+import { observed } from './observed.ts'
 
 /**
  * What this phone has set to tell the end of a rest with the app closed (#39), and every rule about
@@ -19,6 +21,36 @@ export type AlertKind = (typeof ALERT_KINDS)[number]
 export const kindOf = (kept: string | null): AlertKind =>
   ALERT_KINDS.find((kind) => kind === kept) ?? 'off'
 
+export interface AlertKindChoice {
+  /** The same value until it changes — for `useSyncExternalStore`. */
+  readonly snapshot: () => AlertKind
+  readonly subscribe: (listener: () => void) => () => void
+  /** At startup: the kind kept. Off until it is read, and when it cannot be. */
+  readonly restore: () => Promise<void>
+  /** Chosen in Settings, or from the rest band — once iOS has allowed it. */
+  readonly choose: (kind: AlertKind) => Promise<void>
+}
+
+/** How this phone tells a rest's end, kept in the keychain as the sign-in is: a phone's own choice. */
+export function createAlertKind(store: TokenStore): AlertKindChoice {
+  const state = observed<AlertKind>('off')
+  return {
+    snapshot: state.get,
+    subscribe: state.subscribe,
+    restore: async () => {
+      const kept = await store.read().catch((error: unknown) => {
+        console.error(error)
+        return null
+      })
+      state.set(kindOf(kept))
+    },
+    choose: async (kind) => {
+      await store.write(kind)
+      state.set(kind)
+    },
+  }
+}
+
 /** An alert to be told: when, by this phone's clock, and what it says. */
 export interface Wanted {
   readonly kind: 'notification' | 'alarm'
@@ -30,9 +62,16 @@ export interface Wanted {
 }
 
 /**
+ * A rest that has run out has been told: its alert is ringing, or shown. It is left, never
+ * cancelled — the phone sees the rest end as the alert goes off, and cancelling then would silence
+ * an alarm as it starts — and the next rest's replaces it.
+ */
+export type Told = 'told'
+
+/**
  * The alert the rest now running wants, if any: at its end, counted from what the phone counts —
  * `left` seconds from now — never from the server's end read by the phone's clock, which would
- * carry their skew (CLAUDE.md).
+ * carry their skew (CLAUDE.md). None when skipped, undone, or no rest follows the set.
  */
 export function wantedAlert({
   kind,
@@ -46,8 +85,10 @@ export function wantedAlert({
   readonly said: { readonly title: string; readonly body: string }
   readonly sessionId: string
   readonly now: number
-}): Wanted | null {
-  if (kind === 'off' || phase.phase !== 'running') return null
+}): Wanted | Told | null {
+  if (kind === 'off') return null
+  if (phase.phase === 'over' && !phase.skipped) return 'told'
+  if (phase.phase !== 'running') return null
   return { kind, endsAt: now + phase.left * 1000, sessionId, ...said }
 }
 
@@ -79,29 +120,45 @@ const same = (a: Wanted | null, b: Wanted | null): boolean =>
 
 export interface RestAlerts {
   /** Whatever the rest now wants — called as its clock runs; changes only what changed. */
-  readonly follow: (wanted: Wanted | null) => Promise<void>
+  readonly follow: (wanted: Wanted | Told | null) => Promise<void>
+  /**
+   * A session finished — here or on another device — has no rest to tell: its alert is cancelled,
+   * though no clock runs to say so. Another session's is left.
+   */
+  readonly end: (sessionId: string) => Promise<void>
 }
 
 export function createRestAlerts(scheduler: AlertScheduler): RestAlerts {
   let set: Wanted | null = null
   // One change at a time, in the order they came: a set logged, then +30 s, reach the phone so.
   let queue: Promise<void> = Promise.resolve()
-  const apply = async (wanted: Wanted | null): Promise<void> => {
+  const apply = async (wanted: Wanted | Told | null): Promise<void> => {
+    if (wanted === 'told') {
+      set = null
+      return
+    }
     if (same(set, wanted)) return
     if (set !== null && set.kind !== wanted?.kind) await scheduler.cancel(set.kind)
     if (wanted !== null) await scheduler.schedule(wanted)
     set = wanted
   }
+  /** `next` is read in turn, from what is set by then. */
+  const after = async (next: () => Wanted | Told | null): Promise<void> => {
+    const before = queue
+    const mine = (async () => {
+      // A change that failed before this one does not stop it: it is what the rest wants now.
+      await before.catch(() => null)
+      await apply(next())
+    })()
+    queue = mine
+    await mine
+  }
   return {
     follow: async (wanted) => {
-      const before = queue
-      const mine = (async () => {
-        // A change that failed before this one does not stop it: it is what the rest wants now.
-        await before.catch(() => null)
-        await apply(wanted)
-      })()
-      queue = mine
-      await mine
+      await after(() => wanted)
+    },
+    end: async (sessionId) => {
+      await after(() => (set?.sessionId === sessionId ? null : set))
     },
   }
 }

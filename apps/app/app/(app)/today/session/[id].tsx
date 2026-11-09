@@ -4,6 +4,7 @@ import { Button, ErrorNotice, Screen, SessionHeader, Spinner } from '../../../..
 import { ExercisePicker } from '../../../../src/lib/exercise-picker.tsx'
 import { sessionColumns } from '../../../../src/lib/workout.tsx'
 import { useWorkout } from '../../../../src/lib/workout-state.ts'
+import { useRestAlertEnded } from '../../../../src/lib/rest-alert-device.ts'
 import { HowTo, WorkoutMenu } from '../../../../src/lib/workout-sheets.tsx'
 
 /**
@@ -18,6 +19,7 @@ export default function LiveSession(): React.JSX.Element {
   const goBack = useGoBack('/today')
   const w = useWorkout(id ?? '')
   const { session } = w
+  useRestAlertEnded(w.id, w.ended)
 
   if (session.error !== null) {
     return (

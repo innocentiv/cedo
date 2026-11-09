@@ -72,3 +72,6 @@ export const tokenStore: TokenStore = kept('cedo.session')
 
 /** The server the token was issued by, as the native app keeps it (`server.ts`). */
 export const serverStore: ServerStore = kept('cedo.server')
+
+/** How this phone tells a rest's end with the app closed (#39, `src/lib/rest-alert.ts`). */
+export const restAlertStore: TokenStore = kept('cedo.rest-alert')

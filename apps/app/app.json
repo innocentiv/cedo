@@ -25,6 +25,13 @@
           "recordAudioAndroid": false,
           "enableBackgroundPlayback": false
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "enableRemoteNotifications": false,
+          "sounds": ["./assets/chime.wav"]
+        }
       ]
     ],
     "web": {

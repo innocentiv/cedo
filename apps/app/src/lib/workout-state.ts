@@ -13,6 +13,7 @@ import {
   type WorkoutView,
   choicesAfter,
   exercisesInSession,
+  restAlertOf,
   workoutView,
 } from '@cedo/contract'
 import {
@@ -26,6 +27,7 @@ import { useQueuedSends, useRemoveLog, useUpdateSession } from '../api/session-q
 import { useRecordSet } from './record-set.ts'
 import { useLoads } from './use-loads.ts'
 import { useSubmit } from './use-submit.ts'
+import { useWeightUnit } from './weight-unit.ts'
 
 /** Stable, so an absent session does not recompute the exercises on every render. */
 const NO_LOGS: readonly SetLog[] = []
@@ -145,6 +147,7 @@ function useView(
   [choices, did]: readonly [WorkoutChoices, Did],
 ) {
   const loads = useLoads()
+  const unit = useWeightUnit()
   // The plan as the server says the reader can reach it (`SessionPlan`) — never decided here.
   const day = plan?.reachable === true ? plan.day : undefined
   const view: WorkoutShown = workoutView({
@@ -159,6 +162,8 @@ function useView(
     day,
     /** What the screen shows, by the contract's rules: the focus, the set shown, "+ set". */
     view,
+    /** What a rest's end says with the app closed (#39): the next set, as the logger asks it. */
+    said: restAlertOf(day ?? null, sets.all, targets ?? NO_TARGETS, unit),
     /** An entry tapped in Up next, an exercise among those added, or "+ set": put in focus. */
     choose: (chosen: Chosen) => {
       did({ kind: 'tapped', chosen })
