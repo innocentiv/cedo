@@ -14,18 +14,16 @@ import AlarmKit
 ///   (AlarmKit, iOS 26 and later); iOS counts it down itself.
 ///
 /// The widget that draws both is `targets/rest-countdown`. What to set, and when, is decided in
-/// `src/lib/rest-alert.ts`; this only asks iOS.
+/// `src/lib/rest-alert.ts`; this asks iOS, keeping one countdown and one alarm at a time, as iOS
+/// holds them across the app's launches. `seconds` is never less than one (`secondsUntil` there).
 public class RestAlertModule: Module {
   public func definition() -> ModuleDefinition {
     Name("RestAlert")
 
-    /// Starts the countdown, or moves the one showing. False when Live Activities are off for cedo.
-    AsyncFunction("showCountdown") { (seconds: Double, next: String, sessionId: String) async -> Bool in
-      await Countdown.show(
-        endsAt: Date().addingTimeInterval(max(1, seconds)),
-        next: next,
-        sessionId: sessionId
-      )
+    /// Starts the countdown, or moves the one showing. None where Live Activities are off for cedo:
+    /// the notification is told all the same.
+    AsyncFunction("showCountdown") { (seconds: Double, next: String, sessionId: String) async in
+      await Countdown.show(endsAt: Date().addingTimeInterval(seconds), next: next, sessionId: sessionId)
     }
 
     /// The rest skipped, undone, finished — or told another way: gone at once.
@@ -91,7 +89,7 @@ struct RestActivityAttributes: ActivityAttributes {
 
 /// One countdown at a time: the rest now running, moved rather than started again.
 enum Countdown {
-  static func show(endsAt: Date, next: String, sessionId: String) async -> Bool {
+  static func show(endsAt: Date, next: String, sessionId: String) async {
     let content = ActivityContent(
       state: RestActivityAttributes.ContentState(endsAt: endsAt, next: next),
       // At the rest's end iOS draws it again as stale, which the widget shows as "Rest over".
@@ -103,19 +101,12 @@ enum Countdown {
       for other in showing where other.id != current.id {
         await other.end(nil, dismissalPolicy: .immediate)
       }
-      return true
+      return
     }
     for other in showing { await other.end(nil, dismissalPolicy: .immediate) }
-    guard ActivityAuthorizationInfo().areActivitiesEnabled else { return false }
-    do {
-      _ = try Activity.request(
-        attributes: RestActivityAttributes(sessionId: sessionId),
-        content: content
-      )
-      return true
-    } catch {
-      return false
-    }
+    guard ActivityAuthorizationInfo().areActivitiesEnabled else { return }
+    // Refused — too many showing, or turned off since — the notification still tells the rest's end.
+    _ = try? Activity.request(attributes: RestActivityAttributes(sessionId: sessionId), content: content)
   }
 
   static func end(onlyOver: Bool) async {
@@ -154,7 +145,7 @@ enum RestAlarm {
       id: id,
       // A timer, not an alarm at a date: iOS counts it down where the app cannot.
       configuration: .timer(
-        duration: max(1, seconds),
+        duration: seconds,
         attributes: attributes,
         sound: .named(sound)
       )
