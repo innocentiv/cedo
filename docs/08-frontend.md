@@ -80,8 +80,8 @@ src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ it
                              the phone has set to tell a rest's end) and rest-alert-device.ts
                              (asking iOS for it), observed.ts (a value React subscribes to),
                              hermes-builtins.ts (+ its unit test)
-modules/rest-alarm/          the app's own native module: a rest's end rung through AlarmKit
-targets/rest-countdown/      the widget extension counting an alarm's rest down on the Lock Screen
+modules/rest-alert/          the app's own native module: a rest's countdown, and its alarm
+targets/rest-countdown/      the widget extension drawing a rest's countdown on the Lock Screen
 scripts/chime-wav.ts         renders assets/chime.wav, the native chime, from chime-tone.ts
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts,
                              harness.e2e.ts (the harness's own tests), journeys.test.ts (the rules
@@ -342,26 +342,31 @@ there (#63).
 - **A rest's end told with the app closed** (#39) is the native app's, and comes from the phone
   itself: no push, no server (ADR-0032). A home-screen web app cannot be told anything closed — Web
   Push never reached an iPhone — so the web never offers it. Settings → **Rest over** chooses how:
-  Off · Notification · Alarm, Alarm only on iOS 26 and later. While it is Off, the rest band offers
-  **Tell me when rest is over**, which turns on Notification. iOS asks the first time a kind is
-  chosen; refused, the screen says where to turn it back on. The choice is the phone's, kept in
-  the keychain (`cedo.rest-alert`), not the account's. The notification says "Rest over" and the
-  next set as the logger asks it (the contract's
-  `restAlertOf`), plays cedo's chime, and is set for the end this phone counts — never the server's
-  end read by the phone's clock. It follows the rest: +30 s moves it, the next set's rest replaces
-  it, and Skip, Undo, finishing and deleting the session cancel it. A rest that runs out has been
-  told, and its alert is left: the app sees the end as it goes off, and cancelling it then would
-  silence an alarm as it starts. It is kept as set, so an alarm still ringing stops at the next set,
-  or at finishing. With the app in front iOS shows nothing: the band counts down and the app chimes.
-  One shown while the app was closed is cleared once it is back, which says the rest is over itself.
-  A tap on one opens its session, from a cold start too. **An alarm** is AlarmKit's: "Rest over"
-  with the system's alarm sound, through the silent switch and Focus, until it is stopped. It rings
-  with the app in front too, so the app does not chime beside it — beside one iOS has set, not
+  Off · Notification · Alarm, Alarm only on iOS 26 and later, each said in a line under the choice.
+  While it is Off, the rest band offers **Tell me when rest is over**, which turns on Notification.
+  iOS asks the first time a kind is chosen; refused, the screen says where to turn it back on. The
+  choice is the phone's, kept in the keychain (`cedo.rest-alert`), not the account's. **A
+  notification** says "Rest over" and the next set as the logger asks it (the contract's
+  `restAlertOf`), and plays cedo's chime — once, and not on silent. Beside it, from the set, the
+  rest counts down on the Lock Screen and in the Dynamic Island: a Live Activity the app starts,
+  showing cedo's mark and the next set, which turns itself to "Rest over" at the rest's end — its
+  stale date — with no push to tell it. Both are set for the end this phone counts, never the
+  server's end read by the phone's clock. They follow the rest: +30 s moves them, the next set's
+  rest replaces them, and Skip, Undo, finishing and deleting the session cancel them. A rest that
+  runs out has been told, and its alert is left: the app sees the end as it goes off, and cancelling
+  it then would silence an alarm as it starts. It is kept as set, so an alarm still ringing stops at
+  the next set, or at finishing. With the app in front iOS shows no notification: the band counts
+  down and the app chimes. One shown while the app was closed, and its countdown, are cleared once
+  it is back, which says the rest is over itself. A tap on either opens its session, from a cold
+  start too. **An alarm** is AlarmKit's, for whoever trains on silent: "Rest over" with cedo's
+  chime, again every three seconds through the silent switch and Focus, until it is stopped. It
+  rings with the app in front too, so the app does not chime beside it — beside one iOS has set, not
   merely one chosen: refused since in iOS Settings, the rest still ends with the chime. A tap on it
-  opens the app. Until it rings, iOS counts the rest down on the Lock Screen and in the Dynamic
-  Island, drawn by a widget extension, `targets/rest-countdown`, from the alarm alone: the app is
-  not running to count. The rules are `src/lib/rest-alert.ts`, unit-tested; asking iOS is
-  `src/lib/rest-alert-device.ts`, and the alarm the app's own native module, `modules/rest-alarm`.
+  opens the app. Until it rings, iOS counts it down itself, on the Lock Screen and in the Dynamic
+  Island. Both countdowns are drawn by one widget extension, `targets/rest-countdown`; the ringing
+  alarm is iOS's own, its icon too. The rules are `src/lib/rest-alert.ts`, unit-tested; asking iOS
+  is `src/lib/rest-alert-device.ts`, and the countdown and the alarm the app's own native module,
+  `modules/rest-alert`.
 - **Reserve is asked before Log** (#37), as one optional row in the logger, under the numbers, and
   only for a working set of an exercise measured in reps — which those are is the contract's, not
   the screen's. Whole reps, none to five, one row of segments; tapping the chosen one again takes it
@@ -1010,8 +1015,9 @@ bunx expo start --dev-client                       # Metro, whose /api proxy rea
   and expo-network have.
 - **The app's own native code is a local Expo module** under `modules/` (#39): Swift, autolinked
   by prebuild, and reached with `requireOptionalNativeModule`, so the web and a build without it
-  get null, never a crash. `modules/rest-alarm` rings a rest's end through AlarmKit, which it links
-  weakly: the app still opens on an iOS before 26, and never offers the alarm there.
+  get null, never a crash. `modules/rest-alert` starts a rest's countdown and rings its alarm
+  through AlarmKit, which it links weakly: the app still opens on an iOS before 26, and never
+  offers the alarm there.
 - **An extension is a target under `targets/`**, added to the project by `@bacons/apple-targets`
   at prebuild: its Swift and its `expo-target.config.json`, nothing generated. The one there is the
   rest's countdown (#39), a widget that shares no App Group with the app, which AltStore's
@@ -1029,7 +1035,7 @@ bunx expo start --dev-client                       # Metro, whose /api proxy rea
   focus from `AppState` (`src/api/device-state.ts`); the rest's end is a bundled sound and
   expo-haptics (`src/lib/chime.ts`), and a local notification or an alarm with the app closed
   (`src/lib/rest-alert-device.ts`, expo-notifications with remote notifications off, and AlarmKit
-  through `modules/rest-alarm`); a video opens outside the app, from its picture or the button
+  through `modules/rest-alert`); a video opens outside the app, from its picture or the button
   below it.
 - **The keyboard is the app's to manage**, where a browser does it unasked. Every scroll moves a
   focused field above the keyboard (`automaticallyAdjustKeyboardInsets`); a numeric field's number

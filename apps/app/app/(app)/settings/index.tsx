@@ -31,6 +31,14 @@ const UNIT_OPTIONS: readonly ChoiceOption<WeightUnit>[] = [
   { value: 'lb', label: 'Pounds' },
 ]
 
+/** What each choice does: the two that tell differ most where it matters, the silent switch (#39). */
+const ALERT_SAID: Readonly<Record<AlertKind, string>> = {
+  off: 'Only the app tells you, while it is open.',
+  notification:
+    'cedo’s chime, and the rest counting down on the Lock Screen and in the Dynamic Island. Quiet when the phone is on silent.',
+  alarm: 'cedo’s chime as an alarm, even on silent, until you stop it — and the countdown too.',
+}
+
 /** Alarm only where AlarmKit is: iOS 26 and later (#39). */
 const ALERT_OPTIONS: readonly ChoiceOption<AlertKind>[] = [
   { value: 'off', label: 'Off' },
@@ -192,6 +200,9 @@ function RestAlertSetting(): React.JSX.Element {
         testID="settings-rest-alert"
       />
       <Choice options={ALERT_OPTIONS} value={chosen} onChange={choose} testID="rest-alert-kind" />
+      <Text variant="caption" tone="muted" testID="rest-alert-said">
+        {ALERT_SAID[chosen]}
+      </Text>
       <FormError message={refused} testID="rest-alert-error" />
     </Stack>
   )

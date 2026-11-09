@@ -1,8 +1,8 @@
 Pod::Spec.new do |s|
-  s.name           = 'RestAlarm'
+  s.name           = 'RestAlert'
   s.version        = '1.0.0'
-  s.summary        = "A rest's end rung as an alarm, through AlarmKit (#39)"
-  s.description    = "A rest's end rung as an alarm, through AlarmKit (#39)"
+  s.summary        = "A rest's end told with the app closed: its countdown, and an alarm (#39)"
+  s.description    = "A rest's end told with the app closed: its countdown, and an alarm (#39)"
   s.license        = 'AGPL-3.0-or-later'
   s.author         = 'cedo'
   s.homepage       = 'https://github.com/innocentiv/cedo'

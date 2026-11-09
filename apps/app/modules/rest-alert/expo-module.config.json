@@ -1,6 +1,6 @@
 {
   "platforms": ["apple"],
   "apple": {
-    "modules": ["RestAlarmModule"]
+    "modules": ["RestAlertModule"]
   }
 }
