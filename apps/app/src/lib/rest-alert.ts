@@ -19,6 +19,7 @@ export type AlertKind = (typeof ALERT_KINDS)[number]
 
 /** A kind that tells: what iOS is asked to allow, and what an alert is set as. */
 export type TellingKind = Exclude<AlertKind, 'off'>
+const TELLING_KINDS: readonly TellingKind[] = ['notification', 'alarm']
 
 /** The kind kept on the phone, or off when none — or something no longer offered — is. */
 export const kindOf = (kept: string | null): AlertKind =>
@@ -42,8 +43,9 @@ export interface AlertKindChoice {
 
 /**
  * How this phone tells a rest's end: a phone's own choice. iOS is asked first, as it asks the
- * person once and after that answers what they said. Turned off, what was set is cancelled at once:
- * a rest whose screen is not open is not followed (`RestAlerts`).
+ * person once and after that answers what they said. Changed — turned off too — every kind iOS
+ * holds is cleared at once: a rest whose screen is not open is not followed (`RestAlerts`), and the
+ * rest's screen sets the new kind's as it follows the rest again.
  */
 export function createAlertKind({
   store,
@@ -68,8 +70,9 @@ export function createAlertKind({
     choose: async (kind) => {
       if (kind !== 'off' && !(await allow(kind))) return false
       await store.write(kind)
+      // Before the kind is heard, so the rest's screen sets the new one after the old is gone.
+      await alerts.clear()
       state.set(kind)
-      if (kind === 'off') await alerts.follow(null)
       return true
     },
   }
@@ -156,6 +159,11 @@ export interface RestAlerts {
   /** What iOS has set: for the rest running, or the one just run out — none if setting it failed. */
   readonly current: () => Wanted | null
   /**
+   * Every kind cancelled, whatever this open of the app has set: iOS keeps what an earlier one set
+   * — a countdown, a notification — which nothing here remembers.
+   */
+  readonly clear: () => Promise<void>
+  /**
    * A session finished — here or on another device — has no rest to tell: its alert is cancelled,
    * though no clock runs to say so. Another session's is left.
    */
@@ -172,24 +180,37 @@ export function createRestAlerts(scheduler: AlertScheduler): RestAlerts {
     if (wanted !== null) await scheduler.schedule(wanted)
     set = wanted
   }
-  /** `next` is read in turn, from what is set by then. */
-  const after = async (next: () => Wanted | Told | null): Promise<void> => {
+  /** One change at a time, each read in turn from what is set by then. */
+  const inTurn = async (change: () => Promise<void>): Promise<void> => {
     const before = queue
     const mine = (async () => {
       // A change that failed before this one does not stop it: it is what the rest wants now.
       await before.catch(() => null)
-      await apply(next())
+      await change()
     })()
     queue = mine
     await mine
   }
   return {
     follow: async (wanted) => {
-      await after(() => wanted)
+      await inTurn(async () => {
+        await apply(wanted)
+      })
     },
     end: async (sessionId) => {
-      await after(() => (set?.sessionId === sessionId ? null : set))
+      await inTurn(async () => {
+        await apply(set?.sessionId === sessionId ? null : set)
+      })
     },
     current: () => set,
+    clear: async () => {
+      await inTurn(async () => {
+        set = null
+        for (const kind of TELLING_KINDS) {
+          // oxlint-disable-next-line no-await-in-loop -- one kind after the other, as iOS is asked.
+          await scheduler.cancel(kind)
+        }
+      })
+    },
   }
 }

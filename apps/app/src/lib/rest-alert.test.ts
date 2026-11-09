@@ -324,7 +324,25 @@ describe('how this phone tells a rest’s end', () => {
     await alerts.follow(want(running(90)))
     expect(await choice.choose('off')).toBe(true)
     expect(ios.asked).toEqual([])
-    expect(scheduler.asked).toEqual(['notification at +90s', 'cancel notification'])
+    expect(scheduler.asked).toEqual(['notification at +90s', 'cancel notification', 'cancel alarm'])
+  })
+
+  /**
+   * Opened again, the app has set nothing yet, but iOS may still hold what it set before — a
+   * countdown on the Lock Screen, its notification. A change of kind clears every kind iOS holds.
+   */
+  test('changed, clears every kind iOS may hold, even from before the app was opened', async () => {
+    const scheduler = aScheduler()
+    const alerts = createRestAlerts(scheduler)
+    const choice = createAlertKind({
+      store: aKeychain('notification'),
+      allow: anIos(true).allow,
+      alerts,
+    })
+    await choice.restore()
+    expect(await choice.choose('alarm')).toBe(true)
+    expect(scheduler.asked).toEqual(['cancel notification', 'cancel alarm'])
+    expect(alerts.current()).toBeNull()
   })
 
   /** A keychain that throws must not take the app down: nothing tells, as before it was chosen. */
