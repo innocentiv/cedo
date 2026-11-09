@@ -1,8 +1,17 @@
 [install]
 # Workspaces are linked from the repo root.
 exact = true
+# Refuse a version published in the last week, when Bun picks one (`bun add`, `bun update`). A
+# hijacked maintainer or a worm is usually caught within days; a week keeps us behind that. It does
+# not stop a package whose name was guessed: docs/dependencies.md and its test do. An exception
+# names one exact version, `name@x.y.z`, with the reason and the date it comes out — never a
+# standing one. See docs/02-conventions.md, "Dependencies".
+# Seven days, in seconds: Bun reads "7d" only from 1.4.4, and CI and the images may run older.
+minimumReleaseAge = 604800
+minimumReleaseAgeExcludes = []
 
 [test]
-coverageThreshold = 0
+# No coverageThreshold: under one, a run below it exits 1 with no message while its summary says
+# "0 fail". `bun run test` writes lcov and scripts/coverage.ts holds the rule (docs/10-testing.md).
 # NODE_ENV=test for every run, whatever the environment says: the test-database interlock.
 preload = ["./test/preload.ts"]

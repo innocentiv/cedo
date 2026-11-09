@@ -10,8 +10,6 @@ import type { AuthStatus } from './session.ts'
  * Who is signed in, and the calls that change it — the session (./session.ts), which holds every
  * rule about it, wired to React. Nothing else in the app touches the token.
  */
-export type { AuthStatus } from './session.ts'
-
 interface AuthValue {
   readonly status: AuthStatus
   readonly me: Me | null

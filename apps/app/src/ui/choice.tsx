@@ -35,7 +35,7 @@ interface ChoiceProps<T extends string> {
 }
 
 /** Whether every option fits one line as a segment. A layout fact, not a domain rule. */
-export const fitsOneLine = (options: readonly ChoiceOption<string>[]): boolean =>
+const fitsOneLine = (options: readonly ChoiceOption<string>[]): boolean =>
   options.reduce(
     (width, o) => width + o.label.length * SEGMENT_FIT.charWidth + SEGMENT_FIT.padding,
     0,
@@ -98,7 +98,7 @@ export function Segmented<T extends string>({
  * One choice whose options do not fit a line, as a native select: the chosen one on a line of its
  * own, and — tapped — the options under it, a row each, the chosen one ticked; choosing closes it.
  */
-export function Select<T extends string>({
+function Select<T extends string>({
   options,
   value,
   onChange,

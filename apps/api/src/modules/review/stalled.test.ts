@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import type { Effort, RatedEffort, TrackingMode } from '@cedo/contract'
 import { makeApi } from '../../test/harness.ts'
-import { reviewFixture } from './review-fixture.ts'
+import { reviewFixture } from '../../test/review-fixture.ts'
 import { STALL_DEPTH } from '@cedo/contract'
 import { type WorkingSet, stalledOf } from './stalled.ts'
 

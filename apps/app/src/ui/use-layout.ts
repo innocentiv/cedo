@@ -1,7 +1,7 @@
 import { useWindowDimensions } from 'react-native'
 import { TABLET_MIN_WIDTH } from './tokens.ts'
 
-export type Layout = 'phone' | 'tablet'
+type Layout = 'phone' | 'tablet'
 
 /**
  * The only layout branch in the app. A screen asks for this and picks between one column and two;

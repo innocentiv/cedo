@@ -1,4 +1,5 @@
 import { elapsedS } from './session-flow.ts'
+import { formatMinutes } from './units.ts'
 
 /**
  * Weeks as an athlete reads them (#25): Monday to Sunday, in the device's own time — the server does
@@ -8,7 +9,7 @@ import { elapsedS } from './session-flow.ts'
  */
 
 /** Monday, M to S: the strip of a week's days. */
-export const WEEKDAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const
+const WEEKDAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const
 
 const MONTHS_LONG = [
   'January',
@@ -30,7 +31,7 @@ const MONTHS = MONTHS_LONG.map((month) => month.slice(0, 3))
 const WEEKDAYS = WEEKDAYS_LONG.map((weekday) => weekday.slice(0, 3))
 
 /** The day of the week, Monday 0 to Sunday 6: where it sits on the week's strip. */
-export const dayOfWeek = (at: Date): number => (at.getDay() + 6) % 7
+const dayOfWeek = (at: Date): number => (at.getDay() + 6) % 7
 
 /** Midnight starting the Monday of `at`'s week, local time. */
 export function startOfWeek(at: Date): Date {
@@ -112,14 +113,6 @@ export function byWeek<T extends { readonly startedAt: string }>(
           : `Week of ${formatDay(new Date(start)).slice(4)}`,
     items: inWeek,
   }))
-}
-
-/** `52 min`, `1 h 5 min`: how long a session took, as a history row says it. */
-export function formatMinutes(seconds: number): string {
-  const minutes = Math.round(seconds / 60)
-  if (minutes < 60) return `${String(minutes)} min`
-  const rest = minutes % 60
-  return `${String(Math.floor(minutes / 60))} h${rest === 0 ? '' : ` ${String(rest)} min`}`
 }
 
 /**

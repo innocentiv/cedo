@@ -1,5 +1,6 @@
 import { Platform } from 'react-native'
 import type * as ExpoAudio from 'expo-audio'
+import { sToMs } from '@cedo/contract'
 import restOver from '../../assets/chime.wav'
 import { ATTACK_S, BUZZ_MS, FADE_TO, TAP_STARTS_S, TONES, type Tone, VOLUME } from './chime-tone.ts'
 
@@ -107,7 +108,7 @@ async function buzzNative(): Promise<void> {
   for (const start of TAP_STARTS_S) {
     setTimeout(() => {
       void impactAsync(ImpactFeedbackStyle.Heavy)
-    }, start * 1000)
+    }, sToMs(start))
   }
 }
 

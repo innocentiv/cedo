@@ -13,8 +13,8 @@
     "release": "bun run scripts/release.ts",
     "dev:api": "bun --watch apps/api/src/index.ts",
     "dev:app": "cd apps/app && ./node_modules/.bin/expo start --web",
-    "check": "bun run format && bun run lint && bun run typecheck && bun run docs:links && bun run test",
-    "test": "bun test --parallel",
+    "check": "bun run format && bun run lint && bun run typecheck && bun run deadcode && bun run docs:links && bun run test",
+    "test": "bun test --parallel --coverage --coverage-reporter=lcov --coverage-dir=.artifacts/coverage && bun run scripts/coverage.ts",
     "test:changed": "bun test --changed",
     "db:up": "docker compose up -d --wait db && docker compose -f docker-compose.test.yml up -d --wait",
     "db:down": "docker compose stop db && docker compose -f docker-compose.test.yml stop",
@@ -39,12 +39,14 @@
     "typecheck": "bun run typecheck:server && bun run typecheck:app",
     "typecheck:server": "tsc -b . && tsc -p apps/api/tsconfig.tools.json",
     "typecheck:app": "apps/app/node_modules/.bin/tsc -p apps/app --noEmit",
+    "deadcode": "knip && knip --production --include files,dependencies || (echo 'Dead code, listed above. An unused export: drop its export, or delete it if nothing uses it. An unused file or dependency: delete it, or give knip.jsonc the entry it cannot see, with the reason. See docs/10-testing.md, Guards over the whole repository.' >&2 && exit 1)",
     "docs:links": "bun run scripts/check-doc-links.ts",
     "build:app": "cd apps/app && bun run export",
-    "check:ci": "bun run format:check && bun run lint && bun run typecheck && bun run docs:links && bun run test"
+    "check:ci": "bun run format:check && bun run lint && bun run typecheck && bun run deadcode && bun run docs:links && bun run test"
   },
   "devDependencies": {
     "@types/bun": "1.4.3",
+    "knip": "6.43.0",
     "oxfmt": "0.73.0",
     "oxlint": "1.88.0",
     "oxlint-tsgolint": "7.0.2004",

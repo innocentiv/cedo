@@ -24,11 +24,10 @@ export const ItemWeights = z
 export type ItemWeights = z.output<typeof ItemWeights>
 
 /** One item an athlete has. `weights` only on an item that holds the load; null there is unknown. */
-export const OwnedItem = z.strictObject({
+const OwnedItem = z.strictObject({
   slug: EquipmentSlug,
   weights: ItemWeights.nullable(),
 })
-export type OwnedItem = z.output<typeof OwnedItem>
 
 /** Everything an athlete has, replaced whole: `PUT /equipment`, and the MCP's `equipment_set`. */
 export const AthleteEquipmentInput = z.strictObject({

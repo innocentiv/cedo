@@ -1,8 +1,6 @@
-import type { TrainingReview } from '@cedo/contract'
+import { type TrainingReview, msToDays } from '@cedo/contract'
 
 /** Pure: dates in, adherence out. No database, so the calendar arithmetic is unit-testable. */
-
-const DAY_MS = 86_400_000
 
 export function adherenceOf(
   sessions: readonly { startedAt: Date }[],
@@ -16,7 +14,7 @@ export function adherenceOf(
     const a = times[i]
     const b = times[i + 1]
     if (a === undefined || b === undefined) continue
-    longestGapDays = Math.max(longestGapDays, Math.round((a - b) / DAY_MS))
+    longestGapDays = Math.max(longestGapDays, Math.round(msToDays(a - b)))
   }
 
   /**
@@ -27,9 +25,9 @@ export function adherenceOf(
    * A one-day rest does not break it: training every other day is a streak, which a naive
    * consecutive-days count would miss.
    */
-  const days = [...new Set(times.map((t) => Math.floor(t / DAY_MS)))].toSorted((a, b) => b - a)
+  const days = [...new Set(times.map((t) => Math.floor(msToDays(t))))].toSorted((a, b) => b - a)
   let currentStreakDays = 0
-  const today = Math.floor(Date.now() / DAY_MS)
+  const today = Math.floor(msToDays(Date.now()))
   if (days[0] !== undefined && today - days[0] <= 1) {
     currentStreakDays = 1
     for (let i = 0; i + 1 < days.length; i++) {

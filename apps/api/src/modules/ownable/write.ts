@@ -15,7 +15,7 @@ import type { Caller } from '../../plugins/auth.ts'
  * every statement on them carries `editable()`. See docs/adr/0019-visible-relations.md.
  */
 
-export const OWNABLE_KINDS = ['exercise', 'workout'] as const
+const OWNABLE_KINDS = ['exercise', 'workout'] as const
 export type OwnableKindName = (typeof OWNABLE_KINDS)[number]
 
 /**

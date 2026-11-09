@@ -112,7 +112,8 @@ Two constraints found by building it:
 
 ## The UI vocabulary
 
-`src/ui/index.ts` is the complete list a screen may import:
+A screen imports from `src/ui/index.ts` and from nothing else that renders. The primitives it draws
+on:
 
 | Primitive | For |
 | --- | --- |
@@ -153,6 +154,17 @@ Two constraints found by building it:
 | `color`, `space`, `radius`, `type`, `font`, `CONTENT_MAX_WIDTH`, `WIDE_CONTENT_MAX_WIDTH`, `CONTROL_HEIGHT`, `LOG_CONTROL_HEIGHT`, `ROW_HEIGHT`, `ICON_SIZE` | the only source of visual values |
 | `useAppFonts()` | the bundled faces `font` names, loaded beside the app at its root — never waited for |
 | `useLayout()`, `TABLET_MIN_WIDTH` | the only layout branch: `'phone' | 'tablet'`, and where it switches |
+
+`src/ui/index.ts` exports only what some screen imports, and `bun run deadcode` fails on a name in it
+no screen does. A primitive above that no screen uses is not in the barrel:
+- `OptionGrid`, `CompactField`, `Icon` and every token but `color`, `space` and
+  `HOME_INDICATOR_OVERLAP` are imported inside `src/ui/` from their own files.
+- `Segmented` and `Select` are drawn only by the `Choice` in their own file, so a screen asks for a
+  `Choice`.
+- `FilterTrigger` is drawn only by `FilterSheet`, and `BrandMark` only beside `BrandHeading` and
+  `FrontDoor`, each in its own file.
+
+Each one joins the barrel, exported from its file again, when a screen first needs it.
 
 Composites are here rather than in a screen, because each is used from more than one place or
 would otherwise be copied: `MusclePicker`, `EquipmentPicker` (what an exercise needs, by group,

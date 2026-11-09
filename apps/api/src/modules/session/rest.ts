@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
-import { NO_TARGET, type Rest, restOf } from '@cedo/contract'
+import { NO_TARGET, type Rest, restOf, sToMs } from '@cedo/contract'
 import type { Transaction } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises, visibleWorkoutSets } from '../../db/visible.ts'
@@ -35,7 +35,7 @@ export async function keepRest(tx: Transaction, caller: Caller, sessionId: strin
   }
   // ISO strings, cast in SQL: a JS Date inside raw `sql` bypasses the column encoder.
   const since = sql`${rest.since}::timestamptz`
-  const ends = new Date(Date.parse(rest.since) + rest.seconds * 1000).toISOString()
+  const ends = new Date(Date.parse(rest.since) + sToMs(rest.seconds)).toISOString()
   const same = sql`${workoutSessions.restSince} = ${since}`
   await tx
     .update(workoutSessions)

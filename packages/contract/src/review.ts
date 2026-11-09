@@ -120,7 +120,7 @@ export interface MuscleRow {
 }
 
 /** `+20%`, `−35%`, `new`: a change against the period before, as a list shows it. */
-export const formatChange = (changePct: number | null): string =>
+const formatChange = (changePct: number | null): string =>
   changePct === null
     ? 'new'
     : `${changePct > 0 ? '+' : changePct < 0 ? '−' : ''}${String(Math.abs(changePct))}%`

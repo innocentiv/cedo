@@ -18,7 +18,7 @@ export type Dimension = 'weight' | 'reps' | 'duration' | 'distance'
  * `weight` is present for `bodyweight_reps` on purpose — it means weight ADDED to bodyweight, a
  * +20 kg pull-up, and is optional there. See `exerciseFields.tracking`.
  */
-export const DIMENSIONS_BY_TRACKING: Readonly<Record<TrackingMode, readonly Dimension[]>> = {
+const DIMENSIONS_BY_TRACKING: Readonly<Record<TrackingMode, readonly Dimension[]>> = {
   weight_reps: ['weight', 'reps'],
   bodyweight_reps: ['reps', 'weight'],
   duration: ['duration'],
@@ -91,7 +91,7 @@ export interface DimensionField extends Typing {
 }
 
 /** A prescribed set's measured targets — derived from the schema, so a rename there breaks here. */
-export type TargetKey = Exclude<Extract<keyof WorkoutSetInput, `target${string}`>, 'targetReserve'>
+type TargetKey = Exclude<Extract<keyof WorkoutSetInput, `target${string}`>, 'targetReserve'>
 
 /** Weight, typed in the person's unit and stored in grams either way. */
 function weightField(unit: WeightUnit): DimensionField {
@@ -170,7 +170,7 @@ const STEP: Readonly<Record<Exclude<Dimension, 'weight'>, number>> = {
   distance: mToMm(100),
 }
 
-export const stepOf = (dimension: Dimension, unit: WeightUnit): number =>
+const stepOf = (dimension: Dimension, unit: WeightUnit): number =>
   dimension === 'weight' ? WEIGHT_STEP_G[unit] : STEP[dimension]
 
 /**

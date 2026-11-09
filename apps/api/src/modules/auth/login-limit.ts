@@ -1,4 +1,5 @@
 import { type SQL, and, desc, eq, gt, lt, sql } from 'drizzle-orm'
+import { minutesToS } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { loginFailures } from '../../db/schema.ts'
 import { addressKey } from '../../lib/client-address.ts'
@@ -16,7 +17,7 @@ import { rateLimited } from '../../lib/error.ts'
  * a success forgives its address and username's, its own included.
  */
 
-export const WINDOW_S = 15 * 60
+export const WINDOW_S = minutesToS(15)
 export const PER_ADDRESS_AND_USERNAME = 10
 export const PER_ADDRESS = 50
 

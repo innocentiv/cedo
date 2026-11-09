@@ -87,4 +87,4 @@ export const api = createApi(
   }),
 )
 
-export { ApiError, ContractDriftError } from './errors.ts'
+export { ApiError } from './errors.ts'

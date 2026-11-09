@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm'
-import { STALL_DEPTH, type TrainingReview } from '@cedo/contract'
+import { STALL_DEPTH, type TrainingReview, weeksToMs } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { setLogs, workoutSessions } from '../../db/schema.ts'
 import {
@@ -27,11 +27,9 @@ import type { WorkingSet } from './deload.ts'
  * coach would actually look at. See docs/07-mcp.md.
  */
 
-const DAY_MS = 86_400_000
-
 export async function trainingReview(training: Training, weeks: number): Promise<TrainingReview> {
-  const since = new Date(Date.now() - weeks * 7 * DAY_MS)
-  const previousSince = new Date(Date.now() - weeks * 14 * DAY_MS)
+  const since = new Date(Date.now() - weeksToMs(weeks))
+  const previousSince = new Date(Date.now() - weeksToMs(weeks * 2))
 
   const sessions = await db
     .select({

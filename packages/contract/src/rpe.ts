@@ -10,8 +10,8 @@ import type { WeightUnit } from './units.ts'
  * (Zourdos et al., JSCR 2016). Whole, because a half reserve means nothing to the person asked;
  * past five the reserve is too far from failure to estimate at all.
  */
-export const RESERVE_MIN = 0
-export const RESERVE_MAX = 5
+const RESERVE_MIN = 0
+const RESERVE_MAX = 5
 
 const RESERVE_SCALE =
   'Reps in reserve are whole, none to five: a range such as 1–2 is asked as its bottom'

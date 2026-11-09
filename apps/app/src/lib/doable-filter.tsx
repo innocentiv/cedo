@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Card, FilterSheet, NavButton, OptionRow, Stack, Text } from '../ui/index.ts'
 import { useEquipment } from '../api/equipment-queries.ts'
 
-export type Showing = 'doable' | 'all'
+type Showing = 'doable' | 'all'
 
 /** What each choice is called, and — in the sheet — what it lists. */
 const SHOWING: readonly { value: Showing; label: string; detail: string }[] = [

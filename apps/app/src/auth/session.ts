@@ -12,7 +12,7 @@ import { ApiError, NetworkError } from '../api/errors.ts'
  */
 export type AuthStatus = 'loading' | 'signed-in' | 'signed-out' | 'unreachable'
 
-export interface SessionSnapshot {
+interface SessionSnapshot {
   readonly status: AuthStatus
   readonly me: Me | null
 }

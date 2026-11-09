@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { ApiError, Exercise } from '@cedo/contract'
+import { ApiError, Exercise, Media } from '@cedo/contract'
 import { expectContract } from './contract.ts'
 import { samplePng } from './fixtures.ts'
 import { type TestApi, type TestUser, makeApi } from './harness.ts'
@@ -36,7 +36,7 @@ async function uploadImage(user: TestUser): Promise<string> {
   const form = new FormData()
   form.set('file', new File([samplePng(64, 64)], 'x.png', { type: 'image/png' }))
   const res = await user.wire('/media', { method: 'POST', body: form })
-  return expectContract((await import('@cedo/contract')).Media, res.body).id
+  return expectContract(Media, res.body).id
 }
 
 describe('duplicate media ids', () => {

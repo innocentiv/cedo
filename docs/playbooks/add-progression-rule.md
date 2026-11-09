@@ -18,9 +18,9 @@ z.object({
 })
 ```
 
-Add the kind to `PROGRESSION_KINDS` in the same file, and to the contract's one answer to **which
-rules fit which tracking mode** — the function the plan save, the editor and MCP all ask. A kind no
-tracking mode allows can be saved by nobody and offered by no screen.
+Add the kind to the contract's one answer to **which rules fit which tracking mode** — the
+function the plan save, the editor and MCP all ask. A kind no tracking mode allows can be saved by
+nobody and offered by no screen.
 
 Give every field a description (`.describe`): an AI learns the rule from it, and a test fails on a
 plan field without one.

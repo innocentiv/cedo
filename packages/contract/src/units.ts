@@ -10,7 +10,9 @@ import { z } from 'zod'
 `typing.ts`, which reads a clock's digits through `clockToS` below.
  *
  * If you are about to write `/ 1000` or `* 2.2` anywhere else in this repository, stop and use a
- * function from this file. See docs/02-conventions.md.
+ * function from this file — time included: a clock reads milliseconds, and every duration we keep
+ * is seconds. `test/unit-conversions.test.ts` fails on a conversion factor anywhere else. See
+ * docs/02-conventions.md, "Units".
  */
 
 const GRAMS_PER_KILOGRAM = 1000
@@ -18,6 +20,10 @@ const GRAMS_PER_POUND = 453.592_37
 const MILLIMETRES_PER_CENTIMETRE = 10
 const SECONDS_PER_MINUTE = 60
 const SECONDS_PER_HOUR = 3600
+const MINUTES_PER_HOUR = 60
+const MILLISECONDS_PER_SECOND = 1000
+const SECONDS_PER_DAY = 86_400
+const DAYS_PER_WEEK = 7
 
 /** How a person reads and types a weight — their preference, `Account.weightUnit`. Grams either way. */
 export const WEIGHT_UNITS = ['kg', 'lb'] as const
@@ -80,6 +86,27 @@ export function formatDuration(seconds: number): string {
 /** A clock's parts to seconds: `clockToS(1, 2, 5)` -> 3725. Seconds past 59 are added as given. */
 export const clockToS = (hours: number, minutes: number, seconds: number): number =>
   hours * SECONDS_PER_HOUR + minutes * SECONDS_PER_MINUTE + seconds
+
+/** `52 min`, `1 h 5 min`: how long a session took, as a history row says it. */
+export function formatMinutes(seconds: number): string {
+  const minutes = Math.round(seconds / SECONDS_PER_MINUTE)
+  if (minutes < MINUTES_PER_HOUR) return `${String(minutes)} min`
+  const rest = minutes % MINUTES_PER_HOUR
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR)
+  return `${String(hours)} h${rest === 0 ? '' : ` ${String(rest)} min`}`
+}
+
+/**
+ * A clock — `Date.now()`, `Date.parse`, a timer — reads milliseconds; a duration we keep is seconds.
+ * Exact both ways: the caller rounds, floors or ceils as it means to.
+ */
+export const msToS = (ms: number): number => ms / MILLISECONDS_PER_SECOND
+export const sToMs = (s: number): number => s * MILLISECONDS_PER_SECOND
+export const minutesToS = (minutes: number): number => minutes * SECONDS_PER_MINUTE
+export const daysToMs = (days: number): number => sToMs(days * SECONDS_PER_DAY)
+export const weeksToMs = (weeks: number): number => daysToMs(weeks * DAYS_PER_WEEK)
+/** Days since the epoch when given `Date.now()`, so a floor of it is a UTC day. */
+export const msToDays = (ms: number): number => msToS(ms) / SECONDS_PER_DAY
 
 function trimZeros(fixed: string): string {
   return fixed.includes('.') ? fixed.replace(/\.?0+$/u, '') : fixed

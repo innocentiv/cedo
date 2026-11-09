@@ -1,8 +1,9 @@
 import { and, desc, eq } from 'drizzle-orm'
-import type {
-  PersonalAccessToken,
-  PersonalAccessTokenCreate,
-  PersonalAccessTokenCreated,
+import {
+  type PersonalAccessToken,
+  type PersonalAccessTokenCreate,
+  type PersonalAccessTokenCreated,
+  daysToMs,
 } from '@cedo/contract'
 import { db } from '../../db/client.ts'
 import { personalAccessTokens } from '../../db/schema.ts'
@@ -34,7 +35,7 @@ export async function create(
 ): Promise<PersonalAccessTokenCreated> {
   const { token, hash } = mintToken()
   const expiresAt =
-    input.expiresInDays === null ? null : new Date(Date.now() + input.expiresInDays * 86_400_000)
+    input.expiresInDays === null ? null : new Date(Date.now() + daysToMs(input.expiresInDays))
 
   const [created] = await db
     .insert(personalAccessTokens)

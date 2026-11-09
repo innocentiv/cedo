@@ -101,7 +101,7 @@ export function step(
  * by entry in the order sent — so position says which is which, new ones included, and an entry
  * whose exercise changed (a new entry to the server) takes its new id.
  */
-export function idsLearned(sent: readonly DayDraft[], saved: Workout): Map<string, string> {
+function idsLearned(sent: readonly DayDraft[], saved: Workout): Map<string, string> {
   const ids = new Map<string, string>()
   sent.forEach((day, d) => {
     const savedDay = saved.days[d]
@@ -116,7 +116,7 @@ export function idsLearned(sent: readonly DayDraft[], saved: Workout): Map<strin
 }
 
 /** The page's copy with every id learned, each day and entry still known by the same key. */
-export const withIds = (days: readonly DayDraft[], ids: ReadonlyMap<string, string>): DayDraft[] =>
+const withIds = (days: readonly DayDraft[], ids: ReadonlyMap<string, string>): DayDraft[] =>
   days.map((day) => ({
     ...day,
     id: ids.get(day.key) ?? day.id,

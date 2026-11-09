@@ -8,6 +8,7 @@ import {
   type RegisterInput,
   type User,
   type WeightUnit,
+  daysToMs,
 } from '@cedo/contract'
 import { type Transaction, db } from '../../db/client.ts'
 import { groupMembers, groups, sessions, users } from '../../db/schema.ts'
@@ -57,7 +58,7 @@ const ACCOUNT_COLUMNS = {
 }
 
 function expiry(days: number): Date {
-  return new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+  return new Date(Date.now() + daysToMs(days))
 }
 
 /**

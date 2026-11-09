@@ -3,6 +3,7 @@ import { loadableTarget } from './loadable-target.ts'
 import type { SetLog } from './log.ts'
 import { NO_TARGET, type SetTarget } from './progression.ts'
 import { DEFAULT_REST_S, type Rest } from './rest.ts'
+import { msToS } from './units.ts'
 import type { WorkoutSet } from './workout.ts'
 
 /**
@@ -196,7 +197,7 @@ export function restingAfter<E extends FlowEntry>(
  * server dated its start, the device reads the time, and the two disagree by a moment or more.
  */
 export const elapsedS = (startedAt: string, until: number): number =>
-  Math.max(0, Math.floor((until - Date.parse(startedAt)) / 1000))
+  Math.max(0, Math.floor(msToS(until - Date.parse(startedAt))))
 
 /** What a finished session comes to — its summary at the end, and its row in history. */
 export interface SessionSummary<

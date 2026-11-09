@@ -4,7 +4,6 @@ import {
   counted,
   formatDay,
   formatLongDay,
-  formatMinutes,
   personalBestsLabel,
   personalBestsShort,
   sessionLine,
@@ -122,15 +121,6 @@ describe('a session in one line (#25)', () => {
     expect(sessionLine({ startedAt: iso(23), endedAt: null, setCount: 4 })).toBe(
       'Fri 23 Oct · 4 sets',
     )
-  })
-
-  test('reads an hour and over as hours and minutes', () => {
-    expect([59 * 60, 3600, 3900, 5400].map((s) => formatMinutes(s))).toEqual([
-      '59 min',
-      '1 h',
-      '1 h 5 min',
-      '1 h 30 min',
-    ])
   })
 
   test('counts its personal bests in words, and says nothing of none', () => {

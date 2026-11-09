@@ -34,7 +34,7 @@ export interface EntryAt {
 
 let made = 0
 /** A key for a day or entry the page adds, until the server gives it an id. */
-export const newKey = (): string => {
+const newKey = (): string => {
   made += 1
   return `new-${String(made)}`
 }
@@ -111,7 +111,7 @@ export function moveEntryToDay(
  * An exercise picked into a day, as a new entry at its foot (#26): the plan with it, and where it
  * is — so its settings can open on it.
  */
-export function withEntryAdded(
+function withEntryAdded(
   days: readonly DayDraft[],
   dayIndex: number,
   exercise: Parameters<typeof newEntry>[0],

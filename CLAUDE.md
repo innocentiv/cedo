@@ -11,7 +11,9 @@ is designed to prevent.
 ## Non-negotiable invariants
 
 1. **`bun run check` must pass after every feature.** Format, lint (type-aware on the server),
-   typecheck, and tests. Warnings fail. Never commit with it red.
+   typecheck, dead code (`bun run deadcode`: an export nobody imports, a file nothing reaches, a
+   dependency nothing uses), doc links, and tests with their coverage. Warnings fail. Never commit
+   with it red.
 2. **`packages/contract` is the only shared surface.** `apps/app` must NEVER import from `apps/api`
    — not even a type. This is enforced by lint, not just convention. See `docs/01-architecture.md`.
 3. **Schemas are authored once, in Zod, in `packages/contract`.** The DB, HTTP routes, MCP tools and
@@ -27,7 +29,11 @@ is designed to prevent.
    logging against its workouts. Lint, `raw-sql.test.ts` and `test/membership-lost.test.ts` enforce
    it. See `docs/adr/0019-visible-relations.md`.
 6. **All measurements are stored as integers in base units** (`weight_g`, `distance_mm`,
-   `duration_s`). Conversion happens only in `packages/contract/src/units.ts`. Reps in reserve is
+   `duration_s`). Conversion happens only in `packages/contract/src/units.ts` — time included: a
+   clock's milliseconds become seconds there too (`msToS`, `sToMs`, `daysToMs`).
+   `test/unit-conversions.test.ts` fails when 60, 1000, 3600, a day, a pound or a mile sits beside
+   `*`, `/` or `%` in source outside `units.ts`. It cannot see a constant that hides the factor
+   (`const DAY_MS = 86_400_000`), which is still a conversion. Reps in reserve is
    a rating, not a measurement: whole, stored as RPE in `numeric(3,1)`, and said as reps in reserve
    everywhere — see `docs/adr/0020-rpe-is-numeric.md` and
    `docs/adr/0027-reps-in-reserve-whole-everywhere.md`.
@@ -41,8 +47,17 @@ is designed to prevent.
    `apps/app/src/lib/plan-sync.ts`, `apps/app/src/lib/rest-alert.ts`;
    no React, no React Native) and is unit-tested beside them — as is what the native app's engine
    lacks (`apps/app/src/lib/hermes-builtins.ts`).
-   Components are never unit-tested; lint refuses it. See `docs/10-testing.md` and the amendment
-   to `docs/adr/0017-webview-for-ui-verification.md`.
+   Components are never unit-tested; lint refuses it. It is measured: each source file of the
+   contract and the API, and each plain module named here, has 90% of its lines and functions run
+   by a test, or stays at its own numbers in `test/coverage-baseline.json` with its reason, or the
+   gate fails. `scripts/coverage.ts` reads this list, and says what it leaves out and why. See
+   `docs/10-testing.md`, "Coverage", and the amendment to
+   `docs/adr/0017-webview-for-ui-verification.md`.
+8. **Every package has a written reason before it is installed.** Before `bun add`, check the
+   package is the one you meant — its repository, downloads, first publish — and give it a row in
+   `docs/dependencies.md`; `test/dependencies.test.ts` fails without one. Bun refuses a version
+   published in the last seven days (`minimumReleaseAge`): never lower it to get past one. See
+   `docs/02-conventions.md`, "Dependencies".
 
 ## Public repository
 
@@ -62,6 +77,7 @@ Treat everything here as public: the code, its history, issues and comments. Two
 | `bun run setup` | Fresh clone → a passing gate: dependencies, `.env`, databases, agent skills. Safe to re-run. |
 | `bun run check` | The gate. Run after every feature. |
 | `bun run test:changed` | Inner loop — only tests affected by your diff. |
+| `bun run deadcode` | knip: unused exports, files and dependencies. Part of the gate. |
 | `bun run db:reset` | Empty volume → migrate → seed, in one command. |
 | `bun run db:test` | The throwaway Postgres the test suite needs. |
 | `bun run shot <route>` | Rebuild, render a UI route, screenshot to `.artifacts/`, print console errors. |
@@ -86,6 +102,9 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   feedback lost. Markdown is excluded from `oxfmt` entirely for the same reason.
 - **`tsc -b` can report success while skipping files it considers up to date.** If a result looks
   too clean after adding files, re-run with `--force`.
+- **Never read a member off a dynamic import: `(await import('@cedo/contract')).Media`.** knip
+  then counts every export of that package as used. One such line in a test hid 28 dead exports
+  of the contract from `bun run deadcode`. Import it statically, or destructure the import.
 - **Prove a regression test fails against the unfixed code.** One "passing" race test here was
   measured to false-pass one run in seven; it needed five rounds to be trustworthy.
 - **With guards in a row, remove each one and watch its own test fail.** A test meant for the second
@@ -209,6 +228,7 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
 | `docs/08-frontend.md` | Expo router layout, UI primitives, the thinness rule |
 | `docs/09-deployment.md` | Compose, Caddy, env, backup |
 | `docs/10-testing.md` | The four test tiers and what belongs in each |
+| `docs/dependencies.md` | Every package installed, why, and where it comes from |
 | `docs/adr/` | Why each decision was made, and what was rejected |
 | `docs/playbooks/` | Step-by-step recipes — start here to add anything |
 

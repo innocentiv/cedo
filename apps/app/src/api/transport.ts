@@ -14,7 +14,7 @@ import { ApiError, ContractDriftError, NetworkError } from './errors.ts'
 
 export type QueryInput = Record<string, string | number | boolean | undefined>
 
-export interface RequestOptions {
+interface RequestOptions {
   readonly query?: QueryInput
   readonly body?: unknown
   /** Multipart uploads set their own content type, including a boundary Request generates. */

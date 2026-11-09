@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import type { LoggedExercise } from '@cedo/contract'
 import { makeApi } from '../../test/harness.ts'
+import { reviewFixture } from '../../test/review-fixture.ts'
 import { effortDriftOf, fallingOf } from './deload.ts'
-import { reviewFixture } from './review-fixture.ts'
 import type { WorkingSet } from './stalled.ts'
 
 /**

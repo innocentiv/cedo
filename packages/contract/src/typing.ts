@@ -7,7 +7,7 @@ import { clockToS, formatDuration } from './units.ts'
  */
 
 /** What a field shows while it is being typed in, and the value that text means. */
-export interface Typed {
+interface Typed {
   readonly text: string
   /** In the field's stored unit — base units for a dimension, the number itself for a count. */
   readonly value: number | null

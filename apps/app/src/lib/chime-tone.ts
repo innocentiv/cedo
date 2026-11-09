@@ -10,6 +10,8 @@
  * script can read it. Chosen by ear from the candidates in #39.
  */
 
+import { sToMs } from '@cedo/contract'
+
 /** An overtone of a plate: its pitch as a ratio of the note's, its loudness, how much faster it fades. */
 type Overtone = readonly [ratio: number, loudness: number, fade: number]
 
@@ -108,5 +110,5 @@ export const BUZZ_MS: readonly number[] = TAP_STARTS_S.flatMap((start, i) => {
   const previous = TAP_STARTS_S[i - 1]
   return previous === undefined
     ? [BUZZ_ON_MS]
-    : [Math.round((start - previous) * 1000) - BUZZ_ON_MS, BUZZ_ON_MS]
+    : [Math.round(sToMs(start - previous)) - BUZZ_ON_MS, BUZZ_ON_MS]
 })

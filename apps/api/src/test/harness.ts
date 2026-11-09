@@ -69,7 +69,7 @@ export interface WireResponse {
  * would push the contract toward accepting `Date`, which would then break the actual client.
  * See docs/adr/0015-no-eden-treaty.md.
  */
-export type Wire = (path: string, init?: RequestInit) => Promise<WireResponse>
+type Wire = (path: string, init?: RequestInit) => Promise<WireResponse>
 
 export interface TestApi {
   /** Typed client, ergonomic for driving the API. */

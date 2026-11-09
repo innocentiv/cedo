@@ -175,7 +175,7 @@ function ThisWeek({
 }
 
 /** Finished sessions, newest first, by week: each its day, how long, its sets, and its bests. */
-export function History({
+function History({
   sessions,
   older,
   sessionHref,
