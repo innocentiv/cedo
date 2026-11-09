@@ -43,7 +43,8 @@
       "bundleIdentifier": "io.github.innocentiv.cedo",
       "buildNumber": "1",
       "infoPlist": {
-        "NSLocalNetworkUsageDescription": "cedo connects to your server when it is on your local network."
+        "NSLocalNetworkUsageDescription": "cedo connects to your server when it is on your local network.",
+        "NSAlarmKitUsageDescription": "cedo rings an alarm when a rest is over, if you choose it in Settings."
       }
     },
     "android": {

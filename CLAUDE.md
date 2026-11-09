@@ -181,7 +181,12 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   cannot see: write `u`. The exercise picker threw on `toSorted` the first time it opened natively.
 - **To read a value from the native app's runtime, log it.** Metro prints the device's console
   (`console.log` in the root layout, then the inverse `Edit`). Its inspector socket answers a
-  script's connection with a 401 whatever `Origin` it sends: that cost a cycle on #77.
+  script's connection with a 401 whatever `Origin` it sends: that cost a cycle on #77. Start Metro
+  without `CI=1`, which stops it watching files: the app ran the launch bundle, probe and fix unseen.
+- **The simulator hides what the phone's system draws.** Its screenshots leave the Dynamic Island
+  out — an alarm ringing there looked like nothing; `maestro hierarchy` lists it — and iOS 27.2's
+  SpringBoard denies AlarmKit without asking: allow it under Settings → Apps → cedo → Alarms (#39).
+  Read `xcrun simctl spawn booted log show` for the daemon's own account of what it did.
 - **A Bun script that spawns `bun` hands it the `.env` it loaded.** Bun loads `.env` into the
   script's own environment, so a child given `process.env` inherits `NODE_ENV=development` as if
   the shell had exported it. `bun test` then kept it, and the suite truncated the dev database:

@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { Platform } from 'react-native'
+import { requireOptionalNativeModule } from 'expo'
 import { router } from 'expo-router'
 import type * as ExpoNotifications from 'expo-notifications'
 import type { RestPhase } from '@cedo/contract'
@@ -17,11 +18,13 @@ export type { AlertKind } from './rest-alert.ts'
 
 /**
  * The phone's side of telling a rest's end with the app closed (#39): what `rest-alert.ts` decides,
- * asked of iOS through expo-notifications — imported lazily, so the web never evaluates it. A
+ * asked of iOS — a notification through expo-notifications, imported lazily so the web never
+ * evaluates it, or an alarm through AlarmKit (`modules/rest-alarm`, iOS 26 and later). A
  * home-screen web app cannot be told anything closed, so there it is always off.
  *
- * With the app in front nothing is shown: the rest band counts down and the app chimes, as before.
- * A tap on one told while it was closed opens its session, even from a cold start.
+ * With the app in front a notification is not shown: the rest band counts down and the app chimes,
+ * as before. An alarm rings even then, and the app does not chime beside it. A tap on a
+ * notification told while the app was closed opens its session, even from a cold start.
  */
 
 /** Only the native app is told a rest's end while closed. */
@@ -30,13 +33,35 @@ export const tellsWhileClosed = Platform.OS !== 'web'
 /** The one rest alert: scheduling it again replaces the one pending. */
 const REST_OVER = 'rest-over'
 
+/** The app's own AlarmKit module (`modules/rest-alarm`): one alarm, replaced when set again. */
+interface RestAlarmModule {
+  readonly isAvailable: () => boolean
+  readonly requestAuthorization: () => Promise<boolean>
+  readonly schedule: (seconds: number, title: string) => Promise<void>
+  readonly cancel: () => Promise<void>
+}
+
+const restAlarm = tellsWhileClosed
+  ? requireOptionalNativeModule<RestAlarmModule>('RestAlarm')
+  : null
+
+/** Whether this phone rings a rest's end as an alarm: iOS 26 and later, offered only there. */
+export const ringsAlarms = restAlarm?.isAvailable() === true
+
+/** Whole seconds to an end, by this phone's clock: never none, which iOS refuses. */
+const secondsTo = (endsAt: number): number => Math.max(1, Math.round((endsAt - Date.now()) / 1000))
+
 async function notifications(): Promise<typeof ExpoNotifications> {
   return await import('expo-notifications')
 }
 
 const scheduler: AlertScheduler = {
   schedule: async (wanted) => {
-    if (wanted.kind !== 'notification') return
+    if (wanted.kind === 'alarm') {
+      // The system's alarm sound, and the title alone: an alarm says no more.
+      await restAlarm?.schedule(secondsTo(wanted.endsAt), wanted.title)
+      return
+    }
     const n = await notifications()
     await n.scheduleNotificationAsync({
       identifier: REST_OVER,
@@ -49,12 +74,15 @@ const scheduler: AlertScheduler = {
       },
       trigger: {
         type: n.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: Math.max(1, Math.round((wanted.endsAt - Date.now()) / 1000)),
+        seconds: secondsTo(wanted.endsAt),
       },
     })
   },
   cancel: async (kind) => {
-    if (kind !== 'notification') return
+    if (kind === 'alarm') {
+      await restAlarm?.cancel()
+      return
+    }
     const n = await notifications()
     await n.cancelScheduledNotificationAsync(REST_OVER)
     // One told while the app was closed tells a rest that is over now.
@@ -89,6 +117,7 @@ async function chooseAlertKind(chosen: AlertKind): Promise<boolean> {
     })
     if (!asked.granted) return false
   }
+  if (chosen === 'alarm' && (await restAlarm?.requestAuthorization()) !== true) return false
   await kind.choose(chosen)
   // A rest whose screen is not open is not followed: turned off, its alert is cancelled here.
   if (chosen === 'off') await alerts.follow(null)
@@ -96,17 +125,22 @@ async function chooseAlertKind(chosen: AlertKind): Promise<boolean> {
 }
 
 /** iOS asks only once: after a refusal, it is changed in the phone's own Settings. */
-const REFUSED = 'Notifications are off for cedo. Turn them on in the iPhone’s Settings, under cedo.'
+const REFUSED: Readonly<Record<AlertKind, string | null>> = {
+  off: null,
+  notification:
+    'Notifications are off for cedo. Turn them on in the iPhone’s Settings, under cedo.',
+  alarm: 'Alarms are off for cedo. Turn them on in the iPhone’s Settings, under cedo.',
+}
 
 /** Choosing how a rest's end is told — in Settings, or from the rest band — and iOS refusing it. */
 export function useChooseAlertKind(): {
   readonly choose: (chosen: AlertKind) => void
   readonly refused: string | null
 } {
-  const [refused, setRefused] = useState(false)
+  const [refused, setRefused] = useState<string | null>(null)
   const choose = async (chosen: AlertKind): Promise<void> => {
     try {
-      setRefused(!(await chooseAlertKind(chosen)))
+      setRefused((await chooseAlertKind(chosen)) ? null : REFUSED[chosen])
     } catch (error) {
       console.error(error)
     }
@@ -115,7 +149,7 @@ export function useChooseAlertKind(): {
     choose: (chosen) => {
       void choose(chosen)
     },
-    refused: refused ? REFUSED : null,
+    refused,
   }
 }
 

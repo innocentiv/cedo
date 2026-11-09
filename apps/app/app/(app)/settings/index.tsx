@@ -20,6 +20,7 @@ import { useSubmit } from '../../../src/lib/use-submit.ts'
 import { useWeightUnit } from '../../../src/lib/weight-unit.ts'
 import {
   type AlertKind,
+  ringsAlarms,
   tellsWhileClosed,
   useAlertKind,
   useChooseAlertKind,
@@ -30,9 +31,11 @@ const UNIT_OPTIONS: readonly ChoiceOption<WeightUnit>[] = [
   { value: 'lb', label: 'Pounds' },
 ]
 
+/** Alarm only where AlarmKit is: iOS 26 and later (#39). */
 const ALERT_OPTIONS: readonly ChoiceOption<AlertKind>[] = [
   { value: 'off', label: 'Off' },
   { value: 'notification', label: 'Notification' },
+  ...(ringsAlarms ? [{ value: 'alarm', label: 'Alarm' } as const] : []),
 ]
 
 const SIGN_UP_OPTIONS: readonly ChoiceOption<SignUp>[] = [

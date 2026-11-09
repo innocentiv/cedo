@@ -329,16 +329,21 @@ there (#63).
 - **A rest's end told with the app closed** (#39) is the native app's, and comes from the phone
   itself: no push, no server (ADR-0032). A home-screen web app cannot be told anything closed — Web
   Push never reached an iPhone — so the web never offers it. Settings → **Rest over** chooses how:
-  Off · Notification. While it is Off, the rest band offers **Tell me when rest is over**, which
-  turns on Notification. iOS asks the first time; refused, the screen says where to turn it back
-  on. The choice is the phone's, kept in the keychain (`cedo.rest-alert`), not the account's. The
-  notification says "Rest over" and the next set as the logger asks it (the contract's
+  Off · Notification · Alarm, Alarm only on iOS 26 and later. While it is Off, the rest band offers
+  **Tell me when rest is over**, which turns on Notification. iOS asks the first time a kind is
+  chosen; refused, the screen says where to turn it back on. The choice is the phone's, kept in
+  the keychain (`cedo.rest-alert`), not the account's. The notification says "Rest over" and the
+  next set as the logger asks it (the contract's
   `restAlertOf`), plays cedo's chime, and is set for the end this phone counts — never the server's
   end read by the phone's clock. It follows the rest: +30 s moves it, the next set's rest replaces
   it, and Skip, Undo and finishing cancel it. A rest that runs out has been told, and its alert is
   left: the app sees the end as it goes off, and cancelling it then would silence an alarm as it
-  starts. With the app in front iOS shows nothing: the band counts down and the app chimes. A tap on one opens its session, from a cold start too. The rules
-  are `src/lib/rest-alert.ts`, unit-tested; asking iOS is `src/lib/rest-alert-device.ts`.
+  starts. With the app in front iOS shows nothing: the band counts down and the app chimes. A tap
+  on one opens its session, from a cold start too. **An alarm** is AlarmKit's: "Rest over" with the
+  system's alarm sound, through the silent switch and Focus, until it is stopped. It rings with the
+  app in front too, so the app does not chime beside it; a tap on it opens the app. The rules are
+  `src/lib/rest-alert.ts`, unit-tested; asking iOS is `src/lib/rest-alert-device.ts`, and the alarm
+  the app's own native module, `modules/rest-alarm`.
 - **Reserve is asked before Log** (#37), as one optional row in the logger, under the numbers, and
   only for a working set of an exercise measured in reps — which those are is the contract's, not
   the screen's. Whole reps, none to five, one row of segments; tapping the chosen one again takes it
@@ -985,6 +990,10 @@ bunx expo start --dev-client                       # Metro, whose /api proxy rea
 - **A native module is never reached on the web.** It is imported lazily behind `Platform.OS`, as
   `token-storage.ts` and `chime.ts` do, or it has a web implementation of its own, as expo-crypto
   and expo-network have.
+- **The app's own native code is a local Expo module** under `modules/` (#39): Swift, autolinked
+  by prebuild, and reached with `requireOptionalNativeModule`, so the web and a build without it
+  get null, never a crash. `modules/rest-alarm` rings a rest's end through AlarmKit, which it links
+  weakly: the app still opens on an iOS before 26, and never offers the alarm there.
 - **The contract runs on Hermes too**, React Native's engine, which lacks a few built-ins Bun and
   every browser have. `index.ts`, the app's entry, gives it `Array.prototype.toSorted` before any
   module runs (`src/lib/hermes-builtins.ts`); the others it lacks are listed there, and
@@ -993,8 +1002,9 @@ bunx expo start --dev-client                       # Metro, whose /api proxy rea
 - **What differs on native**: a set's idempotency key takes its random bytes from expo-crypto, since
   React Native has no `crypto`; TanStack Query hears the network from expo-network and the app's
   focus from `AppState` (`src/api/device-state.ts`); the rest's end is a bundled sound and
-  expo-haptics (`src/lib/chime.ts`), and a local notification with the app closed
-  (`src/lib/rest-alert-device.ts`, expo-notifications with remote notifications off); a video opens outside the app, from its picture or the button
+  expo-haptics (`src/lib/chime.ts`), and a local notification or an alarm with the app closed
+  (`src/lib/rest-alert-device.ts`, expo-notifications with remote notifications off, and AlarmKit
+  through `modules/rest-alarm`); a video opens outside the app, from its picture or the button
   below it.
 - **The keyboard is the app's to manage**, where a browser does it unasked. Every scroll moves a
   focused field above the keyboard (`automaticallyAdjustKeyboardInsets`); a numeric field's number
