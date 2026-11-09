@@ -1,5 +1,5 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
-import { Platform } from 'react-native'
+import { AppState, Platform } from 'react-native'
 import { requireOptionalNativeModule } from 'expo'
 import { router } from 'expo-router'
 import type * as ExpoNotifications from 'expo-notifications'
@@ -198,14 +198,30 @@ function openTapped(response: ExpoNotifications.NotificationResponse): void {
 }
 
 /**
- * Where the session screen is: nothing shown while the app is in front, and a tap on a rest's end —
- * the one that opened the app, too — taken to its session.
+ * A rest's end shown while the app was closed tells a rest that is over by the time the app is back,
+ * which says so itself: it is cleared, an alarm left as it is.
+ */
+async function clearShown(): Promise<void> {
+  await (await notifications()).dismissNotificationAsync(REST_OVER)
+}
+
+const reportError = (error: unknown): void => {
+  console.error(error)
+}
+
+/**
+ * Where the session screen is: nothing shown while the app is in front, a rest's end shown while it
+ * was closed cleared once it is back, and a tap on one — the one that opened the app, too — taken
+ * to its session.
  */
 export function useRestAlertTaps(): void {
   useEffect(() => {
     if (!tellsWhileClosed) return
     let gone = false
     let listening: { remove: () => void } | null = null
+    const back = AppState.addEventListener('change', (state) => {
+      if (state === 'active') clearShown().catch(reportError)
+    })
     void (async () => {
       const n = await notifications()
       if (gone) return
@@ -225,12 +241,12 @@ export function useRestAlertTaps(): void {
         openTapped(opened)
       }
       listening = n.addNotificationResponseReceivedListener(openTapped)
-    })().catch((error: unknown) => {
-      console.error(error)
-    })
+      await clearShown()
+    })().catch(reportError)
     return () => {
       gone = true
       listening?.remove()
+      back.remove()
     }
   }, [])
 }
