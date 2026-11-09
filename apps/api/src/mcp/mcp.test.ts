@@ -23,7 +23,7 @@ import { EXERCISE_LIBRARY } from '../db/seed-data/exercises.ts'
 import { expectContract } from '../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../test/harness.ts'
 import { appOf, callTool, mintPat, post, publishedTool, rpc, textOf } from '../test/mcp-wire.ts'
-import { reviewFixture } from '../modules/review/review-fixture.ts'
+import { reviewFixture } from '../test/review-fixture.ts'
 
 /**
  * Drives the MCP server exactly as an AI client does: JSON-RPC over HTTP at /mcp, authenticated by

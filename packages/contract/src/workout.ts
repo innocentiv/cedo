@@ -19,7 +19,7 @@ import { WorkoutSetInput, targetFieldsOf } from './plan-set.ts'
  * reordering a plain array move in the editor.
  */
 
-export const SupersetGroup = z
+const SupersetGroup = z
   .string()
   .regex(/^[A-Z]$/u, 'Must be a single uppercase letter')
   .nullable()

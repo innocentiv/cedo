@@ -23,7 +23,7 @@ export type Username = z.output<typeof Username>
  * Length is the only rule, per NIST SP 800-63B: composition requirements (a digit, a symbol...)
  * measurably reduce password quality by pushing users toward predictable substitutions.
  */
-export const Password = z.string().min(8, 'Must be at least 8 characters').max(256)
+const Password = z.string().min(8, 'Must be at least 8 characters').max(256)
 
 export const User = z.object({
   id: Id,

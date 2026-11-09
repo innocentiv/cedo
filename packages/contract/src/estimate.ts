@@ -17,7 +17,7 @@ export const MAX_ESTIMATE_REPS = 12
  * An estimate is said to the nearest half kilogram: precision it does not have — "64.17 kg" — would
  * read as a measurement. A single lifted is no estimate, and keeps its weight.
  */
-export const ESTIMATE_STEP_G = 500
+const ESTIMATE_STEP_G = 500
 
 /**
  * In grams; null for a set it cannot estimate — not a weight lift, no weight, or past
@@ -58,7 +58,7 @@ export interface TrendPoint {
 }
 
 /** One session says nothing about a direction: a trend is two points or more. */
-export const MIN_TREND_POINTS = 2
+const MIN_TREND_POINTS = 2
 
 /**
  * Each session's point, oldest first. Warm-ups never count. A weight lift's session with no set to

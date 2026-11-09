@@ -18,7 +18,7 @@ const liftedMax = (effort: Effort, tracking: TrackingMode): number | null =>
   estimatedMax({ weightG: effort.weightG, reps: effort.reps, reserve: null }, tracking)
 
 /** Whether `effort` is strictly better than `than`. */
-export function beats(effort: Effort, than: Effort, tracking: TrackingMode): boolean {
+function beats(effort: Effort, than: Effort, tracking: TrackingMode): boolean {
   if (tracking !== 'weight_reps') return compareEfforts(effort, than, tracking) > 0
   const mine = liftedMax(effort, tracking)
   if (mine === null) return false

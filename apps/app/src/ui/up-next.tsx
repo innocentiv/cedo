@@ -5,7 +5,7 @@ import { Stack } from './stack.tsx'
 import { Text } from './text.tsx'
 import { ROW_HEIGHT, color, radius, space, stroke } from './tokens.ts'
 
-export interface UpNextItem {
+interface UpNextItem {
   readonly id: string
   readonly name: string
   /** What it asks, in one line: "3 × 8 · 80 kg". */

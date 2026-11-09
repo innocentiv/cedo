@@ -117,5 +117,4 @@ export function visibleWorkoutSets(caller: AccessContext, alias = 'workout_sets'
 /** Row shapes, for mappers. Identical to the tables' own: a relation selects every column. */
 export type ExerciseRow = typeof exercises.$inferSelect
 export type WorkoutRow = typeof workouts.$inferSelect
-export type WorkoutEntryRow = typeof workoutEntries.$inferSelect
 export type WorkoutSetRow = typeof workoutSets.$inferSelect

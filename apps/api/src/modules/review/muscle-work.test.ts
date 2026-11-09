@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
 import { makeApi } from '../../test/harness.ts'
+import { reviewFixture } from '../../test/review-fixture.ts'
 import { DECLINE_FROM_SETS, TOP_MUSCLES, type WindowWork, muscleWorkOf } from './muscle-work.ts'
-import { reviewFixture } from './review-fixture.ts'
 
 /**
  * The work each muscle got, in working sets by load share. It used to be weight × reps alone, which

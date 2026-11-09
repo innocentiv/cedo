@@ -1,8 +1,9 @@
 /**
- * The complete UI vocabulary. A screen imports from here and from `@cedo/contract`, and from
- * nowhere else that renders. See docs/08-frontend.md.
+ * What the screens use of the UI vocabulary. A screen imports from here and from `@cedo/contract`,
+ * and from nowhere else that renders. A part only `src/ui/` uses is imported there from its own
+ * file, and joins this list when a screen first needs it. See docs/08-frontend.md.
  */
-export { Button, type ButtonVariant } from './button.tsx'
+export { Button } from './button.tsx'
 export { BrandHeading, FrontDoor } from './brand.tsx'
 export { Card, ListRow } from './card.tsx'
 export { Columns } from './columns.tsx'
@@ -12,11 +13,11 @@ export { EntryEditor } from './entry-editor.tsx'
 export { EntryRead } from './entry-read.tsx'
 export type { EntryTargetView } from './sets-field.tsx'
 export type { ChangeTarget } from './target-change.tsx'
-export { Icon, IconButton, type IconName } from './icon.tsx'
+export { IconButton } from './icon.tsx'
 export { Meter } from './meter.tsx'
-export { FilterRow, FilterSheet, FilterTrigger } from './filters.tsx'
+export { FilterRow, FilterSheet } from './filters.tsx'
 export { Folded } from './folded.tsx'
-export { OptionGrid, OptionRow, OptionSection } from './options.tsx'
+export { OptionRow, OptionSection } from './options.tsx'
 export { MuscleFilter } from './muscle-filter.tsx'
 export { MusclePicker } from './muscle-picker.tsx'
 export { EquipmentPicker } from './equipment-picker.tsx'
@@ -28,44 +29,26 @@ export { InlineProse, Prose } from './prose.tsx'
 export { Empty, ErrorNotice, FormError, Spinner } from './feedback.tsx'
 export { ErrorBoundary } from './error-boundary.tsx'
 export { ExerciseRow } from './exercise-row.tsx'
-export { CompactField, Field, Input, NumberInput } from './input.tsx'
+export { Field, Input, NumberInput } from './input.tsx'
 export { DimensionInput } from './dimension-input.tsx'
 export { Loaded, type QueryLike } from './loaded.tsx'
 export { Screen, type ScreenColumns } from './screen.tsx'
 export { FocusLogger, type LoggedHere } from './focus-logger.tsx'
-export { LastSet } from './last-set.tsx'
 export { AfterSet, type JustDone } from './rest-control.tsx'
 export { RemoveButton } from './remove-button.tsx'
 export { ReserveSegments } from './reserve-segments.tsx'
-export { Choice, Segmented, Select, type ChoiceOption } from './choice.tsx'
+export { Choice, type ChoiceOption } from './choice.tsx'
 export { ReturnBar } from './return-bar.tsx'
 export { SessionHeader } from './session-header.tsx'
-export { SetMarks } from './set-marks.tsx'
 export { Sheet } from './sheet.tsx'
 export { SidebarAccount, SidebarName } from './sidebar.tsx'
 export { Stepper } from './stepper.tsx'
 export { Thumbnail } from './thumbnail.tsx'
 export { VideoPlayer } from './video-player.tsx'
-export { AddRow, UpNext, type UpNextItem } from './up-next.tsx'
+export { AddRow, UpNext } from './up-next.tsx'
 export { Stack } from './stack.tsx'
 export { WeekStrip } from './week-strip.tsx'
-export { Text, type Tone } from './text.tsx'
-export {
-  CONTENT_MAX_WIDTH,
-  CONTROL_HEIGHT,
-  HOME_INDICATOR_OVERLAP,
-  ICON_SIZE,
-  LOG_CONTROL_HEIGHT,
-  MARK_SIZE,
-  ROW_HEIGHT,
-  ROW_THUMB_WIDTH,
-  TABLET_MIN_WIDTH,
-  WIDE_CONTENT_MAX_WIDTH,
-  color,
-  radius,
-  space,
-  stroke,
-  type,
-} from './tokens.ts'
-export { type Layout, useLayout } from './use-layout.ts'
+export { Text } from './text.tsx'
+export { HOME_INDICATOR_OVERLAP, color, space } from './tokens.ts'
+export { useLayout } from './use-layout.ts'
 export { useAppFonts } from './fonts.ts'

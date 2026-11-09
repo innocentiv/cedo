@@ -1,0 +1,71 @@
+// The gate's dead-code check: an export nobody imports, a file nothing reaches, a dependency
+// nothing uses. `noUnusedLocals` sees one file; this sees the repository. `bun run deadcode` runs it
+// twice: everything, then `--production` for files and dependencies only — where only tests reach a
+// source file, it is test tooling and lives with the tests. A `!` marks what ships.
+// See docs/10-testing.md, "Guards over the whole repository".
+//
+// An entry is what knip cannot find by itself: a file started by `Bun.spawn`, by a root script that
+// `cd`s into a workspace, by a Dockerfile, or by hand. Without them it reports 22 used files unused.
+{
+  "$schema": "https://unpkg.com/knip@6.43.0/schema.json",
+  // Run by scripts, not imported: macOS's `plutil` in build-ipa.sh, and the two the root's scripts
+  // call after a `cd` into their workspace, where knip does not follow.
+  "ignoreBinaries": ["plutil", "expo", "drizzle-kit"],
+  // Named in apps/app/app.json, where knip's Expo plugin guesses them as needed; this app installs
+  // neither.
+  "ignoreDependencies": ["expo-updates", "expo-system-ui"],
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/*.ts", "test/**/*.test.ts", "test/**/*.probe.ts"],
+      "project": ["scripts/**/*.ts", "test/**/*.ts"],
+    },
+    "packages/contract": {
+      // Its index is a barrel the API and the app import from: an export of it nobody imports is
+      // dead too. Only here — elsewhere an entry's exports are a route's default, used by Expo.
+      "includeEntryExports": true,
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.ts!"],
+    },
+    "apps/api": {
+      "entry": [
+        "src/index.ts!",
+        "src/mcp/index.ts!",
+        "src/db/prepare-test-db.ts",
+        "src/db/curate-for-test.ts",
+        "src/db/seed-perf/index.ts",
+        "src/test/perf/report.ts",
+        "src/test/perf/*.perf.ts",
+        "src/**/*.test.ts",
+        "src/**/*.probe.ts",
+      ],
+      "project": [
+        "src/**/*.ts!",
+        // The test database's tooling: run by `bun run db:test` and the perf seed, never shipped.
+        "!src/test/**!",
+        "!src/db/seed-perf/**!",
+        "!src/db/{prepare-test-db,curate-for-test,ensure}.ts!",
+      ],
+    },
+    "apps/app": {
+      "entry": [
+        "app/**/*.{ts,tsx}!",
+        // Built on its own by `bun build` in the export script.
+        "src/pwa/service-worker.ts!",
+        "src/**/*.test.ts",
+        "e2e/*.e2e.ts",
+        "e2e/*.test.ts",
+        "e2e/shot.ts",
+        "e2e/gallery.ts",
+        // altstore-*.ts from the Dockerfile and build-ipa.sh; chime-wav.ts by hand.
+        "scripts/*.ts",
+      ],
+      "project": [
+        "app/**/*.{ts,tsx}!",
+        "src/**/*.{ts,tsx}!",
+        "e2e/**/*.ts",
+        "scripts/**/*.ts",
+        "types/**/*.ts",
+      ],
+    },
+  },
+}

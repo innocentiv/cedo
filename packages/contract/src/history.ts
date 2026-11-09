@@ -14,7 +14,7 @@ import { Reserve } from './rpe.ts'
  * One past performance of an exercise, grouped by session. This is the shape progression rules
  * consume, and the shape a progress chart will consume later without a schema change.
  */
-export const ExerciseHistoryEntry = z.object({
+const ExerciseHistoryEntry = z.object({
   sessionId: Id,
   performedAt: Timestamp,
   sets: z.array(
@@ -29,7 +29,6 @@ export const ExerciseHistoryEntry = z.object({
     }),
   ),
 })
-export type ExerciseHistoryEntry = z.output<typeof ExerciseHistoryEntry>
 
 /** Most recent session first. */
 export const ExerciseHistory = z.object({

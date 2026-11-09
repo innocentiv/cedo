@@ -142,6 +142,32 @@ Both regression tests run a child `bun test` on a `*.probe.ts` file, a suffix a 
 not collect, so the probe runs only when its test starts it. Tests also live beside plain scripts:
 `scripts/skills-lock.test.ts` covers what `bun run setup` reads from `skills-lock.json`.
 
+## Guards over the whole repository
+
+Some rules hold for no single module but for the repository as a whole. Lint reads one file at a
+time and cannot hold them, so each one has a check of its own in the gate (#83):
+
+- **Dead code: `bun run deadcode`**, right after typecheck. knip (`knip.jsonc`) fails on an export
+  nobody imports, a file nothing reaches, and a dependency nothing uses. `noUnusedLocals` sees one
+  file; this sees them all. It runs twice:
+  - everything, with tests counted as users. Only the contract's index has its own exports
+    checked: the API and the app import it, and a route's default export is Expo's;
+  - `--production`, for files and dependencies only. A source file only tests reach is test tooling,
+    and belongs under `src/test/`. An export only its test uses is fine there: the plain modules
+    are tested through exports like that.
+
+  An "unused export" usually needs only its `export` dropped, and `noUnusedLocals` then catches
+  anything truly dead. A file knip cannot reach (one started by `Bun.spawn`, by a Dockerfile or by
+  hand) is an entry in `knip.jsonc`, with its reason. Never read a member off a dynamic import
+  (`(await import('@cedo/contract')).Media`): knip then counts every export of that package as used.
+  That one line hid 28 dead exports.
+- **Dependencies: `test/dependencies.test.ts`.** Every installed package has a row in
+  `docs/dependencies.md`, and its upstream is the repository the installed package names
+  (`docs/02-conventions.md`, "Dependencies").
+- **Units: `test/unit-conversions.test.ts`.** No conversion factor sits beside `*`, `/` or `%`
+  outside `packages/contract/src/units.ts`, time included (`docs/02-conventions.md`, "Units").
+- **Raw SQL: `db/raw-sql.test.ts`**, above.
+
 ## Why the perf and e2e files are named `.perf.ts` and `.e2e.ts`
 
 `bun test` only collects files with `.test.`, `_test_`, `.spec.` or `_spec_` in the name, so neither
@@ -306,6 +332,6 @@ extension (`$1` placeholders, never literal values), so this cannot disclose any
 
 ```bash
 bun run test:changed   # inner loop
-bun run check          # format, lint, typecheck, doc links, T1 + T2
+bun run check          # format, lint, typecheck, dead code, doc links, T1 + T2
 bun run perf           # T4, before a release
 ```

@@ -9,7 +9,7 @@ import { formatMinutes } from './units.ts'
  */
 
 /** Monday, M to S: the strip of a week's days. */
-export const WEEKDAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const
+const WEEKDAY_INITIALS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const
 
 const MONTHS_LONG = [
   'January',
@@ -31,7 +31,7 @@ const MONTHS = MONTHS_LONG.map((month) => month.slice(0, 3))
 const WEEKDAYS = WEEKDAYS_LONG.map((weekday) => weekday.slice(0, 3))
 
 /** The day of the week, Monday 0 to Sunday 6: where it sits on the week's strip. */
-export const dayOfWeek = (at: Date): number => (at.getDay() + 6) % 7
+const dayOfWeek = (at: Date): number => (at.getDay() + 6) % 7
 
 /** Midnight starting the Monday of `at`'s week, local time. */
 export function startOfWeek(at: Date): Date {

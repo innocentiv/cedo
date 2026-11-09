@@ -18,6 +18,7 @@ version published in the last week, are in `docs/02-conventions.md`, "Dependenci
 | Package | Where | Why | Upstream |
 | --- | --- | --- | --- |
 | `@types/bun` | root | Types for Bun's own APIs (`Bun.file`, `bun:test`, `Bun.WebView`) in every server-side project. | [DefinitelyTyped/DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
+| `knip` | root | Finds exports nobody imports, files nothing reaches and dependencies nothing uses, across the workspaces: `bun run deadcode` (`knip.jsonc`). oxlint sees one file at a time. | [webpro-nl/knip](https://github.com/webpro-nl/knip) |
 | `oxfmt` | root | The formatter `bun run format` runs. | [oxc-project/oxc](https://github.com/oxc-project/oxc) |
 | `oxlint` | root | The linter: the architecture's import bans and every rule written for the agent. | [oxc-project/oxc](https://github.com/oxc-project/oxc) |
 | `oxlint-tsgolint` | root | oxlint's type-aware rules, run on the server (`.oxlintrc.typeaware.json`). | [oxc-project/tsgolint](https://github.com/oxc-project/tsgolint) |

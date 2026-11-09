@@ -90,7 +90,7 @@ export type ServerCheck =
   | { readonly kind: 'elsewhere'; readonly host: string }
 
 /** Long enough for a phone waking its radio, short enough that a wrong address is said soon. */
-export const CHECK_TIMEOUT_MS = 8000
+const CHECK_TIMEOUT_MS = 8000
 
 /**
  * Known by its product alone, not by all of `/instance`: a later server that says more, or says

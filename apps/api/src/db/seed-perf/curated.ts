@@ -18,7 +18,7 @@ import { callerFor } from './profile.ts'
  * every fiftieth, which the audit must find. Owned by a user nobody else shares a group with, so
  * it changes nothing any other hot path can see. Deterministic, like the rest of this seed.
  */
-export const CURATED = { exercises: 10_000, words: 400, duplicateEvery: 50 } as const
+const CURATED = { exercises: 10_000, words: 400, duplicateEvery: 50 } as const
 const USERNAME = 'perf_curator'
 
 const word = (salt: string) =>

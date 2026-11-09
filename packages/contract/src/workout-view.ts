@@ -33,7 +33,7 @@ type EntryAsked = {
  * The exercise a set logged with no plan entry goes to (#24): the one chosen — each exercise picked
  * is chosen, so it takes the focus — else that of the set logged last, else the last there is.
  */
-export function adHocFocus<X extends Added>(
+function adHocFocus<X extends Added>(
   exercises: readonly X[],
   logs: readonly ViewLog[],
   chosen: string | null,

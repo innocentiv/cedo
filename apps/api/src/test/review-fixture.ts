@@ -1,13 +1,13 @@
 import { eq } from 'drizzle-orm'
 import { Exercise, type TrackingMode, WorkoutSession, daysToMs } from '@cedo/contract'
-import { db } from '../../db/client.ts'
-import { workoutSessions } from '../../db/schema.ts'
-import { resolveCaller } from '../../plugins/auth.ts'
-import { expectContract } from '../../test/contract.ts'
-import type { TestUser } from '../../test/harness.ts'
-import { own } from '../coaching/training.ts'
+import { db } from '../db/client.ts'
+import { workoutSessions } from '../db/schema.ts'
+import { own } from '../modules/coaching/training.ts'
+import { trainingReview } from '../modules/review/service.ts'
+import { resolveCaller } from '../plugins/auth.ts'
+import { expectContract } from './contract.ts'
+import type { TestUser } from './harness.ts'
 import type { TrainingReview } from '@cedo/contract'
-import { trainingReview } from './service.ts'
 
 /** What the review's tests share: a person's exercises and sessions, made over the wire. */
 

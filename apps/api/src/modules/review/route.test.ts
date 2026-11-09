@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, test } from 'bun:test'
 import { TrainingReview, Workout, WorkoutSession, kgToG } from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
-import { reviewFixture } from './review-fixture.ts'
+import { reviewFixture } from '../../test/review-fixture.ts'
 
 /**
  * `GET /review` (#28): the review `training_review` gives an AI, for the athlete's own Progress tab

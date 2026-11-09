@@ -10,13 +10,13 @@ import { formatDay } from './week.ts'
  * is (`RecordAuthorship`). See GLOSSARY.md, "Weigh-in".
  */
 
-export const MIN_BODYWEIGHT_G = 20_000
-export const MAX_BODYWEIGHT_G = 400_000
+const MIN_BODYWEIGHT_G = 20_000
+const MAX_BODYWEIGHT_G = 400_000
 
 const DAY_MS = 86_400_000
 
 /** `2026-11-01`: the day `at` (ms) falls on in UTC — the server's day, never a person's. */
-export const utcDayOf = (at: number): string => new Date(at).toISOString().slice(0, 10)
+const utcDayOf = (at: number): string => new Date(at).toISOString().slice(0, 10)
 
 /** The days from `at` back `weeks` weeks, as `utcDayOf` says them: where a period begins. */
 export const utcDayWeeksBefore = (at: number, weeks: number): string =>
@@ -26,10 +26,9 @@ export const utcDayWeeksBefore = (at: number, weeks: number): string =>
  * A day on the person's own calendar, `YYYY-MM-DD` — theirs, not the server's: a weigh-in at 7am in
  * Sydney is a day ahead of UTC. So no later than tomorrow in UTC, the furthest any calendar runs.
  */
-export const CalendarDay = z.iso
+const CalendarDay = z.iso
   .date()
   .refine((day) => day <= utcDayOf(Date.now() + DAY_MS), 'Cannot be a day still to come')
-export type CalendarDay = z.output<typeof CalendarDay>
 
 /** `POST` — that day's bodyweight, replacing one already taken that day. */
 export const WeighInInput = z.strictObject({

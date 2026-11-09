@@ -40,7 +40,7 @@ const split = (entry: WorkoutEntryInput) => ({
  * on each kind of bar. 2.5 kg shown to someone who reads pounds was "+5.51 lb", and after 135 lb
  * the next target read 140.51.
  */
-export const DEFAULT_INCREMENT_G: Readonly<Record<WeightUnit, number>> = WEIGHT_STEP_G
+const DEFAULT_INCREMENT_G: Readonly<Record<WeightUnit, number>> = WEIGHT_STEP_G
 
 /**
  * What a new weight rule adds — and a weight increase emptied falls back to: one step of the

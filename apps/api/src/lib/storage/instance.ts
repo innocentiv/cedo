@@ -13,7 +13,7 @@ let store: BlobStore | undefined
 export function blobStore(): BlobStore {
   /**
    * Under test the configured UPLOAD_DIR is IGNORED, unconditionally — the same interlock env.ts
-   * applies to DATABASE_URL. Relying on the harness to call `setBlobStore` made it opt-in, so any
+   * applies to DATABASE_URL. Relying on the harness to swap in a test store made it opt-in, so any
    * test or script that reached `upload()` without going through `makeApi()` would have written
    * into a real deployment directory.
    */
@@ -21,9 +21,4 @@ export function blobStore(): BlobStore {
     ? new LocalBlobStore(join(tmpdir(), `cedo-test-blobs-${Bun.env['BUN_TEST_WORKER_ID'] ?? '0'}`))
     : new LocalBlobStore(env.UPLOAD_DIR)
   return store
-}
-
-/** Tests only: swap in a store rooted at a temporary directory. */
-export function setBlobStore(replacement: BlobStore): void {
-  store = replacement
 }

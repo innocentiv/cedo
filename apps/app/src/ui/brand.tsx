@@ -18,11 +18,7 @@ import { Text } from './text.tsx'
  * the same 512 grid, less the square of floor the icon fills: here the floor is the page's own.
  * Decorative: the name is always written beside it.
  */
-export function BrandMark({
-  size,
-}: {
-  readonly size: keyof typeof BRAND_MARK_SIZE
-}): React.JSX.Element {
+function BrandMark({ size }: { readonly size: keyof typeof BRAND_MARK_SIZE }): React.JSX.Element {
   const side = BRAND_MARK_SIZE[size]
   return (
     <Svg width={side} height={side} viewBox="0 0 512 512">

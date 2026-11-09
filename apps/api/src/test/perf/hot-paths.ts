@@ -28,7 +28,7 @@ import type { RecordedQuery } from '../../db/client.ts'
  * See docs/adr/0018-n1-detection.md and docs/10-testing.md.
  */
 
-export type Size = 'small' | 'large'
+type Size = 'small' | 'large'
 
 export interface HotPath {
   readonly name: string

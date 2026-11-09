@@ -106,7 +106,7 @@ export function FilterSheet({
  * One filter, a segment of its bar: what it narrows, by glyph; its value, cut short to the segment;
  * filled when it narrows.
  */
-export function FilterTrigger({
+function FilterTrigger({
   icon,
   label,
   value,

@@ -30,7 +30,8 @@ Route filenames are kebab-case like every other file, so a dynamic segment is `[
 
 Import from `src/ui/index.ts` and `@cedo/contract`, and from nothing else that renders. `Screen` is
 the outermost element; `Stack` is the only container; `Loaded` handles failed / not-yet / here, so a
-screen never writes that ternary itself.
+screen never writes that ternary itself. The barrel exports only what some screen uses: a primitive
+of `docs/08-frontend.md` that it lacks is added to it, never imported from its own file.
 
 **Give every element a `testID`.** It is what the harness can see, and `testID` compiles to
 `data-testid` under `react-native-web`.

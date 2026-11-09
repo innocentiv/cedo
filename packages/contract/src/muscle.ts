@@ -73,14 +73,6 @@ export const MUSCLE_SLUGS = MUSCLES.map((m) => m.slug)
 export const MuscleSlug = z.enum(MUSCLE_SLUGS)
 export type MuscleSlug = z.output<typeof MuscleSlug>
 
-export const Muscle = z.object({
-  slug: MuscleSlug,
-  name: z.string(),
-  region: MuscleRegion,
-  sortIndex: z.int(),
-})
-export type Muscle = z.output<typeof Muscle>
-
 /** An exercise's muscles as read: most worked first, each by its name. */
 export const musclesByLoad = (
   muscles: readonly { readonly muscle: string; readonly loadPct: number }[],

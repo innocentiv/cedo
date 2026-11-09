@@ -17,7 +17,7 @@ import {
  */
 
 /** `Sam Lee (@sam) · via Squad, Team · <id>` — the id is what every coaching tool takes. */
-export const athleteLine = (athlete: Athlete): string =>
+const athleteLine = (athlete: Athlete): string =>
   `${athlete.user.displayName} (@${athlete.user.username}) · via ${athlete.groups.map((g) => g.name).join(', ')} · ${athlete.user.id}`
 
 export const athleteLines = (athletes: readonly Athlete[]): string =>
@@ -29,7 +29,7 @@ export const athleteLines = (athletes: readonly Athlete[]): string =>
  * `2026-10-20 · PPL / Push · 18 sets · 4,250 kg · in progress · "felt heavy" · <id>`. The plan and
  * day read "unavailable" where the reader cannot see them (ADR-0019); the notes are the athlete's.
  */
-export function sessionLine(session: WorkoutSessionSummary, unit: WeightUnit): string {
+function sessionLine(session: WorkoutSessionSummary, unit: WeightUnit): string {
   const plan =
     session.workoutId === null
       ? 'no plan'

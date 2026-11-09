@@ -11,7 +11,8 @@ is designed to prevent.
 ## Non-negotiable invariants
 
 1. **`bun run check` must pass after every feature.** Format, lint (type-aware on the server),
-   typecheck, and tests. Warnings fail. Never commit with it red.
+   typecheck, dead code (`bun run deadcode`: an export nobody imports, a file nothing reaches, a
+   dependency nothing uses), and tests. Warnings fail. Never commit with it red.
 2. **`packages/contract` is the only shared surface.** `apps/app` must NEVER import from `apps/api`
    — not even a type. This is enforced by lint, not just convention. See `docs/01-architecture.md`.
 3. **Schemas are authored once, in Zod, in `packages/contract`.** The DB, HTTP routes, MCP tools and
@@ -70,6 +71,7 @@ Treat everything here as public: the code, its history, issues and comments. Two
 | `bun run setup` | Fresh clone → a passing gate: dependencies, `.env`, databases, agent skills. Safe to re-run. |
 | `bun run check` | The gate. Run after every feature. |
 | `bun run test:changed` | Inner loop — only tests affected by your diff. |
+| `bun run deadcode` | knip: unused exports, files and dependencies. Part of the gate. |
 | `bun run db:reset` | Empty volume → migrate → seed, in one command. |
 | `bun run db:test` | The throwaway Postgres the test suite needs. |
 | `bun run shot <route>` | Rebuild, render a UI route, screenshot to `.artifacts/`, print console errors. |
@@ -94,6 +96,9 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
   feedback lost. Markdown is excluded from `oxfmt` entirely for the same reason.
 - **`tsc -b` can report success while skipping files it considers up to date.** If a result looks
   too clean after adding files, re-run with `--force`.
+- **Never read a member off a dynamic import: `(await import('@cedo/contract')).Media`.** knip
+  then counts every export of that package as used. One such line in a test hid 28 dead exports
+  of the contract from `bun run deadcode`. Import it statically, or destructure the import.
 - **Prove a regression test fails against the unfixed code.** One "passing" race test here was
   measured to false-pass one run in seven; it needed five rounds to be trustworthy.
 - **With guards in a row, remove each one and watch its own test fail.** A test meant for the second

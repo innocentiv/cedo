@@ -12,7 +12,7 @@ import { ApiError } from './errors.ts'
  * made — so a session's sets arrive as they were logged, and its finish after them all — and wait
  * while the device is offline. `retry` is set only on a write that carries an idempotency key.
  */
-export interface Queued {
+interface Queued {
   readonly mutationKey: readonly unknown[]
   readonly scope: { readonly id: string }
   readonly retry?: (failureCount: number, error: Error) => boolean

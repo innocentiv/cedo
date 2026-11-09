@@ -76,6 +76,6 @@ export async function versionOf(paths: readonly string[], root = ROOT): Promise<
   return hash.digest('hex')
 }
 
-export async function seedVersion(): Promise<string> {
+async function seedVersion(): Promise<string> {
   return await versionOf(await seedSources())
 }

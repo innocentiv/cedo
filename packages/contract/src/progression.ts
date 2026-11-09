@@ -94,14 +94,6 @@ export const Progression = z.discriminatedUnion('kind', [
 ])
 export type Progression = z.output<typeof Progression>
 
-export const PROGRESSION_KINDS = [
-  'none',
-  'linear',
-  'double',
-  'linear_duration',
-  'linear_distance',
-] as const
-
 export const NO_PROGRESSION: Progression = { kind: 'none' }
 
 /**

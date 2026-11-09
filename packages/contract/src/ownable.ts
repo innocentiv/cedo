@@ -7,7 +7,7 @@ import { Id, PaginationQuery, Timestamp } from './primitives.ts'
  */
 
 /** Which slice of the visible ownables a list shows. */
-export const OWNABLE_SCOPES = ['all', 'mine', 'favourites', 'group'] as const
+const OWNABLE_SCOPES = ['all', 'mine', 'favourites', 'group'] as const
 export const OwnableScope = z.enum(OWNABLE_SCOPES)
 export type OwnableScope = z.output<typeof OwnableScope>
 

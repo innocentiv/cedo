@@ -9,8 +9,7 @@ import { Account, User, Username } from './user.ts'
  */
 
 export const GROUP_KINDS = ['personal', 'shared'] as const
-export const GroupKind = z.enum(GROUP_KINDS)
-export type GroupKind = z.output<typeof GroupKind>
+const GroupKind = z.enum(GROUP_KINDS)
 
 export const GROUP_ROLES = ['editor', 'reader'] as const
 export const GroupRole = z.enum(GROUP_ROLES)

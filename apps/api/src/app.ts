@@ -94,14 +94,12 @@ async function serveMcp(request: Request): Promise<Response> {
   return await mcpHandler.fetch(request, withCaller(caller))
 }
 
-export type App = ReturnType<typeof createApp>
-
 /**
  * Maps anything thrown anywhere in the API onto the wire envelope. Pure, so it can be reasoned
  * about and tested without a server, and so there is exactly ONE place where a failure becomes a
  * status code. No handler anywhere constructs an error response. See docs/02-conventions.md.
  */
-export function describeError(
+function describeError(
   error: unknown,
   code: string | number,
 ): { status: number; body: ApiError; headers?: ErrorHeaders } {

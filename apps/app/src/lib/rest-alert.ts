@@ -14,7 +14,7 @@ import { observed } from './observed.ts'
  */
 
 /** How this phone is told a rest is over: kept on the phone, which alone knows what it allows. */
-export const ALERT_KINDS = ['off', 'notification', 'alarm'] as const
+const ALERT_KINDS = ['off', 'notification', 'alarm'] as const
 export type AlertKind = (typeof ALERT_KINDS)[number]
 
 /** A kind that tells: what iOS is asked to allow, and what an alert is set as. */
