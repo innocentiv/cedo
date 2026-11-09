@@ -39,7 +39,7 @@
     "typecheck": "bun run typecheck:server && bun run typecheck:app",
     "typecheck:server": "tsc -b . && tsc -p apps/api/tsconfig.tools.json",
     "typecheck:app": "apps/app/node_modules/.bin/tsc -p apps/app --noEmit",
-    "deadcode": "knip && knip --production --include files,dependencies",
+    "deadcode": "knip && knip --production --include files,dependencies || (echo 'Dead code, listed above. An unused export: drop its export, or delete it if nothing uses it. An unused file or dependency: delete it, or give knip.jsonc the entry it cannot see, with the reason. See docs/10-testing.md, Guards over the whole repository.' >&2 && exit 1)",
     "docs:links": "bun run scripts/check-doc-links.ts",
     "build:app": "cd apps/app && bun run export",
     "check:ci": "bun run format:check && bun run lint && bun run typecheck && bun run deadcode && bun run docs:links && bun run test"
