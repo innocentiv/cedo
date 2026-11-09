@@ -175,7 +175,9 @@ screen; Settings shows it, and this app's version beside the server's.
 It suits you if you already sideload; strangers are better served by the web app above. AltStore
 asks for a computer running AltServer (macOS or Windows) to install it and to refresh it every
 seven days, Developer Mode on the phone, your Apple ID's password, typed into AltServer, and one of
-three active app slots, AltStore itself taking another ([AltStore](https://faq.altstore.io)).
+three active app slots, AltStore itself taking another ([AltStore](https://faq.altstore.io)). It
+also takes two of the ten App IDs a free Apple ID may register a week: one for the app, one for the
+extension that counts a rest down on the Lock Screen.
 
 **Installing it.** With AltStore on the phone, open this link in Safari there, with your server in
 it — an instance serves its source at `/altstore/source.json`, over HTTPS, which AltStore needs:

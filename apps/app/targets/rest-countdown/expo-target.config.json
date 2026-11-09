@@ -1,0 +1,8 @@
+{
+  "type": "widget",
+  "name": "RestCountdown",
+  "displayName": "cedo",
+  "bundleIdentifier": ".rest-countdown",
+  "deploymentTarget": "26.0",
+  "frameworks": ["SwiftUI", "WidgetKit", "ActivityKit", "AlarmKit"]
+}

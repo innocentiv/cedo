@@ -30,10 +30,10 @@ xcodebuild archive -quiet \
   CODE_SIGNING_ALLOWED=NO
 cp -R build/cedo.xcarchive/Products/Applications/cedo.app build/Payload/
 
-# AltStore checks the permissions of every extension an app embeds, and the source reads the app's
-# alone (scripts/altstore.ts): an extension would make AltStore refuse it. Teach the source first.
-if [ -d build/Payload/cedo.app/PlugIns ] && [ -n "$(ls -A build/Payload/cedo.app/PlugIns)" ]; then
-  echo "The app embeds an extension, which the AltStore source does not list yet." >&2
+# The rest's countdown is an extension (#39), built and left unsigned with the app: AltStore signs
+# both, and checks the permissions of both, which the source lists (scripts/altstore-source.ts).
+if [ ! -d build/Payload/cedo.app/PlugIns/RestCountdown.appex ]; then
+  echo "The app was built without its countdown extension: is @bacons/apple-targets in app.json?" >&2
   exit 1
 fi
 

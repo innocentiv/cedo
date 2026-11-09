@@ -72,7 +72,9 @@ The PWA never differs from its server, which serves it. A native app can.
   minutes, not a failed image. The phone downloads the `.ipa` from GitHub, which sees its address.
 - What re-signing takes away: push and Time Sensitive notifications, dropped with the paid
   entitlements, and App Groups, renamed, which rules out `expo-widgets`. A rest's end told with the
-  app closed (#39) has to come from the phone itself.
+  app closed (#39) has to come from the phone itself. A widget extension that shares nothing with
+  the app is unaffected: the rest's countdown is one, drawn from the alarm iOS keeps, and costs a
+  second App ID of the free account's ten a week.
 - Each free Apple ID allows three active apps, AltStore one of them, and a refresh every seven
   days. AltStore 2.3.1 added a workaround for banned free-team profiles; if Apple's refusals spread,
   the App Store decision comes back.

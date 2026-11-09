@@ -341,9 +341,11 @@ there (#63).
   starts. With the app in front iOS shows nothing: the band counts down and the app chimes. A tap
   on one opens its session, from a cold start too. **An alarm** is AlarmKit's: "Rest over" with the
   system's alarm sound, through the silent switch and Focus, until it is stopped. It rings with the
-  app in front too, so the app does not chime beside it; a tap on it opens the app. The rules are
-  `src/lib/rest-alert.ts`, unit-tested; asking iOS is `src/lib/rest-alert-device.ts`, and the alarm
-  the app's own native module, `modules/rest-alarm`.
+  app in front too, so the app does not chime beside it; a tap on it opens the app. Until it rings,
+  iOS counts the rest down on the Lock Screen and in the Dynamic Island, drawn by a widget
+  extension, `targets/rest-countdown`, from the alarm alone: the app is not running to count. The
+  rules are `src/lib/rest-alert.ts`, unit-tested; asking iOS is `src/lib/rest-alert-device.ts`,
+  and the alarm the app's own native module, `modules/rest-alarm`.
 - **Reserve is asked before Log** (#37), as one optional row in the logger, under the numbers, and
   only for a working set of an exercise measured in reps — which those are is the contract's, not
   the screen's. Whole reps, none to five, one row of segments; tapping the chosen one again takes it
@@ -994,6 +996,13 @@ bunx expo start --dev-client                       # Metro, whose /api proxy rea
   by prebuild, and reached with `requireOptionalNativeModule`, so the web and a build without it
   get null, never a crash. `modules/rest-alarm` rings a rest's end through AlarmKit, which it links
   weakly: the app still opens on an iOS before 26, and never offers the alarm there.
+- **An extension is a target under `targets/`**, added to the project by `@bacons/apple-targets`
+  at prebuild: its Swift and its `expo-target.config.json`, nothing generated. The one there is the
+  rest's countdown (#39), a widget that shares no App Group with the app, which AltStore's
+  re-signing would rename (ADR-0032). The release carries it, and the AltStore source lists its
+  permissions with the app's, since AltStore checks both. Prebuild warns that `ios.appleTeamId` is
+  missing: none is committed, since `expo run:ios --device` signs every target, the extension too,
+  with the team it is given, and a release is unsigned.
 - **The contract runs on Hermes too**, React Native's engine, which lacks a few built-ins Bun and
   every browser have. `index.ts`, the app's entry, gives it `Array.prototype.toSorted` before any
   module runs (`src/lib/hermes-builtins.ts`); the others it lacks are listed there, and

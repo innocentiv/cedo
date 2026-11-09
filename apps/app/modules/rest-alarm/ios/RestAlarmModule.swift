@@ -5,9 +5,10 @@ import AlarmKit
 #endif
 
 /// A rest's end rung as an alarm (#39): AlarmKit, iOS 26 and later. It sounds through the silent
-/// switch and Focus, with the system's alarm sound, and with the app in front too. One alarm at a
-/// time, under one id: scheduling replaces the one before. What to set, and when, is decided in
-/// `src/lib/rest-alert.ts`; this only asks iOS.
+/// switch and Focus, with the system's alarm sound, and with the app in front too. Until then iOS
+/// counts the rest down on the Lock Screen and in the Dynamic Island, drawn by the widget in
+/// `targets/rest-countdown`. One alarm at a time, under one id: scheduling replaces the one before.
+/// What to set, and when, is decided in `src/lib/rest-alert.ts`; this only asks iOS.
 public class RestAlarmModule: Module {
   public func definition() -> ModuleDefinition {
     Name("RestAlarm")
@@ -51,7 +52,8 @@ public class RestAlarmModule: Module {
 }
 
 #if canImport(AlarmKit)
-/// Nothing rides with the alarm: a tap on it opens the app, which knows its session.
+/// Nothing rides with the alarm: a tap on it opens the app, which knows its session. The widget
+/// (`targets/rest-countdown`) declares the same, by name: ActivityKit matches them so.
 @available(iOS 26.0, *)
 struct RestMetadata: AlarmMetadata {}
 
@@ -63,16 +65,17 @@ enum RestAlarm {
   static func schedule(in seconds: Double, title: String) async throws {
     cancel()
     let attributes = AlarmAttributes<RestMetadata>(
-      presentation: AlarmPresentation(alert: alert(title)),
+      presentation: AlarmPresentation(
+        alert: alert(title),
+        countdown: AlarmPresentation.Countdown(title: "Rest")
+      ),
       // The yellow plate, `plate.yellow` in src/ui/tokens.ts.
       tintColor: Color(red: 242 / 255, green: 185 / 255, blue: 15 / 255)
     )
     _ = try await AlarmManager.shared.schedule(
       id: id,
-      configuration: .alarm(
-        schedule: .fixed(Date().addingTimeInterval(max(1, seconds))),
-        attributes: attributes
-      )
+      // A timer, not an alarm at a date: iOS counts it down where the app cannot.
+      configuration: .timer(duration: max(1, seconds), attributes: attributes)
     )
   }
 

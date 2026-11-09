@@ -66,6 +66,27 @@ describe('the source a release carries', () => {
     })
   })
 
+  /** AltStore reads the permissions of every extension an app embeds, beside the app's own. */
+  test('lists the permissions of the extensions the app embeds too', () => {
+    const countdown = {
+      CFBundleIdentifier: 'io.github.innocentiv.cedo.rest-countdown',
+      NSExtension: { NSExtensionPointIdentifier: 'com.widgetkit-extension' },
+      NSMotionUsageDescription: 'An extension asking what the app does not.',
+    }
+    const listed = sourceFor({
+      info: INFO,
+      extensions: [countdown],
+      ipa: IPA,
+      version: '0.1.0',
+      date: '',
+    })
+    expect(listed.apps[0]?.appPermissions.privacy).toEqual({
+      NSLocalNetworkUsageDescription: INFO.NSLocalNetworkUsageDescription,
+      NSPhotoLibraryUsageDescription: INFO.NSPhotoLibraryUsageDescription,
+      NSMotionUsageDescription: countdown.NSMotionUsageDescription,
+    })
+  })
+
   test('shows the icon the release carries', () => {
     expect(app?.iconURL).toBe(`${RELEASES}/v0.1.0/icon.png`)
   })
