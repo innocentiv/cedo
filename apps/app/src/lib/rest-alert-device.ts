@@ -8,9 +8,12 @@ import { restAlertStore } from '../auth/token-storage.ts'
 import { ownSession } from './addresses.ts'
 import {
   type AlertKind,
-  type AlertScheduler,
+  type TellingKind,
+  type Wanted,
   createAlertKind,
   createRestAlerts,
+  offersToTell,
+  secondsUntil,
   wantedAlert,
 } from './rest-alert.ts'
 
@@ -48,50 +51,79 @@ const restAlarm = tellsWhileClosed
 /** Whether this phone rings a rest's end as an alarm: iOS 26 and later, offered only there. */
 export const ringsAlarms = restAlarm?.isAvailable() === true
 
-/** Whole seconds to an end, by this phone's clock: never none, which iOS refuses. */
-const secondsTo = (endsAt: number): number => Math.max(1, Math.round((endsAt - Date.now()) / 1000))
-
 async function notifications(): Promise<typeof ExpoNotifications> {
   return await import('expo-notifications')
 }
 
-const scheduler: AlertScheduler = {
-  schedule: async (wanted) => {
-    if (wanted.kind === 'alarm') {
-      // The system's alarm sound, and the title alone: an alarm says no more.
-      await restAlarm?.schedule(secondsTo(wanted.endsAt), wanted.title)
-      return
-    }
-    const n = await notifications()
-    await n.scheduleNotificationAsync({
-      identifier: REST_OVER,
-      content: {
-        title: wanted.title,
-        body: wanted.body,
-        // Bundled by the expo-notifications plugin (app.json): cedo's own chime.
-        sound: 'chime.wav',
-        data: { sessionId: wanted.sessionId },
-      },
-      trigger: {
-        type: n.SchedulableTriggerInputTypes.TIME_INTERVAL,
-        seconds: secondsTo(wanted.endsAt),
-      },
-    })
+/** What each kind asks of iOS: to be allowed, to be set, to be cancelled. */
+interface Teller {
+  /** iOS asks the person once; after that it answers what they said. */
+  readonly allow: () => Promise<boolean>
+  readonly schedule: (wanted: Wanted) => Promise<void>
+  readonly cancel: () => Promise<void>
+}
+
+const TELLERS: Readonly<Record<TellingKind, Teller>> = {
+  notification: {
+    allow: async () => {
+      const asked = await (
+        await notifications()
+      ).requestPermissionsAsync({ ios: { allowAlert: true, allowSound: true, allowBadge: false } })
+      return asked.granted
+    },
+    schedule: async (wanted) => {
+      const n = await notifications()
+      await n.scheduleNotificationAsync({
+        identifier: REST_OVER,
+        content: {
+          title: wanted.title,
+          body: wanted.body,
+          // Bundled by the expo-notifications plugin (app.json): cedo's own chime.
+          sound: 'chime.wav',
+          data: { sessionId: wanted.sessionId },
+        },
+        trigger: {
+          type: n.SchedulableTriggerInputTypes.TIME_INTERVAL,
+          seconds: secondsUntil(wanted.endsAt, Date.now()),
+        },
+      })
+    },
+    cancel: async () => {
+      const n = await notifications()
+      await n.cancelScheduledNotificationAsync(REST_OVER)
+      // One told while the app was closed tells a rest that is over now.
+      await n.dismissNotificationAsync(REST_OVER)
+    },
   },
-  cancel: async (kind) => {
-    if (kind === 'alarm') {
+  alarm: {
+    allow: async () => (await restAlarm?.requestAuthorization()) === true,
+    // The system's alarm sound, and the title alone: an alarm says no more.
+    schedule: async (wanted) => {
+      await restAlarm?.schedule(secondsUntil(wanted.endsAt, Date.now()), wanted.title)
+    },
+    cancel: async () => {
       await restAlarm?.cancel()
-      return
-    }
-    const n = await notifications()
-    await n.cancelScheduledNotificationAsync(REST_OVER)
-    // One told while the app was closed tells a rest that is over now.
-    await n.dismissNotificationAsync(REST_OVER)
+    },
   },
 }
 
-const alerts = createRestAlerts(scheduler)
-const kind = createAlertKind(restAlertStore)
+const alerts = createRestAlerts({
+  schedule: async (wanted) => {
+    await TELLERS[wanted.kind].schedule(wanted)
+  },
+  cancel: async (kind) => {
+    await TELLERS[kind].cancel()
+  },
+})
+const kind = createAlertKind({
+  store: restAlertStore,
+  allow: async (chosen) => await TELLERS[chosen].allow(),
+  alerts,
+})
+
+const reportError = (error: unknown): void => {
+  console.error(error)
+}
 
 /** Read from the keychain once, by whichever screen first asks. */
 let restored: Promise<void> | null = null
@@ -105,28 +137,8 @@ export function useAlertKind(): AlertKind {
   return tellsWhileClosed ? chosen : 'off'
 }
 
-/**
- * iOS is asked first: it asks the person once, and after that says what they answered. False when
- * it is not allowed; nothing is kept then.
- */
-async function chooseAlertKind(chosen: AlertKind): Promise<boolean> {
-  if (chosen === 'notification') {
-    const n = await notifications()
-    const asked = await n.requestPermissionsAsync({
-      ios: { allowAlert: true, allowSound: true, allowBadge: false },
-    })
-    if (!asked.granted) return false
-  }
-  if (chosen === 'alarm' && (await restAlarm?.requestAuthorization()) !== true) return false
-  await kind.choose(chosen)
-  // A rest whose screen is not open is not followed: turned off, its alert is cancelled here.
-  if (chosen === 'off') await alerts.follow(null)
-  return true
-}
-
 /** iOS asks only once: after a refusal, it is changed in the phone's own Settings. */
-const REFUSED: Readonly<Record<AlertKind, string | null>> = {
-  off: null,
+const REFUSED: Readonly<Record<TellingKind, string>> = {
   notification:
     'Notifications are off for cedo. Turn them on in the iPhone’s Settings, under cedo.',
   alarm: 'Alarms are off for cedo. Turn them on in the iPhone’s Settings, under cedo.',
@@ -139,15 +151,12 @@ export function useChooseAlertKind(): {
 } {
   const [refused, setRefused] = useState<string | null>(null)
   const choose = async (chosen: AlertKind): Promise<void> => {
-    try {
-      setRefused((await chooseAlertKind(chosen)) ? null : REFUSED[chosen])
-    } catch (error) {
-      console.error(error)
-    }
+    const allowed = await kind.choose(chosen)
+    setRefused(allowed || chosen === 'off' ? null : REFUSED[chosen])
   }
   return {
     choose: (chosen) => {
-      void choose(chosen)
+      choose(chosen).catch(reportError)
     },
     refused,
   }
@@ -166,17 +175,15 @@ export function useRestTold(
   const { choose, refused } = useChooseAlertKind()
   useEffect(() => {
     const wanted = wantedAlert({ kind: chosen, phase, said, sessionId, now: Date.now() })
-    alerts.follow(wanted).catch((error: unknown) => {
-      console.error(error)
-    })
+    alerts.follow(wanted).catch(reportError)
   }, [chosen, phase, said, sessionId])
-  const offered = tellsWhileClosed && chosen === 'off'
   return {
-    offer: offered
-      ? () => {
-          choose('notification')
-        }
-      : null,
+    offer:
+      tellsWhileClosed && offersToTell(chosen)
+        ? () => {
+            choose('notification')
+          }
+        : null,
     refused,
   }
 }
@@ -185,9 +192,7 @@ export function useRestTold(
 export function useRestAlertEnded(sessionId: string, ended: boolean): void {
   useEffect(() => {
     if (!ended) return
-    alerts.end(sessionId).catch((error: unknown) => {
-      console.error(error)
-    })
+    alerts.end(sessionId).catch(reportError)
   }, [sessionId, ended])
 }
 
@@ -205,16 +210,12 @@ async function clearShown(): Promise<void> {
   await (await notifications()).dismissNotificationAsync(REST_OVER)
 }
 
-const reportError = (error: unknown): void => {
-  console.error(error)
-}
-
 /**
- * Where the session screen is: nothing shown while the app is in front, a rest's end shown while it
+ * While the app is open, where the session screen is: nothing shown while it is in front, a rest's end shown while it
  * was closed cleared once it is back, and a tap on one — the one that opened the app, too — taken
  * to its session.
  */
-export function useRestAlertTaps(): void {
+export function useRestAlertsInApp(): void {
   useEffect(() => {
     if (!tellsWhileClosed) return
     let gone = false

@@ -1,12 +1,15 @@
 import { describe, expect, spyOn, test } from 'bun:test'
 import type { RestPhase } from '@cedo/contract'
 import {
+  type AlertKind,
   type AlertScheduler,
   type Wanted,
   chimesInApp,
   createAlertKind,
   createRestAlerts,
   kindOf,
+  offersToTell,
+  secondsUntil,
   wantedAlert,
 } from './rest-alert.ts'
 
@@ -19,11 +22,8 @@ const SAID = { title: 'Rest over', body: 'Barbell Back Squat — Set 3 of 5: 5 �
 const running = (left: number): RestPhase => ({ phase: 'running', left })
 const NOW = Date.parse('2026-11-09T18:00:00Z')
 
-const want = (
-  phase: RestPhase,
-  kind: 'off' | 'notification' | 'alarm' = 'notification',
-  now = NOW,
-) => wantedAlert({ kind, phase, said: SAID, sessionId: 'session-1', now })
+const want = (phase: RestPhase, kind: AlertKind = 'notification', now = NOW) =>
+  wantedAlert({ kind, phase, said: SAID, sessionId: 'session-1', now })
 
 function aScheduler(): AlertScheduler & { asked: string[] } {
   const asked: string[] = []
@@ -67,6 +67,28 @@ describe('the app’s own chime', () => {
     expect(chimesInApp('off')).toBe(true)
     expect(chimesInApp('notification')).toBe(true)
     expect(chimesInApp('alarm')).toBe(false)
+  })
+})
+
+describe('when iOS is asked to tell it', () => {
+  test('is the whole seconds to the end, by this phone’s clock', () => {
+    expect(secondsUntil(NOW + 90_400, NOW)).toBe(90)
+    expect(secondsUntil(NOW + 89_600, NOW)).toBe(90)
+  })
+
+  /** iOS refuses an alert due now or past; one second on, it is told at once. */
+  test('is never less than a second away', () => {
+    expect(secondsUntil(NOW + 200, NOW)).toBe(1)
+    expect(secondsUntil(NOW - 5000, NOW)).toBe(1)
+  })
+})
+
+describe('the rest band', () => {
+  /** "Tell me when rest is over" turns on a notification: shown only while nothing tells it. */
+  test('offers to tell a rest’s end only while nothing does', () => {
+    expect(offersToTell('off')).toBe(true)
+    expect(offersToTell('notification')).toBe(false)
+    expect(offersToTell('alarm')).toBe(false)
   })
 })
 
@@ -199,30 +221,69 @@ function aKeychain(held: string | null) {
   }
 }
 
+/** iOS, as a fake: what it was asked, and what it answers. */
+function anIos(allows: boolean) {
+  const asked: string[] = []
+  return {
+    asked,
+    allow: async (kind: AlertKind) => {
+      asked.push(kind)
+      return allows
+    },
+  }
+}
+
+const aChoice = (keychain = aKeychain(null), ios = anIos(true), scheduler = aScheduler()) =>
+  createAlertKind({ store: keychain, allow: ios.allow, alerts: createRestAlerts(scheduler) })
+
 describe('how this phone tells a rest’s end', () => {
   test('is off until the keychain is read, then what it keeps', async () => {
-    const choice = createAlertKind(aKeychain('alarm'))
+    const choice = aChoice(aKeychain('alarm'))
     expect(choice.snapshot()).toBe('off')
     await choice.restore()
     expect(choice.snapshot()).toBe('alarm')
   })
 
-  test('is kept when chosen, and heard by whoever listens', async () => {
+  test('is kept once iOS allows it, and heard by whoever listens', async () => {
     const keychain = aKeychain(null)
-    const choice = createAlertKind(keychain)
+    const ios = anIos(true)
+    const choice = aChoice(keychain, ios)
     await choice.restore()
     const heard: string[] = []
     choice.subscribe(() => {
       heard.push(choice.snapshot())
     })
-    await choice.choose('notification')
+    expect(await choice.choose('notification')).toBe(true)
+    expect(ios.asked).toEqual(['notification'])
     expect(keychain.kept).toEqual(['notification'])
     expect(heard).toEqual(['notification'])
   })
 
+  /** iOS asks once; refused, nothing is kept, and the screen says where to allow it. */
+  test('is not kept when iOS refuses it', async () => {
+    const keychain = aKeychain('notification')
+    const choice = aChoice(keychain, anIos(false))
+    await choice.restore()
+    expect(await choice.choose('alarm')).toBe(false)
+    expect(keychain.kept).toEqual([])
+    expect(choice.snapshot()).toBe('notification')
+  })
+
+  /** A rest whose screen is not open is not followed: turned off, what it set is cancelled at once. */
+  test('turned off, cancels what was set, and asks iOS nothing', async () => {
+    const scheduler = aScheduler()
+    const alerts = createRestAlerts(scheduler)
+    const ios = anIos(true)
+    const choice = createAlertKind({ store: aKeychain('notification'), allow: ios.allow, alerts })
+    await alerts.follow(want(running(90)))
+    expect(await choice.choose('off')).toBe(true)
+    expect(ios.asked).toEqual([])
+    expect(scheduler.asked).toEqual(['notification at +90s', 'cancel notification'])
+  })
+
   /** A keychain that throws must not take the app down: nothing tells, as before it was chosen. */
   test('is off when the keychain cannot be read', async () => {
-    const choice = createAlertKind({
+    const choice = aChoice({
       ...aKeychain(null),
       read: async () => {
         throw new Error('keychain locked')

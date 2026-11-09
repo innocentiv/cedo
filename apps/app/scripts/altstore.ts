@@ -106,7 +106,7 @@ const LISTING = {
  * `NSLocationTemporaryUsageDescriptionDictionary` too, whose value is not a sentence and is listed
  * as it is written.
  */
-function privacyOf(plists: readonly ExtensionInfo[]): Record<string, string> {
+function privacyOf(plists: readonly Readonly<Record<string, unknown>>[]): Record<string, string> {
   return Object.fromEntries(
     plists
       .flatMap((plist) => Object.entries(plist))

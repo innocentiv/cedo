@@ -17,9 +17,18 @@ import { observed } from './observed.ts'
 export const ALERT_KINDS = ['off', 'notification', 'alarm'] as const
 export type AlertKind = (typeof ALERT_KINDS)[number]
 
+/** A kind that tells: what iOS is asked to allow, and what an alert is set as. */
+export type TellingKind = Exclude<AlertKind, 'off'>
+
 /** The kind kept on the phone, or off when none — or something no longer offered — is. */
 export const kindOf = (kept: string | null): AlertKind =>
   ALERT_KINDS.find((kind) => kind === kept) ?? 'off'
+
+/** "Tell me when rest is over", on the rest band: offered while nothing tells this phone. */
+export const offersToTell = (kind: AlertKind): boolean => kind === 'off'
+
+/** Where the kind is kept between launches: the keychain, as the sign-in is. */
+export type AlertKindStore = TokenStore
 
 export interface AlertKindChoice {
   /** The same value until it changes — for `useSyncExternalStore`. */
@@ -27,12 +36,24 @@ export interface AlertKindChoice {
   readonly subscribe: (listener: () => void) => () => void
   /** At startup: the kind kept. Off until it is read, and when it cannot be. */
   readonly restore: () => Promise<void>
-  /** Chosen in Settings, or from the rest band — once iOS has allowed it. */
-  readonly choose: (kind: AlertKind) => Promise<void>
+  /** Chosen in Settings, or from the rest band. False when iOS refused it: nothing is kept then. */
+  readonly choose: (kind: AlertKind) => Promise<boolean>
 }
 
-/** How this phone tells a rest's end, kept in the keychain as the sign-in is: a phone's own choice. */
-export function createAlertKind(store: TokenStore): AlertKindChoice {
+/**
+ * How this phone tells a rest's end: a phone's own choice. iOS is asked first, as it asks the
+ * person once and after that answers what they said. Turned off, what was set is cancelled at once:
+ * a rest whose screen is not open is not followed (`RestAlerts`).
+ */
+export function createAlertKind({
+  store,
+  allow,
+  alerts,
+}: {
+  readonly store: AlertKindStore
+  readonly allow: (kind: TellingKind) => Promise<boolean>
+  readonly alerts: RestAlerts
+}): AlertKindChoice {
   const state = observed<AlertKind>('off')
   return {
     snapshot: state.get,
@@ -45,15 +66,18 @@ export function createAlertKind(store: TokenStore): AlertKindChoice {
       state.set(kindOf(kept))
     },
     choose: async (kind) => {
+      if (kind !== 'off' && !(await allow(kind))) return false
       await store.write(kind)
       state.set(kind)
+      if (kind === 'off') await alerts.follow(null)
+      return true
     },
   }
 }
 
 /** An alert to be told: when, by this phone's clock, and what it says. */
 export interface Wanted {
-  readonly kind: 'notification' | 'alarm'
+  readonly kind: TellingKind
   readonly endsAt: number
   readonly title: string
   readonly body: string
@@ -92,6 +116,10 @@ export function wantedAlert({
   return { kind, endsAt: now + phase.left * 1000, sessionId, ...said }
 }
 
+/** Whole seconds to an end, by this phone's clock — never none: iOS refuses an alert due now. */
+export const secondsUntil = (endsAt: number, now: number): number =>
+  Math.max(1, Math.round((endsAt - now) / 1000))
+
 /** The app's own chime at a rest's end, unless an alarm will ring for it — even with the app in front. */
 export const chimesInApp = (kind: AlertKind): boolean => kind !== 'alarm'
 
@@ -99,7 +127,7 @@ export const chimesInApp = (kind: AlertKind): boolean => kind !== 'alarm'
 export interface AlertScheduler {
   /** One alert of a kind at a time: setting one replaces the one before. */
   readonly schedule: (wanted: Wanted) => Promise<void>
-  readonly cancel: (kind: Wanted['kind']) => Promise<void>
+  readonly cancel: (kind: TellingKind) => Promise<void>
 }
 
 /**
