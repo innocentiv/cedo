@@ -6,7 +6,8 @@ exact = true
 # not stop a package whose name was guessed: docs/dependencies.md and its test do. An exception
 # names one exact version, `name@x.y.z`, with the reason and the date it comes out — never a
 # standing one. See docs/02-conventions.md, "Dependencies".
-minimumReleaseAge = "7d"
+# Seven days, in seconds: Bun reads "7d" only from 1.4.4, and CI and the images may run older.
+minimumReleaseAge = 604800
 minimumReleaseAgeExcludes = []
 
 [test]
