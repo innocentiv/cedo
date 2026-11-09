@@ -31,7 +31,7 @@ const UNIT_OPTIONS: readonly ChoiceOption<WeightUnit>[] = [
   { value: 'lb', label: 'Pounds' },
 ]
 
-/** What each choice does: the two that tell differ most where it matters, the silent switch (#39). */
+/** What each choice does, said under it (#39): the two that tell differ most on silent. */
 const ALERT_SAID: Readonly<Record<AlertKind, string>> = {
   off: 'Only the app tells you, while it is open.',
   notification:

@@ -1,10 +1,11 @@
 /**
- * `bun run scripts/chime-wav.ts`, from `apps/app` — renders the rest-over chime the native app plays,
- * and a rest's end told with the app closed (#39), `assets/chime.wav` — and `assets/rest-alarm.wav`,
- * the same with a pause after it, which an alarm repeats — from the numbers the web app
- * makes it from (`src/lib/chime-tone.ts`): each tone of the plate as `toneGain` draws it, as Web
- * Audio does there, summed. Run it again after changing those numbers; the files it writes are
- * committed.
+ * `bun run scripts/chime-wav.ts`, from `apps/app` — renders the native app's sounds from the numbers
+ * the web app plays (`src/lib/chime-tone.ts`), each tone of the plate as `toneGain` draws it, summed:
+ *
+ * - `assets/chime.wav`, the rest-over chime, played in the app and as a notification's sound (#39);
+ * - `assets/rest-alarm.wav`, the same with a pause after it, which an alarm repeats until stopped.
+ *
+ * Run it again after changing those numbers; the files it writes are committed.
  *
  * 16-bit mono PCM at 22.05 kHz: the plate's highest overtone is under 4 kHz, far below what the
  * rate can carry, and each file stays under a few hundred kilobytes — and a WAV of linear PCM,
@@ -48,7 +49,6 @@ function render(seconds: number): DataView {
   return wav
 }
 
-/** The chime, and the alarm that repeats it with a pause after each (#39). */
 for (const [name, seconds] of [
   ['chime.wav', LENGTH_S],
   ['rest-alarm.wav', ALARM_EVERY_S],

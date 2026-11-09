@@ -82,7 +82,8 @@ src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ it
                              hermes-builtins.ts (+ its unit test)
 modules/rest-alert/          the app's own native module: a rest's countdown, and its alarm
 targets/rest-countdown/      the widget extension drawing a rest's countdown on the Lock Screen
-scripts/chime-wav.ts         renders assets/chime.wav, the native chime, from chime-tone.ts
+scripts/chime-wav.ts         renders assets/chime.wav, the native chime, and rest-alarm.wav, the
+                             alarm's, from chime-tone.ts
 e2e/                         harness.ts, server.ts, shot.ts, routes.e2e.ts, journeys.e2e.ts,
                              harness.e2e.ts (the harness's own tests), journeys.test.ts (the rules
                              journeys obey), screens/ (one driver per screen; test ids live here)
@@ -202,7 +203,8 @@ context with one started by that tap (#39).
 On native (#77) the same chime is `assets/chime.wav`, rendered from the same numbers and
 envelope by `scripts/chime-wav.ts`, and played by expo-audio through the silent switch, the music
 ducked while it plays; the buzz is a tap of expo-haptics on each tap of the plate. The same file is
-the sound of a rest's end told with the app closed (#39). It is in the web export too, and never
+a notification's sound when a rest's end is told with the app closed (#39); an alarm repeats
+`assets/rest-alarm.wav`, the chime with a pause after it. It is in the web export too, and never
 fetched there. `expo-audio`'s
 config plugin is told to add no microphone permission and no background audio: the chime plays only
 with the app open.
@@ -350,23 +352,25 @@ there (#63).
   `restAlertOf`), and plays cedo's chime — once, and not on silent. Beside it, from the set, the
   rest counts down on the Lock Screen and in the Dynamic Island: a Live Activity the app starts,
   showing cedo's mark and the next set, which turns itself to "Rest over" at the rest's end — its
-  stale date — with no push to tell it. Both are set for the end this phone counts, never the
-  server's end read by the phone's clock. They follow the rest: +30 s moves them, the next set's
-  rest replaces them, and Skip, Undo, finishing and deleting the session cancel them. A rest that
-  runs out has been told, and its alert is left: the app sees the end as it goes off, and cancelling
-  it then would silence an alarm as it starts. It is kept as set, so an alarm still ringing stops at
-  the next set, or at finishing. With the app in front iOS shows no notification: the band counts
-  down and the app chimes. One shown while the app was closed, and its countdown, are cleared once
-  it is back, which says the rest is over itself. A tap on either opens its session, from a cold
-  start too. **An alarm** is AlarmKit's, for whoever trains on silent: "Rest over" with cedo's
-  chime, again every three seconds through the silent switch and Focus, until it is stopped. It
-  rings with the app in front too, so the app does not chime beside it — beside one iOS has set, not
-  merely one chosen: refused since in iOS Settings, the rest still ends with the chime. A tap on it
-  opens the app. Until it rings, iOS counts it down itself, on the Lock Screen and in the Dynamic
-  Island. Both countdowns are drawn by one widget extension, `targets/rest-countdown`; the ringing
-  alarm is iOS's own, its icon too. The rules are `src/lib/rest-alert.ts`, unit-tested; asking iOS
-  is `src/lib/rest-alert-device.ts`, and the countdown and the alarm the app's own native module,
-  `modules/rest-alert`.
+  stale date — with no push to tell it. It shows where Live Activities are allowed for cedo — iOS
+  asks the first time — on iOS 16.2 and later; without it, the notification tells the end alone.
+  Both are set for the end this phone counts, never the server's end read by the phone's clock. They
+  follow the rest as this phone counts it: +30 s here moves them — one pressed on another device
+  reaches them only once this phone opens the app — the next set's rest replaces them, and Skip,
+  Undo, finishing and deleting the session cancel them. A rest that runs out has been told, and its
+  alert is left: the app sees the end as it goes off, and cancelling it then would silence an alarm
+  as it starts. It is kept as set, so an alarm still ringing stops at the next set, or at finishing.
+  With the app in front iOS shows no notification: the band counts down and the app chimes. One
+  shown while the app was closed, and its countdown, are cleared once it is back, which says the
+  rest is over itself. A tap on either opens its session, from a cold start too. **An alarm** is
+  AlarmKit's, for whoever trains on silent: "Rest over" with cedo's chime, again every three seconds
+  through the silent switch and Focus, until it is stopped. It rings with the app in front too, so
+  the app does not chime beside it — beside one iOS has set, not merely one chosen: refused since in
+  iOS Settings, the rest still ends with the chime. A tap on it opens the app. Until it rings, iOS
+  counts it down itself, on the Lock Screen and in the Dynamic Island. Both countdowns are drawn by
+  one widget extension, `targets/rest-countdown`; the ringing alarm is iOS's own, its icon too. The
+  rules are `src/lib/rest-alert.ts`, unit-tested; asking iOS is `src/lib/rest-alert-device.ts`, and
+  the countdown and the alarm the app's own native module, `modules/rest-alert`.
 - **Reserve is asked before Log** (#37), as one optional row in the logger, under the numbers, and
   only for a working set of an exercise measured in reps — which those are is the contract's, not
   the screen's. Whole reps, none to five, one row of segments; tapping the chosen one again takes it
