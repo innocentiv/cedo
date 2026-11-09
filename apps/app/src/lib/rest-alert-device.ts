@@ -192,7 +192,7 @@ export function useRestTold(
   }
 }
 
-/** A session seen finished, here or elsewhere: no clock runs on it to cancel its alert. */
+/** A session seen finished, or gone, here or elsewhere: no clock runs on it to cancel its alert. */
 export function useRestAlertEnded(sessionId: string, ended: boolean): void {
   useEffect(() => {
     if (!ended) return
