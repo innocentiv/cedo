@@ -121,17 +121,20 @@ there with its test.
 
 Time is a unit too. A clock (`Date.now()`, `Date.parse`, `setTimeout`) counts milliseconds, and
 every duration we keep is seconds: `msToS` and `sToMs` cross between them, exactly, and the caller
-rounds as it means to. `minutesToS`, `daysToMs`, `formatDuration` and `formatMinutes` are there too.
-A `/ 1000` reads the same whether it turns grams into kilograms or milliseconds into seconds; a
-helper's name says which.
+rounds as it means to. `minutesToS`, `daysToMs`, `weeksToMs`, `msToDays`, `formatDuration` and
+`formatMinutes` are there too. A `/ 1000` reads the same whether it turns grams into kilograms or
+milliseconds into seconds; a helper's name says which.
 
-`test/unit-conversions.test.ts` enforces it. It scans the source, but not the tests, for a
-conversion factor beside `*`, `/` or `%`: 60, 1000, 3600, the milliseconds in a minute, an hour or a
-day, a pound or a mile. It names the file and line of each one it finds outside `units.ts`.
+`test/unit-conversions.test.ts` enforces most of it. It scans the source for a conversion factor
+beside `*`, `/` or `%`: 60, 1000, 3600, the milliseconds in a minute, an hour or a day, a pound or a
+mile. Tests are not scanned. For each one outside `units.ts` it names the file and the line.
 Comments, strings and regular expressions are not read. A test states its own expected values, so
-`59 * 60` is fine there. A number that is no unit at all, such as tenths of a percent, is given a
-name (`const TENTHS_PER_WHOLE = 1000`). The name says what it is, and the scan does not read a
-named constant as a factor.
+`59 * 60` is fine there.
+
+**What it cannot see is a constant that hides the factor.** `const DAY_MS = 86_400_000`, then
+`/ DAY_MS`, passes the scan and is still a conversion: it belongs in `units.ts`. Three of them did
+until #83's review. A number that is no unit at all, such as tenths of a percent, is named for what
+it is.
 
 Which unit a value is *typed* in — kg for a weight, metres for a distance — is decided once, in
 `DIMENSION_FIELDS` (`packages/contract/src/dimension.ts`), which calls those helpers. A screen

@@ -11,9 +11,11 @@ import {
   lbToG,
   minutesToS,
   mmToCm,
+  msToDays,
   msToS,
   roundToIncrement,
   sToMs,
+  weeksToMs,
 } from './units.ts'
 
 describe('weight conversion', () => {
@@ -113,5 +115,12 @@ describe('time', () => {
     expect(minutesToS(15)).toBe(900)
     expect(daysToMs(1)).toBe(86_400_000)
     expect(daysToMs(30)).toBe(2_592_000_000)
+  })
+
+  test('weeks to milliseconds, and milliseconds to days, exactly', () => {
+    expect(weeksToMs(1)).toBe(604_800_000)
+    expect(weeksToMs(4)).toBe(2_419_200_000)
+    expect(msToDays(129_600_000)).toBe(1.5)
+    expect(msToDays(1_779_148_800_000)).toBe(20_592)
   })
 })

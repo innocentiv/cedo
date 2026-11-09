@@ -30,8 +30,9 @@ is designed to prevent.
 6. **All measurements are stored as integers in base units** (`weight_g`, `distance_mm`,
    `duration_s`). Conversion happens only in `packages/contract/src/units.ts` — time included: a
    clock's milliseconds become seconds there too (`msToS`, `sToMs`, `daysToMs`).
-   `test/unit-conversions.test.ts` fails on a `*`, `/` or `%` by 60, 1000, 3600, a day or a
-   pound anywhere else. Reps in reserve is
+   `test/unit-conversions.test.ts` fails when 60, 1000, 3600, a day, a pound or a mile sits beside
+   `*`, `/` or `%` in source outside `units.ts`. It cannot see a constant that hides the factor
+   (`const DAY_MS = 86_400_000`), which is still a conversion. Reps in reserve is
    a rating, not a measurement: whole, stored as RPE in `numeric(3,1)`, and said as reps in reserve
    everywhere — see `docs/adr/0020-rpe-is-numeric.md` and
    `docs/adr/0027-reps-in-reserve-whole-everywhere.md`.

@@ -53,18 +53,22 @@ const isFactor = (literal: string): boolean => {
   return FACTORS.some((factor) => Math.abs(value - factor.value) <= factor.slack)
 }
 
-/** A character that, before a `/`, means the slash opens a regular expression, not a division. */
-const BEFORE_REGEX = new Set(['', '(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';', '\n'])
+/** What, just before a `/`, means the slash opens a regular expression, not a division. */
+const BEFORE_REGEX = new Set(['', '(', ',', '=', ':', '[', '!', '&', '|', '?', '{', '}', ';'])
+const KEYWORD_BEFORE_REGEX = /(?:^|[^\w$])(?:return|typeof|case|in|of|void|delete|await|yield)$/u
 
 /**
  * The source with every comment, string and regular expression blanked to spaces — newlines kept,
  * so a line number still points at the line — and the code inside `${…}` left in place.
  */
-export function codeOnly(source: string): string {
+function codeOnly(source: string): string {
   let out = ''
   let i = 0
   const blank = (text: string) => text.replaceAll(/[^\n]/gu, ' ')
-  const lastCode = () => out.trimEnd().at(-1) ?? ''
+  const opensRegex = () => {
+    const before = out.trimEnd()
+    return BEFORE_REGEX.has(before.at(-1) ?? '') || KEYWORD_BEFORE_REGEX.test(before)
+  }
   const templates: number[] = [] // brace depth at which each open `${` returns to its template
 
   while (i < source.length) {
@@ -100,7 +104,7 @@ export function codeOnly(source: string): string {
         out += blank(source.slice(i, j + 1))
         i = j + 1
       }
-    } else if (ch === '/' && BEFORE_REGEX.has(lastCode())) {
+    } else if (ch === '/' && opensRegex()) {
       let j = i + 1
       let inClass = false
       while (j < source.length && source[j] !== '\n' && (inClass || source[j] !== '/')) {
@@ -121,7 +125,7 @@ export function codeOnly(source: string): string {
 }
 
 /** Each line with a conversion factor beside `*`, `/` or `%` in its code, as `line: text`. */
-export function conversions(source: string): string[] {
+function conversions(source: string): string[] {
   const code = codeOnly(source)
   const lines = new Set<number>()
   const number = /(?<![\w.])\d[\d_]*(?:\.\d[\d_]*)?(?![\w.])/gu
@@ -168,6 +172,14 @@ describe('the scan itself', () => {
     expect(conversions(source)).toEqual(['5: const text = `${total / 60} min, of 60 * 1000`'])
   })
 
+  test('a regular expression after a keyword is one, and a division after a name is one', () => {
+    const source = [
+      "const isPath = (s) => { return /^\\/ 60/u.test(s) || typeof /x/u === 'object' }",
+      'const typeofs = 3600 / typeofs',
+    ].join('\n')
+    expect(conversions(source)).toEqual(['2: const typeofs = 3600 / typeofs'])
+  })
+
   test('leaves a factor no operator touches, and numbers that only look alike', () => {
     const source = [
       'const LIMIT = 1000',
@@ -204,9 +216,8 @@ describe('no unit converts outside units.ts', () => {
       for (const hit of conversions(await Bun.file(join(ROOT, file)).text()))
         offences.push(
           `${file}:${hit} — a unit conversion outside ${UNITS}. Use, or add, a helper there: ` +
-            'weight, distance and time convert in that one file (invariant 6). If the number is ' +
-            'no unit at all — tenths of a percent, a count — name it as a constant, which says ' +
-            'what it is and is not read as a factor.',
+            'weight, distance and time convert in that one file (invariant 6). See ' +
+            'docs/02-conventions.md, "Units".',
         )
     }
     expect(offences).toEqual([])
