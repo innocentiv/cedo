@@ -1,4 +1,4 @@
-import { Elysia, ValidationError } from 'elysia'
+import { Elysia, NotFound, ParseError, ValidationError } from 'elysia'
 import { z } from 'zod'
 import { sql as raw } from 'drizzle-orm'
 import { type ApiError, MCP_PATH } from '@cedo/contract'
@@ -36,20 +36,16 @@ const envelope = (
 export function createApp() {
   return new Elysia()
     .use(createOpenapiPlugin())
-    .onError(({ error, code, set }) => {
-      const { status, body, headers } = describeError(error, code)
+    .onError(({ error, set }) => {
+      const { status, body, headers } = describeError(error)
       set.status = status
       if (headers !== undefined) Object.assign(set.headers, headers)
       return body
     })
-    .get(
-      '/health',
-      async () => {
-        await db.execute(raw`select 1`)
-        return { ok: true, db: true }
-      },
-      { detail: { summary: 'Liveness and database reachability' } },
-    )
+    .get('/health', { detail: { summary: 'Liveness and database reachability' } }, async () => {
+      await db.execute(raw`select 1`)
+      return { ok: true, db: true }
+    })
     .use(adminRoutes)
     .use(authRoutes)
     .use(coachingRoutes)
@@ -99,13 +95,14 @@ async function serveMcp(request: Request): Promise<Response> {
  * about on its own, and so there is exactly ONE place where a failure becomes a status code. No
  * handler anywhere constructs an error response. See docs/02-conventions.md.
  */
-function describeError(
-  error: unknown,
-  code: string | number,
-): { status: number; body: ApiError; headers?: ErrorHeaders } {
+function describeError(error: unknown): {
+  status: number
+  body: ApiError
+  headers?: ErrorHeaders
+} {
   if (error instanceof DomainError) return toApiError(error)
 
-  if (code === 'VALIDATION') {
+  if (error instanceof ValidationError) {
     return {
       status: 422,
       body: envelope('validation_failed', 'Request failed validation', validationDetails(error)),
@@ -117,11 +114,11 @@ function describeError(
    * so any client sending broken JSON looks like a server fault and pollutes the logs of whoever is
    * self-hosting this.
    */
-  if (code === 'PARSE') {
+  if (error instanceof ParseError) {
     return { status: 400, body: envelope('validation_failed', 'Could not parse the request body') }
   }
 
-  if (code === 'NOT_FOUND') {
+  if (error instanceof NotFound) {
     return { status: 404, body: envelope('not_found', 'No such route') }
   }
 

@@ -35,8 +35,7 @@ version published in the last week, are in `docs/02-conventions.md`, "Dependenci
 
 | Package | Where | Why | Upstream |
 | --- | --- | --- | --- |
-| `@elysiajs/eden` | api | Typed calls into the in-process API from the test harness (`src/test/harness.ts`). | [elysiajs/eden](https://github.com/elysiajs/eden) |
-| `@elysiajs/openapi` | api | The API's OpenAPI document (`src/plugins/openapi.ts`). | [elysiajs/elysia-openapi](https://github.com/elysiajs/elysia-openapi) |
+| `@elysia/openapi` | api | The API's OpenAPI document (`src/plugins/openapi.ts`). Elysia 2's plugins publish under `@elysia`; until 1.4 this was `@elysiajs/openapi`, from the same repository and maintainer. | [elysiajs/elysia-openapi](https://github.com/elysiajs/elysia-openapi) |
 | `@modelcontextprotocol/server` | api | The MCP server an AI plans and reviews training through (`docs/07-mcp.md`). | [modelcontextprotocol/typescript-sdk](https://github.com/modelcontextprotocol/typescript-sdk) |
 | `@types/node` | api | Types for the `node:` modules the API uses. | [DefinitelyTyped/DefinitelyTyped](https://github.com/DefinitelyTyped/DefinitelyTyped) |
 | `drizzle-kit` | api | Writes migrations from the table definitions; `bun run db:studio`. | [drizzle-team/drizzle-orm](https://github.com/drizzle-team/drizzle-orm) |

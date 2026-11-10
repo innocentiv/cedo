@@ -33,52 +33,56 @@ const params = z.object({ id: Id })
 export const coachingRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller }) => athletes(caller), {
-    response: z.array(Athlete),
-    detail: { summary: 'Members sharing their training with a group the caller edits' },
-  })
+  .get(
+    '/',
+    {
+      response: z.array(Athlete),
+      detail: { summary: 'Members sharing their training with a group the caller edits' },
+    },
+    ({ caller }) => athletes(caller),
+  )
   .get(
     '/:id/sessions',
-    async ({ caller, params: { id }, query }) =>
-      await listSessions(await ownOrCoached(caller, id), query),
     {
       params,
       query: SessionQuery,
       response: page(WorkoutSessionSummary),
       detail: { summary: "An athlete's sessions, newest first — the one in progress too" },
     },
+    async ({ caller, params: { id }, query }) =>
+      await listSessions(await ownOrCoached(caller, id), query),
   )
   .get(
     '/:id/sessions/:sessionId',
-    async ({ caller, params: { id, sessionId } }) =>
-      await getSession(await ownOrCoached(caller, id), sessionId),
     {
       params: z.object({ id: Id, sessionId: Id }),
       response: SessionDetail,
       detail: { summary: "One of an athlete's sessions, named as the caller can see it" },
     },
+    async ({ caller, params: { id, sessionId } }) =>
+      await getSession(await ownOrCoached(caller, id), sessionId),
   )
   .get(
     '/:id/exercises/:exerciseId/history',
-    async ({ caller, params: { id, exerciseId }, query }) =>
-      await history(await ownOrCoached(caller, id), exerciseId, query),
     {
       params: z.object({ id: Id, exerciseId: Id }),
       query: ExerciseHistoryQuery,
       response: ExerciseHistory,
       detail: { summary: "An athlete's logged sessions for one exercise the caller can see" },
     },
+    async ({ caller, params: { id, exerciseId }, query }) =>
+      await history(await ownOrCoached(caller, id), exerciseId, query),
   )
   .get(
     '/:id/review',
-    async ({ caller, params: { id }, query }) =>
-      await trainingReview(await ownOrCoached(caller, id), query.weeks),
     {
       params,
       query: ReviewQuery,
       response: TrainingReview,
       detail: { summary: "An athlete's training, reviewed as their own Progress reviews it (#30)" },
     },
+    async ({ caller, params: { id }, query }) =>
+      await trainingReview(await ownOrCoached(caller, id), query.weeks),
   )
 
 /**
@@ -89,11 +93,15 @@ export const coachingRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching
 export const reviewRoutes = new Elysia({ prefix: '/review', tags: ['coaching'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller, query }) => trainingReview(own(caller), query.weeks), {
-    query: ReviewQuery,
-    response: TrainingReview,
-    detail: {
-      summary:
-        'Sessions a week and the streak, the days trained, work per muscle against the period before, and what has stalled, is falling or is drifting',
+  .get(
+    '/',
+    {
+      query: ReviewQuery,
+      response: TrainingReview,
+      detail: {
+        summary:
+          'Sessions a week and the streak, the days trained, work per muscle against the period before, and what has stalled, is falling or is drifting',
+      },
     },
-  })
+    ({ caller, query }) => trainingReview(own(caller), query.weeks),
+  )

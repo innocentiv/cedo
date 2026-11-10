@@ -107,8 +107,8 @@ describe('access control', () => {
   })
 
   /**
-   * Regression: authentication used to run in `resolve`, which Elysia executes AFTER schema
-   * validation — so an anonymous caller sending a malformed body was told their body was wrong
+   * Regression: authentication used to run in the hook Elysia executes AFTER schema validation
+   * (`resolve` then, `derive` since Elysia 2) — so an anonymous caller sending a malformed body was told their body was wrong
    * when the real answer was that they were not signed in.
    */
   test('an anonymous request is rejected as unauthenticated before its body is validated', async () => {

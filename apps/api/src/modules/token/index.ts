@@ -13,20 +13,24 @@ import * as TokenService from './service.ts'
 export const tokenRoutes = new Elysia({ prefix: '/tokens', tags: ['tokens'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller }) => TokenService.list(caller), {
-    response: z.array(PersonalAccessToken),
-    detail: { summary: 'Personal access tokens, never including the secret' },
-  })
-  .post('/', ({ caller, body }) => TokenService.create(caller, body), {
-    body: PersonalAccessTokenCreate,
-    response: PersonalAccessTokenCreated,
-    detail: { summary: 'Create a token. The secret is shown once and cannot be recovered.' },
-  })
-  .delete(
-    '/:id',
-    async ({ caller, params }) => {
-      await TokenService.revoke(caller, params.id)
-      return { ok: true }
+  .get(
+    '/',
+    {
+      response: z.array(PersonalAccessToken),
+      detail: { summary: 'Personal access tokens, never including the secret' },
     },
-    { params: z.object({ id: Id }) },
+    ({ caller }) => TokenService.list(caller),
   )
+  .post(
+    '/',
+    {
+      body: PersonalAccessTokenCreate,
+      response: PersonalAccessTokenCreated,
+      detail: { summary: 'Create a token. The secret is shown once and cannot be recovered.' },
+    },
+    ({ caller, body }) => TokenService.create(caller, body),
+  )
+  .delete('/:id', { params: z.object({ id: Id }) }, async ({ caller, params }) => {
+    await TokenService.revoke(caller, params.id)
+    return { ok: true }
+  })

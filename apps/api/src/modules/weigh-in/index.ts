@@ -18,45 +18,49 @@ const theirOne = z.object({ id: Id, weighInId: Id })
 export const weighInRoutes = new Elysia({ tags: ['weigh-ins'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/weigh-ins', ({ caller, query }) => WeighInService.bodyweightOf(own(caller), query.weeks), {
-    query: ReviewQuery,
-    response: Bodyweight,
-    detail: { summary: 'Your weigh-ins over a period, newest first, and the latest before it' },
-  })
-  .post('/weigh-ins', ({ caller, body }) => WeighInService.create(own(caller), body), {
-    body: WeighInInput,
-    response: WeighIn,
-  })
-  .delete(
-    '/weigh-ins/:weighInId',
-    async ({ caller, params }) => {
-      await WeighInService.remove(own(caller), params.weighInId)
-      return { ok: true }
+  .get(
+    '/weigh-ins',
+    {
+      query: ReviewQuery,
+      response: Bodyweight,
+      detail: { summary: 'Your weigh-ins over a period, newest first, and the latest before it' },
     },
-    { params: one },
+    ({ caller, query }) => WeighInService.bodyweightOf(own(caller), query.weeks),
   )
+  .post(
+    '/weigh-ins',
+    {
+      body: WeighInInput,
+      response: WeighIn,
+    },
+    ({ caller, body }) => WeighInService.create(own(caller), body),
+  )
+  .delete('/weigh-ins/:weighInId', { params: one }, async ({ caller, params }) => {
+    await WeighInService.remove(own(caller), params.weighInId)
+    return { ok: true }
+  })
   .get(
     '/athletes/:id/weigh-ins',
-    async ({ caller, params, query }) =>
-      await WeighInService.bodyweightOf(await ownOrCoached(caller, params.id), query.weeks),
     {
       params: theirs,
       query: ReviewQuery,
       response: Bodyweight,
       detail: { summary: "An athlete's weigh-ins over a period, newest first" },
     },
+    async ({ caller, params, query }) =>
+      await WeighInService.bodyweightOf(await ownOrCoached(caller, params.id), query.weeks),
   )
   .post(
     '/athletes/:id/weigh-ins',
+    { params: theirs, body: WeighInInput, response: WeighIn },
     async ({ caller, params, body }) =>
       await WeighInService.create(await ownOrCoached(caller, params.id), body),
-    { params: theirs, body: WeighInInput, response: WeighIn },
   )
   .delete(
     '/athletes/:id/weigh-ins/:weighInId',
+    { params: theirOne },
     async ({ caller, params }) => {
       await WeighInService.remove(await ownOrCoached(caller, params.id), params.weighInId)
       return { ok: true }
     },
-    { params: theirOne },
   )

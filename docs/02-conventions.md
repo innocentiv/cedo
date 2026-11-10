@@ -38,8 +38,8 @@ function:
 
 ```ts
 // modules/exercise/index.ts
-.post('/', ({ caller, body }) => ExerciseService.create(caller, body),
-      { body: ExerciseCreateRequest, response: Exercise })
+.post('/', { body: ExerciseCreateRequest, response: Exercise },
+      ({ caller, body }) => ExerciseService.create(caller, body))
 
 // mcp/tools/library.ts
 server.registerTool('exercise_create',
@@ -59,8 +59,8 @@ pointed at someone else, does not compile, and the lint refuses the cast that co
 (`no-unsafe-type-assertion`) and the spread (`no-misused-spread`); at run time, `isTraining` tells.
 
 ```ts
-.get('/:id/review', async ({ caller, params: { id }, query }) =>
-  await trainingReview(await ownOrCoached(caller, id), query.weeks), { … })
+.get('/:id/review', { … }, async ({ caller, params: { id }, query }) =>
+  await trainingReview(await ownOrCoached(caller, id), query.weeks))
 ```
 
 ## The ACL invariant

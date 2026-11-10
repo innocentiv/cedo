@@ -164,10 +164,11 @@ service function — after resolving whose training it is, if it reads or writes
 export const widgetRoutes = new Elysia({ prefix: '/widgets', tags: ['widgets'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller, query }) => WidgetService.list(caller, query), {
-    query: WidgetQuery,
-    response: page(Widget),
-  })
+  .get(
+    '/',
+    { query: WidgetQuery, response: page(Widget) },
+    ({ caller, query }) => WidgetService.list(caller, query),
+  )
 ```
 
 Mount it in `app.ts`. Never throw a value that is not a `DomainError` — everything leaves through the
@@ -207,8 +208,8 @@ and spread `ownableFields` into the response.
    nonexistent return an **identical status and body**. For an ownable, add the widget to `KINDS` in
    `modules/ownable/ownable.test.ts` — the suite proves this, and fails until you do; test here only
    what is the widget's own.
-2. **`expectContract` on every response**, using `wire`, not `api`. Eden Treaty revives ISO dates
-   into `Date`; the real client uses `fetch` + Zod and sees strings.
+2. **`expectContract` on every response**, read through `wire`: the raw JSON, which is what the
+   real client parses with `fetch` + Zod.
 3. **Every route rejects an anonymous request with 401** — including one with a malformed body, to
    prove auth still runs before validation.
 4. **An N+1 invariant test** (`n1.test.ts`): the same call must issue the *same* number of queries

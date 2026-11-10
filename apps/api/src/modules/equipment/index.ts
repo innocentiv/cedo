@@ -11,15 +11,23 @@ import * as EquipmentService from './service.ts'
 export const equipmentRoutes = new Elysia({ prefix: '/equipment', tags: ['equipment'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller }) => EquipmentService.read(own(caller)), {
-    response: AthleteEquipment,
-    detail: { summary: 'What you have to train with, and how its weights go' },
-  })
-  .put('/', ({ caller, body }) => EquipmentService.replace(caller, body), {
-    body: AthleteEquipmentInput,
-    response: AthleteEquipment,
-    detail: { summary: 'Say what you have to train with, all of it, replacing what was said' },
-  })
+  .get(
+    '/',
+    {
+      response: AthleteEquipment,
+      detail: { summary: 'What you have to train with, and how its weights go' },
+    },
+    ({ caller }) => EquipmentService.read(own(caller)),
+  )
+  .put(
+    '/',
+    {
+      body: AthleteEquipmentInput,
+      response: AthleteEquipment,
+      detail: { summary: 'Say what you have to train with, all of it, replacing what was said' },
+    },
+    ({ caller, body }) => EquipmentService.replace(caller, body),
+  )
 
 /** An athlete's equipment, read by their coach (#34) — and changed by none of them. */
 export const athleteEquipmentRoutes = new Elysia({ prefix: '/athletes', tags: ['coaching'] })
@@ -27,11 +35,11 @@ export const athleteEquipmentRoutes = new Elysia({ prefix: '/athletes', tags: ['
   .guard({ auth: true })
   .get(
     '/:id/equipment',
-    async ({ caller, params: { id } }) =>
-      await EquipmentService.read(await ownOrCoached(caller, id)),
     {
       params: z.object({ id: Id }),
       response: AthleteEquipment,
       detail: { summary: 'What an athlete has to train with, and how its weights go (#34)' },
     },
+    async ({ caller, params: { id } }) =>
+      await EquipmentService.read(await ownOrCoached(caller, id)),
   )

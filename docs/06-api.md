@@ -28,11 +28,14 @@ src/
 export const groupRoutes = new Elysia({ prefix: '/groups', tags: ['groups'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .post('/', ({ caller, body }) => GroupService.create(caller, body), {
-    body: GroupCreate,
-    response: GroupMembership,
-  })
+  .post(
+    '/',
+    { body: GroupCreate, response: GroupMembership },
+    ({ caller, body }) => GroupService.create(caller, body),
+  )
 ```
+
+The options come before the handler: Elysia 2's order, the reverse of 1.x.
 
 A handler is at most five lines and calls exactly one service function — having first resolved,
 where it reads or writes for someone, whose training it is (`own`, `ownOrCoached`; see
@@ -61,12 +64,12 @@ It runs on every authenticated request, so it joins sessions → users → group
 memberships in JavaScript. One round trip. Looking up the session and then fetching memberships
 would be two, on every request. `bun run perf` asserts the count stays at one.
 
-**Authentication happens in `transform`, not `resolve` — do not "simplify" it back.** Elysia runs
-`transform` *before* schema validation and `resolve` *after* it. With the check in `resolve`, an
-anonymous caller sending a malformed body got a 422 telling them their body was wrong, when the real
-answer was that they were not signed in.
+**Authentication happens in `transform`, not `derive` — do not "simplify" it back.** Elysia runs
+`transform` *before* schema validation and `derive` *after* it (`derive` is what Elysia 1.x called
+`resolve`). With the check in `derive`, an anonymous caller sending a malformed body gets a 422
+telling them their body was wrong, when the real answer is that they are not signed in.
 
-The resolved caller is handed from `transform` to `resolve` through a `WeakMap` keyed on the request
+The resolved caller is handed from `transform` to `derive` through a `WeakMap` keyed on the request
 object. That indirection is load-bearing for two reasons: it keeps authentication at exactly one
 query, and it leaves the context type inferable — annotating the context parameter directly breaks
 `caller`'s type in every handler in the API.
@@ -248,8 +251,8 @@ uses `z.stringbool()`: "false" is a non-empty string, and `z.coerce.boolean()` r
 
 Served at `/openapi` (Scalar UI) and `/openapi/json`.
 
-`mapJsonSchema` is **required**: Elysia's native validator is TypeBox, and without it every
-Zod-validated route documents as an empty object. A test asserts real field names reach the spec.
+`mapJsonSchema` says how a Zod schema becomes JSON Schema: its **input** side (`io: 'input'`), which
+is what a caller may send. A test asserts real field names reach the spec.
 
 `createOpenapiPlugin()` is a factory, not a shared constant. The plugin registers the UI as a static
 `Response`, whose body can be read only once — a module-level singleton works until something

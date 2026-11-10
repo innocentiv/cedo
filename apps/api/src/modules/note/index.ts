@@ -18,53 +18,53 @@ const theirOne = z.object({ id: Id, noteId: Id })
 export const noteRoutes = new Elysia({ tags: ['notes'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/notes', ({ caller }) => NoteService.list(own(caller)), {
-    response: notes,
-    detail: { summary: 'What is known about you, for planning your training — newest first' },
-  })
-  .post('/notes', ({ caller, body }) => NoteService.create(own(caller), body), {
-    body: AthleteNoteInput,
-    response: AthleteNote,
-  })
+  .get(
+    '/notes',
+    {
+      response: notes,
+      detail: { summary: 'What is known about you, for planning your training — newest first' },
+    },
+    ({ caller }) => NoteService.list(own(caller)),
+  )
+  .post(
+    '/notes',
+    {
+      body: AthleteNoteInput,
+      response: AthleteNote,
+    },
+    ({ caller, body }) => NoteService.create(own(caller), body),
+  )
   .patch(
     '/notes/:noteId',
-    ({ caller, params, body }) => NoteService.update(own(caller), params.noteId, body),
     { params: one, body: AthleteNoteInput, response: AthleteNote },
+    ({ caller, params, body }) => NoteService.update(own(caller), params.noteId, body),
   )
-  .delete(
-    '/notes/:noteId',
-    async ({ caller, params }) => {
-      await NoteService.remove(own(caller), params.noteId)
-      return { ok: true }
-    },
-    { params: one },
-  )
+  .delete('/notes/:noteId', { params: one }, async ({ caller, params }) => {
+    await NoteService.remove(own(caller), params.noteId)
+    return { ok: true }
+  })
   .get(
     '/athletes/:id/notes',
-    async ({ caller, params }) => await NoteService.list(await ownOrCoached(caller, params.id)),
     {
       params: theirs,
       response: notes,
       detail: { summary: 'What is known about an athlete you coach — newest first' },
     },
+    async ({ caller, params }) => await NoteService.list(await ownOrCoached(caller, params.id)),
   )
   .post(
     '/athletes/:id/notes',
+    { params: theirs, body: AthleteNoteInput, response: AthleteNote },
     async ({ caller, params, body }) =>
       await NoteService.create(await ownOrCoached(caller, params.id), body),
-    { params: theirs, body: AthleteNoteInput, response: AthleteNote },
   )
   .patch(
     '/athletes/:id/notes/:noteId',
+    { params: theirOne, body: AthleteNoteInput, response: AthleteNote },
     async ({ caller, params, body }) =>
       await NoteService.update(await ownOrCoached(caller, params.id), params.noteId, body),
-    { params: theirOne, body: AthleteNoteInput, response: AthleteNote },
   )
-  .delete(
-    '/athletes/:id/notes/:noteId',
-    async ({ caller, params }) => {
-      await NoteService.remove(await ownOrCoached(caller, params.id), params.noteId)
-      return { ok: true }
-    },
-    { params: theirOne },
-  )
+  .delete('/athletes/:id/notes/:noteId', { params: theirOne }, async ({ caller, params }) => {
+    await NoteService.remove(await ownOrCoached(caller, params.id), params.noteId)
+    return { ok: true }
+  })

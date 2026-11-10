@@ -1,6 +1,7 @@
 # 0015 — No Eden Treaty; a contract-typed fetch client instead
 
-**Status:** Accepted (2026-08-23)
+**Status:** Accepted (2026-08-23), amended (2026-11-10: the API's tests no longer use Treaty
+either — see the end)
 
 ## Context
 
@@ -61,3 +62,19 @@ Roughly thirty hand-written two-line client methods, which can drift from the AP
 
 `apps/app/.oxlintrc.json` sets `no-restricted-imports` on `@cedo/api` and relative paths reaching
 into it. `bun run lint` fails on violation.
+
+## Amended (2026-11-10): the API's tests no longer use Treaty either
+
+The decision stands. What changed is the sentence above that says Treaty "is still used inside
+`apps/api`'s own tests".
+
+By now it was used for two calls in `apps/api/src/test/harness.ts`: registering a test user and
+reading `/auth/me`. The harness also handed every test a typed `api` client, and no test read it:
+`docs/10-testing.md` already told tests to use `wire`, because Treaty revives ISO date strings into
+`Date` objects and the real client never sees those.
+
+So `@elysiajs/eden` was removed, and the two calls go through `wire` and are parsed with the
+contract's own schemas. It was done ahead of the move to Elysia 2 (#86), where Eden changes npm
+scope: one package fewer to move, and nothing taken from a new scope for two calls.
+
+Nothing in `apps/api` or `apps/app` depends on Eden now.

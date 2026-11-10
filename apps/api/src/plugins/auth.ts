@@ -85,10 +85,10 @@ export function foldCaller(identity: IdentityRow, rows: readonly MembershipRow[]
  * Routes opt in with `{ auth: true }` and receive a fully resolved `caller` in context.
  * There is no way to read an ownable table without one.
  *
- * Authentication happens in `transform`, NOT in `resolve`, because Elysia runs `transform` before
- * schema validation and `resolve` after it. With the check in `resolve`, an anonymous caller
- * posting a malformed body got a 422 telling them their body was wrong, when the real answer was
- * that they were not signed in.
+ * Authentication happens in `transform`, NOT in `derive`, because Elysia runs `transform` before
+ * schema validation and `derive` after it (`derive` is what Elysia 1.x called `resolve`). With the
+ * check in `derive`, an anonymous caller posting a malformed body gets a 422 telling them their
+ * body was wrong, when the real answer is that they are not signed in.
  *
  * The resolved caller is handed from one hook to the other through a WeakMap keyed on the request
  * object, so authentication still costs exactly one query, the context stays inferable by Elysia
@@ -108,7 +108,7 @@ export const authPlugin = new Elysia({ name: 'auth' }).macro({
       if (caller === null) throw unauthenticated()
       callerByRequest.set(request, caller)
     },
-    resolve({ request }) {
+    derive({ request }) {
       const caller = callerByRequest.get(request)
       if (caller === undefined) throw unauthenticated()
       return { caller }

@@ -76,7 +76,7 @@ boundary is a test, not a convention.
 One `*.test.ts` next to each `service.ts` (a service whose only entry point is another module's
 route — `progression`, reached through the workout routes and through finishing or correcting a
 session — is tested there), driven
-through `treaty(app)` so requests traverse the real
+through `app.handle(request)` (the harness's `wire`) so requests traverse the real
 Elysia lifecycle: validation, the auth macro, the error handler. No socket, no port.
 
 A service's PURE half — rows in, answer out, like `progression/evaluate.ts`, or `slugify` in
@@ -101,11 +101,11 @@ Two things are mandatory in every module:
 - **Cross-user and cross-group ACL isolation.** A user must get `404`, never `403`, for something
   they cannot see — `403` confirms it exists. For an ownable kind, its entry in the shared
   ownable suite (below) is that proof; its own test file adds isolation only for what is its own.
-- **`expectContract(Schema, res.body)` on every response**, read through `wire`, not through Treaty.
-  Treaty revives ISO date strings into `Date` objects on the client; the real frontend uses plain
-  `fetch` plus Zod and sees strings. Asserting against the revived value would drift the contract
-  toward accepting `Date`, which would then break the actual client. See
-  `docs/adr/0015-no-eden-treaty.md`.
+- **`expectContract(Schema, res.body)` on every response**, read through `wire`: the raw JSON, as
+  the real frontend receives it with plain `fetch` plus Zod. The harness has no typed client. Eden
+  Treaty, which it once had, revives ISO date strings into `Date` objects; asserting against the
+  revived value would drift the contract toward accepting `Date`, which would then break the
+  actual client. See `docs/adr/0015-no-eden-treaty.md`.
 
 Three suites guard what every module must share, and each fails rather than skips when something
 new is not covered. See `docs/adr/0019-visible-relations.md`.

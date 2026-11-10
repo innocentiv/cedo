@@ -32,26 +32,44 @@ async function serve(id: string, variant: 'blob' | 'thumb'): Promise<Response> {
  * could already fetch any id. See docs/adr/0009-media-model.md.
  */
 export const mediaBlobRoutes = new Elysia({ prefix: '/media', tags: ['media'] })
-  .get('/:id/blob', async ({ params: { id } }) => await serve(id, 'blob'), {
-    params,
-    detail: { summary: 'The full-size bytes. Unauthenticated: the id is the capability.' },
-  })
-  .get('/:id/thumb', async ({ params: { id } }) => await serve(id, 'thumb'), {
-    params,
-    detail: { summary: 'A generated webp thumbnail. Unauthenticated: the id is the capability.' },
-  })
+  .get(
+    '/:id/blob',
+    {
+      params,
+      detail: { summary: 'The full-size bytes. Unauthenticated: the id is the capability.' },
+    },
+    async ({ params: { id } }) => await serve(id, 'blob'),
+  )
+  .get(
+    '/:id/thumb',
+    {
+      params,
+      detail: { summary: 'A generated webp thumbnail. Unauthenticated: the id is the capability.' },
+    },
+    async ({ params: { id } }) => await serve(id, 'thumb'),
+  )
 
 /** CREATING media requires a session. Only reading the bytes does not. */
 export const mediaRoutes = new Elysia({ prefix: '/media', tags: ['media'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .post('/link', ({ caller, body }) => MediaService.createLink(caller, body), {
-    body: MediaCreateLink,
-    response: Media,
-    detail: { summary: 'Reference a video hosted elsewhere. No upload, no network call.' },
-  })
+  .post(
+    '/link',
+    {
+      body: MediaCreateLink,
+      response: Media,
+      detail: { summary: 'Reference a video hosted elsewhere. No upload, no network call.' },
+    },
+    ({ caller, body }) => MediaService.createLink(caller, body),
+  )
   .post(
     '/',
+    {
+      // Multipart is described by hand: a File has no meaningful JSON Schema.
+      detail: {
+        summary: `Upload an image (multipart/form-data, field 'file', max ${Math.floor(MAX_UPLOAD_BYTES / 1024 / 1024)} MB)`,
+      },
+    },
     async ({ caller, request }) => {
       /**
        * The deprecation on `formData` is Node-specific advice to reach for a busboy dependency.
@@ -73,11 +91,5 @@ export const mediaRoutes = new Elysia({ prefix: '/media', tags: ['media'] })
       const file = form.get('file')
       if (!(file instanceof File)) throw invalid("Expected a multipart form with a 'file' field")
       return await MediaService.upload(caller, file)
-    },
-    {
-      // Multipart is described by hand: a File has no meaningful JSON Schema.
-      detail: {
-        summary: `Upload an image (multipart/form-data, field 'file', max ${Math.floor(MAX_UPLOAD_BYTES / 1024 / 1024)} MB)`,
-      },
     },
   )

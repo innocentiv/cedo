@@ -10,13 +10,21 @@ import * as InstanceService from './service.ts'
  */
 export const instanceRoutes = new Elysia({ prefix: '/instance', tags: ['instance'] })
   .use(authPlugin)
-  .get('', () => InstanceService.current(), {
-    response: Instance,
-    detail: { summary: 'What this server is, its version, and whether it takes new accounts' },
-  })
-  .patch('', ({ caller, body }) => InstanceService.update(caller, body), {
-    auth: true,
-    body: InstancePatch,
-    response: Instance,
-    detail: { summary: 'Open or close sign-up. Curator only' },
-  })
+  .get(
+    '',
+    {
+      response: Instance,
+      detail: { summary: 'What this server is, its version, and whether it takes new accounts' },
+    },
+    () => InstanceService.current(),
+  )
+  .patch(
+    '',
+    {
+      auth: true,
+      body: InstancePatch,
+      response: Instance,
+      detail: { summary: 'Open or close sign-up. Curator only' },
+    },
+    ({ caller, body }) => InstanceService.update(caller, body),
+  )
