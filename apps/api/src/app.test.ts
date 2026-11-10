@@ -24,7 +24,7 @@ describe('openapi', () => {
   /**
    * A route validated by Zod must not document as an empty object, which is what Elysia 1.x did
    * without `mapJsonSchema`. This asserts the spec actually carries our schemas.
-   * See docs/04-contract.md.
+   * See docs/06-api.md, "OpenAPI".
    */
   test('the spec is generated from the Zod schemas, not empty stubs', async () => {
     const res = await h.wire('/openapi/json')
@@ -205,9 +205,17 @@ describe('what the framework hands to the wire', () => {
   test('a trailing slash reaches the same route: fixed, parameterised, and a prefix alone', async () => {
     const alice = await h.as('alice')
 
-    expect((await h.wire('/health/')).body).toEqual({ ok: true, db: true })
-    expect((await alice.wire('/exercises/')).body).toEqual({ items: [], nextCursor: null })
-    expect((await h.wire('/instance/')).body).toEqual((await h.wire('/instance')).body)
+    const health = await h.wire('/health/')
+    expect(health.status).toBe(200)
+    expect(health.body).toEqual({ ok: true, db: true })
+
+    const exercises = await alice.wire('/exercises/')
+    expect(exercises.status).toBe(200)
+    expect(exercises.body).toEqual({ items: [], nextCursor: null })
+
+    const instance = await h.wire('/instance/')
+    expect(instance.status).toBe(200)
+    expect(instance.body).toEqual((await h.wire('/instance')).body)
 
     // The exercise route answered, not the router: its 404 names the exercise.
     const missing = await alice.wire(`/exercises/${NO_SUCH_ID}/`)

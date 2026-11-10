@@ -9,7 +9,7 @@ import { z } from 'zod'
  * caller may send. Under Elysia 1.x it was required, or every route documented as an empty
  * object. Elysia 2 reads a Zod schema without it, but as its output side, which changes about
  * four hundred `required` and `additionalProperties` entries of the document; so it stays.
- * See docs/04-contract.md.
+ * See docs/06-api.md, "OpenAPI".
  *
  * A FACTORY, not a shared constant. The plugin registers the Scalar UI as a static `Response`, and
  * a Response body can only be read once — so a module-level singleton works until something
