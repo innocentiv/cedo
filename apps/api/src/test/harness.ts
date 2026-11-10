@@ -1,6 +1,5 @@
 import { sql as raw } from 'drizzle-orm'
-import type { SignUpState } from '@cedo/contract'
-import { treaty } from '@elysiajs/eden'
+import { AuthResult, Me, type SignUpState } from '@cedo/contract'
 import { createApp } from '../app.ts'
 import { db } from '../db/client.ts'
 import { ensureDatabaseExists } from '../db/ensure.ts'
@@ -11,7 +10,7 @@ import { seedCore } from '../db/seed.ts'
 import { type Caller, resolveCaller } from '../plugins/auth.ts'
 
 /**
- * Integration tests run through `treaty(app)`, which exercises the REAL Elysia lifecycle —
+ * Integration tests run through `app.handle(request)`, which exercises the REAL Elysia lifecycle —
  * validation, the auth macro, the error handler — with no socket and no port to manage.
  * See docs/10-testing.md.
  *
@@ -50,8 +49,6 @@ async function truncateVolatileTables(): Promise<void> {
   `)
 }
 
-type Treaty = ReturnType<typeof treaty<ReturnType<typeof createApp>>>
-
 export interface WireResponse {
   readonly status: number
   /** Exactly what a `fetch` client receives — no revival, no transformation. */
@@ -61,20 +58,15 @@ export interface WireResponse {
 }
 
 /**
- * Fetch a route and return the raw parsed JSON.
- *
- * REQUIRED for `expectContract`. Eden Treaty revives ISO date strings into `Date` objects on the
- * client, so asserting a contract against a treaty response tests a value the real frontend never
- * receives — the frontend uses plain fetch + Zod and sees strings. Asserting on the treaty value
- * would push the contract toward accepting `Date`, which would then break the actual client.
- * See docs/adr/0015-no-eden-treaty.md.
+ * Fetch a route and return the raw parsed JSON: what the real frontend receives, which uses plain
+ * fetch + Zod and sees strings. The only client a test has. A typed one that revives ISO date
+ * strings into `Date` objects (Eden Treaty did) would push the contract toward accepting `Date`,
+ * which would then break the actual client. See docs/adr/0015-no-eden-treaty.md.
  */
 type Wire = (path: string, init?: RequestInit) => Promise<WireResponse>
 
 export interface TestApi {
-  /** Typed client, ergonomic for driving the API. */
-  readonly api: Treaty
-  /** Raw client. Use this for `expectContract`. */
+  /** Raw client, signed in as nobody. */
   readonly wire: Wire
   /** Register a fresh user and return clients that authenticate as them. */
   readonly as: (username: string) => Promise<TestUser>
@@ -94,7 +86,6 @@ export interface TestApi {
 }
 
 export interface TestUser {
-  readonly api: Treaty
   readonly wire: Wire
   /** The resolved access context, for tests that call a service directly. */
   readonly caller: Caller
@@ -154,23 +145,22 @@ export async function makeApi(): Promise<TestApi> {
   await setSignUp('open')
 
   const app = createApp()
-  const api = treaty(app)
-
   const makeWire = (token?: string): Wire => wireFor(app, token)
+  const wire = makeWire()
 
   const as = async (username: string): Promise<TestUser> => {
-    const { data, error } = await api.auth.register.post({
-      username,
-      password: TEST_PASSWORD,
-      displayName: username,
+    const registered = await wire('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify({ username, password: TEST_PASSWORD, displayName: username }),
     })
-    // `error` is non-null whenever `data` is null, so no optional chain is needed here.
-    if (data === null)
-      throw new Error(`Could not register ${username}: ${JSON.stringify(error.value)}`)
+    const result = AuthResult.safeParse(registered.body)
+    if (!result.success)
+      throw new Error(`Could not register ${username}: ${JSON.stringify(registered.body)}`)
+    const { data } = result
 
-    const authed = treaty(app, { headers: { authorization: `Bearer ${data.token}` } })
-    const me = await authed.auth.me.get()
-    if (me.data === null) throw new Error(`Could not read /auth/me for ${username}`)
+    const authed = makeWire(data.token)
+    const me = Me.safeParse((await authed('/auth/me')).body)
+    if (!me.success) throw new Error(`Could not read /auth/me for ${username}`)
 
     const personal = me.data.groups.find((g) => g.kind === 'personal')
     if (personal === undefined) throw new Error(`${username} has no personal group`)
@@ -179,8 +169,7 @@ export async function makeApi(): Promise<TestApi> {
     if (caller === null) throw new Error(`Could not resolve the caller for ${username}`)
 
     return {
-      api: authed,
-      wire: makeWire(data.token),
+      wire: authed,
       caller,
       token: data.token,
       userId: data.user.id,
@@ -191,7 +180,7 @@ export async function makeApi(): Promise<TestApi> {
 
   const curator = async (user: TestUser) => await makeCurator(groupId, user)
 
-  return { api, wire: makeWire(), as, curator, signUp: setSignUp, groupId, systemUserId }
+  return { wire, as, curator, signUp: setSignUp, groupId, systemUserId }
 }
 
 /** `TestApi.signUp`: the instance row, written as the migration would leave it. */

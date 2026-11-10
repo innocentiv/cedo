@@ -5,10 +5,8 @@ import { expectContract } from '../../test/contract.ts'
 import { TEST_PASSWORD, type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 
 /**
- * Convention in this suite: drive the API with `wire` when asserting status codes or contract
- * shapes, because it returns exactly what a fetch client receives. `api` (Eden Treaty) is for
- * ergonomic typed calls, but it revives ISO dates into `Date` objects, which the real client does
- * not. See the note on `Wire` in test/harness.ts.
+ * Convention in this suite: drive the API with `wire`, which returns exactly what a fetch client
+ * receives. See the note on `Wire` in test/harness.ts.
  */
 
 let h: TestApi
