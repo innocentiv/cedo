@@ -107,7 +107,7 @@ describe('access control', () => {
   })
 
   /**
-   * Regression: authentication used to run in `resolve`, which Elysia executes AFTER schema
+   * Regression: authentication used to run in `resolve` (`derive`, since Elysia 2), which Elysia executes AFTER schema
    * validation — so an anonymous caller sending a malformed body was told their body was wrong
    * when the real answer was that they were not signed in.
    */

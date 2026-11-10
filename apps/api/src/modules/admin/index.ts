@@ -14,12 +14,20 @@ import { platformStatus, slowQueries } from '../review/diagnostics.ts'
 export const adminRoutes = new Elysia({ prefix: '/admin', tags: ['admin'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/status', async ({ caller }) => await platformStatus(caller, VERSION), {
-    response: PlatformStatus,
-    detail: { summary: 'Row counts, extensions and planner settings for this instance' },
-  })
-  .get('/slow-queries', async ({ caller, query }) => await slowQueries(caller, query.limit), {
-    query: SlowQueryQuery,
-    response: z.array(SlowQuery),
-    detail: { summary: "This instance's worst queries, from pg_stat_statements" },
-  })
+  .get(
+    '/status',
+    {
+      response: PlatformStatus,
+      detail: { summary: 'Row counts, extensions and planner settings for this instance' },
+    },
+    async ({ caller }) => await platformStatus(caller, VERSION),
+  )
+  .get(
+    '/slow-queries',
+    {
+      query: SlowQueryQuery,
+      response: z.array(SlowQuery),
+      detail: { summary: "This instance's worst queries, from pg_stat_statements" },
+    },
+    async ({ caller, query }) => await slowQueries(caller, query.limit),
+  )

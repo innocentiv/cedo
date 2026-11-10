@@ -22,8 +22,8 @@ describe('health', () => {
 
 describe('openapi', () => {
   /**
-   * Elysia's native validator is TypeBox; without `mapJsonSchema` every Zod-validated route
-   * documents as an empty object. This asserts the spec actually carries our schemas.
+   * A route validated by Zod must not document as an empty object, which is what Elysia 1.x did
+   * without `mapJsonSchema`. This asserts the spec actually carries our schemas.
    * See docs/04-contract.md.
    */
   test('the spec is generated from the Zod schemas, not empty stubs', async () => {

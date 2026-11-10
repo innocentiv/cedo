@@ -11,40 +11,48 @@ import * as AuthService from './service.ts'
  */
 export const authRoutes = new Elysia({ prefix: '/auth', tags: ['auth'] })
   .use(authPlugin)
-  .post('/register', ({ body }) => AuthService.register(body), {
-    body: RegisterInput,
-    response: AuthResult,
-    detail: { summary: 'Create an account, its personal group, and a session' },
-  })
+  .post(
+    '/register',
+    {
+      body: RegisterInput,
+      response: AuthResult,
+      detail: { summary: 'Create an account, its personal group, and a session' },
+    },
+    ({ body }) => AuthService.register(body),
+  )
   .post(
     '/login',
-    ({ body, headers, request, server }) => {
-      const address = clientAddress(headers['x-client-ip'], server?.requestIP(request)?.address)
-      return AuthService.login(body, address)
-    },
     {
       body: LoginInput,
       response: AuthResult,
       detail: { summary: 'Exchange credentials for a bearer token' },
     },
-  )
-  .post(
-    '/logout',
-    async ({ headers }) => {
-      const token = bearerToken(headers['authorization'])
-      if (token !== null) await AuthService.logout(token)
-      return { ok: true }
+    ({ body, headers, request, server }) => {
+      const address = clientAddress(headers['x-client-ip'], server?.requestIP(request)?.address)
+      return AuthService.login(body, address)
     },
-    { detail: { summary: 'Revoke the current session' } },
   )
-  .get('/me', ({ caller }) => AuthService.me(caller), {
-    auth: true,
-    response: Me,
-    detail: { summary: 'The caller and every group they belong to' },
+  .post('/logout', { detail: { summary: 'Revoke the current session' } }, async ({ headers }) => {
+    const token = bearerToken(headers['authorization'])
+    if (token !== null) await AuthService.logout(token)
+    return { ok: true }
   })
-  .patch('/me', ({ caller, body }) => AuthService.updateMe(caller, body), {
-    auth: true,
-    body: MeUpdate,
-    response: Me,
-    detail: { summary: 'Change what a person may change about themselves: their weight unit' },
-  })
+  .get(
+    '/me',
+    {
+      auth: true,
+      response: Me,
+      detail: { summary: 'The caller and every group they belong to' },
+    },
+    ({ caller }) => AuthService.me(caller),
+  )
+  .patch(
+    '/me',
+    {
+      auth: true,
+      body: MeUpdate,
+      response: Me,
+      detail: { summary: 'Change what a person may change about themselves: their weight unit' },
+    },
+    ({ caller, body }) => AuthService.updateMe(caller, body),
+  )

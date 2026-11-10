@@ -164,10 +164,11 @@ service function — after resolving whose training it is, if it reads or writes
 export const widgetRoutes = new Elysia({ prefix: '/widgets', tags: ['widgets'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller, query }) => WidgetService.list(caller, query), {
-    query: WidgetQuery,
-    response: page(Widget),
-  })
+  .get(
+    '/',
+    { query: WidgetQuery, response: page(Widget) },
+    ({ caller, query }) => WidgetService.list(caller, query),
+  )
 ```
 
 Mount it in `app.ts`. Never throw a value that is not a `DomainError` — everything leaves through the

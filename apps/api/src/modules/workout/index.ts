@@ -24,38 +24,49 @@ const params = z.object({ id: Id })
 export const workoutRoutes = new Elysia({ prefix: '/workouts', tags: ['workouts'] })
   .use(authPlugin)
   .guard({ auth: true })
-  .get('/', ({ caller, query }) => WorkoutService.list(caller, query), {
-    query: WorkoutQuery,
-    response: page(WorkoutSummary),
-    detail: {
-      summary: 'List workouts. Summaries only — a page of full plans is a useless payload.',
+  .get(
+    '/',
+    {
+      query: WorkoutQuery,
+      response: page(WorkoutSummary),
+      detail: {
+        summary: 'List workouts. Summaries only — a page of full plans is a useless payload.',
+      },
     },
-  })
-  .post('/', ({ caller, body }) => WorkoutService.create(caller, body), {
-    body: WorkoutCreate,
-    response: Workout,
-  })
-  .get('/:id', ({ caller, params: { id } }) => WorkoutService.get(own(caller), id), {
-    params,
-    response: Workout,
-    detail: { summary: 'One workout with its full nested plan' },
-  })
-  .patch('/:id', ({ caller, params: { id }, body }) => WorkoutService.update(caller, id, body), {
-    params,
-    body: WorkoutUpdate,
-    response: Workout,
-  })
-  .delete(
-    '/:id',
-    async ({ caller, params: { id } }) => {
-      await WorkoutService.remove(caller, id)
-      return { ok: true }
-    },
-    { params },
+    ({ caller, query }) => WorkoutService.list(caller, query),
   )
+  .post(
+    '/',
+    {
+      body: WorkoutCreate,
+      response: Workout,
+    },
+    ({ caller, body }) => WorkoutService.create(caller, body),
+  )
+  .get(
+    '/:id',
+    {
+      params,
+      response: Workout,
+      detail: { summary: 'One workout with its full nested plan' },
+    },
+    ({ caller, params: { id } }) => WorkoutService.get(own(caller), id),
+  )
+  .patch(
+    '/:id',
+    {
+      params,
+      body: WorkoutUpdate,
+      response: Workout,
+    },
+    ({ caller, params: { id }, body }) => WorkoutService.update(caller, id, body),
+  )
+  .delete('/:id', { params }, async ({ caller, params: { id } }) => {
+    await WorkoutService.remove(caller, id)
+    return { ok: true }
+  })
   .put(
     '/:id/plan',
-    ({ caller, params: { id }, body }) => WorkoutService.replacePlan(caller, id, body),
     {
       params,
       body: PlanSave,
@@ -67,10 +78,10 @@ export const workoutRoutes = new Elysia({ prefix: '/workouts', tags: ['workouts'
           '409, and the plan should be read again. Without one the save is unconditional.',
       },
     },
+    ({ caller, params: { id }, body }) => WorkoutService.replacePlan(caller, id, body),
   )
   .get(
     '/:id/progression',
-    ({ caller, params: { id } }) => ProgressionService.targetsForWorkout(caller, id),
     {
       params,
       response: z.array(EntryTarget),
@@ -78,11 +89,10 @@ export const workoutRoutes = new Elysia({ prefix: '/workouts', tags: ['workouts'
         summary: "Each entry's target, as the caller's steps left it (ADR-0026)",
       },
     },
+    ({ caller, params: { id } }) => ProgressionService.targetsForWorkout(caller, id),
   )
   .put(
     '/:id/entries/:entryId/target',
-    ({ caller, params: { id, entryId }, body }) =>
-      ProgressionService.setTargetByHand(caller, id, entryId, body),
     {
       params: z.object({ id: Id, entryId: Id }),
       body: TargetByHand,
@@ -92,30 +102,24 @@ export const workoutRoutes = new Elysia({ prefix: '/workouts', tags: ['workouts'
           'Set your own target on an entry by hand: only what its rule moves. Writes your step, never the plan (ADR-0026)',
       },
     },
+    ({ caller, params: { id, entryId }, body }) =>
+      ProgressionService.setTargetByHand(caller, id, entryId, body),
   )
   .post(
     '/:id/duplicate',
-    ({ caller, params: { id }, body }) => WorkoutService.duplicate(caller, id, body.toGroupId),
     { params, body: DuplicateInput, response: Workout },
+    ({ caller, params: { id }, body }) => WorkoutService.duplicate(caller, id, body.toGroupId),
   )
   .post(
     '/:id/transfer',
-    ({ caller, params: { id }, body }) => WorkoutService.transfer(caller, id, body.toGroupId),
     { params, body: TransferInput, response: Workout },
+    ({ caller, params: { id }, body }) => WorkoutService.transfer(caller, id, body.toGroupId),
   )
-  .put(
-    '/:id/favourite',
-    async ({ caller, params: { id } }) => {
-      await WorkoutService.setFavourite(caller, id, true)
-      return { ok: true }
-    },
-    { params },
-  )
-  .delete(
-    '/:id/favourite',
-    async ({ caller, params: { id } }) => {
-      await WorkoutService.setFavourite(caller, id, false)
-      return { ok: true }
-    },
-    { params },
-  )
+  .put('/:id/favourite', { params }, async ({ caller, params: { id } }) => {
+    await WorkoutService.setFavourite(caller, id, true)
+    return { ok: true }
+  })
+  .delete('/:id/favourite', { params }, async ({ caller, params: { id } }) => {
+    await WorkoutService.setFavourite(caller, id, false)
+    return { ok: true }
+  })

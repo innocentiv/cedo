@@ -1,13 +1,15 @@
-import { openapi } from '@elysiajs/openapi'
+import { openapi } from '@elysia/openapi'
 import { VERSION } from '@cedo/contract'
 import { z } from 'zod'
 
 /**
  * Serves the spec at /openapi (Scalar UI) and /openapi/json.
  *
- * `mapJsonSchema` is required because Elysia's native validator is TypeBox; Zod has its own JSON
- * Schema output and the plugin has to be told how to reach it. Without this, every route
- * documents as an empty object. See docs/04-contract.md.
+ * `mapJsonSchema` says how a Zod schema becomes JSON Schema: its INPUT side, which is what a
+ * caller may send. Under Elysia 1.x it was required, or every route documented as an empty
+ * object. Elysia 2 reads a Zod schema without it, but as its output side, which changes about
+ * four hundred `required` and `additionalProperties` entries of the document; so it stays.
+ * See docs/04-contract.md.
  *
  * A FACTORY, not a shared constant. The plugin registers the Scalar UI as a static `Response`, and
  * a Response body can only be read once — so a module-level singleton works until something
