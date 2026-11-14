@@ -1,5 +1,6 @@
 import {
   type SessionDetail,
+  exerciseName,
   formatDay,
   formatDuration,
   formatEffort,
@@ -7,7 +8,6 @@ import {
   sessionSummary,
 } from '@cedo/contract'
 import { Card, Prose, Stack, Text } from '../ui/index.ts'
-import { exerciseName } from './exercise-name.ts'
 import { useWeightUnit } from './weight-unit.ts'
 import { WrittenNotes } from './written-notes.tsx'
 

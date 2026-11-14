@@ -3,13 +3,13 @@ import {
   type Exercise,
   type SessionDay,
   type SessionExercise,
+  exerciseName,
   formatPrescription,
   nextSet,
   progressOf,
 } from '@cedo/contract'
 import { AddRow, Stack, UpNext } from '../ui/index.ts'
-import { exerciseName } from './exercise-name.ts'
-import { type RestShown, useJustDone } from './just-done.ts'
+import { type RestShown, useJustLogged } from './just-logged.ts'
 import { AddedExercises } from './workout-adhoc.tsx'
 import { InFocus } from './workout-focus.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
@@ -48,10 +48,10 @@ export function PlannedMain({
   finishing,
 }: PlannedMainProps): React.JSX.Element {
   const unit = useWeightUnit()
-  const { shown, another } = view
-  const after = useJustDone({
+  const { another } = view
+  const after = useJustLogged({
     rest,
-    shown,
+    view,
     sets,
     onAnother:
       another === null

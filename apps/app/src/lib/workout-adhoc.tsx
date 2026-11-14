@@ -6,7 +6,7 @@ import {
   progressOf,
 } from '@cedo/contract'
 import { AddRow, Stack, UpNext } from '../ui/index.ts'
-import { type RestShown, useJustDone } from './just-done.ts'
+import { type RestShown, useJustLogged } from './just-logged.ts'
 import { useWeightUnit } from './weight-unit.ts'
 import { Focus } from './workout-focus.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
@@ -36,8 +36,8 @@ export function AdHocMain({
   view,
   onHowTo,
 }: AdHocMainProps): React.JSX.Element | null {
-  const { focus, shown } = view
-  const after = useJustDone({ rest, shown, sets })
+  const { focus } = view
+  const after = useJustLogged({ rest, view, sets })
   const unit = useWeightUnit()
   if (focus.kind !== 'added') return null
   return <Focus focus={focus} full={full} sets={sets} after={after} onHowTo={onHowTo} unit={unit} />

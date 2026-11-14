@@ -49,7 +49,7 @@ export function sessionColumns(w: Workout): ScreenColumns | undefined {
       <LoggedSets sessionId={w.id} logs={w.sets.server} />
     </>
   )
-  const rest = { rest: w.view.rest, kept: session.data.rest, sessionId: w.id, said: w.said }
+  const rest = { kept: session.data.rest, sessionId: w.id, said: w.said }
   if (day === undefined) {
     return columns(
       <AdHocMain full={w.picked} sets={w.sets} rest={rest} view={w.view} onHowTo={showHowTo} />,

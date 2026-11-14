@@ -13,7 +13,7 @@ import { LOG_CONTROL_HEIGHT, color, radius, space } from './tokens.ts'
  * runs, or — no rest after it — until the next set. What the screen hands the logger to show in
  * Log's place.
  */
-export interface JustDone {
+export interface JustLogged {
   /** The rest running, or null: none follows the set, and Log stays, beside Undo. */
   readonly rest: {
     readonly left: number
@@ -42,7 +42,7 @@ export function AfterSet({
   after,
   log,
 }: {
-  readonly after: JustDone
+  readonly after: JustLogged
   readonly log: React.ReactNode
 }): React.JSX.Element {
   const { rest, onUndo } = after
@@ -109,7 +109,7 @@ export function LogSlot({
   onLog,
   testID,
 }: {
-  readonly after: JustDone | null
+  readonly after: JustLogged | null
   /** The button's words: "Log set 3". */
   readonly action: string
   readonly busy: boolean

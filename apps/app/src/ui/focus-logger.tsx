@@ -14,7 +14,7 @@ import {
 } from '@cedo/contract'
 import { Card } from './card.tsx'
 import { FocusHeading } from './focus-heading.tsx'
-import { type JustDone, LogSlot } from './rest-control.tsx'
+import { type JustLogged, LogSlot } from './rest-control.tsx'
 import { ReserveSegments } from './reserve-segments.tsx'
 import { SetMarks } from './set-marks.tsx'
 import { Stack } from './stack.tsx'
@@ -39,7 +39,7 @@ export interface FocusLoggerProps {
    */
   readonly from: Undone | null
   /** The set just logged, while it can be taken back: shown in Log's place (#63). */
-  readonly after: JustDone | null
+  readonly after: JustLogged | null
   /** When progression moved this session's target off the plan's, what the plan says. */
   readonly progressed: string | null
   /** Last time's working sets, as read. */

@@ -2,12 +2,12 @@ import {
   type Exercise,
   type SessionEntry,
   type WeightUnit,
+  exerciseName,
   formatEffort,
   loggerAsks,
   prescriptionOf,
 } from '@cedo/contract'
-import { AfterSet, ConfirmButton, FocusLogger, type JustDone, Stack, Text } from '../ui/index.ts'
-import { exerciseName } from './exercise-name.ts'
+import { AfterSet, ConfirmButton, FocusLogger, type JustLogged, Stack, Text } from '../ui/index.ts'
 import { useLoads } from './use-loads.ts'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
@@ -79,7 +79,7 @@ export function Focus({
   readonly full: readonly Exercise[]
   readonly sets: WorkoutSets
   /** The set just logged, while it can be taken back: in Log's place (#63). */
-  readonly after: JustDone | null
+  readonly after: JustLogged | null
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
   readonly unit: WeightUnit
 }): React.JSX.Element {
@@ -135,17 +135,17 @@ export function InFocus({
   readonly focus: WorkoutShown['focus']
   readonly sets: WorkoutSets
   readonly full: readonly Exercise[]
-  readonly after: JustDone | null
+  readonly after: JustLogged | null
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
   readonly onFinish: () => Promise<void>
   readonly finishing: boolean
   readonly unit: WeightUnit
 }): React.JSX.Element | null {
-  const justDone = after === null ? null : <AfterSet after={after} log={null} />
+  const justLogged = after === null ? null : <AfterSet after={after} log={null} />
   if (focus.kind === 'unavailable') {
     return (
       <>
-        {justDone}
+        {justLogged}
         <Unavailable entry={focus.entry} unit={unit} />
       </>
     )
@@ -154,7 +154,7 @@ export function InFocus({
     return (
       <Stack gap="md" testID="day-done">
         <Text variant="heading">Every set of the day is logged.</Text>
-        {justDone}
+        {justLogged}
         <ConfirmButton
           title="Finish session"
           busy={finishing}
