@@ -481,3 +481,29 @@ describe('a count of one, and a window with nothing in it', () => {
     )
   })
 })
+
+/** docs/07-mcp.md shows the two deload sections as an example: this is that example, kept true. */
+describe('the example the MCP guide shows', () => {
+  test('a lift falling and one drifting, as docs/07-mcp.md prints them', () => {
+    const both = review({
+      falling: [{ exercise: BENCH, sessions: 3, fromG: 77_000, toG: 66_500 }],
+      effortDrift: [
+        {
+          exercise: { name: 'Row', tracking: 'weight_reps' },
+          effort: lift(8, 50_000),
+          fromReserve: 3,
+          toReserve: 1.5,
+        },
+      ],
+    })
+    expect(blocks(reviewSummary(both, 'kg')).slice(-2).join('\n\n')).toBe(
+      [
+        'Falling (estimated max from what was lifted, down 2+ sessions running):',
+        '  Bench Press: down in each of the latest 3 sessions, 77 kg → 66.5 kg',
+        '',
+        'Effort drift (reps in reserve down 1+ at the same set, in each of the latest 2 sessions):',
+        '  Row at 8 × 50 kg: 3 → 1.5 in reserve',
+      ].join('\n'),
+    )
+  })
+})

@@ -67,7 +67,8 @@ export const REPLACES = { ...WRITE, destructiveHint: true, idempotentHint: true 
 export const REWRITES = { ...WRITE, destructiveHint: true, idempotentHint: false } as const
 
 /**
- * `Bench Press: 4 sessions at 8 × 60 kg` — the top set those sessions share, in its exercise's own
+ * `Bench Press: 4 sessions at 8 × 60 kg (estimated max 76 kg)` — the top set those sessions share,
+ * and for a weight lift what it is worth, in its exercise's own
  * terms, like every other effort here: no unit arithmetic of its own.
  */
 function stalledLine(s: TrainingReview['stalled'][number], unit: WeightUnit): string {
@@ -107,7 +108,7 @@ function deloadSections(review: TrainingReview, unit: WeightUnit): string[] {
 
 /**
  * An exercise's recent sessions, one line each, with the session's best estimated max for a weight
- * lift — `2026-10-14: w10 × 20 kg, 8 × 60 kg · 1 in reserve · estimated max 76 kg` — and its stall,
+ * lift — `2026-10-14: w10 × 20 kg, 8 × 60 kg · 1 in reserve · estimated max 78 kg` — and its stall,
  * if it has one, last.
  */
 export function historyLines(history: ExerciseHistory, unit: WeightUnit): string {

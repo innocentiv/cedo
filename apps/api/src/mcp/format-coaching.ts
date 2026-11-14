@@ -27,8 +27,9 @@ export const athleteLines = (athletes: readonly Athlete[]): string =>
     : athletes.map((a) => athleteLine(a)).join('\n')
 
 /**
- * `2026-10-20 · PPL / Push · 18 sets · 4,250 kg · in progress · "felt heavy" · <id>`. The plan and
- * day read "unavailable" where the reader cannot see them (ADR-0019); the notes are the athlete's.
+ * `2026-10-20 · PPL / Push · 18 sets · 4250 kg · 1 personal best · in progress · "felt heavy" ·
+ * <id>` — its personal bests only when it set one. The plan and day read "unavailable" where the
+ * reader cannot see them (ADR-0019); the notes are the athlete's.
  */
 function sessionLine(session: WorkoutSessionSummary, unit: WeightUnit): string {
   const plan =
