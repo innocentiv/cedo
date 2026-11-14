@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test'
 import { DEFAULT_GROUP_SLUG, GroupMembership } from '@cedo/contract'
-import { groupLine, groupNames, ownership } from './format-group.ts'
+import { groupLine, groupLines, groupNames, ownership } from './format-group.ts'
 
 /**
  * How the MCP lines name a group, as the model reads it: a contract value in, text out, with no
@@ -111,5 +111,17 @@ describe('who owns it, and whether the caller can change it', () => {
       'Squad',
       'read-only',
     ])
+  })
+})
+
+describe('the caller’s groups, listed', () => {
+  test('a line each, in the order given', () => {
+    expect(groupLines([personal, library, membership({ role: 'reader' })])).toBe(
+      [
+        `mine | editor | ${PERSONAL}`,
+        `library | reader | ${LIBRARY}`,
+        `Squad | reader | ${SQUAD}`,
+      ].join('\n'),
+    )
   })
 })

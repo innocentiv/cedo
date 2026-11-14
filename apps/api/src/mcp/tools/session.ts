@@ -1,19 +1,13 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
-import {
-  ExerciseHistoryQuery,
-  OfAthlete,
-  SessionLogInput,
-  SetLogUpdate,
-  counted,
-} from '@cedo/contract'
+import { ExerciseHistoryQuery, OfAthlete, SessionLogInput, SetLogUpdate } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import { ownOrCoached } from '../../modules/coaching/training.ts'
 import { history } from '../../modules/session/history.ts'
 import { amendLog } from '../../modules/session/set-writes.ts'
 import { logWhole } from '../../modules/session/log-whole.ts'
 import { READ, REPLACES, WRITE, historyLines, text } from '../format.ts'
-import { setLine } from '../format-coaching.ts'
+import { sessionLogged, setLine } from '../format-coaching.ts'
 
 /**
  * OBJECTIVE 2, as it was done — training an AI is told about: a whole session logged, and a set
@@ -38,10 +32,7 @@ export function registerSessionTools(server: McpServer, caller: Caller): void {
       inputSchema: SessionLogInput,
       annotations: WRITE,
     },
-    async (input) => {
-      const session = await logWhole(caller, input)
-      return text(`Logged session ${session.id} with ${counted(session.logs.length, 'set')}.`)
-    },
+    async (input) => text(sessionLogged(await logWhole(caller, input))),
   )
 
   server.registerTool(

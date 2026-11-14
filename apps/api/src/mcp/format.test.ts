@@ -328,10 +328,10 @@ describe('an exercise’s history', () => {
     )
   })
 
-  test('a stalled exercise says so last, with the top set it is stuck at', () => {
-    const stuck = [{ ...lift(5, 60_000), reserve: 2 }]
+  test('a stalled exercise says so last, with the top set its sessions share', () => {
+    const same = [{ ...lift(5, 60_000), reserve: 2 }]
     const lines = historyLines(
-      history('weight_reps', [stuck, stuck, stuck], { sessions: 3, effort: lift(5, 60_000) }),
+      history('weight_reps', [same, same, same], { sessions: 3, effort: lift(5, 60_000) }),
       'kg',
     )
     expect(lines).toBe(

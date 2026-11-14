@@ -1,4 +1,4 @@
-import type { PlatformStatus, SlowQuery } from '@cedo/contract'
+import { type PlatformStatus, type SlowQuery, counted } from '@cedo/contract'
 
 /**
  * What a running instance says of itself, for whoever must diagnose one with no shell on it
@@ -9,7 +9,7 @@ import type { PlatformStatus, SlowQuery } from '@cedo/contract'
 export const statusLines = (status: PlatformStatus): string =>
   [
     `cedo ${status.version} on ${status.postgres}`,
-    `database ${status.databaseSize}, ${status.migrationsApplied} migrations applied`,
+    `database ${status.databaseSize}, ${counted(status.migrationsApplied, 'migration')} applied`,
     `extensions: ${status.extensions.join(', ')}`,
     '',
     'rows:',
@@ -35,6 +35,6 @@ export const slowQueryLines = (rows: readonly SlowQuery[]): string =>
     : rows
         .map(
           (r) =>
-            `${r.totalMs}ms total | ${r.calls} calls | ${r.meanMs}ms mean | ${r.rows} rows\n  ${r.query}`,
+            `${r.totalMs}ms total | ${counted(r.calls, 'call')} | ${r.meanMs}ms mean | ${counted(r.rows, 'row')}\n  ${r.query}`,
         )
         .join('\n\n')

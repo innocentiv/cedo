@@ -14,6 +14,10 @@ const said = (group: GroupMembership): string =>
 export const groupLine = (group: GroupMembership): string =>
   `${said(group)} | ${group.role} | ${group.id}`
 
+/** The caller's groups, a line each. */
+export const groupLines = (groups: readonly GroupMembership[]): string =>
+  groups.map((group) => groupLine(group)).join('\n')
+
 /** The owning group of an exercise or a workout, as a line names it (#47). */
 export type GroupNameOf = (groupId: string) => string
 

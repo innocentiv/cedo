@@ -251,6 +251,33 @@ describe('library curation', () => {
     expect(textOf(result.body)).toContain('Muscle loads must sum to 100, got 50')
   })
 
+  /** A link registered answers with the id an exercise's `mediaIds` takes, and where it plays. */
+  test('media_add_link registers a video, and says its id and where it plays in place', async () => {
+    const pat = await mintPat(alice)
+    const out = textOf(
+      (
+        await callTool(pat, 'media_add_link', {
+          url: 'https://www.youtube.com/watch?v=abcdefghijk',
+          title: 'Back squat, from the side',
+        })
+      ).body,
+    )
+    expect(out).toMatch(
+      /^Created media [0-9a-f-]{36} \(video_link\)\. Embeddable: https:\/\/www\.youtube\.com\/embed\/abcdefghijk\.$/u,
+    )
+    const id = /media ([0-9a-f-]{36})/u.exec(out)?.[1]
+    const created = textOf(
+      (
+        await callTool(pat, 'exercise_create', {
+          name: 'Filmed Squat',
+          muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+          mediaIds: [id],
+        })
+      ).body,
+    )
+    expect(created).toContain('  - video_link: https://www.youtube.com/watch?v=abcdefghijk')
+  })
+
   /**
    * The tool's own rule: with no group named, the library is the one audited. What an audit finds
    * is the service's (`review/curation.test.ts`), and how it reads `format-library.test.ts`'s.
@@ -871,6 +898,25 @@ describe('a past set corrected', () => {
  * effort prescribed.
  */
 describe('editing a plan', () => {
+  /** Where a plan written by the AI starts: an empty workout of the caller's own, named. */
+  test('workout_create makes an empty workout of yours, and says what to call next', async () => {
+    const pat = await mintPat(alice)
+    const out = textOf(
+      (await callTool(pat, 'workout_create', { name: 'Upper Lower', notes: null })).body,
+    )
+    const id =
+      /^Created workout ([0-9a-f-]{36}) — "Upper Lower"\. Now call workout_save_plan\.$/u.exec(
+        out,
+      )?.[1]
+    if (id === undefined) throw new Error(`No workout named in: ${out}`)
+    const made = expectContract(Workout, (await alice.wire(`/workouts/${id}`)).body)
+    expect([made.name, made.ownerGroupId, made.days]).toEqual([
+      'Upper Lower',
+      alice.personalGroupId,
+      [],
+    ])
+  })
+
   /**
    * The documented AI flow: fetch the editable JSON, change it, save it back. The round trip must
    * carry ids, or every save through MCP severs the plan from its logged history.
@@ -1223,7 +1269,10 @@ describe('coaching', () => {
     const pat = await mintPat(alice)
     const read = async () =>
       JSON.stringify((await callTool(pat, 'equipment_get', { athlete: athlete.userId })).body)
-    expect(await read()).not.toContain('dumbbells')
+    // Not shared yet: a refusal, not an empty list of theirs.
+    const unshared = await callTool(pat, 'equipment_get', { athlete: athlete.userId })
+    expect(unshared.body.result?.isError).toBe(true)
+    expect(textOf(unshared.body)).not.toContain('dumbbells')
     await share(true)
     expect(await read()).toContain('dumbbells: from 2 kg to 30 kg, by 2 kg')
     // Saying yours never says theirs.
@@ -1408,13 +1457,14 @@ describe('weigh-ins and the year of birth', () => {
   test('are taken, one a day, and listed newest first with the latest before the period', async () => {
     const pat = await mintPat(alice)
     await post(alice, '/weigh-ins', { day: day(70), weightG: 85_000 })
+    // The older of the two in the period is written first, so "newest first" is by its day: listed
+    // as written, it would come first.
+    await callTool(pat, 'weigh_in_create', { day: day(3), weightG: 82_900 })
     const saved = textOf(
       (await callTool(pat, 'weigh_in_create', { day: day(1), weightG: 83_000 })).body,
     )
     expect(saved).toBe(`Saved: ${day(1)} (${formatCalendarDay(day(1))}): 83 kg`)
     await callTool(pat, 'weigh_in_create', { day: day(1), weightG: 82_400 })
-    // Taken after the newer one, and still listed under it: by its day, not by when it was taken.
-    await callTool(pat, 'weigh_in_create', { day: day(3), weightG: 82_900 })
     const listed = textOf((await callTool(pat, 'weigh_in_list', { weeks: 4 })).body)
     expect(listed.split('\n').slice(1)).toEqual([
       `  ${day(1)} (${formatCalendarDay(day(1))}): 82.4 kg`,

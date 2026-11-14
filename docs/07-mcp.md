@@ -313,7 +313,8 @@ That is the same rule as an HTTP route handler, and for the same reason.
 What formatting needs to read is not a second service call. A line names an exercise's or a
 workout's owning group — `mine`, `library`, or the group's name (#47) — and the response carries
 only `ownerGroupId`. So the tools that print those lines also call `groupNamesOf(caller)`
-(`format-group.ts`). It reads the caller's own groups, which own everything they can see, and
+(`tools/group-names.ts` — with the tools, because it reads, and no `format*.ts` does). It reads the
+caller's own groups, which own everything they can see, and
 decides nothing. The app does the same from the groups it already holds. Putting the name on
 every ownable response instead would add a join to every list, for a word only these lines print.
 
@@ -419,8 +420,9 @@ at every plan save; that is the price of a save that can drop half a plan.
    new file must also be wired into `mcp/tools/index.ts`, or its tools never load — and its name
    added to the published list `mcp/mcp.test.ts` asserts, which fails on a tool it does not know.
 3. Format the output for reading, not for machines, in a formatter (`mcp/format.ts` or a
-   `format-<area>.ts` beside it): a contract value in, text out, reading nothing. The handler is one
-   service call and one formatter. A write answers with what it changed: the whole of it when that
+   `format-<area>.ts` beside it): what the service answered in, text out, reading nothing. The
+   handler is one service call and one formatter, with at most a fixed word of its own before it
+   (`Created.`). A write answers with what it changed: the whole of it when that
    is small — `exercise_update` prints the exercise — and only the part that changed when the rest
    is large and untouched — `workout_update` prints the name and notes, not the plan beneath them.
 4. Test what it says by calling its formatter, in the `format*.test.ts` beside it — the whole text,

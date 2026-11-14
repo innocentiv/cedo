@@ -1,15 +1,18 @@
 import { describe, expect, test } from 'bun:test'
 import { Athlete, SessionDetail, SetLog, WorkoutSessionSummary, page } from '@cedo/contract'
-import { athleteLines, sessionDetail, sessionLines, setLine } from './format-coaching.ts'
+import {
+  athleteLines,
+  sessionDetail,
+  sessionLines,
+  sessionLogged,
+  setLine,
+} from './format-coaching.ts'
 
 /**
  * What the coaching tools say, as the model reads it: who shares their training, a run of
  * someone's sessions, and one session set by set — a contract value in, the whole text out, with no
  * wire and no database (docs/07-mcp.md, "Adding a tool"). That the tools reach these, for the
  * caller and for an athlete of theirs, is `mcp.test.ts`'s, through the wire.
- *
- * Left for the owner's next change, and so said nowhere here: a session of exactly one set, and a
- * set whose exercise the reader cannot see.
  */
 
 const SAM = '00000000-0000-4000-8000-000000000001'
@@ -358,5 +361,31 @@ describe('a session of one set, and an exercise out of reach', () => {
     expect(sessionDetail(session, 'kg')).toBe(
       ['2026-10-20', 'Squat: 5 × 80 kg', 'Unavailable exercise: 8 × 30 kg'].join('\n'),
     )
+  })
+})
+
+/** What `session_log` answers: the session it made, by the id every session tool takes. */
+describe('a session logged whole', () => {
+  const logged = (sets: number) =>
+    SessionDetail.parse({
+      id: SESSION,
+      workoutId: null,
+      dayId: null,
+      startedAt: '2026-10-20T17:00:00.000Z',
+      endedAt: '2026-10-20T17:00:00.000Z',
+      notes: null,
+      logs: Array.from({ length: sets }, (_, at) =>
+        setLog({ id: `00000000-0000-4000-8000-00000000006${String(at)}`, setIndex: at }),
+      ),
+      rest: null,
+      plan: null,
+    })
+
+  test('says its id and how many sets it holds', () => {
+    expect(sessionLogged(logged(3))).toBe(`Logged session ${SESSION} with 3 sets.`)
+  })
+
+  test('one set is one set', () => {
+    expect(sessionLogged(logged(1))).toBe(`Logged session ${SESSION} with 1 set.`)
   })
 })

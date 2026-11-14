@@ -294,11 +294,8 @@ describe('the library’s audit', () => {
     ...fields,
   })
 
-  /**
-   * The summary's blocks: its head, then a section each, a blank line or more apart. How many
-   * blank lines is left unsaid: the head is followed by three today, which reads as an accident.
-   */
-  const blocks = (summary: string) => summary.split(/\n{2,}/u)
+  /** The summary's blocks: its head, then a section each, one blank line apart. */
+  const blocks = (summary: string) => summary.split('\n\n')
 
   test('nothing to look at: every section is there, and says none', () => {
     expect(blocks(auditSummary(audit()))).toEqual([

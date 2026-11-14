@@ -44,7 +44,7 @@ function:
 // mcp/tools/library.ts
 server.registerTool('exercise_create',
   { title: 'Create an exercise', description: '…', inputSchema: ExerciseCreateRequest, annotations: WRITE },
-  async (input) => text(`Created.\n\n${exerciseDetail(await ExerciseService.create(caller, input))}`))
+  async (input) => text(`Created.\n\n${await detail(await ExerciseService.create(caller, input))}`))
 ```
 
 If a rule exists in only one of those two paths, it is a bug. Put it in the service. So does a

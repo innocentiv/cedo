@@ -49,11 +49,15 @@ Return compact text from `mcp/format.ts` — or a `format-<area>.ts` beside it, 
 magnitude more tokens than
 `Barbell Back Squat | barbell + rack | quadriceps 45%, gluteus_maximus 30% | [library, read-only] | <id>`.
 
-A formatter is a contract value in, text out, and reads nothing: a handler is one service call and
-one formatter, with no text of its own. A format file may import the contract, its sibling format
-files and nothing that loads the database — `mcp/format-imports.test.ts` fails on one that does. A
-count is said with the contract's `counted` ("1 session", never "1 sessions" or "session(s)"), and
-an exercise the reader cannot see with its `exerciseName`.
+A formatter is what its service answered in, text out, and reads nothing. A handler is one service
+call and one formatter. The only text a handler writes itself is a fixed word before its
+formatter's — `Created.`, `Saved.` — or the one sentence of a rule only the tool has
+(`library_audit` with no library to audit): a sentence with a count, a branch or a list in it is a
+formatter, where a test can call it. A format file may import the contract, its sibling format
+files and the review's thresholds (`modules/review/deload.ts`, which reads nothing) — never
+anything that loads the database: `mcp/format-imports.test.ts` fails on one that does. A count is
+said with the contract's `counted` ("1 session", never "1 sessions" or "session(s)"), and an
+exercise the reader cannot see with its `exerciseName`.
 
 ## 4. Say what it may not do
 
@@ -72,9 +76,9 @@ result, and the caller reads it as data.
 Two kinds of test, for two things.
 
 **What it says** is tested in the formatter's own file — `mcp/format-library.test.ts` beside
-`format-library.ts` — by calling it: a contract value in, the text out, with no wire and no
-database. Build the value by hand and parse it with the contract's schema, so the fixture cannot
-drift from the contract. Assert a formatter's main cases as the whole text, a line an element, as
+`format-library.ts` — by calling it: what the service answers in, the text out, with no wire and no
+database. Build the value by hand and, where the contract has its schema — nearly always — parse it
+with that, so the fixture cannot drift from the contract. Assert a formatter's main cases as the whole text, a line an element, as
 the model reads them; a fragment matched with `toContain` is how "1 sessions" stayed pinned. Take
 the expected text from somewhere other than the formatter — its doc comment, the contract's test of
 a line it borrows, the fixture's numbers worked by hand — and cover every branch: the empty answer,

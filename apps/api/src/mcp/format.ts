@@ -82,7 +82,7 @@ function stalledLine(s: TrainingReview['stalled'][number], unit: WeightUnit): st
 
 /**
  * The deload signals, each under its own heading and only when there is one to say: an empty
- * "nothing is falling" beside "nothing looks stalled" is context spent on no news. See ./deload.ts.
+ * "nothing is falling" beside "nothing looks stalled" is context spent on no news. See modules/review/deload.ts.
  */
 function deloadSections(review: TrainingReview, unit: WeightUnit): string[] {
   const sections: string[] = []

@@ -20,6 +20,8 @@ import { groupNames } from './format-group.ts'
 import {
   nextTargetLine,
   nextTargetLines,
+  workoutCopied,
+  workoutCreated,
   workoutDetail,
   workoutLines,
   workoutUpdated,
@@ -809,12 +811,33 @@ describe('each entry’s next target', () => {
 describe('an entry whose exercise is out of reach', () => {
   test('is named as one, and its sets say only what was measured', () => {
     const plan = workout([{ name: 'Push', entries: [entry(BENCH, benchPress)] }])
-    const lost = structuredClone(plan)
-    for (const planned of lost.days.flatMap((day) => day.entries)) planned.exercise = null
+    const out = structuredClone(plan)
+    for (const planned of out.days.flatMap((day) => day.entries)) planned.exercise = null
+    // Still a workout as the contract has one: an entry's exercise may be null.
+    const lost = Workout.parse(out)
     expect(workoutDetail(lost, 'kg', UNDESCRIBED, groupNameOf, []).split('\n').slice(2)).toEqual([
       'Push',
       `  - Unavailable exercise, rest 2:00, progression: Manual   [entry ${BENCH}]`,
       '      work: 5 reps',
     ])
+  })
+})
+
+/** What the two tools that make a workout answer: its id, its name, and what to do next. */
+describe('a workout made', () => {
+  test('created empty, it says what to call next', () => {
+    expect(workoutCreated(workout([]))).toBe(
+      `Created workout ${WORKOUT} — "Push Pull Legs". Now call workout_save_plan.`,
+    )
+  })
+
+  test('copied, it says how many days came with it — one day in the singular', () => {
+    const day = (name: string) => ({ name, entries: [entry(crypto.randomUUID(), benchPress)] })
+    expect(workoutCopied(workout([day('Push'), day('Pull')]))).toBe(
+      `Copied to workout ${WORKOUT} — "Push Pull Legs", 2 days.`,
+    )
+    expect(workoutCopied(workout([day('Push')]))).toBe(
+      `Copied to workout ${WORKOUT} — "Push Pull Legs", 1 day.`,
+    )
   })
 })

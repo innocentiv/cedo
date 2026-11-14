@@ -27,9 +27,13 @@ test('a format file loads only the contract, its siblings and the review’s pur
   const refused = await Promise.all(
     files.map(async (file) => {
       const source = await Bun.file(`${import.meta.dir}/${file}`).text()
-      const loaded = [...source.matchAll(/^import (?!type\b)[^']*'(?<from>[^']+)'/gmu)].map(
-        (match) => match.groups?.['from'] ?? '',
-      )
+      // What it imports, and what it hands on from elsewhere: `export … from` loads a module too.
+      const loaded = [
+        ...source.matchAll(/^import (?!type\b)[^']*'(?<from>[^']+)'/gmu),
+        ...source.matchAll(
+          /^export (?!type\b)(?:\*|\{[^}]*\})(?: as \w+)? from '(?<from>[^']+)'/gmu,
+        ),
+      ].map((match) => match.groups?.['from'] ?? '')
       return loaded
         .filter((from) => !ALLOWED.some((allowed) => allowed.test(from)))
         .map((from) => `${file} imports ${from}`)

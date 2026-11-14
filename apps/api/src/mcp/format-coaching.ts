@@ -58,6 +58,10 @@ export function sessionLines(sessions: Page<WorkoutSessionSummary>, unit: Weight
     : `${lines.join('\n')}\nMore: pass cursor ${sessions.nextCursor}`
 }
 
+/** A session logged whole: its id, which every session tool takes, and how many sets it holds. */
+export const sessionLogged = (session: Pick<SessionDetail, 'id' | 'logs'>): string =>
+  `Logged session ${session.id} with ${counted(session.logs.length, 'set')}.`
+
 /**
  * `w5 × 40 kg · 2 in reserve`, `w` for a warm-up — and ` [<id>]` when it is the reader's to fix
  * (#31).

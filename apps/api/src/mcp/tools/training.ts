@@ -10,7 +10,6 @@ import {
   PlanSave,
   ReviewQuery,
   TargetByHand,
-  counted,
   planSaveFrom,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
@@ -23,6 +22,8 @@ import { READ, REPLACES, REWRITES, WRITE, json, reviewSummary, text } from '../f
 import {
   nextTargetLine,
   nextTargetLines,
+  workoutCopied,
+  workoutCreated,
   workoutDetail,
   workoutLines,
   workoutUpdated,
@@ -131,10 +132,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       inputSchema: WorkoutCreate,
       annotations: WRITE,
     },
-    async (input) => {
-      const created = await WorkoutService.create(caller, input)
-      return text(`Created workout ${created.id} — "${created.name}". Now call workout_save_plan.`)
-    },
+    async (input) => text(workoutCreated(await WorkoutService.create(caller, input))),
   )
 
   server.registerTool(
@@ -191,12 +189,8 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       inputSchema: DuplicateInput.safeExtend({ workoutId: z.uuid() }),
       annotations: WRITE,
     },
-    async ({ workoutId, toGroupId }) => {
-      const copy = await WorkoutService.duplicate(caller, workoutId, toGroupId)
-      return text(
-        `Copied to workout ${copy.id} — "${copy.name}", ${counted(copy.days.length, 'day')}.`,
-      )
-    },
+    async ({ workoutId, toGroupId }) =>
+      text(workoutCopied(await WorkoutService.duplicate(caller, workoutId, toGroupId))),
   )
 
   server.registerTool(

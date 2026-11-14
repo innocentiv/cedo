@@ -78,7 +78,6 @@ export const auditSummary = (audit: LibraryAudit): string =>
     audit.scannedForDuplicates < audit.total
       ? `${counted(audit.total, 'exercise')} in this library. The duplicate scan compared the first ${audit.scannedForDuplicates} by name.`
       : `${counted(audit.total, 'exercise')} in this library.`,
-    '',
     section(
       'Possible duplicates',
       audit.possibleDuplicates.map((d) => `"${d.a}" ~ "${d.b}"  (similarity ${d.similarity})`),

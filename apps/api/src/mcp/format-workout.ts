@@ -71,6 +71,14 @@ function loadsNote(weightG: number | null, load: Load | null, unit: WeightUnit):
   return ` (loads ${formatWeight(can.weightG, unit)}${end})`
 }
 
+/** A workout made empty: its id, and the tool that gives it a plan. */
+export const workoutCreated = (workout: Pick<Workout, 'id' | 'name'>): string =>
+  `Created workout ${workout.id} — "${workout.name}". Now call workout_save_plan.`
+
+/** A workout copied: the copy's id, and how much of a plan came with it. */
+export const workoutCopied = (copy: Pick<Workout, 'id' | 'name' | 'days'>): string =>
+  `Copied to workout ${copy.id} — "${copy.name}", ${counted(copy.days.length, 'day')}.`
+
 /** A name or notes changed: the two lines that changed, not the whole plan, which did not. */
 export function workoutUpdated(workout: Workout): string {
   const notes = workout.notes === null ? 'no notes' : `notes: ${workout.notes}`

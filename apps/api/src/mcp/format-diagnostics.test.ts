@@ -84,3 +84,15 @@ describe('the slowest queries', () => {
     expect(slowQueryLines([])).toBe('No query statistics recorded yet.')
   })
 })
+
+describe('one of anything, in the instance’s numbers too', () => {
+  test('one migration, one call and one row are each said in the singular', () => {
+    expect(statusLines({ ...status, migrationsApplied: 1 }).split('\n')[1]).toBe(
+      'database 12 MB, 1 migration applied',
+    )
+    const once = SlowQuery.parse({ calls: 1, meanMs: 12, totalMs: 12, rows: 1, query: 'select 1' })
+    expect(slowQueryLines([once])).toBe(
+      ['12ms total | 1 call | 12ms mean | 1 row', '  select 1'].join('\n'),
+    )
+  })
+})
