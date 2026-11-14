@@ -59,7 +59,13 @@ export async function rpc(pat: string | null, method: string, params: unknown = 
   const text = await response.text()
   // The handler frames replies as server-sent events by default.
   const payload = text.startsWith('event:') ? (text.split('data: ')[1] ?? '{}') : text || '{}'
-  return { status: response.status, body: RpcResult.safeParse(JSON.parse(payload)).data ?? {} }
+  const reply = RpcResult.safeParse(JSON.parse(payload))
+  // An answer that is no JSON-RPC reply is a failure, never an empty body: read as `{}`, every
+  // `not.toContain` and every "isError is undefined" passed on it.
+  if (response.ok && (!reply.success || (reply.data.result ?? reply.data.error) === undefined)) {
+    throw new Error(`Not a JSON-RPC reply: ${payload.slice(0, 200)}`)
+  }
+  return { status: response.status, body: reply.data ?? {} }
 }
 
 export const callTool = async (pat: string, name: string, args: unknown = {}) =>
