@@ -260,7 +260,7 @@ Each is the athlete's own read, given their training — a `Training` the tool r
 `ownOrCoached`, as the HTTP route does — and the same function the route calls with it, so it
 computes as the athlete's does, and differs only by what the
 coach can see (ADR-0019). How each read treats what the coach cannot see is the rule it already
-has: a session keeps every set and says "unavailable exercise"; the review **leaves out** the work
+has: a session keeps every set and says "Unavailable exercise"; the review **leaves out** the work
 of an exercise or plan the coach cannot see, as it leaves out one you have lost; the history of
 such an exercise is refused. Nothing a coach's AI can call writes to an athlete's training, and an
 athlete who stops sharing is a refusal on the next call. See

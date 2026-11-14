@@ -6,6 +6,7 @@ import {
   type WeightUnit,
   type WorkoutSessionSummary,
   counted,
+  exerciseName,
   formatEffort,
   formatWeight,
   inReserve,
@@ -37,7 +38,7 @@ function sessionLine(session: WorkoutSessionSummary, unit: WeightUnit): string {
   return [
     session.startedAt.slice(0, 10),
     plan,
-    `${session.setCount} sets`,
+    counted(session.setCount, 'set'),
     formatWeight(session.liftedG, unit),
     session.personalBests === 0 ? null : counted(session.personalBests, 'personal best'),
     session.endedAt === null ? 'in progress' : null,
@@ -65,12 +66,13 @@ const setText = (log: SetLog, unit: WeightUnit, withId: boolean): string =>
 
 /** One set, by its exercise: `Bench Press: 5 × 80 kg [<id>]` — how a corrected set is answered. */
 export const setLine = (log: SetLog, unit: WeightUnit): string =>
-  `${log.exercise?.name ?? 'unavailable exercise'}: ${setText(log, unit, true)}`
+  `${exerciseName(log.exercise)}: ${setText(log, unit, true)}`
 
 /**
  * One session, set by set: a line per run of one exercise, in the order done — `Squad Sled Push: 5 ×
- * 80 kg, w5 × 40 kg · 2 in reserve`, `w` for a warm-up. An exercise the reader cannot see is "unavailable
- * exercise", its efforts still said (ADR-0019): the sets are the athlete's, the name is not theirs.
+ * 80 kg, w5 × 40 kg · 2 in reserve`, `w` for a warm-up. An exercise the reader cannot see is named
+ * as one (`exerciseName`), its efforts still said (ADR-0019): the sets are the athlete's, the name
+ * is not theirs.
  * Each set's id `withIds` — the reader's own, which `session_fix_set` takes (#31).
  */
 export function sessionDetail(session: SessionDetail, unit: WeightUnit, withIds = false): string {
@@ -89,7 +91,7 @@ export function sessionDetail(session: SessionDetail, unit: WeightUnit, withIds 
   }
   const lines = runs.map((run) => {
     const sets = run.map((log) => setText(log, unit, withIds)).join(', ')
-    return `${run[0]?.exercise?.name ?? 'unavailable exercise'}: ${sets}`
+    return `${exerciseName(run[0]?.exercise)}: ${sets}`
   })
   return [head, ...(lines.length === 0 ? ['No sets.'] : lines)].join('\n')
 }

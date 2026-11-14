@@ -338,8 +338,8 @@ describe('the library’s audit', () => {
       ].join('\n'),
       [
         'Thin muscle coverage (2):',
-        '  soleus: 0 exercise(s)',
-        '  tibialis_anterior: 1 exercise(s)',
+        '  soleus: 0 exercises',
+        '  tibialis_anterior: 1 exercise',
       ].join('\n'),
       ['Missing instructions (1):', '  Step-Up'].join('\n'),
       ['Missing media (2):', '  Step-Up', '  Sissy Squat'].join('\n'),
@@ -350,6 +350,12 @@ describe('the library’s audit', () => {
         '  Biceps Curl',
       ].join('\n'),
     ])
+  })
+
+  test('a library of one exercise is one exercise', () => {
+    expect(blocks(auditSummary(audit({ total: 1, scannedForDuplicates: 1 })))[0]).toBe(
+      '1 exercise in this library.',
+    )
   })
 
   test('a duplicate scan that did not reach every exercise says how far it got', () => {

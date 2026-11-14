@@ -595,7 +595,7 @@ describe('training review', () => {
     })
 
     const review = textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)
-    expect(review).toContain('1 sessions')
+    expect(review).toContain('Last 4 weeks: 1 session (')
     expect(review).toContain('quadriceps')
 
     const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
@@ -1445,7 +1445,7 @@ describe('coaching', () => {
     )
     expect(
       textOf((await callTool(pat, 'training_review', { weeks: 4, ...theirs })).body),
-    ).toContain('1 sessions')
+    ).toContain('Last 4 weeks: 1 session (')
 
     expect(textOf((await callTool(pat, 'session_list')).body)).toBe('No sessions.')
     const sessions = textOf((await callTool(pat, 'session_list', theirs)).body)
@@ -1456,7 +1456,7 @@ describe('coaching', () => {
     const detail = textOf((await callTool(pat, 'session_get', { sessionId, ...theirs })).body)
     expect(detail.split('\n').slice(1)).toEqual([
       'Squad Sled Push: 5 × 80 kg',
-      'unavailable exercise: 8 × 30 kg',
+      'Unavailable exercise: 8 × 30 kg',
     ])
 
     const history = textOf(

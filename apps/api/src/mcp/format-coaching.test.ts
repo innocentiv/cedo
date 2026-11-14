@@ -322,3 +322,41 @@ describe('one session, set by set', () => {
     expect(sessionDetail(pounds, 'lb')).toBe(['2026-10-20', 'Squat: 8 × 135 lb'].join('\n'))
   })
 })
+
+/**
+ * A count of one is said in the singular, and an exercise the reader cannot see by the one name it
+ * has everywhere (GLOSSARY.md, "Unavailable exercise") — its efforts still said (ADR-0019): the
+ * sets are the athlete's, the name is not theirs to read.
+ */
+describe('a session of one set, and an exercise out of reach', () => {
+  test('one set is one set', () => {
+    const one = sessions([summary({ setCount: 1, liftedG: 400_000 })])
+    expect(sessionLines(one, 'kg')).toBe(`2026-10-20 · no plan · 1 set · 400 kg · ${SESSION}`)
+  })
+
+  test('a set of an exercise out of reach keeps what it said, under that name', () => {
+    expect(setLine(setLog({ exercise: null }), 'kg')).toBe(
+      `Unavailable exercise: 5 × 80 kg [${SET}]`,
+    )
+  })
+
+  test('in a session, its run reads the same beside the ones in reach', () => {
+    const session = SessionDetail.parse({
+      id: SESSION,
+      workoutId: null,
+      dayId: null,
+      startedAt: '2026-10-20T17:00:00.000Z',
+      endedAt: '2026-10-20T18:05:00.000Z',
+      notes: null,
+      logs: [
+        setLog(),
+        setLog({ id: SECOND_SET, exerciseId: PLANK, exercise: null, reps: 8, weightG: 30_000 }),
+      ],
+      rest: null,
+      plan: null,
+    })
+    expect(sessionDetail(session, 'kg')).toBe(
+      ['2026-10-20', 'Squat: 5 × 80 kg', 'Unavailable exercise: 8 × 30 kg'].join('\n'),
+    )
+  })
+})

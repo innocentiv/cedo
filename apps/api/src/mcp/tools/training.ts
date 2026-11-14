@@ -10,6 +10,7 @@ import {
   PlanSave,
   ReviewQuery,
   TargetByHand,
+  counted,
   planSaveFrom,
 } from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
@@ -192,7 +193,9 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ workoutId, toGroupId }) => {
       const copy = await WorkoutService.duplicate(caller, workoutId, toGroupId)
-      return text(`Copied to workout ${copy.id} — "${copy.name}", ${copy.days.length} day(s).`)
+      return text(
+        `Copied to workout ${copy.id} — "${copy.name}", ${counted(copy.days.length, 'day')}.`,
+      )
     },
   )
 

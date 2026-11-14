@@ -800,3 +800,21 @@ describe('each entry’s next target', () => {
     )
   })
 })
+
+/**
+ * An entry whose exercise the reader can no longer see (GLOSSARY.md, "Unavailable exercise"): the
+ * plan still holds it, so the outline still says what it prescribes — under the one name such an
+ * exercise has everywhere, and with no tracking mode to read its sets by.
+ */
+describe('an entry whose exercise is out of reach', () => {
+  test('is named as one, and its sets say only what was measured', () => {
+    const plan = workout([{ name: 'Push', entries: [entry(BENCH, benchPress)] }])
+    const lost = structuredClone(plan)
+    for (const planned of lost.days.flatMap((day) => day.entries)) planned.exercise = null
+    expect(workoutDetail(lost, 'kg', UNDESCRIBED, groupNameOf, []).split('\n').slice(2)).toEqual([
+      'Push',
+      `  - Unavailable exercise, rest 2:00, progression: Manual   [entry ${BENCH}]`,
+      '      work: 5 reps',
+    ])
+  })
+})

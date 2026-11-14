@@ -6,6 +6,7 @@ import {
   type Media,
   type Page,
   type WeightUnit,
+  counted,
   ownedLines,
   sayEquipment,
 } from '@cedo/contract'
@@ -75,8 +76,8 @@ const section = (title: string, lines: readonly string[]) =>
 export const auditSummary = (audit: LibraryAudit): string =>
   [
     audit.scannedForDuplicates < audit.total
-      ? `${audit.total} exercises in this library. The duplicate scan compared the first ${audit.scannedForDuplicates} by name.`
-      : `${audit.total} exercises in this library.`,
+      ? `${counted(audit.total, 'exercise')} in this library. The duplicate scan compared the first ${audit.scannedForDuplicates} by name.`
+      : `${counted(audit.total, 'exercise')} in this library.`,
     '',
     section(
       'Possible duplicates',
@@ -84,7 +85,7 @@ export const auditSummary = (audit: LibraryAudit): string =>
     ),
     section(
       'Thin muscle coverage',
-      audit.thinCoverage.map((m) => `${m.muscle}: ${m.exercises} exercise(s)`),
+      audit.thinCoverage.map((m) => `${m.muscle}: ${counted(m.exercises, 'exercise')}`),
     ),
     section('Missing instructions', audit.missingInstructions),
     section('Missing media', audit.missingMedia),

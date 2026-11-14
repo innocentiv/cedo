@@ -14,7 +14,9 @@ import {
   loadOf,
   loadable,
   MISSING_EQUIPMENT,
+  counted,
   describeProgression,
+  exerciseName,
   formatEffort,
   formatWeight,
   formatWithReserve,
@@ -36,7 +38,7 @@ const flagsOf = (workout: WorkoutSummary, groupNameOf: GroupNameOf): string =>
   `[${ownership(workout, groupNameOf).join(', ')}]`
 
 const workoutLine = (workout: WorkoutSummary, groupNameOf: GroupNameOf): string =>
-  `${workout.name} | ${workout.dayCount} day${workout.dayCount === 1 ? '' : 's'}` +
+  `${workout.name} | ${counted(workout.dayCount, 'day')}` +
   ` | ${flagsOf(workout, groupNameOf)} | ${workout.id}`
 
 /** The workouts a caller can see, a line each ending with its id. */
@@ -96,7 +98,7 @@ export function workoutDetail(
       const rest = `, ${restWords(entry.restSeconds, restPlace(day.entries, at))}`
       const rule = `, progression: ${ruleWords(entry.progression, unit)}`
       // Null when the caller cannot see the exercise — see the note on WorkoutEntry.exercise.
-      const name = entry.exercise?.name ?? '[unavailable exercise]'
+      const name = exerciseName(entry.exercise)
       // Kept in the plan, still loggable — but the AI is told before it plans around it (#35).
       const kit = entry.exercise?.doable === false ? ` [${MISSING_EQUIPMENT}]` : ''
       const load = entry.exercise === null ? null : loadOf(entry.exercise, equipment, unit)
@@ -153,7 +155,7 @@ export function nextTargetLine(t: EntryTarget, unit: WeightUnit): string {
 
 /** What stands behind a target (#66): the sessions since it last started, and if set by hand. */
 function basisOf({ sessions, byHand }: EntryTarget): string {
-  const since = `${sessions} session${sessions === 1 ? '' : 's'}`
+  const since = counted(sessions, 'session')
   if (byHand) return sessions === 0 ? 'set by hand' : `set by hand, then ${since}`
   return sessions === 0 ? 'no session yet' : `from ${since}`
 }

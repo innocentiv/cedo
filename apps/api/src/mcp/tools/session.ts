@@ -1,6 +1,12 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
-import { ExerciseHistoryQuery, OfAthlete, SessionLogInput, SetLogUpdate } from '@cedo/contract'
+import {
+  ExerciseHistoryQuery,
+  OfAthlete,
+  SessionLogInput,
+  SetLogUpdate,
+  counted,
+} from '@cedo/contract'
 import type { Caller } from '../../plugins/auth.ts'
 import { ownOrCoached } from '../../modules/coaching/training.ts'
 import { history } from '../../modules/session/history.ts'
@@ -34,7 +40,7 @@ export function registerSessionTools(server: McpServer, caller: Caller): void {
     },
     async (input) => {
       const session = await logWhole(caller, input)
-      return text(`Logged session ${session.id} with ${session.logs.length} set(s).`)
+      return text(`Logged session ${session.id} with ${counted(session.logs.length, 'set')}.`)
     },
   )
 

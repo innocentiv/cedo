@@ -401,3 +401,83 @@ describe('sign-up, as the curator left it', () => {
     )
   })
 })
+
+/** A count is said as a person says it (`counted`): one of anything in the singular. */
+describe('a count of one, and a window with nothing in it', () => {
+  test('one week, one session, one day and one set are each said in the singular', () => {
+    const one = review({
+      weeks: 1,
+      adherence: {
+        sessions: 1,
+        perWeek: 1,
+        currentStreakDays: 1,
+        longestGapDays: 1,
+        lastSessionAt: '2026-10-30T17:05:00.000Z',
+      },
+      muscleWork: {
+        top: [worked('quadriceps', 1, 100_000, null)],
+        declined: [{ ...worked('hamstrings', 1, 0, -50), declined: true }],
+        omitted: 1,
+      },
+    })
+    expect(reviewSummary(one, 'kg')).toBe(
+      [
+        'Last 1 week: 1 session (1/week).',
+        'No weigh-ins yet. Age not given.',
+        'Last session 2026-10-30T17:05:00.000Z. Current streak 1 day, longest gap 1 day.',
+        '',
+        'No sessions were tied to a planned day (all ad hoc).',
+        '',
+        'Working sets by muscle, by its share of each exercise (vs the preceding 1 week):',
+        '  quadriceps: 1 set, 100 kg lifted (no prior data)',
+        '  and 1 more muscle with less work.',
+        '',
+        'Declined sharply (half or less of their sets in the preceding 1 week):',
+        '  hamstrings: 1 set (-50%)',
+        '',
+        'Nothing looks stalled.',
+      ].join('\n'),
+    )
+  })
+
+  const nothingLogged = {
+    sessions: 0,
+    perWeek: 0,
+    currentStreakDays: 0,
+    longestGapDays: 0,
+    lastSessionAt: null,
+  }
+
+  /** With nothing logged, nothing is judged: an all-clear for nothing is not given — as in the app. */
+  test('with no session in the window, nothing is said of stalls', () => {
+    const none = review({
+      adherence: nothingLogged,
+      muscleWork: { top: [], declined: [], omitted: 0 },
+    })
+    expect(reviewSummary(none, 'kg')).toBe(
+      [
+        'Last 4 weeks: 0 sessions (0/week).',
+        'No weigh-ins yet. Age not given.',
+        'No sessions logged in this window.',
+        '',
+        'No sessions were tied to a planned day (all ad hoc).',
+        '',
+        'No working sets recorded.',
+      ].join('\n'),
+    )
+  })
+
+  /** A stall is judged on an exercise's latest sessions, whenever they were: it is still said. */
+  test('an exercise stalled before the window is still named, with no session in it', () => {
+    const stalledBefore = review({
+      adherence: nothingLogged,
+      muscleWork: { top: [], declined: [], omitted: 0 },
+      stalled: [{ exercise: PLANK, sessions: 4, effort: { ...hold(60), reserve: null } }],
+    })
+    expect(blocks(reviewSummary(stalledBefore, 'kg')).at(-1)).toBe(
+      ['Stalled (the same top set, 3+ sessions running):', '  Plank: 4 sessions at 1:00'].join(
+        '\n',
+      ),
+    )
+  })
+})

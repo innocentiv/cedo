@@ -127,6 +127,17 @@ describe('weigh-ins', () => {
       'No weigh-ins in the last 4 weeks.',
     )
   })
+
+  test('a period of one week is one week', () => {
+    expect(weighInLines(Bodyweight.parse({ weighIns: [], before: null }), 1, 'kg')).toBe(
+      'No weigh-ins in the last 1 week.',
+    )
+    expect(weighInLines(Bodyweight.parse({ weighIns: [latest], before: null }), 1, 'kg')).toBe(
+      ['Weigh-ins in the last 1 week, newest first:', '  2026-10-30 (Fri 30 Oct): 82.4 kg'].join(
+        '\n',
+      ),
+    )
+  })
 })
 
 describe('what a review says of the person', () => {
