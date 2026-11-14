@@ -39,6 +39,14 @@ describe('measured from the logs', () => {
     expect(await workOf('latissimus_dorsi')).toMatchObject({ weightedSets: 2, liftedG: 0 })
   })
 
+  /** Weight added to bodyweight is load: 20 kg on a belt, six reps, three sets — 360 kg lifted. */
+  test('weight added to a bodyweight movement is lifted, the bodyweight itself is not', async () => {
+    const pullUp = await fixture.anExercise({ name: 'Pull-up', tracking: 'bodyweight_reps' })
+    await fixture.aSession([1, 2, 3].map(() => ({ exerciseId: pullUp, reps: 6, weightG: 20_000 })))
+
+    expect(await workOf('latissimus_dorsi')).toMatchObject({ weightedSets: 3, liftedG: 360_000 })
+  })
+
   test('a set counts toward each muscle by its share of the load', async () => {
     const bench = await fixture.anExercise({
       name: 'Bench',

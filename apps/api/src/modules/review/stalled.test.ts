@@ -22,7 +22,7 @@ describe('measured from the logs', () => {
     fixture = reviewFixture(await (await makeApi()).as('alice'))
   })
 
-  type LoggedSet = Partial<Effort> & { readonly exerciseId: string }
+  type LoggedSet = Partial<RatedEffort> & { readonly exerciseId: string }
 
   /** One session per set, each logging that one set. */
   async function sessionsLogging(sets: readonly LoggedSet[]): Promise<void> {
@@ -60,6 +60,23 @@ describe('measured from the logs', () => {
       ])
     },
   )
+
+  /**
+   * What a stall is worth counts the reps in reserve its set left (`estimatedMax`): said, they
+   * reach the review with the set — the review's text says "estimated max" from them.
+   */
+  test('a stalled set keeps the reps in reserve it left', async () => {
+    const exerciseId = await fixture.anExercise()
+    await threeIdenticalSessions({ exerciseId, reps: 5, weightG: 60_000, reserve: 2 })
+
+    expect((await fixture.review()).stalled).toEqual([
+      {
+        exercise: { name: 'Movement', tracking: 'weight_reps' },
+        sessions: 3,
+        effort: { ...NOTHING, reps: 5, weightG: 60_000, reserve: 2 },
+      },
+    ])
+  })
 
   /** Regression: distance was once left out of the efforts compared, and a run going further read as stalled. */
   test('a run that goes further each session has not stalled', async () => {
