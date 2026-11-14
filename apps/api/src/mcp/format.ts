@@ -15,7 +15,7 @@ import {
   inReserve,
   pointsOf,
 } from '@cedo/contract'
-import { DRIFT_RESERVE, DRIFT_SESSIONS, FALLING_SESSIONS } from '../modules/review/service.ts'
+import { DRIFT_RESERVE, DRIFT_SESSIONS, FALLING_SESSIONS } from '../modules/review/deload.ts'
 import { aboutLine } from './format-file.ts'
 
 /**

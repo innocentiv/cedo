@@ -23,10 +23,10 @@ import {
   nextTargetLine,
   nextTargetLines,
   workoutDetail,
-  workoutLine,
+  workoutLines,
   workoutUpdated,
 } from '../format-workout.ts'
-import { groupNamesOf } from '../format-group.ts'
+import { groupNamesOf } from './group-names.ts'
 
 /**
  * OBJECTIVE 2 — reviewing and adjusting someone's training.
@@ -78,12 +78,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ scope, groupId, q, limit }) => {
       const page = await WorkoutService.list(caller, { scope, groupId, q, limit })
-      const groupNameOf = await groupNamesOf(caller)
-      return text(
-        page.items.length === 0
-          ? 'No workouts yet.'
-          : page.items.map((w) => workoutLine(w, groupNameOf)).join('\n'),
-      )
+      return text(workoutLines(page.items, await groupNamesOf(caller)))
     },
   )
 

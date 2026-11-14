@@ -4,6 +4,7 @@ import { DomainError } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { platformStatus, slowQueries } from '../../modules/review/diagnostics.ts'
 import { READ, text } from '../format.ts'
+import { slowQueryLines, statusLines } from '../format-diagnostics.ts'
 
 /**
  * OBJECTIVE 3 — telling an AI what is actually happening inside a running instance.
@@ -25,32 +26,7 @@ export function registerDiagnosticTools(server: McpServer, caller: Caller, versi
       inputSchema: z.object({}),
       annotations: READ,
     },
-    async () => {
-      const status = await platformStatus(caller, version)
-
-      return text(
-        [
-          `cedo ${status.version} on ${status.postgres}`,
-          `database ${status.databaseSize}, ${status.migrationsApplied} migrations applied`,
-          `extensions: ${status.extensions.join(', ')}`,
-          '',
-          'rows:',
-          ...Object.entries(status.rowCounts).map(([table, rows]) => `  ${table}: ${rows}`),
-          '',
-          'planner settings:',
-          ...Object.entries(status.settings).map(([name, value]) => `  ${name} = ${value}`),
-          '',
-          status.extensions.includes('pg_stat_statements')
-            ? 'Query statistics are available — call db_slow_queries.'
-            : 'pg_stat_statements is NOT installed, so query statistics are unavailable.',
-          '',
-          status.lastLoginAddress === null
-            ? 'No login attempt since the server started.'
-            : `The last login attempt came from ${status.lastLoginAddress}. If that is the proxy ` +
-              'in front of Caddy, every client shares one login limit: see docs/09-deployment.md.',
-        ].join('\n'),
-      )
-    },
+    async () => text(statusLines(await platformStatus(caller, version))),
   )
 
   server.registerTool(
@@ -66,17 +42,7 @@ export function registerDiagnosticTools(server: McpServer, caller: Caller, versi
     },
     async ({ limit }) => {
       try {
-        const rows = await slowQueries(caller, limit)
-        if (rows.length === 0) return text('No query statistics recorded yet.')
-
-        return text(
-          rows
-            .map(
-              (r) =>
-                `${r.totalMs}ms total | ${r.calls} calls | ${r.meanMs}ms mean | ${r.rows} rows\n  ${r.query}`,
-            )
-            .join('\n\n'),
-        )
+        return text(slowQueryLines(await slowQueries(caller, limit)))
       } catch (error: unknown) {
         // Only the "extension not installed" conflict is an answer. Anything else — above all the
         // service's 404 for a non-curator — stays an error, or the refusal reads as a result.

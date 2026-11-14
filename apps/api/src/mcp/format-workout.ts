@@ -35,9 +35,18 @@ import { type GroupNameOf, ownership } from './format-group.ts'
 const flagsOf = (workout: WorkoutSummary, groupNameOf: GroupNameOf): string =>
   `[${ownership(workout, groupNameOf).join(', ')}]`
 
-export const workoutLine = (workout: WorkoutSummary, groupNameOf: GroupNameOf): string =>
+const workoutLine = (workout: WorkoutSummary, groupNameOf: GroupNameOf): string =>
   `${workout.name} | ${workout.dayCount} day${workout.dayCount === 1 ? '' : 's'}` +
   ` | ${flagsOf(workout, groupNameOf)} | ${workout.id}`
+
+/** The workouts a caller can see, a line each ending with its id. */
+export const workoutLines = (
+  workouts: readonly WorkoutSummary[],
+  groupNameOf: GroupNameOf,
+): string =>
+  workouts.length === 0
+    ? 'No workouts yet.'
+    : workouts.map((w) => workoutLine(w, groupNameOf)).join('\n')
 
 /** A rule as the editor says it: `Double 8–12, +2.5 kg`, `Linear, +0:15`, `Manual`. */
 const ruleWords = (rule: Progression, unit: WeightUnit): string =>

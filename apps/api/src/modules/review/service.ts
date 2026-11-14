@@ -13,9 +13,6 @@ import { aboutThem } from './about.ts'
 import { adherenceOf } from './adherence.ts'
 import { muscleWorkOf } from './muscle-work.ts'
 import { judgedOver } from './deload.ts'
-
-/** The thresholds the review judges by, for whoever says its signals. */
-export { DRIFT_RESERVE, DRIFT_SESSIONS, FALLING_SESSIONS } from './deload.ts'
 import type { WorkingSet } from './deload.ts'
 
 /**
