@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
-  type Rest,
+  type RestAfter,
   type RestChange,
   type SessionRest,
   chimesAtEnd,
@@ -20,18 +20,18 @@ import { useNow } from './use-now.ts'
  * (`restOf`, `restPhase`, `chimesAtEnd`); this keeps the clock, and which rest it saw running.
  */
 export function useRestClock(
-  rest: Rest | null,
+  /**
+   * The rest, named by how many sets it follows: what a tap names to the server, and what it holds
+   * by here — not the set's time, which a set sent without a signal has from the phone first, and
+   * from the server once sent (#38).
+   */
+  rest: RestAfter | null,
   /** The same rest as the server keeps it (#38): a tap elsewhere, or before a reload, is in it. */
   kept: SessionRest | null,
-  /**
-   * How many sets the session has: the rest is the one after the last of them. What a tap names to
-   * the server, and what it holds by here — not the set's time, which a set sent without a signal
-   * has from the phone first, and from the server once sent (#38).
-   */
-  sets: number,
   /** Each tap told to the server, so every device counts the same rest (#38). */
   tell: (change: RestChange) => void,
 ) {
+  const sets = rest?.after ?? 0
   const after = rest === null ? null : String(sets)
   const [extended, extend] = useUntilNextSet<number>(after)
   const [skipped, skip] = useUntilNextSet<true>(after)

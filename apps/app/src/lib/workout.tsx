@@ -1,4 +1,4 @@
-import { type Exercise, restOf } from '@cedo/contract'
+import type { Exercise } from '@cedo/contract'
 import { type ScreenColumns, Spinner, Text } from '../ui/index.ts'
 import { FinishedMain, FinishedSide } from './finished-session.tsx'
 import { LoggedSets, PlanUnavailable, UnsentSets } from './session-parts.tsx'
@@ -49,13 +49,7 @@ export function sessionColumns(w: Workout): ScreenColumns | undefined {
       <LoggedSets sessionId={w.id} logs={w.sets.server} />
     </>
   )
-  const rest = {
-    rest: restOf(day ?? null, w.sets.all),
-    kept: session.data.rest,
-    sessionId: w.id,
-    sets: w.sets.all.length,
-    said: w.said,
-  }
+  const rest = { rest: w.view.rest, kept: session.data.rest, sessionId: w.id, said: w.said }
   if (day === undefined) {
     return columns(
       <AdHocMain full={w.picked} sets={w.sets} rest={rest} view={w.view} onHowTo={showHowTo} />,

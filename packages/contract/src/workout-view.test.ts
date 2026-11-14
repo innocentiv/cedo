@@ -18,10 +18,11 @@ const entry = (
   id: string,
   index: number,
   sets: { warmups?: number; working: number },
-): FlowEntry => ({
+): FlowEntry & { readonly restSeconds: number | null } => ({
   id,
   index,
   supersetGroup: null,
+  restSeconds: 90,
   exercise: {},
   sets: [
     ...Array.from({ length: sets.warmups ?? 0 }, (_, i) => ({
@@ -188,6 +189,30 @@ describe('what the workout shows', () => {
       choices: { chosen: null, undone: undone(null, 'curl') },
     })
     expect(adHoc.shown).toBeNull()
+  })
+
+  /**
+   * The rest the screen counts is the view's too (#63): which rest runs is `restOf`'s, tested with
+   * the flow; here, that it is the one after the set logged last, named by how many sets it follows
+   * — what a +30 s or a skip names to the server (#38) — and that an undo ends it.
+   */
+  test('the rest is the one after the set logged last, named by the sets it follows', () => {
+    expect(view([]).rest).toBeNull()
+    const sets = [set('squat'), set('squat')]
+    expect(view(sets).rest).toEqual({ since: sets[1]!.loggedAt, seconds: 90, after: 2 })
+    // No plan entry says a swap's rest: two minutes.
+    const swapped = [...sets, set(null, 'dip')]
+    expect(view(swapped, { added }).rest).toEqual({
+      since: swapped[2]!.loggedAt,
+      seconds: 120,
+      after: 3,
+    })
+  })
+
+  test('after an undo no rest runs: the set before does not rest again', () => {
+    const sets = [set('squat')]
+    expect(view(sets).rest).not.toBeNull()
+    expect(view(sets, { choices: { chosen: null, undone: undone('squat') } }).rest).toBeNull()
   })
 
   test('a swap’s set undone takes the focus to its exercise, which starts from it', () => {

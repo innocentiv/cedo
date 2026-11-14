@@ -1,6 +1,6 @@
 import {
   type LoggedExercise,
-  type Rest,
+  type RestAfter,
   type RestAlert,
   type SessionRest,
   formatWithReserve,
@@ -17,15 +17,14 @@ import type { WorkoutSets } from './workout-state.ts'
 import { useWeightUnit } from './weight-unit.ts'
 
 /**
- * The rest after the latest set (#24): as the sets say it (`restOf`) — sets waiting for a signal
- * too — and as the server keeps it (#38), with the session it is told to.
+ * The rest after the latest set (#24): as the view says it (`workoutView`) — sets waiting for a
+ * signal too, and none after an undo — and as the server keeps it (#38), with the session it is
+ * told to.
  */
 export interface RestShown {
-  readonly rest: Rest | null
+  readonly rest: RestAfter | null
   readonly kept: SessionRest | null
   readonly sessionId: string
-  /** How many sets the session has — waiting for a signal too: what a tap names (#38). */
-  readonly sets: number
   /** What its end says with the app closed (#39): the next set, as the logger asks it. */
   readonly said: RestAlert
 }
@@ -51,8 +50,7 @@ export function useJustDone({
   const unit = useWeightUnit()
   const tell = useChangeRest(rest.sessionId)
   const { submit, error } = useSubmit()
-  // With nothing just logged — after an undo, until the next set — no rest runs, nor chimes (#63).
-  const clock = useRestClock(shown === null ? null : rest.rest, rest.kept, rest.sets, (change) => {
+  const clock = useRestClock(rest.rest, rest.kept, (change) => {
     // In the session's queue, behind the sets: offline, it is sent after them.
     void submit(async () => {
       await tell.mutateAsync(change)

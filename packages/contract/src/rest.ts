@@ -95,6 +95,15 @@ export interface Rest {
   readonly seconds: number
 }
 
+/**
+ * A rest named by how many sets the session held when it began — those waiting for a signal too.
+ * By their number, never by a time: a set waiting for a signal is dated by the phone, then by the
+ * server, and is the same rest all along (#38). What a +30 s or a skip names (`RestChange`).
+ */
+export interface RestAfter extends Rest {
+  readonly after: number
+}
+
 /** What "+30 s" adds to a rest. */
 export const REST_EXTENSION_S = 30
 

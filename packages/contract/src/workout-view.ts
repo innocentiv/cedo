@@ -1,5 +1,6 @@
 import type { Load } from './load.ts'
 import type { SetTarget } from './progression.ts'
+import type { RestAfter } from './rest.ts'
 import {
   type FlowEntry,
   type FlowLog,
@@ -7,14 +8,15 @@ import {
   adHocSetsOf,
   focusOf,
   nextSet,
+  restOf,
   setsOf,
 } from './session-flow.ts'
 import type { Chosen, Undone, WorkoutChoices } from './workout-choices.ts'
 
 /**
- * What the workout screen shows (#24): the focus (GLOSSARY.md), the set just logged, and "+ set"
- * — from the session's sets and what the athlete chose (`workout-choices.ts`). Pure, so the screen
- * only renders it and holds the choices. The flow it reads is `session-flow.ts`; see
+ * What the workout screen shows (#24): the focus (GLOSSARY.md), the set just logged, its rest, and
+ * "+ set" — from the session's sets and what the athlete chose (`workout-choices.ts`). Pure, so the
+ * screen only renders it and holds the choices. The flow it reads is `session-flow.ts`; see
  * docs/08-frontend.md.
  */
 
@@ -114,6 +116,8 @@ export interface WorkoutView<
     readonly log: L
     readonly exercise: NonNullable<E['exercise']> | X | null
   } | null
+  /** The rest after the set logged last, where one follows it; none after an undo. */
+  readonly rest: RestAfter | null
   /** The entry "+ set" adds one more to: that of the set shown, once it has all it asked for. */
   readonly another: string | null
   /** The rows marked as in focus: of the day (Up next), and of the exercises added to it. */
@@ -184,11 +188,11 @@ type Reads<
  * says so, and with every set logged the day is done. Without a plan, the focus is `adHocFocus`'s.
  *
  * The set shown is the one logged last — without a plan, the last logged with no entry — and none
- * after an undo, until the next set. A set undone chooses its own entry, which starts from what it
- * said.
+ * after an undo, until the next set; its rest goes with it. A set undone chooses its own entry,
+ * which starts from what it said.
  */
 export function workoutView<
-  E extends FlowEntry,
+  E extends FlowEntry & { readonly restSeconds: number | null },
   X extends Added,
   L extends ViewLog,
   T extends EntryAsked,
@@ -207,13 +211,21 @@ export function workoutView<
       : dayView(input.day, readsOf(input))
   // Undo ends the rest with its set (#63): the set before is not just logged again — nor its rest,
   // nor its Undo — until the next set is. Log is back.
-  return undone === null ? view : { ...view, shown: null, another: null }
+  if (undone !== null) return { ...view, shown: null, another: null, rest: null }
+  const rest = restOf(input.day, input.sets)
+  return { ...view, rest: rest === null ? null : { ...rest, after: input.sets.length } }
 }
+
+/** What a kind of session decides of the view: all but the rest, which both read alike. */
+type ViewOf<E extends FlowEntry, X extends Added, L extends ViewLog, T extends EntryAsked> = Omit<
+  WorkoutView<E, X, L, T>,
+  'rest'
+>
 
 /** A session without a plan: an exercise added in focus, and the last set logged of one. */
 function adHocView<E extends FlowEntry, X extends Added, L extends ViewLog, T extends EntryAsked>(
   r: Reads<E, X, L, T>,
-): WorkoutView<E, X, L, T> {
+): ViewOf<E, X, L, T> {
   const focus = adHocFocus(r.added, r.sets, r.chosenAdded)
   const log = r.sets.findLast((l) => l.entryId === null)
   return {
@@ -229,7 +241,7 @@ function adHocView<E extends FlowEntry, X extends Added, L extends ViewLog, T ex
 function dayView<E extends FlowEntry, X extends Added, L extends ViewLog, T extends EntryAsked>(
   day: { readonly entries: readonly E[] },
   r: Reads<E, X, L, T>,
-): WorkoutView<E, X, L, T> {
+): ViewOf<E, X, L, T> {
   const latest = r.sets.at(-1)
   const chosen = day.entries.find((e) => e.id === r.chosenEntry)
   const addedNext = adHocFocus(r.added, r.sets, r.chosenAdded)
