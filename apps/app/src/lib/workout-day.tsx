@@ -9,7 +9,7 @@ import {
   progressOf,
 } from '@cedo/contract'
 import { AddRow, Stack, UpNext } from '../ui/index.ts'
-import { type RestShown, useJustLogged } from './just-logged.ts'
+import { type RestOfSession, useJustLogged } from './just-logged.ts'
 import { AddedExercises } from './workout-adhoc.tsx'
 import { InFocus } from './workout-focus.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
@@ -26,7 +26,7 @@ import { useWeightUnit } from './weight-unit.ts'
 /** What the main column of a planned day reads. */
 export interface PlannedMainProps {
   readonly sets: WorkoutSets
-  readonly rest: RestShown
+  readonly rest: RestOfSession
   /** The exercises added this open, whole: how to do them can be shown. */
   readonly full: readonly Exercise[]
   readonly view: WorkoutShown

@@ -1,7 +1,7 @@
 import type { Effort } from './effort.ts'
 import { type TrackingMode, exerciseName } from './exercise.ts'
 import type { SeriesMember } from './log.ts'
-import type { RestHeld } from './rest-held.ts'
+import { type RestHeld, extensionsOf } from './rest-held.ts'
 import { type RestAfter, type RestPhase, type SessionRest, chimesAtEnd, restPhase } from './rest.ts'
 import { formatWithReserve } from './rpe.ts'
 import { loggedLabel } from './set-marks.ts'
@@ -36,14 +36,14 @@ export interface LogsPlace<S> {
   /** The rest seen running here has just run out: its end chimes (`chimesAtEnd`). */
   readonly chimes: boolean
   /** The set just logged — or null: before the first, after an undo, and once its rest is over. */
-  readonly justLogged: JustLoggedSet<S> | null
+  readonly set: JustLoggedSet<S> | null
 }
 
 /**
  * What stands in Log's place, `now`.
  *
  * The set just logged is the one shown, while it can still be taken back where it was logged: while
- * its rest runs — with this phone's +30 s taps and skip, held for that rest alone — or, with no
+ * its rest runs — with this phone's +30 s taps and skip, each read by its own rest alone — or, with no
  * rest after it, until the next set. Once the rest is over none of it is shown. A set still waiting
  * for a signal is one the `server` does not have: it has no Undo, and no number yet.
  */
@@ -70,23 +70,24 @@ export function justLogged<
   readonly rest: RestAfter | null
   /** The session's sets as the server has them. */
   readonly server: readonly S[]
-  readonly held: RestHeld | null
+  readonly held: RestHeld
   /** The same rest as the server keeps it (#38): a tap elsewhere, or before a reload, is in it. */
   readonly kept: SessionRest | null
   readonly unit: WeightUnit
   readonly now: number
 }): LogsPlace<S> {
-  // What the phone holds is of one rest: the next set's starts with none of it.
-  const here = held !== null && held.after === rest?.after ? held : null
-  const phase = restPhase(rest, here?.extensions ?? 0, kept, here?.skipped ?? false, now)
-  const chimes = chimesAtEnd(here?.seen === true ? here.after : null, rest?.after ?? null, phase)
-  if (shown === null || phase.phase === 'over') return { phase, chimes, justLogged: null }
+  const after = rest?.after ?? null
+  // Each tap is read by the rest it was made on: the next set's starts with none of them.
+  const extensions = after === null ? 0 : extensionsOf(held, after)
+  const phase = restPhase(rest, extensions, kept, after !== null && held.skipped === after, now)
+  const chimes = chimesAtEnd(held.seen, after, phase)
+  if (shown === null || phase.phase === 'over') return { phase, chimes, set: null }
   const { log, exercise } = shown
   const stored = server.find((s) => s.id === log.id) ?? null
   return {
     phase,
     chimes,
-    justLogged: {
+    set: {
       restLeft: phase.phase === 'running' ? phase.left : null,
       stored,
       title: `${exerciseName(exercise)} · ${stored === null ? 'set' : loggedLabel(stored, server)}`,

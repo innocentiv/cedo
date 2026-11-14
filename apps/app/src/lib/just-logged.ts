@@ -1,17 +1,16 @@
-import { type RestAlert, type RestChange, type SessionRest, justLogged } from '@cedo/contract'
+import type { RestAlert, RestChange, SessionRest } from '@cedo/contract'
 import { useChangeRest } from '../api/session-queries.ts'
 import type { JustLogged } from '../ui/index.ts'
 import { useRestTold } from './rest-alert-device.ts'
 import { useRestClock } from './rest-clock.ts'
 import { useSubmit } from './use-submit.ts'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
-import { useWeightUnit } from './weight-unit.ts'
 
 /**
- * What the screen knows of the rest beside the view (#24): as the server keeps it (#38), the
- * session a tap on it is told to, and what its end says.
+ * What the session says of the rest, beside the view's own (#24): the rest as the server keeps it
+ * (#38), the session a tap on it is told to, and what its end says.
  */
-export interface RestShown {
+export interface RestOfSession {
   readonly kept: SessionRest | null
   readonly sessionId: string
   /** What its end says with the app closed (#39): the next set, as the logger asks it. */
@@ -30,25 +29,21 @@ export function useJustLogged({
   sets,
   onAnother,
 }: {
-  readonly rest: RestShown
+  readonly rest: RestOfSession
   readonly view: Pick<WorkoutShown, 'shown' | 'rest'>
   readonly sets: WorkoutSets
   readonly onAnother?: (() => void) | undefined
 }): JustLogged | null {
-  const unit = useWeightUnit()
   const tell = useChangeRest(rest.sessionId)
   const { submit, error } = useSubmit()
-  const after = view.rest?.after ?? null
-  const { place, did } = useRestClock(after, (held, now) =>
-    justLogged({ ...view, server: sets.server, held, kept: rest.kept, unit, now }),
-  )
+  const { place, did } = useRestClock(view, sets.server, rest.kept)
   const told = useRestTold(place.phase, rest.said, rest.sessionId)
-  const just = place.justLogged
-  if (just === null) return null
-  const { stored, restLeft, ...set } = just
-  const tapped = (kind: 'extended' | 'skipped', change: RestChange['change']) => () => {
-    if (after === null) return
-    did({ kind, after })
+  if (place.set === null) return null
+  const { stored, restLeft, ...set } = place.set
+  const after = view.rest?.after
+  const tapped = (change: RestChange['change']) => () => {
+    if (after === undefined) return
+    did({ kind: 'tapped', change, after })
     // In the session's queue, behind the sets: offline, it is sent after them.
     void submit(async () => {
       await tell.mutateAsync({ sets: after, change })
@@ -60,8 +55,8 @@ export function useJustLogged({
         ? null
         : {
             left: restLeft,
-            onExtend: tapped('extended', 'extend'),
-            onSkip: tapped('skipped', 'skip'),
+            onExtend: tapped('extend'),
+            onSkip: tapped('skip'),
             onTell: told.offer,
           },
     onUndo:

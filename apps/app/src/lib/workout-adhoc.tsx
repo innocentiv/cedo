@@ -6,7 +6,7 @@ import {
   progressOf,
 } from '@cedo/contract'
 import { AddRow, Stack, UpNext } from '../ui/index.ts'
-import { type RestShown, useJustLogged } from './just-logged.ts'
+import { type RestOfSession, useJustLogged } from './just-logged.ts'
 import { useWeightUnit } from './weight-unit.ts'
 import { Focus } from './workout-focus.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
@@ -23,7 +23,7 @@ export interface AdHocMainProps {
   /** The exercises picked this open, whole: how to do them can be shown. */
   readonly full: readonly Exercise[]
   readonly sets: WorkoutSets
-  readonly rest: RestShown
+  readonly rest: RestOfSession
   readonly view: WorkoutShown
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
 }

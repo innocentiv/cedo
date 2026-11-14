@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test'
 import { justLogged } from './just-logged.ts'
 import type { SetTarget } from './progression.ts'
-import { type RestEvent, restHeldAfter } from './rest-held.ts'
+import { NO_REST_HELD, type RestEvent, type RestHeld, restHeldAfter } from './rest-held.ts'
 import type { SessionRest } from './rest.ts'
 import { NO_CHOICES, type WorkoutChoices, choicesAfter } from './workout-choices.ts'
 import { workoutView } from './workout-view.ts'
@@ -53,8 +53,12 @@ const set = (entryId: string, loggedS: number, personalBest = false) => ({
 })
 type Stored = ReturnType<typeof set>
 
-const held = (...events: RestEvent[]) =>
-  events.reduce<ReturnType<typeof restHeldAfter>>((h, event) => restHeldAfter(h, event), null)
+/** What the phone holds after these, in order. */
+const held = (...events: RestEvent[]): RestHeld =>
+  events.reduce((h, event) => restHeldAfter(h, event), NO_REST_HELD)
+const extended = (after: number): RestEvent => ({ kind: 'tapped', change: 'extend', after })
+const skipped = (after: number): RestEvent => ({ kind: 'tapped', change: 'skip', after })
+const seenRunning = (after: number): RestEvent => ({ kind: 'seen', after, running: true })
 
 /** Log's place, `seconds` into the session. */
 const place = (
@@ -64,7 +68,7 @@ const place = (
     readonly waiting?: readonly ReturnType<typeof waitingSet>[]
     readonly entries?: readonly Entry[]
     readonly choices?: WorkoutChoices
-    readonly held?: ReturnType<typeof held>
+    readonly held?: RestHeld
     readonly kept?: SessionRest | null
   },
 ) => {
@@ -81,7 +85,7 @@ const place = (
     shown: view.shown,
     rest: view.rest,
     server,
-    held: session.held ?? null,
+    held: session.held ?? NO_REST_HELD,
     kept: session.kept ?? null,
     unit: 'kg',
     now: at(seconds),
@@ -93,7 +97,7 @@ describe('the set just logged, in Log’s place', () => {
     const first = set('bench', 0)
     const shown = place(10, { server: [first] })
     expect(shown.phase).toEqual({ phase: 'running', left: 110 })
-    expect(shown.justLogged).toEqual({
+    expect(shown.set).toEqual({
       restLeft: 110,
       stored: first,
       title: 'Bench Press · set 1',
@@ -105,13 +109,13 @@ describe('the set just logged, in Log’s place', () => {
 
   test('before the first set nothing is just logged', () => {
     const shown = place(0, {})
-    expect([shown.phase, shown.justLogged]).toEqual([{ phase: 'none' }, null])
+    expect([shown.phase, shown.set]).toEqual([{ phase: 'none' }, null])
   })
 
   test('once its rest is over nothing is: Log is back, and the set is fixed from the list', () => {
     const shown = place(120, { server: [set('bench', 0)] })
     expect(shown.phase).toEqual({ phase: 'over', skipped: false })
-    expect(shown.justLogged).toBeNull()
+    expect(shown.set).toBeNull()
   })
 
   test('with no rest after it, it stays — Undo beside Log — until the next set', () => {
@@ -120,24 +124,24 @@ describe('the set just logged, in Log’s place', () => {
     // An hour on, still: nothing but the next set ends it.
     const shown = place(3600, { server: [first], entries: straightOn })
     expect(shown.phase).toEqual({ phase: 'none' })
-    expect(shown.justLogged).toMatchObject({ restLeft: null, stored: first })
+    expect(shown.set).toMatchObject({ restLeft: null, stored: first })
     const second = set('bench', 3700)
-    expect(place(3700, { server: [first, second], entries: straightOn }).justLogged).toMatchObject({
+    expect(place(3700, { server: [first, second], entries: straightOn }).set).toMatchObject({
       stored: second,
       title: 'Bench Press · set 2',
     })
   })
 
   test('a superset’s first set keeps Undo beside the partner’s Log; the round’s last rests', () => {
-    const pair = [entry('bench', 'Bench Press', 0, 'A'), entry('row', 'Barbell Row', 60, 'A')]
+    const superset = [entry('bench', 'Bench Press', 0, 'A'), entry('row', 'Barbell Row', 60, 'A')]
     const first = set('bench', 0)
-    expect(place(5, { server: [first], entries: pair }).justLogged).toMatchObject({
+    expect(place(5, { server: [first], entries: superset }).set).toMatchObject({
       restLeft: null,
       stored: first,
       title: 'Bench Press · set 1',
     })
     const partner = set('row', 30)
-    expect(place(40, { server: [first, partner], entries: pair }).justLogged).toMatchObject({
+    expect(place(40, { server: [first, partner], entries: superset }).set).toMatchObject({
       restLeft: 50,
       stored: partner,
       title: 'Barbell Row · set 1',
@@ -149,13 +153,13 @@ describe('the set just logged, in Log’s place', () => {
     const choices = choicesAfter(NO_CHOICES, { kind: 'undone', set: second })
     // The first set's rest would still be running, had it come back.
     const shown = place(60, { server: [first], choices })
-    expect([shown.phase, shown.justLogged]).toEqual([{ phase: 'none' }, null])
+    expect([shown.phase, shown.set]).toEqual([{ phase: 'none' }, null])
   })
 
   test('a personal best is said, and an exercise out of reach is named as one', () => {
-    expect(place(10, { server: [set('bench', 0, true)] }).justLogged?.best).toBe(true)
+    expect(place(10, { server: [set('bench', 0, true)] }).set?.best).toBe(true)
     const gone = [{ ...bench, exercise: null }, row]
-    expect(place(10, { server: [set('bench', 0)], entries: gone }).justLogged).toMatchObject({
+    expect(place(10, { server: [set('bench', 0)], entries: gone }).set).toMatchObject({
       title: 'Unavailable exercise · set 1',
       effort: '8 × 60 kg · 2 in reserve',
     })
@@ -164,7 +168,7 @@ describe('the set just logged, in Log’s place', () => {
   test('a set waiting for a signal rests, with no Undo yet and no number: the server has neither', () => {
     const first = set('bench', 0)
     const shown = place(210, { server: [first], waiting: [waitingSet('bench', 200)] })
-    expect(shown.justLogged).toEqual({
+    expect(shown.set).toEqual({
       restLeft: 110,
       stored: null,
       title: 'Bench Press · set',
@@ -177,54 +181,64 @@ describe('the set just logged, in Log’s place', () => {
 
 describe('what the phone holds of a rest', () => {
   const first = set('bench', 0)
-  const extended: RestEvent = { kind: 'extended', after: 1 }
-  const seenRunning: RestEvent = { kind: 'seen', after: 1, running: true }
 
   test('+30 s lengthens the rest it was tapped on, each tap', () => {
-    expect(place(10, { server: [first], held: held(extended) }).justLogged?.restLeft).toBe(140)
-    const twice = place(10, { server: [first], held: held(extended, extended) })
-    expect(twice.justLogged?.restLeft).toBe(170)
+    expect(place(10, { server: [first], held: held(extended(1)) }).set?.restLeft).toBe(140)
+    const twice = place(10, { server: [first], held: held(extended(1), extended(1)) })
+    expect(twice.set?.restLeft).toBe(170)
   })
 
   test('Skip ends it: Log is back, with no chime', () => {
-    const skipped = held(seenRunning, { kind: 'skipped', after: 1 })
-    const shown = place(10, { server: [first], held: skipped })
-    expect(shown).toEqual({
-      phase: { phase: 'over', skipped: true },
-      chimes: false,
-      justLogged: null,
-    })
+    const shown = place(10, { server: [first], held: held(seenRunning(1), skipped(1)) })
+    expect(shown).toEqual({ phase: { phase: 'over', skipped: true }, chimes: false, set: null })
   })
 
   /** #38: held to the set's id or time, a tap was lost as a set logged without a signal landed. */
   test('a tap holds while its set reaches the server, renamed and dated again: the same rest', () => {
-    const tapped = held(seenRunning, extended)
+    const tapped = held(seenRunning(1), extended(1))
     const offline = place(10, { waiting: [waitingSet('bench', 0)], held: tapped })
-    expect(offline.justLogged?.restLeft).toBe(140)
+    expect(offline.set?.restLeft).toBe(140)
     // The server dated it two seconds after the phone did.
     const landed = place(10, { server: [set('bench', 2)], held: tapped })
-    expect(landed.justLogged).toMatchObject({ restLeft: 142, waiting: false })
+    expect(landed.set).toMatchObject({ restLeft: 142, waiting: false })
   })
 
   test('the next set — logged here or elsewhere — rests afresh: the taps were the last rest’s', () => {
-    const skipped = held(extended, { kind: 'skipped', after: 1 })
+    const before = held(extended(1), skipped(1))
     const sets = [first, set('bench', 300)]
-    expect(place(310, { server: sets, held: skipped }).phase).toEqual({
+    expect(place(310, { server: sets, held: before }).phase).toEqual({
       phase: 'running',
       left: 110,
     })
     // A tap on the new rest is its first.
-    const again = restHeldAfter(skipped, { kind: 'extended', after: 2 })
+    const again = restHeldAfter(before, extended(2))
     expect(place(310, { server: sets, held: again }).phase).toEqual({ phase: 'running', left: 140 })
+  })
+
+  /**
+   * The set after it removed — from the list, on another device, over MCP — the session is back at a
+   * rest it left: skipped, it stays skipped, though the next rest was seen running in between.
+   */
+  test('a rest the session goes back to is as it was left', () => {
+    const left = held(seenRunning(1), skipped(1), seenRunning(2))
+    expect(place(60, { server: [first], held: left }).phase).toEqual({
+      phase: 'over',
+      skipped: true,
+    })
+    const longer = held(extended(1), seenRunning(2))
+    expect(place(60, { server: [first], held: longer }).phase).toEqual({
+      phase: 'running',
+      left: 90,
+    })
   })
 
   test('a tap on another device, as the server keeps it, counts here too', () => {
     const kept = { since: first.loggedAt, endsAt: new Date(at(150)).toISOString() }
-    expect(place(10, { server: [first], kept }).justLogged?.restLeft).toBe(140)
+    expect(place(10, { server: [first], kept }).set?.restLeft).toBe(140)
   })
 
   test('the rest seen running chimes as it runs out, and once', () => {
-    const seen = held(seenRunning)
+    const seen = held(seenRunning(1))
     expect(place(119, { server: [first], held: seen }).chimes).toBe(false)
     expect(place(120, { server: [first], held: seen }).chimes).toBe(true)
     // The screen, having heard it, sees a rest that no longer runs.
@@ -236,18 +250,20 @@ describe('what the phone holds of a rest', () => {
     expect(place(500, { server: [first] }).chimes).toBe(false)
     // The second set's rest was seen running; undone, the session is back at the first's, long over.
     const second = set('bench', 200)
-    const seenSecond = held({ kind: 'seen', after: 2, running: true })
     const choices = choicesAfter(NO_CHOICES, { kind: 'undone', set: second })
-    expect(place(500, { server: [first], held: seenSecond, choices }).chimes).toBe(false)
+    expect(place(500, { server: [first], held: held(seenRunning(2)), choices }).chimes).toBe(false)
     // Removed from the list instead, nothing was undone here: the first set's rest is the one over.
-    expect(place(500, { server: [first], held: seenSecond }).chimes).toBe(false)
+    expect(place(500, { server: [first], held: held(seenRunning(2)) }).chimes).toBe(false)
   })
 
   test('nothing changed gives back what was held, itself', () => {
-    const seen = held(seenRunning)
-    expect(restHeldAfter(seen, seenRunning)).toBe(seen)
-    const unseen = restHeldAfter(seen, { kind: 'seen', after: null, running: false })
-    expect(restHeldAfter(unseen, { kind: 'seen', after: 1, running: false })).toBe(unseen)
-    expect(restHeldAfter(null, { kind: 'seen', after: null, running: false })).toBeNull()
+    const seen = held(seenRunning(1))
+    expect(restHeldAfter(seen, seenRunning(1))).toBe(seen)
+    const none: RestEvent = { kind: 'seen', after: null, running: false }
+    expect(restHeldAfter(NO_REST_HELD, none)).toBe(NO_REST_HELD)
+    // A rest over is seen as none is: not running.
+    expect(restHeldAfter(NO_REST_HELD, { kind: 'seen', after: 1, running: false })).toBe(
+      NO_REST_HELD,
+    )
   })
 })
