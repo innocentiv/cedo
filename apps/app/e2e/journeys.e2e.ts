@@ -3090,7 +3090,7 @@ test(
         async () => (await app.session.loggedIds()).length,
         (rows) => rows === 1,
       )
-      // Undo ends what was just done: the first set is not offered to undo again. Log is back.
+      // After an undo nothing is just logged: the first set is not offered to undo again. Log is back.
       expect(await app.session.canUndoJustLogged()).toBe(false)
       expect(await app.session.justLogged()).toBe(false)
       expect(await bench.canLog()).toBe(true)

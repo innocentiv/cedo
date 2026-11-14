@@ -65,8 +65,11 @@ So is what the workout screen shows (#24): the focus (`workoutView`), how what t
 changes (`choicesAfter`), and what the logger asks of the focus (`loggerAsks`) — the next set, and
 another once an entry has all it asked for, as its last working set asked; its marks; the lines
 beside it; what it is logged against; and the key it starts again by, which a set logged or undone
-changes and a set landing late, or logged on another entry, does not. A journey proves the taps
-reach these rules; it does not re-check them.
+changes and a set landing late, or logged on another entry, does not. And what stands in Log's place
+once a set is logged (#63, `justLogged`), with what the phone holds of the rest (`restHeldAfter`):
+`just-logged.test.ts` goes as the athlete does — a set logged, +30 s, Skip, Undo, a set landing
+late, the next set — through `workoutView`, with a time handed in and no browser. A journey proves
+the taps reach these rules; it does not re-check them.
 
 `isomorphic.test.ts` additionally asserts the package imports nothing but `zod` — the dependency
 boundary is a test, not a convention.

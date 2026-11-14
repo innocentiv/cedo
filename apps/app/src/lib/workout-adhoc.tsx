@@ -12,7 +12,7 @@ import { Focus } from './workout-focus.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
 /*
- * A session with no plan behind it (#24): the exercise in focus, with what was just done in its
+ * A session with no plan behind it (#24): the exercise in focus, with the set just logged in its
  * Log's place (`AdHocMain`, #63), then the others, Add exercise, and every set (`AdHocSide`) — the
  * screen's two columns, side by side on a desktop. Nothing was prescribed, so there is always a
  * next set until the athlete moves on. What shows is the contract's `workoutView`.
@@ -28,7 +28,7 @@ export interface AdHocMainProps {
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
 }
 
-/** The exercise in focus — one more set from the last — and what was just done in Log's place. */
+/** The exercise in focus — one more set from the last — and the set just logged in Log's place. */
 export function AdHocMain({
   full,
   sets,

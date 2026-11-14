@@ -182,7 +182,11 @@ summing to 100, which inputs a tracking mode implies, what a progression rule co
 is next, where the focus goes, whose rest runs, what a set is called) all live in `@cedo/contract`:
 `session-flow.ts` and `set-marks.ts` for the workout, and `workout-view.ts` for what its screen
 shows of them — the focus, the set just logged, "+ set", the rows marked — from the sets and what the
-athlete chose, which `workout-choices.ts` changes; and `focus-logger.ts` for what the logger asks of
+athlete chose, which `workout-choices.ts` changes; `just-logged.ts` for what stands in Log's place
+once a set is logged (`justLogged`) — the rest running, Undo beside Log, or Log alone, and what the
+set just logged is called and said — with `rest-held.ts` for what the phone holds of that rest, its
++30 s taps, its skip and whether it saw it running (`restHeldAfter`); and `focus-logger.ts` for what
+the logger asks of
 the focus, an entry or an exercise added alike (`loggerAsks`) — the set it logs, its marks, the lines
 beside it, what the set is logged against, and the key it starts again by. One `Focus` component
 draws it for both. An unavailable exercise has no mode, so no
@@ -200,7 +204,9 @@ a row per set (`ReserveRows`), or a Manual line's own. The editor's sections are
 `SetsField` with `set-lines.tsx` (counts, warm-up lines, Plan beside Your next session, Manual's
 lines), `NextSession` (the viewer's target and **Change**), and `EntryRead`, an entry a reader
 opens. The rest's clock is `useRestClock`
-(`src/lib/rest-clock.ts`), read by `useJustDone` (`src/lib/just-done.ts`) in the focus's column; it
+(`src/lib/rest-clock.ts`) — it keeps the time, holds what the phone holds of the rest, and sounds
+the chime, and decides none of them — read by `useJustLogged` (`src/lib/just-logged.ts`) in the
+focus's column, which attaches what each control does to what `justLogged` decided; it
 and the session's clock read `useNow` (`src/lib/use-now.ts`), a clock of its own that ticks once a
 second only while it must — so the focus re-renders while a rest runs, not the day beside it.
 The tone at the end of a rest is `src/lib/chime.ts`: "Heavy plates", a big steel plate tapped twice
@@ -349,10 +355,14 @@ there (#63).
   steel plate — and buzzes where the device can, if the app is open, and all of it goes: Log is back, and the set just
   logged is fixed from the list from then on. No colour or banner says the rest is over: the sound
   is the cue. A set with no rest after it — a warm-up, a superset's first, a rest of 0 — keeps
-  **Undo · Log** until the next set. Where the rest stands is the contract's `restPhase`. The
+  **Undo · Log** until the next set. Which of these stands in Log's place is the contract's
+  `justLogged`, of the set and the rest `workoutView` shows; where the rest stands is its
+  `restPhase`. The
   server keeps the rest's end (#38; +30 s and skip are writes, queued behind the sets), and the
   countdown takes it when it is later (`restCounted`), so a reload or another device counts the
-  same rest.
+  same rest. A tap is held on the phone too (`restHeldAfter`), for the rest it was tapped on — by
+  how many sets that rest follows, so it holds while a set logged without a signal lands — and so
+  the countdown answers at once, signal or none.
 - **A rest's end told with the app closed** (#39) is the native app's, and comes from the phone
   itself: no push, no server (ADR-0032). A home-screen web app cannot be told anything closed — Web
   Push never reached an iPhone — so the web never offers it. Settings → **Rest over** chooses how:
@@ -624,7 +634,7 @@ and `training_review` both say; the tab looks back 4, 8 or 12 weeks.
 
 Two panes where reading side by side helps: a workout's outline beside the entry being edited, the
 exercise list beside the exercise, Today's next session and week beside the history — and the
-session: what was just done and the exercise in focus, beside the day and its sets (`Screen`
+session: the set just logged and the exercise in focus, beside the day and its sets (`Screen`
 `columns`). One column 700 points wide made the Log button the loudest thing on a desk, which it is
 not there. A session left open is the same yellow band as on a phone, at the foot of the sidebar —
 a line with a yellow dot was tried and read as too little; a sheet opens in the middle of the
@@ -728,7 +738,7 @@ from type and space, a card only around something acted on as one. Where a set i
 is smaller than 56px. Dark only, still.
 
 **Space says what belongs together** (#24 review — "it is not clear which element is connected with
-which"). Three distances, no others: the widest (`xxl`) between groups — what was just done, the
+which"). Three distances, no others: the widest (`xxl`) between groups — the set just logged, the
 exercise in focus, the day, the session's sets; a middle one inside a group; the closest between a
 label and what it labels. One left edge: every line of text on a screen starts on it, and a list
 row's ground bleeds into the gutter rather than pushing its text in. A number shown large has its

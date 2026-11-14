@@ -101,7 +101,7 @@ export function AfterSet({
   )
 }
 
-/** Log, under the thumb — or, once a set is logged, what was just done in its place (#63). */
+/** Log, under the thumb — or, once a set is logged, the set just logged in its place (#63). */
 export function LogSlot({
   after,
   action,
