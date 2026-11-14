@@ -215,6 +215,12 @@ describe('what the workout shows', () => {
     expect(view(sets, { choices: { chosen: null, undone: undone('squat') } }).rest).toBeNull()
   })
 
+  /** The plan out of reach mid-session: its sets are of no exercise the session can show. */
+  test('where no set is shown, none rests: a rest is never counted with nothing in Log’s place', () => {
+    const lost = view([set('squat')], { day: null })
+    expect([lost.shown, lost.rest]).toEqual([null, null])
+  })
+
   test('a swap’s set undone takes the focus to its exercise, which starts from it', () => {
     const v = view([set('squat')], {
       added,

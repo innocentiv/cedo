@@ -181,7 +181,7 @@ and `AddRow`,
 summing to 100, which inputs a tracking mode implies, what a progression rule contains, which set
 is next, where the focus goes, whose rest runs, what a set is called) all live in `@cedo/contract`:
 `session-flow.ts` and `set-marks.ts` for the workout, and `workout-view.ts` for what its screen
-shows of them — the focus, the set just logged, "+ set", the rows marked — from the sets and what the
+shows of them — the focus, the set just logged and its rest, "+ set", the rows marked — from the sets and what the
 athlete chose, which `workout-choices.ts` changes; `just-logged.ts` for what stands in Log's place
 once a set is logged (`justLogged`) — the rest running, Undo beside Log, or Log alone, and what the
 set just logged is called and said — with `rest-held.ts` for what the phone holds of that rest, its
