@@ -82,6 +82,32 @@ describe('creating and listing', () => {
     expect(renamed.notes).toBe('Deload every fourth week')
   })
 
+  /** Notes are replaced, never merged: what is sent is what they are, and null is none. */
+  test('notes sent replace the notes whole, and an explicit null clears them', async () => {
+    const patch = async (id: string, body: unknown) =>
+      expectContract(
+        Workout,
+        (await alice.wire(`/workouts/${id}`, { method: 'PATCH', body: JSON.stringify(body) })).body,
+      )
+    const created = expectContract(
+      Workout,
+      (
+        await alice.wire('/workouts', {
+          method: 'POST',
+          body: JSON.stringify({ name: 'Block A', notes: 'Deload every fourth week' }),
+        })
+      ).body,
+    )
+
+    const rewritten = await patch(created.id, { notes: 'Stop two reps short of failure' })
+    expect(rewritten.notes).toBe('Stop two reps short of failure')
+    expect(rewritten.name).toBe('Block A')
+
+    expect((await patch(created.id, { notes: null })).notes).toBeNull()
+    const stored = expectContract(Workout, (await alice.wire(`/workouts/${created.id}`)).body)
+    expect([stored.name, stored.notes]).toEqual(['Block A', null])
+  })
+
   test('the list returns summaries with a day count, not full plans', async () => {
     const workout = await aWorkout(alice)
     await alice.wire(`/workouts/${workout.id}/plan`, {

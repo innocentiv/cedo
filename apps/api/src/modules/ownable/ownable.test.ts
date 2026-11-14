@@ -156,6 +156,17 @@ describe.each(KINDS)('$path', (kind) => {
       expect((await read(alice, mine.id)).name).toBe('Secret')
     })
 
+    /** A copy is a read of everything it copies: what cannot be seen cannot be duplicated. */
+    test('a stranger cannot copy it either, and nothing lands in their group', async () => {
+      const mine = await create(alice, 'Secret')
+      const copied = await post(bob, `${kind.path}/${mine.id}/duplicate`)
+      const missing = await post(bob, `${kind.path}/${crypto.randomUUID()}/duplicate`)
+      expect(copied.status).toBe(404)
+      expect(copied.body).toEqual(missing.body)
+      const theirs = (await list(bob)).items.filter((i) => i.ownerGroupId === bob.personalGroupId)
+      expect(theirs).toEqual([])
+    })
+
     test('a reader of the owning group can read but not edit', async () => {
       const squad = await groupOf(alice, { user: bob, role: 'reader' })
       const shared = await inGroup(alice, squad, 'Shared')
@@ -330,6 +341,20 @@ describe.each(KINDS)('$path', (kind) => {
 
       const refused = await post(bob, `${kind.path}/${shared.id}/duplicate`, { toGroupId: squad })
       expect(refused.status).toBe(404)
+    })
+
+    test('duplicate lands in the group named, when the caller edits it', async () => {
+      const squad = await groupOf(alice)
+      const mine = await create(alice, 'Mine')
+
+      const copy = expectContract(
+        kind.one,
+        (await post(alice, `${kind.path}/${mine.id}/duplicate`, { toGroupId: squad })).body,
+      )
+      expect(copy.id).not.toBe(mine.id)
+      expect(copy.ownerGroupId).toBe(squad)
+      // The original stays where it was: a copy is not a transfer.
+      expect((await read(alice, mine.id)).ownerGroupId).toBe(alice.personalGroupId)
     })
   })
 })
