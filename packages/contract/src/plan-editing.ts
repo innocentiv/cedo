@@ -1,5 +1,5 @@
 import { DIMENSION_FIELDS, WEIGHT_STEP_G, tracks } from './dimension.ts'
-import type { TrackingMode } from './exercise.ts'
+import { type TrackingMode, exerciseName } from './exercise.ts'
 import { workingRuns } from './entry-line.ts'
 import type { Load } from './load.ts'
 import { NO_PROGRESSION, type Progression } from './progression.ts'
@@ -227,7 +227,7 @@ export function planIssues(
     day.entries.flatMap((entry, e) =>
       visible.has(entry.exerciseId)
         ? []
-        : [`Day ${d + 1}, exercise ${e + 1}: Unavailable exercise — remove it to save`],
+        : [`Day ${d + 1}, exercise ${e + 1}: ${exerciseName(null)} — remove it to save`],
     ),
   )
   const result = WorkoutPlanInput.safeParse(plan)

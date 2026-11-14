@@ -3,20 +3,20 @@ import {
   type Exercise,
   type SessionDay,
   type SessionExercise,
+  exerciseName,
   formatPrescription,
   nextSet,
   progressOf,
 } from '@cedo/contract'
 import { AddRow, Stack, UpNext } from '../ui/index.ts'
-import { exerciseName } from './exercise-name.ts'
-import { type RestShown, useJustDone } from './just-done.ts'
+import { type RestOfSession, useJustLogged } from './just-logged.ts'
 import { AddedExercises } from './workout-adhoc.tsx'
 import { InFocus } from './workout-focus.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 import { useWeightUnit } from './weight-unit.ts'
 
 /*
- * A session that follows a plan's day (#24): the entry in focus, with what was just done in its
+ * A session that follows a plan's day (#24): the entry in focus, with the set just logged in its
  * Log's place (`PlannedMain`, #63), then the rest of the day, what was added to it, and every set
  * (`PlannedSide`) — the screen's two columns, side by side on a desktop. What shows is the
  * contract's `workoutView`; this renders it, and says what the athlete taps. See
@@ -26,7 +26,7 @@ import { useWeightUnit } from './weight-unit.ts'
 /** What the main column of a planned day reads. */
 export interface PlannedMainProps {
   readonly sets: WorkoutSets
-  readonly rest: RestShown
+  readonly rest: RestOfSession
   /** The exercises added this open, whole: how to do them can be shown. */
   readonly full: readonly Exercise[]
   readonly view: WorkoutShown
@@ -36,7 +36,7 @@ export interface PlannedMainProps {
   readonly finishing: boolean
 }
 
-/** The entry in focus — its next set under the thumb, and what was just done in Log's place. */
+/** The entry in focus — its next set under the thumb, and the set just logged in Log's place. */
 export function PlannedMain({
   sets,
   rest,
@@ -48,10 +48,10 @@ export function PlannedMain({
   finishing,
 }: PlannedMainProps): React.JSX.Element {
   const unit = useWeightUnit()
-  const { shown, another } = view
-  const after = useJustDone({
+  const { another } = view
+  const after = useJustLogged({
     rest,
-    shown,
+    view,
     sets,
     onAnother:
       another === null

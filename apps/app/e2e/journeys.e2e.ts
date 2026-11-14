@@ -10,6 +10,7 @@ import {
   ageThisYear,
   formatCalendarDay,
   kgToG,
+  msToS,
   planInputFrom,
 } from '@cedo/contract'
 import {
@@ -2953,6 +2954,11 @@ test(
  * A mistake caught as the set is logged (#63): Undo, in Log's place, takes it back and ends its
  * rest, and the logger holds what the set said — one wrong number is fixed, not the whole set typed
  * again. Skip ends a rest early, and +30 s — a tap on the countdown — lengthens it.
+ *
+ * What stands in Log's place is the contract's (`justLogged`, `restHeldAfter`), tested there with
+ * no browser (just-logged.test.ts); this proves the screen sends each tap, twice over (#38): held
+ * on the phone — seen at once, without a signal — and told to the server, which keeps the rest for
+ * every device. Proven by rebuilding the app without each send: it fails each time.
  */
 test(
   'Undo in Log’s place takes the set back, holding what it said; Skip and +30 s',
@@ -2984,14 +2990,32 @@ test(
 
       await bench.fill('reps', '8')
       await bench.log()
+      const mine = await page.client()
+      const id = await app.session.id()
+      /** How long the rest is, as the server keeps it: 0 once skipped. */
+      const keptSeconds = async () => {
+        const { rest } = await mine.sessions.get(id)
+        return rest === null ? null : msToS(Date.parse(rest.endsAt) - Date.parse(rest.since))
+      }
+      await page.until(keptSeconds, (seconds) => seconds === 120)
+
+      // Without a signal the tap is held here, and the countdown says so at once.
+      await page.goOffline()
       await app.session.extendRest()
       await page.until(bench.rest, (said) => /^Rest 2:[23]\d$/u.test(said ?? ''))
+      expect(await keptSeconds()).toBe(120)
+      // With one, the server is told: the same rest, on every device.
+      await page.goOnline()
+      await page.until(keptSeconds, (seconds) => seconds === 150)
+
+      await page.goOffline()
       await app.session.skipRest()
       expect(await bench.canLog()).toBe(true)
       expect(await app.session.justLogged()).toBe(false)
+      await page.goOnline()
+      await page.until(keptSeconds, (seconds) => seconds === 0)
 
-      const mine = await page.client()
-      const logs = (await mine.sessions.get(await app.session.id())).logs
+      const { logs } = await mine.sessions.get(id)
       expect(logs.map((l) => [l.reps, l.weightG, l.reserve])).toEqual([[8, 62_500, 2]])
     })
   },
@@ -3037,61 +3061,10 @@ test(
 )
 
 /**
- * A superset rests after the pair, not between (#63): its first set has no rest after it, so Undo
- * sits beside the partner's Log — the focus goes straight to it — and the pair's last starts the
- * rest in Log's place.
- */
-test(
-  'a superset’s first set keeps Undo beside the partner’s Log; the pair’s last rests',
-  async () => {
-    await withApp('undo-superset', async (page) => {
-      const app = screens(page)
-      await app.auth.register(unique('uss'))
-      const mine = await page.client()
-      const [first, second] = (await mine.exercises.list({ limit: 50 })).items.filter(
-        (exercise) => exercise.tracking === 'weight_reps',
-      )
-      if (first === undefined || second === undefined) throw new Error('Too few lifts seeded')
-      const sets = [
-        { targetReps: 10, targetWeightG: 20_000 },
-        { targetReps: 10, targetWeightG: 20_000 },
-      ]
-      const plan = await mine.workouts.create({ name: 'Pairs', notes: null })
-      await mine.workouts.replacePlan(
-        plan.id,
-        WorkoutPlanInput.parse({
-          days: [
-            {
-              name: 'A',
-              entries: [
-                { exerciseId: first.id, sets, supersetGroup: 'A', restSeconds: 0 },
-                { exerciseId: second.id, sets, supersetGroup: 'A', restSeconds: 60 },
-              ],
-            },
-          ],
-        }),
-      )
-
-      await app.planEditor.open(plan.id)
-      await app.workouts.startDay(0)
-      await app.session.entry(0).log()
-      expect(await app.session.inFocus()).toBe('entry 1')
-      const partner = app.session.entry(1)
-      expect(await partner.rest()).toBeNull()
-      expect(await partner.canLog()).toBe(true)
-      expect(await app.session.canUndoJustLogged()).toBe(true)
-
-      await partner.log()
-      expect(await partner.rest()).toMatch(/^Rest (1:00|0:5\d)$/u)
-      expect(await app.session.canUndoJustLogged()).toBe(true)
-    })
-  },
-  E2E_TIMEOUT_MS,
-)
-
-/**
  * A set with no rest after it — straight on, as in a superset's first — keeps Undo beside Log until
- * the next set is logged (#63).
+ * the next set is logged (#63). The one journey that draws Undo beside Log, and taps both there:
+ * which sets have no rest after them — a superset's first among them — is the contract's, tested
+ * with no browser (just-logged.test.ts).
  */
 test(
   'with no rest after a set, Undo sits beside Log until the next set',
@@ -3117,7 +3090,7 @@ test(
         async () => (await app.session.loggedIds()).length,
         (rows) => rows === 1,
       )
-      // Undo ends what was just done: the first set is not offered to undo again. Log is back.
+      // After an undo nothing is just logged: the first set is not offered to undo again. Log is back.
       expect(await app.session.canUndoJustLogged()).toBe(false)
       expect(await app.session.justLogged()).toBe(false)
       expect(await bench.canLog()).toBe(true)

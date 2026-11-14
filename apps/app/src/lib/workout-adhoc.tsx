@@ -6,13 +6,13 @@ import {
   progressOf,
 } from '@cedo/contract'
 import { AddRow, Stack, UpNext } from '../ui/index.ts'
-import { type RestShown, useJustDone } from './just-done.ts'
+import { type RestOfSession, useJustLogged } from './just-logged.ts'
 import { useWeightUnit } from './weight-unit.ts'
 import { Focus } from './workout-focus.tsx'
 import type { WorkoutSets, WorkoutShown } from './workout-state.ts'
 
 /*
- * A session with no plan behind it (#24): the exercise in focus, with what was just done in its
+ * A session with no plan behind it (#24): the exercise in focus, with the set just logged in its
  * Log's place (`AdHocMain`, #63), then the others, Add exercise, and every set (`AdHocSide`) — the
  * screen's two columns, side by side on a desktop. Nothing was prescribed, so there is always a
  * next set until the athlete moves on. What shows is the contract's `workoutView`.
@@ -23,12 +23,12 @@ export interface AdHocMainProps {
   /** The exercises picked this open, whole: how to do them can be shown. */
   readonly full: readonly Exercise[]
   readonly sets: WorkoutSets
-  readonly rest: RestShown
+  readonly rest: RestOfSession
   readonly view: WorkoutShown
   readonly onHowTo: (exercise: Exercise, cue: string | null) => void
 }
 
-/** The exercise in focus — one more set from the last — and what was just done in Log's place. */
+/** The exercise in focus — one more set from the last — and the set just logged in Log's place. */
 export function AdHocMain({
   full,
   sets,
@@ -36,8 +36,8 @@ export function AdHocMain({
   view,
   onHowTo,
 }: AdHocMainProps): React.JSX.Element | null {
-  const { focus, shown } = view
-  const after = useJustDone({ rest, shown, sets })
+  const { focus } = view
+  const after = useJustLogged({ rest, view, sets })
   const unit = useWeightUnit()
   if (focus.kind !== 'added') return null
   return <Focus focus={focus} full={full} sets={sets} after={after} onHowTo={onHowTo} unit={unit} />

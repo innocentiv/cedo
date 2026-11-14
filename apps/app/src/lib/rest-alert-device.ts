@@ -175,7 +175,7 @@ export function useChooseAlertKind(): {
 }
 
 /**
- * The rest this phone counts, told to iOS as it changes — beside its clock (`useJustDone`). While
+ * The rest this phone counts, told to iOS as it changes — beside its clock (`useJustLogged`). While
  * nothing tells it, the rest band offers to: one tap turns on notifications.
  */
 export function useRestTold(

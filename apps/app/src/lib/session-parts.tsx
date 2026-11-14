@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router'
 import type { SessionDay, SessionExercise, SetLog } from '@cedo/contract'
 import {
   byExercise,
+  exerciseName,
   exerciseOfSet,
   formatWithReserve,
   loggedLabel,
@@ -10,7 +11,6 @@ import {
 } from '@cedo/contract'
 import type { SessionSets } from '../api/pending.ts'
 import { useWeightUnit } from './weight-unit.ts'
-import { exerciseName } from './exercise-name.ts'
 import { Card, ListRow, Stack, Text } from '../ui/index.ts'
 import { FixSet } from './fix-set.tsx'
 

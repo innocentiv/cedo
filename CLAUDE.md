@@ -110,6 +110,10 @@ Hard-won, and expensive to rediscover. Add to this list when something costs you
 - **With guards in a row, remove each one and watch its own test fail.** A test meant for the second
   guard can pass on the first: the session's "overtaken while asking `/auth/me`" and the stall rule's
   "progress in the latest session" both did, green with the very guard they named deleted.
+- **Moving a hook's rule into a reducer, port what the hook remembered, not what it showed.** Two
+  `useState`s each kept a tap with the rest it was made on, and hid it for any other; one value
+  for one rest forgot it when the next rest ran. Green in 95 journeys and 16 unit tests: a review
+  reading old against new, event by event, found it. Ask for that review of any "nothing changes".
 - **Undo a proving mutation with the inverse `Edit`, never `git checkout <file>`.** Checkout restores
   the last commit, so it also reverts the uncommitted work the mutation sat in: it silently deleted
   the very function a contract test had just been proven against.

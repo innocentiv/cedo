@@ -4,6 +4,7 @@ import {
   type EntryTarget,
   type Exercise,
   entryLine,
+  exerciseName,
   formatPrescription,
   nameToKeep,
   setTargetOf,
@@ -130,7 +131,7 @@ export function EntryLine({
       <Stack direction="row" align="center" gap="sm" testID={id}>
         <Stack grow gap="xs">
           <Text variant="label" tone="muted" testID={`${id}-unavailable`}>
-            Unavailable exercise — remove it to save
+            {`${exerciseName(null)} — remove it to save`}
           </Text>
           <Text variant="caption" tone="muted" testID={`${id}-target`}>
             {prescription}

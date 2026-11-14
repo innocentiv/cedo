@@ -391,10 +391,14 @@ up, when it is skipped, or when its set is undone. A superset rests after the ro
 it: the rest of the entry that ends it.
 _Avoid_: timer, break, recovery
 
+**Just logged**:
+The set logged last, while it can still be taken back where it was logged: while its rest runs, or —
+with none after it — until the next set. After an undo, nothing is just logged until the next set.
+_Avoid_: just done, last set (that is any session's latest), current set
+
 **Undo**:
-Taking back the set just logged, where it was logged: while its rest runs, or — with none after it —
-until the next set. It ends the rest, and nothing is just logged again until the next set. Any
-other set is corrected or removed instead, at any time.
+Taking back the set just logged, where it was logged. It ends the rest, and nothing is just logged
+again until the next set. Any other set is corrected or removed instead, at any time.
 _Avoid_: rollback, revert
 
 **Swap**:

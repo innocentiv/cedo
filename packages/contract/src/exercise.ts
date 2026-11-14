@@ -171,6 +171,13 @@ export const Exercise = z.object({
 })
 export type Exercise = z.output<typeof Exercise>
 
+/**
+ * What an exercise is called — and, read as null, one the reader can no longer see (GLOSSARY.md,
+ * "Unavailable exercise"): visibility is not permanent. Said the same way wherever it is named.
+ */
+export const exerciseName = (exercise: { readonly name: string } | null | undefined): string =>
+  exercise?.name ?? 'Unavailable exercise'
+
 /** What a request body is: fields with a default may be left out, and the server fills them. */
 export type ExerciseInput = z.input<typeof ExerciseCreate>
 
