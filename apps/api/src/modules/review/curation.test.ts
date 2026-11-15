@@ -66,3 +66,38 @@ test('a true duplicate is found even behind merely similar names', async () => {
     'Cable Lateral Raises',
   ])
 })
+
+/**
+ * What an audit finds besides duplicates, of two exercises: one whole — two muscles, instructions,
+ * the equipment it needs — and one bare. No route reads an audit; the `library_audit` tool does,
+ * and how it reads is `mcp/format-library.test.ts`'s.
+ */
+test('names what is thin, bare or unsaid, and leaves out what is whole', async () => {
+  const create = async (body: Record<string, unknown>) => {
+    const made = await alice.wire('/exercises', { method: 'POST', body: JSON.stringify(body) })
+    expect(made.status).toBe(200)
+  }
+  await create({
+    name: 'Back Squat',
+    muscles: [
+      { muscle: 'quadriceps', loadPct: 60 },
+      { muscle: 'gluteus_maximus', loadPct: 40 },
+    ],
+    instructions: 'Squat to depth and drive up.',
+    equipment: ['barbell', 'rack'],
+  })
+  await create({ name: 'Leg Extension', muscles: [{ muscle: 'quadriceps', loadPct: 100 }] })
+
+  const audit = await libraryAudit(alice.caller, alice.personalGroupId)
+  expect(audit.total).toBe(2)
+  expect(audit.missingInstructions).toEqual(['Leg Extension'])
+  expect(audit.undescribedEquipment).toEqual(['Leg Extension'])
+  expect(audit.singleMuscle).toEqual(['Leg Extension'])
+  // Neither has a video or a picture: by name, as every list here is.
+  expect(audit.missingMedia).toEqual(['Back Squat', 'Leg Extension'])
+  // Thin is fewer than two exercises: the glutes have one, the quadriceps two, the calves none —
+  // and a muscle nothing loads is listed too, before those with one.
+  expect(audit.thinCoverage).toContainEqual({ muscle: 'soleus', exercises: 0 })
+  expect(audit.thinCoverage.at(-1)).toEqual({ muscle: 'gluteus_maximus', exercises: 1 })
+  expect(audit.thinCoverage.map((m) => m.muscle)).not.toContain('quadriceps')
+})

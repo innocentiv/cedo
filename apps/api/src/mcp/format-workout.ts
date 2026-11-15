@@ -14,7 +14,9 @@ import {
   loadOf,
   loadable,
   MISSING_EQUIPMENT,
+  counted,
   describeProgression,
+  exerciseName,
   formatEffort,
   formatWeight,
   formatWithReserve,
@@ -35,9 +37,18 @@ import { type GroupNameOf, ownership } from './format-group.ts'
 const flagsOf = (workout: WorkoutSummary, groupNameOf: GroupNameOf): string =>
   `[${ownership(workout, groupNameOf).join(', ')}]`
 
-export const workoutLine = (workout: WorkoutSummary, groupNameOf: GroupNameOf): string =>
-  `${workout.name} | ${workout.dayCount} day${workout.dayCount === 1 ? '' : 's'}` +
+const workoutLine = (workout: WorkoutSummary, groupNameOf: GroupNameOf): string =>
+  `${workout.name} | ${counted(workout.dayCount, 'day')}` +
   ` | ${flagsOf(workout, groupNameOf)} | ${workout.id}`
+
+/** The workouts a caller can see, a line each ending with its id. */
+export const workoutLines = (
+  workouts: readonly WorkoutSummary[],
+  groupNameOf: GroupNameOf,
+): string =>
+  workouts.length === 0
+    ? 'No workouts yet.'
+    : workouts.map((w) => workoutLine(w, groupNameOf)).join('\n')
 
 /** A rule as the editor says it: `Double 8–12, +2.5 kg`, `Linear, +0:15`, `Manual`. */
 const ruleWords = (rule: Progression, unit: WeightUnit): string =>
@@ -59,6 +70,14 @@ function loadsNote(weightG: number | null, load: Load | null, unit: WeightUnit):
   const end = can.limit === null ? '' : `, ${LOAD_LIMIT_WORDS[can.limit]}`
   return ` (loads ${formatWeight(can.weightG, unit)}${end})`
 }
+
+/** A workout made empty: its id, and the tool that gives it a plan. */
+export const workoutCreated = (workout: Pick<Workout, 'id' | 'name'>): string =>
+  `Created workout ${workout.id} — "${workout.name}". Now call workout_save_plan.`
+
+/** A workout copied: the copy's id, and how much of a plan came with it. */
+export const workoutCopied = (copy: Pick<Workout, 'id' | 'name' | 'days'>): string =>
+  `Copied to workout ${copy.id} — "${copy.name}", ${counted(copy.days.length, 'day')}.`
 
 /** A name or notes changed: the two lines that changed, not the whole plan, which did not. */
 export function workoutUpdated(workout: Workout): string {
@@ -87,7 +106,7 @@ export function workoutDetail(
       const rest = `, ${restWords(entry.restSeconds, restPlace(day.entries, at))}`
       const rule = `, progression: ${ruleWords(entry.progression, unit)}`
       // Null when the caller cannot see the exercise — see the note on WorkoutEntry.exercise.
-      const name = entry.exercise?.name ?? '[unavailable exercise]'
+      const name = exerciseName(entry.exercise)
       // Kept in the plan, still loggable — but the AI is told before it plans around it (#35).
       const kit = entry.exercise?.doable === false ? ` [${MISSING_EQUIPMENT}]` : ''
       const load = entry.exercise === null ? null : loadOf(entry.exercise, equipment, unit)
@@ -144,7 +163,7 @@ export function nextTargetLine(t: EntryTarget, unit: WeightUnit): string {
 
 /** What stands behind a target (#66): the sessions since it last started, and if set by hand. */
 function basisOf({ sessions, byHand }: EntryTarget): string {
-  const since = `${sessions} session${sessions === 1 ? '' : 's'}`
+  const since = counted(sessions, 'session')
   if (byHand) return sessions === 0 ? 'set by hand' : `set by hand, then ${since}`
   return sessions === 0 ? 'no session yet' : `from ${since}`
 }

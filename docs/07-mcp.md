@@ -186,12 +186,13 @@ appears only when it has something to say:
 Falling (estimated max from what was lifted, down 2+ sessions running):
   Bench Press: down in each of the latest 3 sessions, 77 kg → 66.5 kg
 
-Effort drift (1+ rep fewer in reserve at the same set, in each of the latest 2 sessions):
-  Row at 8 × 50 kg: average 3 → 1.5 in reserve
+Effort drift (reps in reserve down 1+ at the same set, in each of the latest 2 sessions):
+  Row at 8 × 50 kg: 3 → 1.5 in reserve
 ```
 
 A reserve is rated whole, but an average of them need not be: `1.5` is an average, not a rating
-(ADR-0027).
+(ADR-0027). The text above is asserted, whole, by `mcp/format.test.ts` ("the example the MCP guide
+shows"): change one and the other must follow.
 
 The review only says them. Deloading is the AI's to do, by saving a lighter plan — the progression
 rule never lowers a weight by itself (ADR-0012).
@@ -260,7 +261,7 @@ Each is the athlete's own read, given their training — a `Training` the tool r
 `ownOrCoached`, as the HTTP route does — and the same function the route calls with it, so it
 computes as the athlete's does, and differs only by what the
 coach can see (ADR-0019). How each read treats what the coach cannot see is the rule it already
-has: a session keeps every set and says "unavailable exercise"; the review **leaves out** the work
+has: a session keeps every set and says "Unavailable exercise"; the review **leaves out** the work
 of an exercise or plan the coach cannot see, as it leaves out one you have lost; the history of
 such an exercise is refused. Nothing a coach's AI can call writes to an athlete's training, and an
 athlete who stops sharing is a refusal on the next call. See
@@ -312,7 +313,8 @@ That is the same rule as an HTTP route handler, and for the same reason.
 What formatting needs to read is not a second service call. A line names an exercise's or a
 workout's owning group — `mine`, `library`, or the group's name (#47) — and the response carries
 only `ownerGroupId`. So the tools that print those lines also call `groupNamesOf(caller)`
-(`format-group.ts`). It reads the caller's own groups, which own everything they can see, and
+(`tools/group-names.ts` — with the tools, because it reads, and no `format*.ts` does). It reads the
+caller's own groups, which own everything they can see, and
 decides nothing. The app does the same from the groups it already holds. Putting the name on
 every ownable response instead would add a join to every list, for a word only these lines print.
 
@@ -322,7 +324,7 @@ Do not mirror the REST surface. `session_log` records a whole session — start,
 in one call, because the alternative is `1 + N` round trips for one workout. There is no
 `session_start`/`session_log_set`/`session_finish` triple, because no caller wants one.
 
-A task-shaped tool is still ONE service call: `session_log` is `SessionService.logWhole`, one
+A task-shaped tool is still ONE service call: `session_log` is `logWhole` (`session/log-whole.ts`), one
 transaction, all or nothing. It numbers the sets itself, per plan entry or exercise in the order
 sent — the model sends no `setIndex`, and is refused if it does, so it cannot number them
 differently from the app. Its first version looped over `logSet` inside the tool — domain logic
@@ -377,8 +379,8 @@ is said where the AI meets it, three ways (ADR-0026, ADR-0027):
   changed (duplicate it instead); a rule that does not fit the
   exercise's tracking mode — weight or bodyweight and reps take manual, linear or double, duration
   manual or linear in seconds, distance and duration manual or distance; a half rep in reserve.
-- **`workout_get` prints everything a rule depends on**: each rule in full (`double 8–12, +2.5 kg`,
-  `linear +2.5 kg after 2 cleared sessions`), each set's reps in reserve, and the caller's target
+- **`workout_get` prints everything a rule depends on**: each rule in full (`Double 8–12, +2.5 kg`,
+  `Linear, +2.5 kg after 2 cleared sessions`), each set's reps in reserve, and the caller's target
   beside the prescription it started from. Read for an `athlete`, it prints no target: a coach
   reading an athlete's targets is not offered.
 
@@ -413,12 +415,19 @@ at every plan save; that is the price of a save that can drop half a plan.
 1. If it needs data the API cannot already produce, add a **service** function first — never put the
    logic in the tool.
 2. Register it in `mcp/tools/library.ts`, `groups.ts`, `equipment.ts`, `training.ts`, `session.ts`,
-   `coaching.ts`, `athlete-file.ts` or `diagnostics.ts` with a contract schema,
+   `coaching.ts`, `athlete-file.ts`, `diagnostics.ts` or `instance.ts` with a contract schema,
    an annotation, and a description written for a model: say when to use it, and what NOT to do. A
-   new file must also be wired into `mcp/tools/index.ts`, or its tools never load.
-3. Format the output for reading (`mcp/format.ts`), not for machines. A write answers with what
-   it changed: the whole of it when that is small — `exercise_update` prints the exercise — and
-   only the part that changed when the rest is large and untouched — `workout_update` prints the
-   name and notes, not the plan beneath them.
-4. Add a case to `mcp/mcp.test.ts`, which drives real JSON-RPC over HTTP rather than calling the
-   handler directly — auth, framing and schema publication are exactly what a direct call skips.
+   new file must also be wired into `mcp/tools/index.ts`, or its tools never load — and its name
+   added to the published list `mcp/mcp.test.ts` asserts, which fails on a tool it does not know.
+3. Format the output for reading, not for machines, in a formatter (`mcp/format.ts` or a
+   `format-<area>.ts` beside it): what the service answered in, text out, reading nothing. The
+   handler is one service call and one formatter, with at most a fixed word of its own before it
+   (`Created.`). A write answers with what it changed: the whole of it when that
+   is small — `exercise_update` prints the exercise — and only the part that changed when the rest
+   is large and untouched — `workout_update` prints the name and notes, not the plan beneath them.
+4. Test what it says by calling its formatter, in the `format*.test.ts` beside it — the whole text,
+   every branch, with no wire and no database. Then add a case to `mcp/mcp.test.ts`, which drives
+   real JSON-RPC over HTTP rather than calling the handler directly — auth, framing and schema
+   publication are exactly what a direct call skips — for what only the wire shows: that the tool
+   answers with its formatter's text, what it hands it of the caller, and a refusal. See
+   `docs/playbooks/add-mcp-tool.md`, step 5.

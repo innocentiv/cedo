@@ -22,11 +22,13 @@ import { READ, REPLACES, REWRITES, WRITE, json, reviewSummary, text } from '../f
 import {
   nextTargetLine,
   nextTargetLines,
+  workoutCopied,
+  workoutCreated,
   workoutDetail,
-  workoutLine,
+  workoutLines,
   workoutUpdated,
 } from '../format-workout.ts'
-import { groupNamesOf } from '../format-group.ts'
+import { groupNamesOf } from './group-names.ts'
 
 /**
  * OBJECTIVE 2 — reviewing and adjusting someone's training.
@@ -78,12 +80,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
     },
     async ({ scope, groupId, q, limit }) => {
       const page = await WorkoutService.list(caller, { scope, groupId, q, limit })
-      const groupNameOf = await groupNamesOf(caller)
-      return text(
-        page.items.length === 0
-          ? 'No workouts yet.'
-          : page.items.map((w) => workoutLine(w, groupNameOf)).join('\n'),
-      )
+      return text(workoutLines(page.items, await groupNamesOf(caller)))
     },
   )
 
@@ -135,10 +132,7 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       inputSchema: WorkoutCreate,
       annotations: WRITE,
     },
-    async (input) => {
-      const created = await WorkoutService.create(caller, input)
-      return text(`Created workout ${created.id} — "${created.name}". Now call workout_save_plan.`)
-    },
+    async (input) => text(workoutCreated(await WorkoutService.create(caller, input))),
   )
 
   server.registerTool(
@@ -195,10 +189,8 @@ export function registerTrainingTools(server: McpServer, caller: Caller): void {
       inputSchema: DuplicateInput.safeExtend({ workoutId: z.uuid() }),
       annotations: WRITE,
     },
-    async ({ workoutId, toGroupId }) => {
-      const copy = await WorkoutService.duplicate(caller, workoutId, toGroupId)
-      return text(`Copied to workout ${copy.id} — "${copy.name}", ${copy.days.length} day(s).`)
-    },
+    async ({ workoutId, toGroupId }) =>
+      text(workoutCopied(await WorkoutService.duplicate(caller, workoutId, toGroupId))),
   )
 
   server.registerTool(

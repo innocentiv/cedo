@@ -7,6 +7,7 @@ import type {
 } from '@cedo/contract'
 import {
   AT_LEAST_SESSIONS,
+  counted,
   driftLine,
   estimatedMax,
   formatEffort,
@@ -15,7 +16,7 @@ import {
   inReserve,
   pointsOf,
 } from '@cedo/contract'
-import { DRIFT_RESERVE, DRIFT_SESSIONS, FALLING_SESSIONS } from '../modules/review/service.ts'
+import { DRIFT_RESERVE, DRIFT_SESSIONS, FALLING_SESSIONS } from '../modules/review/deload.ts'
 import { aboutLine } from './format-file.ts'
 
 /**
@@ -66,7 +67,8 @@ export const REPLACES = { ...WRITE, destructiveHint: true, idempotentHint: true 
 export const REWRITES = { ...WRITE, destructiveHint: true, idempotentHint: false } as const
 
 /**
- * `Bench Press: 4 sessions at 8 × 60 kg` — the top set those sessions share, in its exercise's own
+ * `Bench Press: 4 sessions at 8 × 60 kg (estimated max 76 kg)` — the top set those sessions share,
+ * and for a weight lift what it is worth, in its exercise's own
  * terms, like every other effort here: no unit arithmetic of its own.
  */
 function stalledLine(s: TrainingReview['stalled'][number], unit: WeightUnit): string {
@@ -80,7 +82,7 @@ function stalledLine(s: TrainingReview['stalled'][number], unit: WeightUnit): st
 
 /**
  * The deload signals, each under its own heading and only when there is one to say: an empty
- * "nothing is falling" beside "nothing looks stalled" is context spent on no news. See ./deload.ts.
+ * "nothing is falling" beside "nothing looks stalled" is context spent on no news. See modules/review/deload.ts.
  */
 function deloadSections(review: TrainingReview, unit: WeightUnit): string[] {
   const sections: string[] = []
@@ -106,7 +108,7 @@ function deloadSections(review: TrainingReview, unit: WeightUnit): string[] {
 
 /**
  * An exercise's recent sessions, one line each, with the session's best estimated max for a weight
- * lift — `2026-10-14: w10 × 20 kg, 8 × 60 kg · 1 in reserve · estimated max 76 kg` — and its stall,
+ * lift — `2026-10-14: w10 × 20 kg, 8 × 60 kg · 1 in reserve · estimated max 78 kg` — and its stall,
  * if it has one, last.
  */
 export function historyLines(history: ExerciseHistory, unit: WeightUnit): string {
@@ -137,7 +139,7 @@ export function historyLines(history: ExerciseHistory, unit: WeightUnit): string
  * alone: it used to read "0 kg", as if the muscle had not been trained.
  */
 function muscleLine(m: MuscleWork, unit: WeightUnit): string {
-  const sets = `${m.weightedSets} set${m.weightedSets === 1 ? '' : 's'}`
+  const sets = counted(m.weightedSets, 'set')
   const lifted = m.liftedG === 0 ? '' : `, ${formatWeight(m.liftedG, unit)} lifted`
   const change =
     m.changePct === null ? 'no prior data' : `${m.changePct > 0 ? '+' : ''}${m.changePct}%`
@@ -156,18 +158,16 @@ function muscleSections(
   // Empty only when no muscle was worked in either window: the rest are counted after the top.
   if (work.top.length === 0) return ['No working sets recorded.']
   const more =
-    work.omitted === 0
-      ? []
-      : [`and ${work.omitted} more muscle${work.omitted === 1 ? '' : 's'} with less work.`]
+    work.omitted === 0 ? [] : [`and ${counted(work.omitted, 'more muscle')} with less work.`]
   const sections = [
-    `Working sets by muscle, by its share of each exercise (vs the preceding ${weeks} weeks):\n  ${[
+    `Working sets by muscle, by its share of each exercise (vs the preceding ${counted(weeks, 'week')}):\n  ${[
       ...work.top.map((m) => muscleLine(m, unit)),
       ...more,
     ].join('\n  ')}`,
   ]
   if (work.declined.length > 0) {
     sections.push(
-      `Declined sharply (half or less of their sets in the preceding ${weeks} weeks):\n  ${work.declined
+      `Declined sharply (half or less of their sets in the preceding ${counted(weeks, 'week')}):\n  ${work.declined
         .map((m) => muscleLine(m, unit))
         .join('\n  ')}`,
     )
@@ -190,23 +190,31 @@ export function reviewSummary(review: TrainingReview, unit: WeightUnit): string 
           .map((d) => `${d.workout} / ${d.day}: ${d.sessions}x`)
           .join('\n  ')}`
 
+  // With nothing logged, nothing is judged: "nothing looks stalled" would be an all-clear for
+  // nothing — the app says none either. A stall there is, from before the window, is still said.
   const stalled =
-    review.stalled.length === 0
-      ? 'Nothing looks stalled.'
-      : `Stalled (the same top set, ${AT_LEAST_SESSIONS}+ sessions running):\n  ${review.stalled.map((s) => stalledLine(s, unit)).join('\n  ')}`
+    review.stalled.length > 0
+      ? [
+          `Stalled (the same top set, ${AT_LEAST_SESSIONS}+ sessions running):\n  ${review.stalled.map((s) => stalledLine(s, unit)).join('\n  ')}`,
+        ]
+      : a.sessions === 0
+        ? []
+        : ['Nothing looks stalled.']
 
-  return [
-    `Last ${weeks} weeks: ${a.sessions} sessions (${a.perWeek}/week).`,
+  const head = [
+    `Last ${counted(weeks, 'week')}: ${counted(a.sessions, 'session')} (${a.perWeek}/week).`,
     aboutLine(review, unit),
     a.lastSessionAt === null
       ? 'No sessions logged in this window.'
-      : `Last session ${a.lastSessionAt}. Current streak ${a.currentStreakDays} days, longest gap ${a.longestGapDays} days.`,
-    '',
-    days,
-    '',
-    muscleSections(review.muscleWork, weeks, unit).join('\n\n'),
-    '',
-    stalled,
-    ...deloadSections(review, unit).flatMap((section) => ['', section]),
+      : `Last session ${a.lastSessionAt}. Current streak ${counted(a.currentStreakDays, 'day')}, longest gap ${counted(a.longestGapDays, 'day')}.`,
   ].join('\n')
+
+  // A block each, a blank line apart.
+  return [
+    head,
+    days,
+    ...muscleSections(review.muscleWork, weeks, unit),
+    ...stalled,
+    ...deloadSections(review, unit),
+  ].join('\n\n')
 }

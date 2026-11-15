@@ -108,74 +108,12 @@ async function trained(
 const progression = async (token: string, p: Planned) =>
   textOf((await callTool(token, 'workout_progression', { workoutId: p.workoutId })).body)
 
-describe('workout_get says everything a rule depends on', () => {
-  test('each rule in full, Manual included', async () => {
-    const p = await planned(alice, DOUBLE)
-    const press = await exercise(alice, 'Press')
-    const plank = await exercise(alice, 'Plank', 'duration')
-    const set = { targetReps: 5, targetWeightG: 40_000 }
-    await callTool(pat, 'workout_save_plan', {
-      workoutId: p.workoutId,
-      days: [
-        {
-          name: 'A',
-          entries: [
-            {
-              id: p.entryId,
-              exerciseId: p.exerciseId,
-              sets: [{ targetReps: 8, targetWeightG: 60_000 }],
-              progression: DOUBLE,
-            },
-            { exerciseId: press.id, sets: [set], progression: { ...LINEAR, afterSuccesses: 2 } },
-            {
-              exerciseId: plank.id,
-              sets: [{ targetDurationS: 60 }],
-              progression: { kind: 'linear_duration', incrementS: 15 },
-            },
-            { exerciseId: press.id, sets: [set] },
-          ],
-        },
-      ],
-    })
-    const outline = textOf((await callTool(pat, 'workout_get', { workoutId: p.workoutId })).body)
-    expect(outline).toContain('progression: Double 8–12, +2.5 kg')
-    expect(outline).toContain('progression: Linear, +2.5 kg after 2 cleared sessions')
-    expect(outline).toContain('progression: Linear, +0:15')
-    expect(outline).toContain('progression: Manual')
-  })
-
-  test('each set’s reps in reserve, a ramp as written', async () => {
-    const p = await planned(alice, LINEAR)
-    await callTool(pat, 'workout_save_plan', {
-      workoutId: p.workoutId,
-      days: [
-        {
-          name: 'A',
-          entries: [
-            {
-              id: p.entryId,
-              exerciseId: p.exerciseId,
-              progression: LINEAR,
-              sets: [2, 1, 0].map((targetReserve) => ({
-                targetReps: 8,
-                targetWeightG: 60_000,
-                targetReserve,
-              })),
-            },
-          ],
-        },
-      ],
-    })
-    const lines = textOf(
-      (await callTool(pat, 'workout_get', { workoutId: p.workoutId })).body,
-    ).split('\n')
-    expect(lines.filter((l) => l.includes('work: 8 × 60 kg')).map((l) => l.trim())).toEqual([
-      'work: 8 × 60 kg · 2 in reserve',
-      'work: 8 × 60 kg · 1 in reserve',
-      'work: 8 × 60 kg · 0 in reserve',
-    ])
-  })
-
+/*
+ * How a plan and its targets read — each rule in full, a ramp of reps in reserve, why a step held —
+ * is `format-workout.test.ts`'s, with no wire. Here: what only the tool decides (whose targets a
+ * plan is read with), and that what was trained, set by hand or owned reaches the words.
+ */
+describe('workout_get reads a plan with the caller’s own targets', () => {
   test("the caller's own target beside the prescription, only once it differs", async () => {
     const p = await planned(alice, DOUBLE)
     const before = textOf((await callTool(pat, 'workout_get', { workoutId: p.workoutId })).body)
@@ -210,26 +148,12 @@ describe('workout_progression says each step, and each hold by its set', () => {
     )
   })
 
-  test('short of the targets: the set, what it did, of what it was asked', async () => {
+  /** A step that held reaches the words too: which set, and what it did of what was asked. */
+  test('a session short of the target holds it, and the line says by which set', async () => {
     const p = await planned(alice, LINEAR)
     await trained(pat, p, [8, 8, 6])
     expect(await progression(pat, p)).toBe(
       'Bench (Linear, +2.5 kg): next 8 × 60 kg, as the plan says — held: set 3 did 6 of 8  (from 1 session)',
-    )
-  })
-
-  test('ground out past its reserve: the set, what it left, and what it asked', async () => {
-    const p = await planned(alice, LINEAR)
-    await trained(pat, p, [8, 8, 8], 0)
-    expect(await progression(pat, p)).toBe(
-      'Bench (Linear, +2.5 kg): next 8 × 60 kg, as the plan says — held for effort: set 1 left 0 in reserve, asked 2  (from 1 session)',
-    )
-  })
-
-  test('nothing trained yet: the plan’s numbers, and no history', async () => {
-    const p = await planned(alice, DOUBLE)
-    expect(await progression(pat, p)).toBe(
-      'Bench (Double 8–12, +2.5 kg): next 8 × 60 kg, as the plan says  (no session yet)',
     )
   })
 

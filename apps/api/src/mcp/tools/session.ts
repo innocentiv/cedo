@@ -7,7 +7,7 @@ import { history } from '../../modules/session/history.ts'
 import { amendLog } from '../../modules/session/set-writes.ts'
 import { logWhole } from '../../modules/session/log-whole.ts'
 import { READ, REPLACES, WRITE, historyLines, text } from '../format.ts'
-import { setLine } from '../format-coaching.ts'
+import { sessionLogged, setLine } from '../format-coaching.ts'
 
 /**
  * OBJECTIVE 2, as it was done — training an AI is told about: a whole session logged, and a set
@@ -32,10 +32,7 @@ export function registerSessionTools(server: McpServer, caller: Caller): void {
       inputSchema: SessionLogInput,
       annotations: WRITE,
     },
-    async (input) => {
-      const session = await logWhole(caller, input)
-      return text(`Logged session ${session.id} with ${session.logs.length} set(s).`)
-    },
+    async (input) => text(sessionLogged(await logWhole(caller, input))),
   )
 
   server.registerTool(

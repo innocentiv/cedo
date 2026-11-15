@@ -7,6 +7,7 @@ import {
   type WeightUnit,
   ageLine,
   ageThisYear,
+  counted,
   formatCalendarDay,
   formatWeight,
   noteByline,
@@ -39,8 +40,8 @@ export function weighInLines(bodyweight: Bodyweight, weeks: number, unit: Weight
   const { weighIns, before } = bodyweight
   return [
     weighIns.length === 0
-      ? `No weigh-ins in the last ${String(weeks)} weeks.`
-      : `Weigh-ins in the last ${String(weeks)} weeks, newest first:\n  ${weighIns.map((w) => line(w)).join('\n  ')}`,
+      ? `No weigh-ins in the last ${counted(weeks, 'week')}.`
+      : `Weigh-ins in the last ${counted(weeks, 'week')}, newest first:\n  ${weighIns.map((w) => line(w)).join('\n  ')}`,
     ...(before === null ? [] : [`The latest before them: ${line(before)}`]),
   ].join('\n')
 }

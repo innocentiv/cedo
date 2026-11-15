@@ -5,7 +5,6 @@ import {
   type Exercise,
   ExerciseCreateRequest,
   ExerciseUpdate,
-  MUSCLES,
   MuscleSlug,
   OfAthlete,
   ScopeFields,
@@ -16,11 +15,14 @@ import * as ExerciseService from '../../modules/exercise/service.ts'
 import * as MediaService from '../../modules/media/service.ts'
 import { libraryAudit, sharedGroupId } from '../../modules/review/curation.ts'
 import { READ, WRITE, text } from '../format.ts'
-import { groupNamesOf } from '../format-group.ts'
-import { exerciseDetail, exerciseLine } from '../format-library.ts'
-
-const section = (title: string, lines: readonly string[]) =>
-  lines.length === 0 ? `${title}: none` : `${title} (${lines.length}):\n  ${lines.join('\n  ')}`
+import { groupNamesOf } from './group-names.ts'
+import {
+  auditSummary,
+  exerciseDetail,
+  exerciseLines,
+  mediaCreated,
+  muscleLines,
+} from '../format-library.ts'
 
 /**
  * OBJECTIVE 1 — curating the shared exercise library from reliable sources.
@@ -42,11 +44,7 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
       inputSchema: z.object({}),
       annotations: READ,
     },
-    () =>
-      text(
-        MUSCLES.map((m) => `${m.slug} (${m.region}) — ${m.name}`).join('\n') +
-          `\n\n${MUSCLES.length} muscles. Loads on one exercise must sum to exactly 100.`,
-      ),
+    () => text(muscleLines()),
   )
 
   server.registerTool(
@@ -77,12 +75,7 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
     },
     async ({ athlete, ...query }) => {
       const page = await ExerciseService.list(await ownOrCoached(caller, athlete), query)
-      if (page.items.length === 0) return text('No exercises matched.')
-      const groupNameOf = await groupNamesOf(caller)
-      return text(
-        page.items.map((e) => exerciseLine(e, groupNameOf)).join('\n') +
-          (page.nextCursor === null ? '' : '\n\n(more results exist; narrow the search)'),
-      )
+      return text(exerciseLines(page, await groupNamesOf(caller)))
     },
   )
 
@@ -156,12 +149,8 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
       inputSchema: z.object({ url: z.url(), title: z.string().max(200).default('') }),
       annotations: WRITE,
     },
-    async ({ url, title }) => {
-      const media = await MediaService.createLink(caller, { url, title })
-      return text(
-        `Created media ${media.id} (${media.kind}). Embeddable: ${media.embedUrl ?? 'no'}.`,
-      )
-    },
+    async ({ url, title }) =>
+      text(mediaCreated(await MediaService.createLink(caller, { url, title }))),
   )
 
   server.registerTool(
@@ -184,33 +173,7 @@ export function registerLibraryTools(server: McpServer, caller: Caller): void {
     async ({ groupId }) => {
       const target = groupId ?? (await sharedGroupId())
       if (target === null) return text('There is no shared library on this instance.')
-
-      const audit = await libraryAudit(caller, target)
-      return text(
-        [
-          audit.scannedForDuplicates < audit.total
-            ? `${audit.total} exercises in this library. The duplicate scan compared the first ${audit.scannedForDuplicates} by name.`
-            : `${audit.total} exercises in this library.`,
-          '',
-          section(
-            'Possible duplicates',
-            audit.possibleDuplicates.map(
-              (d) => `"${d.a}" ~ "${d.b}"  (similarity ${d.similarity})`,
-            ),
-          ),
-          section(
-            'Thin muscle coverage',
-            audit.thinCoverage.map((m) => `${m.muscle}: ${m.exercises} exercise(s)`),
-          ),
-          section('Missing instructions', audit.missingInstructions),
-          section('Missing media', audit.missingMedia),
-          section('Equipment not described', audit.undescribedEquipment),
-          section(
-            'Attributed to a single muscle (check these are really isolation lifts)',
-            audit.singleMuscle,
-          ),
-        ].join('\n\n'),
-      )
+      return text(auditSummary(await libraryAudit(caller, target)))
     },
   )
 }

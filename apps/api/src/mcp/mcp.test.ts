@@ -6,7 +6,6 @@ import {
   MCP_SERVER_NAME,
   Me,
   McpClientConfig,
-  MUSCLE_SLUGS,
   PersonalAccessTokenCreated,
   aiClientConfigs,
   mcpAddress,
@@ -23,7 +22,6 @@ import { EXERCISE_LIBRARY } from '../db/seed-data/exercises.ts'
 import { expectContract } from '../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../test/harness.ts'
 import { appOf, callTool, mintPat, post, publishedTool, rpc, textOf } from '../test/mcp-wire.ts'
-import { reviewFixture } from '../test/review-fixture.ts'
 
 /**
  * Drives the MCP server exactly as an AI client does: JSON-RPC over HTTP at /mcp, authenticated by
@@ -100,19 +98,65 @@ describe('authentication', () => {
 })
 
 describe('the published tool list', () => {
-  test('publishes every tool with a JSON Schema and a read-only or write annotation', async () => {
+  /**
+   * Every tool there is, by name: one registered in a file `tools/index.ts` never loads is published
+   * by nothing, and "at least fifteen" passed with twenty-one of them gone.
+   */
+  test('publishes every tool, each with a description, an input schema and its annotation', async () => {
     const pat = await mintPat(alice)
     const { body } = await rpc(pat, 'tools/list')
     const tools = body.result?.tools ?? []
 
-    expect(tools.length).toBeGreaterThanOrEqual(15)
+    expect(tools.map((tool) => tool.name).toSorted((a, b) => a.localeCompare(b))).toEqual([
+      'athlete_list',
+      'athlete_profile_set',
+      'db_slow_queries',
+      'equipment_get',
+      'equipment_set',
+      'exercise_create',
+      'exercise_duplicate',
+      'exercise_get',
+      'exercise_history',
+      'exercise_search',
+      'exercise_update',
+      'group_list',
+      'instance_sign_up_set',
+      'library_audit',
+      'media_add_link',
+      'muscle_list',
+      'note_create',
+      'note_list',
+      'note_update',
+      'platform_status',
+      'session_fix_set',
+      'session_get',
+      'session_list',
+      'session_log',
+      'target_set',
+      'training_review',
+      'weigh_in_create',
+      'weigh_in_list',
+      'workout_create',
+      'workout_duplicate',
+      'workout_get',
+      'workout_get_editable',
+      'workout_list',
+      'workout_progression',
+      'workout_save_plan',
+      'workout_update',
+    ])
     for (const tool of tools) {
-      expect(typeof tool.annotations?.['readOnlyHint']).toBe('boolean')
+      expect([tool.name, (tool.description ?? '').length > 20]).toEqual([tool.name, true])
+      expect([tool.name, tool.inputSchema]).toEqual([
+        tool.name,
+        expect.objectContaining({ type: 'object' }),
+      ])
+      expect([tool.name, typeof tool.annotations?.['readOnlyHint']]).toEqual([tool.name, 'boolean'])
     }
   })
 
   /** No delete tool exists at all — a confused AI must not be able to destroy training history. */
-  test('exposes no destructive tool', async () => {
+  test('has no tool that deletes', async () => {
     const pat = await mintPat(alice)
     const { body } = await rpc(pat, 'tools/list')
     const names = (body.result?.tools ?? []).map((t) => t.name)
@@ -153,7 +197,8 @@ describe('library curation', () => {
       muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
       shared: true,
     })
-    expect(JSON.stringify(result.body)).toContain('curator access')
+    expect(result.body.result?.isError).toBe(true)
+    expect(textOf(result.body)).toContain('curator access')
   })
 
   test('but can create in their own group', async () => {
@@ -202,15 +247,48 @@ describe('library curation', () => {
       name: 'Bad Lift',
       muscles: [{ muscle: 'quadriceps', loadPct: 50 }],
     })
-    expect(JSON.stringify(result.body)).toContain('100')
+    expect(result.body.result?.isError).toBe(true)
+    expect(textOf(result.body)).toContain('Muscle loads must sum to 100, got 50')
   })
 
-  test('library_audit reports duplicates and thin coverage', async () => {
+  /** A link registered answers with the id an exercise's `mediaIds` takes, and where it plays. */
+  test('media_add_link registers a video, and says its id and where it plays in place', async () => {
+    const pat = await mintPat(alice)
+    const out = textOf(
+      (
+        await callTool(pat, 'media_add_link', {
+          url: 'https://www.youtube.com/watch?v=abcdefghijk',
+          title: 'Back squat, from the side',
+        })
+      ).body,
+    )
+    expect(out).toMatch(
+      /^Created media [0-9a-f-]{36} \(video_link\)\. Embeddable: https:\/\/www\.youtube\.com\/embed\/abcdefghijk\.$/u,
+    )
+    const id = /media ([0-9a-f-]{36})/u.exec(out)?.[1]
+    const created = textOf(
+      (
+        await callTool(pat, 'exercise_create', {
+          name: 'Filmed Squat',
+          muscles: [{ muscle: 'quadriceps', loadPct: 100 }],
+          mediaIds: [id],
+        })
+      ).body,
+    )
+    expect(created).toContain('  - video_link: https://www.youtube.com/watch?v=abcdefghijk')
+  })
+
+  /**
+   * The tool's own rule: with no group named, the library is the one audited. What an audit finds
+   * is the service's (`review/curation.test.ts`), and how it reads `format-library.test.ts`'s.
+   */
+  test('library_audit audits the library, unless a group is named', async () => {
     await seedLibrary(h.groupId, h.systemUserId)
     const pat = await mintPat(alice)
-    const out = textOf((await callTool(pat, 'library_audit')).body)
-    expect(out).toContain(`${EXERCISE_LIBRARY.length} exercises`)
-    expect(out).toMatch(/Possible duplicates|Thin muscle coverage/u)
+    const head = async (args?: Record<string, unknown>) =>
+      textOf((await callTool(pat, 'library_audit', args)).body).split('\n')[0]
+    expect(await head()).toBe(`${String(EXERCISE_LIBRARY.length)} exercises in this library.`)
+    expect(await head({ groupId: alice.personalGroupId })).toBe('0 exercises in this library.')
   })
 })
 
@@ -595,7 +673,7 @@ describe('training review', () => {
     })
 
     const review = textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)
-    expect(review).toContain('1 sessions')
+    expect(review).toContain('Last 4 weeks: 1 session (')
     expect(review).toContain('quadriceps')
 
     const history = textOf((await callTool(pat, 'exercise_history', { exerciseId })).body)
@@ -656,122 +734,12 @@ describe('training review', () => {
     expect(history).not.toContain('kg')
   })
 
-  /** The deload triggers, said beside the stall: what the AI acts on by saving a lighter plan. */
-  test('a lift falling and one drifting read as deload signals', async () => {
-    const pat = await mintPat(alice)
-    const bench = await createExercise(pat, 'Test Bench', 'pectoralis_major')
-    const row = await createExercise(pat, 'Test Row', 'latissimus_dorsi')
-    for (const [benchKg, rowReserve] of [
-      [66, 3],
-      [63, 3],
-      [60, 1],
-      [57, 1],
-    ] as const) {
-      // oxlint-disable-next-line no-await-in-loop -- sessions in order: what is under test.
-      await callTool(pat, 'session_log', {
-        sets: [
-          { exerciseId: bench, weightG: benchKg * 1000, reps: 5 },
-          { exerciseId: row, weightG: 50_000, reps: 8, reserve: rowReserve },
-        ],
-      })
-    }
-
-    const review = textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)
-    // 66 kg × 7/6 is 77 kg; 57 kg, 66.5 kg.
-    expect(review).toContain(
-      'Falling (estimated max from what was lifted, down 2+ sessions running):',
-    )
-    expect(review).toContain('Test Bench: down in each of the latest 3 sessions, 77 kg → 66.5 kg')
-    expect(review).toContain(
-      'Effort drift (reps in reserve down 1+ at the same set, in each of the latest 2 sessions):',
-    )
-    expect(review).toContain('Test Row at 8 × 50 kg: 3 → 1 in reserve')
-  })
-
-  /** Every effort reaches the AI as the app shows it. See `stalled.test.ts` for the history. */
-  test('a stalled movement reads in its own terms, and a muscle’s work as sets', async () => {
-    const pat = await mintPat(alice)
-    const pullUp = await createExercise(
-      pat,
-      'Weighted Pull-up',
-      'latissimus_dorsi',
-      'bodyweight_reps',
-    )
-    const plank = await createExercise(pat, 'Plank', 'rectus_abdominis', 'duration')
-    const squat = await createExercise(pat, 'Test Squat', 'quadriceps')
-    const bench = await createExercise(pat, 'Test Bench', 'pectoralis_major')
-
-    for (let i = 0; i < 3; i += 1) {
-      // oxlint-disable-next-line no-await-in-loop -- three sessions, in order: what is under test.
-      await callTool(pat, 'session_log', {
-        sets: [
-          { exerciseId: pullUp, weightG: 20_000, reps: 6 },
-          { exerciseId: plank, durationS: 60 },
-          { exerciseId: squat, weightG: 100_000 + i * 2500, reps: 5 },
-          { exerciseId: bench, weightG: 60_000, reps: 5, reserve: 2 },
-        ],
-      })
-    }
-
-    const review = textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)
-    expect(review).toContain('Stalled (the same top set, 3+ sessions running):')
-    expect(review).toContain('Weighted Pull-up: 3 sessions at 6 × bodyweight +20 kg')
-    expect(review).toContain('Plank: 3 sessions at 1:00')
-    // A weight lift's stall says what it is worth: the estimated max of the set it is stuck at —
-    // its reserve counted, as exercise_history counts it: 2 in reserve, so 60 × (1 + 7/30).
-    expect(review).toContain('Test Bench: 3 sessions at 5 × 60 kg (estimated max 74 kg)')
-    const history = textOf((await callTool(pat, 'exercise_history', { exerciseId: bench })).body)
-    expect(history).toContain('· estimated max 74 kg')
-    expect(history).toContain('Stalled: 3 sessions at 5 × 60 kg')
-    expect(review).not.toContain('Test Squat: 3 sessions')
-    // Three sets, 5 × (100 + 102.5 + 105) kg lifted.
-    expect(review).toContain('quadriceps: 3 sets, 1537.5 kg lifted (no prior data)')
-    // A plank lifts nothing, and is still three sets of work — it used to read "0kg".
-    expect(review).toContain('rectus_abdominis: 3 sets (no prior data)')
-    // The weighted pull-up lifted its added 20 kg, 6 reps a set, three times over.
-    expect(review).toContain('latissimus_dorsi: 3 sets, 360 kg lifted (no prior data)')
-    // Every muscle named, and none declined: neither line has anything to say.
-    expect(review).not.toContain('more muscle')
-    expect(review).not.toContain('Declined')
-  })
-
-  /** Regression: the summary's own cut to twelve hid a declined muscle. See muscle-work.ts. */
-  test('a declined muscle is named however many others worked more', async () => {
-    const pat = await mintPat(alice)
-    const fixture = reviewFixture(alice)
-    const [declinedMuscle, ...worked] = MUSCLE_SLUGS.slice(0, 14)
-    if (declinedMuscle === undefined) throw new Error('fewer than 14 muscles')
-    const sets = []
-    for (const muscle of worked) {
-      // oxlint-disable-next-line no-await-in-loop -- one exercise per muscle; their order is not under test.
-      const exerciseId = await fixture.anExercise({
-        name: muscle,
-        muscles: [{ muscle, loadPct: 100 }],
-      })
-      sets.push({ exerciseId, weightG: 50_000, reps: 5 })
-    }
-    const before = await fixture.anExercise({
-      name: 'Declined',
-      muscles: [{ muscle: declinedMuscle, loadPct: 100 }],
-    })
-    // Five weeks back: inside the four weeks before the four reviewed.
-    await fixture.aSession(
-      [1, 2, 3].map(() => ({ exerciseId: before, weightG: 50_000, reps: 5 })),
-      35,
-    )
-    await fixture.aSession(sets)
-
-    const review = textOf((await callTool(pat, 'training_review', { weeks: 4 })).body)
-    const lines = review.split('\n').map((l) => l.trim())
-    // Twelve of the thirteen worked are named, the thirteenth counted; the declined one under its
-    // own heading.
-    expect(lines).toContain('and 1 more muscle with less work.')
-    const declined = lines.indexOf(
-      'Declined sharply (half or less of their sets in the preceding 4 weeks):',
-    )
-    expect(declined).toBeGreaterThan(-1)
-    expect(lines[declined + 1]).toBe(`${declinedMuscle}: 0 sets (-100%)`)
-  })
+  /*
+   * What the review says of a stall, a fall, effort drift and each muscle's work is
+   * `format.test.ts`'s, with no wire; that they are found in what was logged is the review's own
+   * (`review/stalled.test.ts`, `deload.test.ts`, `muscle-work.test.ts`). The tests above prove the
+   * tool hands one to the other.
+   */
 })
 
 describe('logging a whole session', () => {
@@ -839,7 +807,8 @@ describe('logging a whole session', () => {
         { exerciseId: secret.id, weightG: 100_000, reps: 5 },
       ],
     })
-    expect(JSON.stringify(result.body)).toContain('No such exercise')
+    expect(result.body.result?.isError).toBe(true)
+    expect(textOf(result.body)).toContain('No such exercise')
 
     const sessions = expectContract(
       z.object({ items: z.array(z.unknown()) }),
@@ -895,7 +864,7 @@ describe('a past set corrected', () => {
     expect(tool?.annotations?.['destructiveHint']).toBe(true)
   })
 
-  test("never someone else's: a set of theirs is not found", async () => {
+  test("never someone else's: their session is not found, and so no set of it", async () => {
     const bob = await h.as('bob')
     const exercise = expectContract(
       Exercise,
@@ -929,6 +898,25 @@ describe('a past set corrected', () => {
  * effort prescribed.
  */
 describe('editing a plan', () => {
+  /** Where a plan written by the AI starts: an empty workout of the caller's own, named. */
+  test('workout_create makes an empty workout of yours, and says what to call next', async () => {
+    const pat = await mintPat(alice)
+    const out = textOf(
+      (await callTool(pat, 'workout_create', { name: 'Upper Lower', notes: null })).body,
+    )
+    const id =
+      /^Created workout ([0-9a-f-]{36}) — "Upper Lower"\. Now call workout_save_plan\.$/u.exec(
+        out,
+      )?.[1]
+    if (id === undefined) throw new Error(`No workout named in: ${out}`)
+    const made = expectContract(Workout, (await alice.wire(`/workouts/${id}`)).body)
+    expect([made.name, made.ownerGroupId, made.days]).toEqual([
+      'Upper Lower',
+      alice.personalGroupId,
+      [],
+    ])
+  })
+
   /**
    * The documented AI flow: fetch the editable JSON, change it, save it back. The round trip must
    * carry ids, or every save through MCP severs the plan from its logged history.
@@ -1035,7 +1023,8 @@ describe('editing a plan', () => {
       workoutId: workout.id,
       days: [{ name: 'Day', entries: [entry(1.5), entry(2)] }],
     })
-    expect(JSON.stringify(half.body)).toContain('Reps in reserve are whole, none to five')
+    expect(half.body.result?.isError).toBe(true)
+    expect(textOf(half.body)).toContain('Reps in reserve are whole, none to five')
     await callTool(pat, 'workout_save_plan', {
       workoutId: workout.id,
       days: [{ name: 'Day', entries: [entry(1), entry(2)] }],
@@ -1050,102 +1039,10 @@ describe('editing a plan', () => {
     expect(outline).not.toContain('RPE')
   })
 
-  /**
-   * A day is its name, as the app shows it (#20): numbered days were said twice — "Day 1: Day 1 ·
-   * Push" — and the outline's order already is the position.
+  /*
+   * How an outline reads — a day as its name (#20), each rest where the logger counts it (#48),
+   * every rule in full — is `format-workout.test.ts`'s, with no wire.
    */
-  test('a day reads as its name, once', async () => {
-    const pat = await mintPat(alice)
-    const { id: exerciseId } = expectContract(
-      Exercise,
-      (
-        await alice.wire('/exercises', {
-          method: 'POST',
-          body: JSON.stringify({
-            name: 'Press',
-            muscles: [{ muscle: 'pectoralis_major', loadPct: 100 }],
-          }),
-        })
-      ).body,
-    )
-    const workout = expectContract(
-      Workout,
-      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Split' }) }))
-        .body,
-    )
-    const day = (name: string) => ({ name, entries: [{ exerciseId, sets: [{ targetReps: 5 }] }] })
-    await callTool(pat, 'workout_save_plan', {
-      workoutId: workout.id,
-      days: [day('Day 1 · Push'), day('Pull')],
-    })
-
-    const lines = textOf(
-      (await callTool(pat, 'workout_get', { workoutId: workout.id })).body,
-    ).split('\n')
-    expect(lines).toContain('Day 1 · Push')
-    expect(lines).toContain('Pull')
-    expect(lines.filter((line) => line.includes('Day 1'))).toHaveLength(1)
-  })
-
-  /**
-   * Each rest where the logger counts it (#48): a superset rests after the round — its last
-   * entry's rest — and an earlier entry's only when it ends the round. A model reading `rest 1:30`
-   * on A1 took it to run within the round, which it never does.
-   */
-  test('a rest reads where it falls: after the round, when it ends it, or straight on', async () => {
-    const pat = await mintPat(alice)
-    const named = async (name: string) =>
-      expectContract(
-        Exercise,
-        (
-          await alice.wire('/exercises', {
-            method: 'POST',
-            body: JSON.stringify({ name, muscles: [{ muscle: 'pectoralis_major', loadPct: 100 }] }),
-          })
-        ).body,
-      ).id
-    const workout = expectContract(
-      Workout,
-      (await alice.wire('/workouts', { method: 'POST', body: JSON.stringify({ name: 'Upper' }) }))
-        .body,
-    )
-    const entry = (
-      exerciseId: string,
-      supersetGroup: string | null,
-      restSeconds: number | null,
-    ) => ({
-      exerciseId,
-      supersetGroup,
-      restSeconds,
-      sets: [{ targetReps: 5 }],
-    })
-    await callTool(pat, 'workout_save_plan', {
-      workoutId: workout.id,
-      days: [
-        {
-          name: 'Upper',
-          entries: [
-            entry(await named('Squat'), null, 180),
-            entry(await named('Bench'), 'A', 90),
-            entry(await named('Pulldown'), 'A', 90),
-            entry(await named('Curl'), null, 0),
-            entry(await named('Plank'), null, null),
-          ],
-        },
-      ],
-    })
-
-    const lines = textOf((await callTool(pat, 'workout_get', { workoutId: workout.id })).body)
-      .split('\n')
-      .filter((line) => line.startsWith('  - '))
-    expect(lines.map((line) => line.split(', progression')[0])).toEqual([
-      '  - Squat, rest 3:00',
-      '  - Bench (superset A), rest 1:30 when it ends the round',
-      '  - Pulldown (superset A), rest 1:30 after the round',
-      '  - Curl, straight on',
-      '  - Plank, straight on',
-    ])
-  })
 })
 
 /**
@@ -1319,7 +1216,8 @@ describe('equipment', () => {
     const refused = await callTool(pat, 'equipment_set', {
       items: [{ slug: 'rack', weights: { stepG: 1000, minG: 0, maxG: null } }],
     })
-    expect(JSON.stringify(refused.body)).toContain('holds the load')
+    expect(refused.body.result?.isError).toBe(true)
+    expect(textOf(refused.body)).toContain('holds the load')
     expect(textOf((await callTool(pat, 'equipment_get')).body)).toBe('rack')
   })
 })
@@ -1371,7 +1269,10 @@ describe('coaching', () => {
     const pat = await mintPat(alice)
     const read = async () =>
       JSON.stringify((await callTool(pat, 'equipment_get', { athlete: athlete.userId })).body)
-    expect(await read()).not.toContain('dumbbells')
+    // Not shared yet: a refusal, not an empty list of theirs.
+    const unshared = await callTool(pat, 'equipment_get', { athlete: athlete.userId })
+    expect(unshared.body.result?.isError).toBe(true)
+    expect(textOf(unshared.body)).not.toContain('dumbbells')
     await share(true)
     expect(await read()).toContain('dumbbells: from 2 kg to 30 kg, by 2 kg')
     // Saying yours never says theirs.
@@ -1445,7 +1346,7 @@ describe('coaching', () => {
     )
     expect(
       textOf((await callTool(pat, 'training_review', { weeks: 4, ...theirs })).body),
-    ).toContain('1 sessions')
+    ).toContain('Last 4 weeks: 1 session (')
 
     expect(textOf((await callTool(pat, 'session_list')).body)).toBe('No sessions.')
     const sessions = textOf((await callTool(pat, 'session_list', theirs)).body)
@@ -1456,7 +1357,7 @@ describe('coaching', () => {
     const detail = textOf((await callTool(pat, 'session_get', { sessionId, ...theirs })).body)
     expect(detail.split('\n').slice(1)).toEqual([
       'Squad Sled Push: 5 × 80 kg',
-      'unavailable exercise: 8 × 30 kg',
+      'Unavailable exercise: 8 × 30 kg',
     ])
 
     const history = textOf(
@@ -1467,13 +1368,19 @@ describe('coaching', () => {
 
   test('nothing of theirs once they stop sharing', async () => {
     await share(true)
-    await share(false)
     const pat = await mintPat(alice)
     const theirs = { athlete: athlete.userId }
+    // The session they shared, by its own id: a made-up one is not found whoever asks.
+    const shared = textOf((await callTool(pat, 'session_list', theirs)).body)
+    const sessionId = shared.split(' · ').at(-1) ?? ''
+    expect(textOf((await callTool(pat, 'session_get', { sessionId, ...theirs })).body)).toContain(
+      'Squad Sled Push',
+    )
+    await share(false)
     for (const [tool, args] of [
       ['training_review', { weeks: 4, ...theirs }],
       ['session_list', theirs],
-      ['session_get', { sessionId: crypto.randomUUID(), ...theirs }],
+      ['session_get', { sessionId, ...theirs }],
       ['exercise_history', { exerciseId: liftId, ...theirs }],
     ] as const) {
       const { body } = await callTool(pat, tool, args)
@@ -1550,15 +1457,20 @@ describe('weigh-ins and the year of birth', () => {
   test('are taken, one a day, and listed newest first with the latest before the period', async () => {
     const pat = await mintPat(alice)
     await post(alice, '/weigh-ins', { day: day(70), weightG: 85_000 })
+    // The older of the two in the period is written first, so "newest first" is by its day: listed
+    // as written, it would come first.
+    await callTool(pat, 'weigh_in_create', { day: day(3), weightG: 82_900 })
     const saved = textOf(
       (await callTool(pat, 'weigh_in_create', { day: day(1), weightG: 83_000 })).body,
     )
     expect(saved).toBe(`Saved: ${day(1)} (${formatCalendarDay(day(1))}): 83 kg`)
     await callTool(pat, 'weigh_in_create', { day: day(1), weightG: 82_400 })
     const listed = textOf((await callTool(pat, 'weigh_in_list', { weeks: 4 })).body)
-    expect(listed).toContain(`${day(1)} (${formatCalendarDay(day(1))}): 82.4 kg`)
-    expect(listed).not.toContain('83 kg')
-    expect(listed).toContain(`The latest before them: ${day(70)}`)
+    expect(listed.split('\n').slice(1)).toEqual([
+      `  ${day(1)} (${formatCalendarDay(day(1))}): 82.4 kg`,
+      `  ${day(3)} (${formatCalendarDay(day(3))}): 82.9 kg`,
+      `The latest before them: ${day(70)} (${formatCalendarDay(day(70))}): 85 kg`,
+    ])
   })
 
   test('a coach takes an athlete’s, and reads none once they stop sharing', async () => {

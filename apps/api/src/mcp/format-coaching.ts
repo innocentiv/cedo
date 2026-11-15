@@ -6,6 +6,7 @@ import {
   type WeightUnit,
   type WorkoutSessionSummary,
   counted,
+  exerciseName,
   formatEffort,
   formatWeight,
   inReserve,
@@ -26,8 +27,9 @@ export const athleteLines = (athletes: readonly Athlete[]): string =>
     : athletes.map((a) => athleteLine(a)).join('\n')
 
 /**
- * `2026-10-20 · PPL / Push · 18 sets · 4,250 kg · in progress · "felt heavy" · <id>`. The plan and
- * day read "unavailable" where the reader cannot see them (ADR-0019); the notes are the athlete's.
+ * `2026-10-20 · PPL / Push · 18 sets · 4250 kg · 1 personal best · in progress · "felt heavy" ·
+ * <id>` — its personal bests only when it set one. The plan and day read "unavailable" where the
+ * reader cannot see them (ADR-0019); the notes are the athlete's.
  */
 function sessionLine(session: WorkoutSessionSummary, unit: WeightUnit): string {
   const plan =
@@ -37,7 +39,7 @@ function sessionLine(session: WorkoutSessionSummary, unit: WeightUnit): string {
   return [
     session.startedAt.slice(0, 10),
     plan,
-    `${session.setCount} sets`,
+    counted(session.setCount, 'set'),
     formatWeight(session.liftedG, unit),
     session.personalBests === 0 ? null : counted(session.personalBests, 'personal best'),
     session.endedAt === null ? 'in progress' : null,
@@ -56,6 +58,10 @@ export function sessionLines(sessions: Page<WorkoutSessionSummary>, unit: Weight
     : `${lines.join('\n')}\nMore: pass cursor ${sessions.nextCursor}`
 }
 
+/** A session logged whole: its id, which every session tool takes, and how many sets it holds. */
+export const sessionLogged = (session: Pick<SessionDetail, 'id' | 'logs'>): string =>
+  `Logged session ${session.id} with ${counted(session.logs.length, 'set')}.`
+
 /**
  * `w5 × 40 kg · 2 in reserve`, `w` for a warm-up — and ` [<id>]` when it is the reader's to fix
  * (#31).
@@ -65,12 +71,13 @@ const setText = (log: SetLog, unit: WeightUnit, withId: boolean): string =>
 
 /** One set, by its exercise: `Bench Press: 5 × 80 kg [<id>]` — how a corrected set is answered. */
 export const setLine = (log: SetLog, unit: WeightUnit): string =>
-  `${log.exercise?.name ?? 'unavailable exercise'}: ${setText(log, unit, true)}`
+  `${exerciseName(log.exercise)}: ${setText(log, unit, true)}`
 
 /**
  * One session, set by set: a line per run of one exercise, in the order done — `Squad Sled Push: 5 ×
- * 80 kg, w5 × 40 kg · 2 in reserve`, `w` for a warm-up. An exercise the reader cannot see is "unavailable
- * exercise", its efforts still said (ADR-0019): the sets are the athlete's, the name is not theirs.
+ * 80 kg, w5 × 40 kg · 2 in reserve`, `w` for a warm-up. An exercise the reader cannot see is named
+ * as one (`exerciseName`), its efforts still said (ADR-0019): the sets are the athlete's, the name
+ * is not theirs.
  * Each set's id `withIds` — the reader's own, which `session_fix_set` takes (#31).
  */
 export function sessionDetail(session: SessionDetail, unit: WeightUnit, withIds = false): string {
@@ -89,7 +96,7 @@ export function sessionDetail(session: SessionDetail, unit: WeightUnit, withIds 
   }
   const lines = runs.map((run) => {
     const sets = run.map((log) => setText(log, unit, withIds)).join(', ')
-    return `${run[0]?.exercise?.name ?? 'unavailable exercise'}: ${sets}`
+    return `${exerciseName(run[0]?.exercise)}: ${sets}`
   })
   return [head, ...(lines.length === 0 ? ['No sets.'] : lines)].join('\n')
 }

@@ -87,6 +87,13 @@ A service's PURE half — rows in, answer out, like `progression/evaluate.ts`, o
 database. It is still the service's rule, kept in the API because
 only the API runs it; the contract is for what more than one side needs.
 
+So is what an MCP tool says. Every formatter in `mcp/format*.ts` is what its service answered in —
+a contract value, but for the library's audit — and text out, and is tested by a call in the `format*.test.ts` beside it: the whole text, every branch — the
+empty answer, the singular, the thing out of reach. `mcp/format-imports.test.ts` keeps a format file
+from loading the database, so the tests stay what they are. The tools themselves are tested through
+the wire (`mcp/mcp.test.ts`), for what only the wire shows; see
+`docs/playbooks/add-mcp-tool.md`, step 5.
+
 The progression rules are the one exception, made by ADR-0012 and kept by ADR-0026: their maths
 (`step`) and the one loop that runs it (`takeSteps`) live in the contract though only the API calls
 them, because their truth tables are the rules' specification, and T1 (`progression.test.ts`,
