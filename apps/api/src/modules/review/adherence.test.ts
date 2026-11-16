@@ -4,8 +4,9 @@ import { adherenceOf } from './adherence.ts'
 /**
  * How regularly someone trains, as the review says it: sessions a week, the streak they are on,
  * and the longest gap between two sessions — at a time handed in, so a day is a day here and not
- * whenever the test runs. Days are calendar days, and the streak forgives one day of rest. That the
- * review reads it from the sessions logged is `route.test.ts`'s.
+ * whenever the test runs. The streak counts days trained, by the UTC day (not the athlete's own),
+ * and forgives one day of rest; the gap is the time between two sessions, in days rounded. That
+ * the review reads it from the sessions logged is `route.test.ts`'s.
  */
 
 /** The time the review is read: the evening of Friday 30 October. */
@@ -38,12 +39,12 @@ describe('adherence', () => {
     })
   })
 
-  test('training every other day is a streak: one day of rest does not break it', () => {
+  test('training every other day is a streak, its gaps two days: one day of rest does not break it', () => {
     const adherence = adherenceOf([on(30), on(28), on(26)], 4, NOW)
     expect([adherence.currentStreakDays, adherence.longestGapDays]).toEqual([3, 2])
   })
 
-  test('two days of rest in a row end it', () => {
+  test('two days of rest in a row end it, a gap of three days', () => {
     const adherence = adherenceOf([on(30), on(27)], 4, NOW)
     expect([adherence.currentStreakDays, adherence.longestGapDays]).toEqual([1, 3])
   })
@@ -53,7 +54,7 @@ describe('adherence', () => {
     expect(adherenceOf([on(28), on(27)], 4, NOW).currentStreakDays).toBe(0)
   })
 
-  test('the longest gap is the longest between any two sessions, not the latest', () => {
+  test('the longest gap is the longest between any two sessions, not the latest; the streak stops at it', () => {
     const adherence = adherenceOf([on(30), on(29), on(20)], 4, NOW)
     expect([adherence.currentStreakDays, adherence.longestGapDays]).toEqual([2, 9])
   })

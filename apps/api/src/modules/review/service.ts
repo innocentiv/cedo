@@ -25,7 +25,9 @@ import type { WorkingSet } from './deload.ts'
  */
 
 export async function trainingReview(training: Training, weeks: number): Promise<TrainingReview> {
-  // The clock, read once: the windows and the streak are all as of the same moment.
+  // The clock, read once for the periods compared and the streak, so all three are as of one
+  // moment. What is said of the athlete reads it on its own (`about.ts`): the bodyweight's period
+  // and the age.
   const now = Date.now()
   const since = new Date(now - weeksToMs(weeks))
   const previousSince = new Date(now - weeksToMs(weeks * 2))
