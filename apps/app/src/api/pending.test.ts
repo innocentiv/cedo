@@ -24,6 +24,7 @@ const stored = (entryId: string, loggedAt: string): PendingLog => ({
   durationS: null,
   distanceMm: null,
   reserve: null,
+  idempotencyKey: null,
 })
 
 /** A set logged without a signal at `loggedAt`, by the device's clock. */
@@ -121,6 +122,28 @@ describe('a session’s sets, sent and not', () => {
   test('a send not yet holding its set is none of them', () => {
     const sets = setsOfSession(server, [{ set: undefined, paused: false, failures: 0 }])
     expect([sets.unsent, sets.all.length]).toEqual([[], 1])
+  })
+
+  /**
+   * Stored, and its send not yet done: a send is done once every read it changes is read again,
+   * and the session's own can come back first. Matched by the key it was sent under, it counts once.
+   */
+  test('a set the server has already stored, under the key it was sent with, counts once', () => {
+    const a = queued(crypto.randomUUID(), 'squat')
+    const sent = { ...stored('squat', '2026-10-25T18:00:01Z'), idempotencyKey: a.key }
+    const sets = setsOfSession([...server, sent], [sending(a)])
+    expect(sets.all.map((l) => l.id)).toEqual([...server.map((l) => l.id), sent.id])
+    expect(sets.unsent).toEqual([])
+    expect([...sets.waiting]).toEqual([])
+  })
+
+  test('stored, it leaves the sets behind it waiting, after it', () => {
+    const [a, b] = [queued(crypto.randomUUID(), 'squat'), queued(crypto.randomUUID(), 'rdl')]
+    const sent = { ...stored('squat', '2026-10-25T18:00:01Z'), idempotencyKey: a.key }
+    const sets = setsOfSession([...server, sent], [sending(a), offline(b)])
+    expect(sets.unsent).toEqual([b])
+    expect([...sets.waiting]).toEqual([b.key])
+    expect(sets.all.map((l) => l.id)).toEqual([...server.map((l) => l.id), sent.id, b.key])
   })
 
   test('held up while one waits for a signal, or is sent again after a lost answer', () => {

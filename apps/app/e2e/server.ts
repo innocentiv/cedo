@@ -50,6 +50,12 @@ export interface StaticServer {
    * back, a 502 in its place: what a weak signal does, and what an idempotency key is for.
    */
   loseNextAnswer: (path: RegExp) => void
+  /**
+   * The next API request whose path matches reaches the API, and its answer waits on the way back
+   * until the function returned is called: one read slower than the others, on a slow server. That
+   * function says whether an answer was held, and an answer still to come is held no more.
+   */
+  holdNextAnswer: (path: RegExp) => () => boolean
 }
 
 /**
@@ -67,6 +73,7 @@ async function resolveHtml(distDir: string, pathname: string): Promise<string | 
 
 export function serveExport(distDir: string, apiUrl: string, port = 0): StaticServer {
   let losing: RegExp | null = null
+  let holding: { readonly path: RegExp; readonly until: Promise<void> } | null = null
   const server = Bun.serve({
     port,
     idleTimeout: 30,
@@ -86,6 +93,11 @@ export function serveExport(distDir: string, apiUrl: string, port = 0): StaticSe
           losing = null
           await answer.arrayBuffer()
           return new Response('Bad gateway', { status: 502 })
+        }
+        if (holding?.path.test(url.pathname) === true) {
+          const { until } = holding
+          holding = null
+          await until
         }
         return answer
       }
@@ -118,6 +130,18 @@ export function serveExport(distDir: string, apiUrl: string, port = 0): StaticSe
     stop: () => server.stop(true),
     loseNextAnswer: (path) => {
       losing = path
+    },
+    holdNextAnswer: (path) => {
+      const { promise, resolve } = Promise.withResolvers<void>()
+      const hold = { path, until: promise }
+      holding = hold
+      return () => {
+        // Still waiting for its request: none came, and none that comes later is held.
+        const held = holding !== hold
+        if (!held) holding = null
+        resolve()
+        return held
+      }
     },
   }
 }

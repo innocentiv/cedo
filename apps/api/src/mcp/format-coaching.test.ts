@@ -202,6 +202,7 @@ const setLog = (fields: Partial<SetLog> = {}): SetLog =>
     isWarmup: false,
     loggedAt: '2026-10-20T17:10:00.000Z',
     personalBest: false,
+    idempotencyKey: null,
     ...fields,
   })
 

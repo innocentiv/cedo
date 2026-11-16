@@ -46,6 +46,7 @@ const toLog = (
   distanceMm: row.distanceMm,
   loggedAt: row.loggedAt.toISOString(),
   personalBest,
+  idempotencyKey: row.idempotencyKey,
 })
 
 interface LoggedRow {

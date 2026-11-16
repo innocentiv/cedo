@@ -328,6 +328,19 @@ describe('a retried log, by its idempotency key', () => {
     expect(await storedLogs(session.id)).toHaveLength(1)
   })
 
+  /** So the phone can tell a set it is still sending from the same set already stored. */
+  test('a read of the session says the key each set was sent under, and none for one sent without', async () => {
+    const exerciseId = await anExercise(alice)
+    const session = expectContract(WorkoutSession, (await startSession(alice)).body)
+    const key = crypto.randomUUID()
+    const sent = expectContract(SetLog, (await logOnce(alice, session.id, exerciseId, key)).body)
+    await logOnce(alice, session.id, exerciseId)
+
+    expect(sent.idempotencyKey).toBe(key)
+    const read = expectContract(WorkoutSession, (await alice.wire(`/sessions/${session.id}`)).body)
+    expect(read.logs.map((l) => l.idempotencyKey)).toEqual([key, null])
+  })
+
   test('two keys, or none, are two sets — as two taps are', async () => {
     const exerciseId = await anExercise(alice)
     const session = expectContract(WorkoutSession, (await startSession(alice)).body)

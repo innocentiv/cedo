@@ -1,78 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import {
-  byExercise,
-  notesToKeep,
-  type SeriesMember,
-  type SetLog,
-  SetLogUpdate,
-  exercisesInSession,
-  nextSetIndex,
-  workingSetsDone,
-} from './log.ts'
-
-const benchId = crypto.randomUUID()
-const heavyEntry = crypto.randomUUID()
-const lightEntry = crypto.randomUUID()
-const heavy = { entryId: heavyEntry, exerciseId: benchId }
-const light = { entryId: lightEntry, exerciseId: benchId }
-const adHoc = { entryId: null, exerciseId: benchId }
-
-const logged = (member: SeriesMember, ...indices: number[]) =>
-  indices.map((setIndex) => ({
-    entryId: member.entryId,
-    exerciseId: member.exerciseId,
-    setIndex,
-    isWarmup: false,
-  }))
-
-describe('the next number in a series', () => {
-  test('starts at zero', () => {
-    expect(nextSetIndex([], heavy)).toBe(0)
-  })
-
-  test('follows the sets logged so far', () => {
-    expect(nextSetIndex(logged(heavy, 0, 1, 2), heavy)).toBe(3)
-  })
-
-  test('after an undo in the middle, does not reuse an index still taken', () => {
-    // Sets 1-3 logged, set 2 undone: a count says 2, which set 3 already holds.
-    expect(nextSetIndex(logged(heavy, 0, 2), heavy)).toBe(3)
-  })
-
-  test('after undoing the last set, the next takes its number, as a correction would', () => {
-    expect(nextSetIndex(logged(heavy, 0, 1), heavy)).toBe(2)
-  })
-
-  /**
-   * Regression: the screen counted an ad-hoc set among EVERY log of its exercise, planned ones
-   * included, so bench logged without a plan after two planned sets began at "set 3".
-   */
-  test('counts only its own series: one plan entry, or one exercise logged with none', () => {
-    const logs = [...logged(heavy, 0, 1), ...logged(light, 0)]
-    expect(nextSetIndex(logs, heavy)).toBe(2)
-    expect(nextSetIndex(logs, light)).toBe(1)
-    expect(nextSetIndex(logs, adHoc)).toBe(0)
-  })
-
-  test('warm-ups take their place in the same sequence', () => {
-    const logs = [{ ...heavy, setIndex: 0, isWarmup: true }, ...logged(heavy, 1)]
-    expect(nextSetIndex(logs, heavy)).toBe(2)
-  })
-})
-
-describe('working sets done in a series', () => {
-  test('counts the working sets of its own series only', () => {
-    const logs = [
-      { ...heavy, setIndex: 0, isWarmup: true },
-      ...logged(heavy, 1, 2),
-      ...logged(light, 0),
-      ...logged(adHoc, 0),
-    ]
-    expect(workingSetsDone(logs, heavy)).toBe(2)
-    expect(workingSetsDone(logs, light)).toBe(1)
-    expect(workingSetsDone(logs, adHoc)).toBe(1)
-  })
-})
+import { SetLog, SetLogUpdate, byExercise, exercisesInSession, notesToKeep } from './log.ts'
 
 describe('the exercises a session without a plan is working through', () => {
   const bench = { id: crypto.randomUUID(), name: 'Bench Press', tracking: 'weight_reps' as const }
@@ -91,6 +18,7 @@ describe('the exercises a session without a plan is working through', () => {
     isWarmup: false,
     loggedAt: new Date().toISOString(),
     personalBest: false,
+    idempotencyKey: null,
   })
 
   /** Regression: picked exercises were local state, so a reload showed no logger at all. */
@@ -148,4 +76,24 @@ describe('a set corrected (#31)', () => {
     expect(SetLogUpdate.safeParse({ exerciseId: crypto.randomUUID() }).success).toBe(false)
     expect(SetLogUpdate.safeParse({ entryId: null }).success).toBe(false)
   })
+})
+
+/** The app can be newer than its server (ADR-0032): a set from one that says no key reads as none. */
+test('a set from a server that says no key reads as sent without one', () => {
+  const said = {
+    id: crypto.randomUUID(),
+    entryId: null,
+    exerciseId: crypto.randomUUID(),
+    exercise: null,
+    setIndex: 0,
+    weightG: null,
+    reps: 8,
+    reserve: null,
+    durationS: null,
+    distanceMm: null,
+    isWarmup: false,
+    loggedAt: new Date().toISOString(),
+    personalBest: false,
+  }
+  expect(SetLog.parse(said).idempotencyKey).toBeNull()
 })

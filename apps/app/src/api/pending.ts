@@ -4,7 +4,7 @@ import type { FlowLog, LogSetInput, SetLog } from '@cedo/contract'
  * A set as the workout's flow reads it, with the exercise it is of — a set of a session without a
  * plan has no entry to say it — and its reserve, said before it was logged (#37).
  */
-export type PendingLog = FlowLog & Pick<SetLog, 'exerciseId' | 'reserve'>
+export type PendingLog = FlowLog & Pick<SetLog, 'exerciseId' | 'reserve' | 'idempotencyKey'>
 
 /**
  * One set logged, as it waits to be sent (#9): its idempotency key and its time, both made once
@@ -54,7 +54,15 @@ export function setsOfSession(
   server: readonly PendingLog[],
   sends: readonly QueuedSend[],
 ): SessionSets {
-  const unsent = sends.flatMap(({ set }) => (set === undefined ? [] : [set]))
+  /**
+   * A set the server has stored is sent, though its send is not done until every read it changes is
+   * read again — and the session's own can come back first. Matched by the key it was sent under,
+   * it is counted once: as stored.
+   */
+  const storedKeys = new Set(server.flatMap((l) => l.idempotencyKey ?? []))
+  const unsent = sends.flatMap(({ set }) =>
+    set === undefined || storedKeys.has(set.key) ? [] : [set],
+  )
   // In the order logged: a session's sends run one at a time, so the last waits behind the others.
   const last = sends.at(-1)
   return {
@@ -95,6 +103,7 @@ export function withPending(
       durationS: input.durationS,
       distanceMm: input.distanceMm,
       reserve: input.reserve,
+      idempotencyKey: key,
     })
   }
   return [...logs, ...waiting]

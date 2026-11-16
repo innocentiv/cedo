@@ -429,7 +429,8 @@ set_logs(id, session_id, entry_id?, exercise_id, set_index, is_warmup, weight_g,
 `idempotency_key` is the phone's key for one logged set, unique within its session. A set sent on
 a weak signal may reach the server and lose its answer, so the app sends it again under the same
 key, and the server answers a stored key with the stored set rather than logging a second (#9).
-Null for a client that does not retry.
+Null for a client that does not retry. A session's sets are read with their key, so the phone can
+tell a set it is still sending from the same set already stored.
 
 `rpe` — and a prescribed set's `target_rpe` — stores **reps in reserve** as `GLOSSARY.md` defines
 it, written as ten minus it: 5 to 10, whole, or null when not said. The column is the only place
