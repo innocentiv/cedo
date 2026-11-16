@@ -4,7 +4,7 @@ import { observed } from './observed.ts'
 /**
  * How this phone tells a rest's end with the app closed (#39) — off, a notification or an alarm —
  * and every rule about choosing it: the phone's own choice, kept in its keychain, outside React,
- * unit-tested beside what is set for a rest (rest-alert.test.ts, rest-alert.ts).
+ * unit-tested beside it (rest-alert-kind.test.ts).
  */
 
 /** How this phone is told a rest is over: kept on the phone, which alone knows what it allows. */

@@ -77,7 +77,7 @@ src/lib/                     use-submit.ts, plan-draft.ts and plan-sync.ts (+ it
                              athlete's, read by their coach (athlete.tsx); chime.ts and
                              chime-tone.ts (+ its unit test: the rest's end's sound),
                              rest-alert-kind.ts and rest-alert.ts (+ their
-                             unit test: how the phone tells a rest's end, and what it has set
+                             unit tests: how the phone tells a rest's end, and what it has set
                              to) and rest-alert-device.ts (passing each call on to iOS),
                              observed.ts (a value React subscribes to),
                              hermes-builtins.ts (+ its unit test)
@@ -392,10 +392,12 @@ there (#63).
   iOS Settings, the rest still ends with the chime. A tap on it opens the app. Until it rings, iOS
   counts it down itself, on the Lock Screen and in the Dynamic Island. Both countdowns are drawn by
   one widget extension, `targets/rest-countdown`; the ringing alarm is iOS's own, its icon too. The
-  rules are `src/lib/rest-alert.ts`, unit-tested — which of the phone's calls each change makes,
-  and in what order; `src/lib/rest-alert-device.ts` passes each call on to iOS as it is and mounts
-  the listeners, and the countdown and the alarm are the app's own native module,
-  `modules/rest-alert`.
+  rules are unit-tested: `src/lib/rest-alert.ts`, which of the phone's calls each change makes and
+  in what order, and `src/lib/rest-alert-kind.ts`, how the kind is chosen and kept.
+  `src/lib/rest-alert-device.ts` passes each call on to iOS as it is, mounts the listeners, and
+  keeps the little that is the screens': a refusal's words, the band offering a notification, off
+  on the web, and the tap that opened the app taken once. The countdown and the alarm are the app's
+  own native module, `modules/rest-alert`.
 - **Reserve is asked before Log** (#37), as one optional row in the logger, under the numbers, and
   only for a working set of an exercise measured in reps — which those are is the contract's, not
   the screen's. Whole reps, none to five, one row of segments; tapping the chosen one again takes it

@@ -1,8 +1,8 @@
-import { describe, expect, spyOn, test } from 'bun:test'
-import type { RestPhase } from '@cedo/contract'
+import { describe, expect, test } from 'bun:test'
+import { type RestPhase, sToMs } from '@cedo/contract'
 import {
   type AlertDevice,
-  type NotificationAsked,
+  type RestNotification,
   type Wanted,
   chimesInApp,
   createRestAlerts,
@@ -10,7 +10,7 @@ import {
   sessionTapped,
   wantedAlert,
 } from './rest-alert.ts'
-import { type AlertKind, createAlertKind, kindOf, offersToTell } from './rest-alert-kind.ts'
+import type { AlertKind } from './rest-alert-kind.ts'
 
 /**
  * What this phone has set to tell the end of a rest (#39), without a phone: a fake one recording
@@ -58,6 +58,31 @@ const notified = (seconds: number): string[] => [
 
 /** A notification cancelled: the one pending, the one shown, and its countdown. */
 const UNNOTIFIED = ['cancel notification', 'dismiss notification', 'end countdown']
+
+/** A phone whose first notification waits until let go: a change still on its way to iOS. */
+function aSlowPhone() {
+  const phone = aPhone()
+  let letGo: () => void = () => null
+  let begun: () => void = () => null
+  const started = new Promise<void>((resolve) => {
+    begun = resolve
+  })
+  let calls = 0
+  const device: AlertDevice = {
+    ...phone,
+    scheduleNotification: async (notification) => {
+      calls += 1
+      if (calls === 1) {
+        begun()
+        await new Promise<void>((resolve) => {
+          letGo = resolve
+        })
+      }
+      await phone.scheduleNotification(notification)
+    },
+  }
+  return { asked: phone.asked, device, started, letGo: () => letGo() }
+}
 
 const alertsOn = (
   phone: AlertDevice = aPhone(),
@@ -136,26 +161,8 @@ describe('when iOS is asked to tell it', () => {
   /** The rest was counted a moment ago; iOS is asked now, and counts from now. */
   test('is counted from when it is set, by the phone’s clock then', async () => {
     const phone = aPhone()
-    await alertsOn(phone, { now: () => NOW + 30_000 }).follow(want(running(90)))
+    await alertsOn(phone, { now: () => NOW + sToMs(30) }).follow(want(running(90)))
     expect(phone.asked).toEqual(notified(60))
-  })
-})
-
-describe('the rest band', () => {
-  /** "Tell me when rest is over" turns on a notification: shown only while nothing tells it. */
-  test('offers to tell a rest’s end only while nothing does', () => {
-    expect(offersToTell('off')).toBe(true)
-    expect(offersToTell('notification')).toBe(false)
-    expect(offersToTell('alarm')).toBe(false)
-  })
-})
-
-describe('the kind of alert this phone keeps', () => {
-  test('is the one kept, or off when nothing, or something else, is', () => {
-    expect(kindOf('alarm')).toBe('alarm')
-    expect(kindOf('notification')).toBe('notification')
-    expect(kindOf(null)).toBe('off')
-    expect(kindOf('push')).toBe('off')
   })
 })
 
@@ -193,7 +200,7 @@ describe('what the phone is asked', () => {
 
   /** Tapped, from a cold start too: the session it was set for opens. */
   test('a tap on the notification opens the session it was set for, and nothing else does', async () => {
-    const set: NotificationAsked[] = []
+    const set: RestNotification[] = []
     await alertsOn({
       ...aPhone(),
       scheduleNotification: async (notification) => {
@@ -214,7 +221,7 @@ describe('what this phone has set', () => {
     let clock = NOW
     const alerts = alertsOn(phone, { now: () => clock })
     for (let second = 0; second < 5; second += 1) {
-      clock = NOW + second * 1000
+      clock = NOW + sToMs(second)
       // oxlint-disable-next-line no-await-in-loop -- one tick after another, as the clock runs.
       await alerts.follow(want(running(90 - second), 'notification', clock))
     }
@@ -290,32 +297,33 @@ describe('what this phone has set', () => {
 
   /** Two changes in a row — a set logged, then +30 s — reach the phone in the order they came. */
   test('follows changes one at a time, in order', async () => {
-    const phone = aPhone()
-    let finishFirst: () => void = () => null
-    let begun: () => void = () => null
-    const firstBegun = new Promise<void>((resolve) => {
-      begun = resolve
-    })
-    let calls = 0
-    const alerts = alertsOn({
-      ...phone,
-      scheduleNotification: async (notification) => {
-        calls += 1
-        if (calls === 1) {
-          begun()
-          await new Promise<void>((resolve) => {
-            finishFirst = resolve
-          })
-        }
-        await phone.scheduleNotification(notification)
-      },
-    })
+    const phone = aSlowPhone()
+    const alerts = alertsOn(phone.device)
     const first = alerts.follow(want(running(90)))
     const second = alerts.follow(want(running(120)))
-    await firstBegun
-    finishFirst()
+    await phone.started
+    phone.letGo()
     await Promise.all([first, second])
     expect(phone.asked).toEqual([...notified(90), ...notified(120)])
+  })
+
+  /**
+   * Opened again, the app has set nothing yet, but iOS may still hold what it set before — a
+   * countdown on the Lock Screen, its notification. Cleared, as the kind changes, every kind goes.
+   */
+  test('cleared, cancels every kind iOS may hold, even from before the app was opened', async () => {
+    const phone = aPhone()
+    await alertsOn(phone).clear()
+    expect(phone.asked).toEqual([...UNNOTIFIED, 'cancel alarm'])
+  })
+
+  test('cleared, holds nothing set', async () => {
+    const phone = aPhone()
+    const alerts = alertsOn(phone)
+    await alerts.follow(want(running(90)))
+    await alerts.clear()
+    expect(phone.asked).toEqual([...notified(90), ...UNNOTIFIED, 'cancel alarm'])
+    expect(alerts.current()).toBeNull()
   })
 })
 
@@ -326,6 +334,30 @@ describe('with the app in front', () => {
     const alerts = alertsOn(phone, { inFront: () => true })
     await alerts.follow(want(running(1)))
     await alerts.follow(want(RUN_OUT))
+    expect(phone.asked).toEqual([...notified(1), 'end countdown'])
+  })
+
+  /** Each time it is seen run out, and told as an alarm too, whose countdown is iOS's own. */
+  test('a rest run out ends its countdown however it is told, as often as it is seen', async () => {
+    const phone = aPhone()
+    const alerts = alertsOn(phone, { inFront: () => true })
+    await alerts.follow(want(running(1), 'alarm'))
+    await alerts.follow(want(RUN_OUT, 'alarm'))
+    await alerts.follow(want(RUN_OUT, 'alarm'))
+    expect(phone.asked).toEqual(['alarm in 1s', 'end countdown', 'end countdown'])
+  })
+
+  /** Seen to run out in front, its countdown goes, though the app is closed by the time it can. */
+  test('is as the rest is seen to run out, not when its turn comes', async () => {
+    const phone = aSlowPhone()
+    let front = true
+    const alerts = alertsOn(phone.device, { inFront: () => front })
+    const first = alerts.follow(want(running(1)))
+    await phone.started
+    const told = alerts.follow(want(RUN_OUT))
+    front = false
+    phone.letGo()
+    await Promise.all([first, told])
     expect(phone.asked).toEqual([...notified(1), 'end countdown'])
   })
 
@@ -349,117 +381,5 @@ describe('with the app in front', () => {
     await alerts.cameToFront()
     expect(phone.asked).toEqual(['alarm in 90s', 'dismiss notification', 'end countdown if over'])
     expect(alerts.current()?.kind).toBe('alarm')
-  })
-})
-
-/** The keychain, as a fake: what it holds, and what it is asked to keep. */
-function aKeychain(held: string | null) {
-  const kept: string[] = []
-  return {
-    kept,
-    read: async () => held,
-    write: async (value: string) => {
-      kept.push(value)
-      held = value
-    },
-    clear: async () => {
-      held = null
-    },
-  }
-}
-
-/** iOS, as a fake: what it was asked, and what it answers. */
-function anIos(allows: boolean) {
-  const asked: string[] = []
-  return {
-    asked,
-    allow: async (kind: AlertKind) => {
-      asked.push(kind)
-      return allows
-    },
-  }
-}
-
-const aChoice = (keychain = aKeychain(null), ios = anIos(true)) =>
-  createAlertKind({ store: keychain, allow: ios.allow, alerts: alertsOn() })
-
-describe('how this phone tells a rest’s end', () => {
-  test('is off until the keychain is read, then what it keeps', async () => {
-    const choice = aChoice(aKeychain('alarm'))
-    expect(choice.snapshot()).toBe('off')
-    await choice.restore()
-    expect(choice.snapshot()).toBe('alarm')
-  })
-
-  test('is kept once iOS allows it, and heard by whoever listens', async () => {
-    const keychain = aKeychain(null)
-    const ios = anIos(true)
-    const choice = aChoice(keychain, ios)
-    await choice.restore()
-    const heard: string[] = []
-    choice.subscribe(() => {
-      heard.push(choice.snapshot())
-    })
-    expect(await choice.choose('notification')).toBe(true)
-    expect(ios.asked).toEqual(['notification'])
-    expect(keychain.kept).toEqual(['notification'])
-    expect(heard).toEqual(['notification'])
-  })
-
-  /** iOS asks once; refused, nothing is kept, and the screen says where to allow it. */
-  test('is not kept when iOS refuses it', async () => {
-    const keychain = aKeychain('notification')
-    const choice = aChoice(keychain, anIos(false))
-    await choice.restore()
-    expect(await choice.choose('alarm')).toBe(false)
-    expect(keychain.kept).toEqual([])
-    expect(choice.snapshot()).toBe('notification')
-  })
-
-  /** A rest whose screen is not open is not followed: turned off, what it set is cancelled at once. */
-  test('turned off, cancels what was set, and asks iOS nothing', async () => {
-    const phone = aPhone()
-    const alerts = alertsOn(phone)
-    const ios = anIos(true)
-    const choice = createAlertKind({ store: aKeychain('notification'), allow: ios.allow, alerts })
-    await alerts.follow(want(running(90)))
-    expect(await choice.choose('off')).toBe(true)
-    expect(ios.asked).toEqual([])
-    expect(phone.asked).toEqual([...notified(90), ...UNNOTIFIED, 'cancel alarm'])
-  })
-
-  /**
-   * Opened again, the app has set nothing yet, but iOS may still hold what it set before — a
-   * countdown on the Lock Screen, its notification. A change of kind clears every kind iOS holds.
-   */
-  test('changed, clears every kind iOS may hold, even from before the app was opened', async () => {
-    const phone = aPhone()
-    const alerts = alertsOn(phone)
-    const choice = createAlertKind({
-      store: aKeychain('notification'),
-      allow: anIos(true).allow,
-      alerts,
-    })
-    await choice.restore()
-    expect(await choice.choose('alarm')).toBe(true)
-    expect(phone.asked).toEqual([...UNNOTIFIED, 'cancel alarm'])
-    expect(alerts.current()).toBeNull()
-  })
-
-  /** A keychain that throws must not take the app down: nothing tells, as before it was chosen. */
-  test('is off when the keychain cannot be read', async () => {
-    const choice = aChoice({
-      ...aKeychain(null),
-      read: async () => {
-        throw new Error('keychain locked')
-      },
-    })
-    const errors = spyOn(console, 'error').mockImplementation(() => null)
-    try {
-      await choice.restore()
-    } finally {
-      errors.mockRestore()
-    }
-    expect(choice.snapshot()).toBe('off')
   })
 })

@@ -64,8 +64,8 @@ export const secondsUntil = (endsAt: number, now: number): number =>
  */
 export const chimesInApp = (set: Wanted | null): boolean => set?.kind !== 'alarm'
 
-/** A rest's notification, as iOS is asked to tell it. */
-export interface NotificationAsked {
+/** A rest's notification, as iOS is asked to schedule it. */
+export interface RestNotification {
   readonly seconds: number
   readonly title: string
   readonly body: string
@@ -84,7 +84,7 @@ export interface AlertDevice {
   /** Ended only if its rest is over: one still counting stays. */
   readonly endCountdownIfOver: () => Promise<void>
   /** The one rest notification: scheduled again, it replaces the one pending. */
-  readonly scheduleNotification: (asked: NotificationAsked) => Promise<void>
+  readonly scheduleNotification: (asked: RestNotification) => Promise<void>
   /** The one pending, not told yet. */
   readonly cancelNotification: () => Promise<void>
   /** The one told, still shown. */
