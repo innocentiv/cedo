@@ -1,6 +1,6 @@
 import { asksReserve } from './dimension.ts'
 import type { TrackingMode } from './exercise.ts'
-import { type SeriesMember, sameSeries } from './log.ts'
+import { type SeriesMember, sameSeries } from './series.ts'
 import { type FlowLog, type SessionSet, nextSet } from './session-flow.ts'
 
 /**

@@ -280,6 +280,8 @@ export interface Page {
   readonly calendarDay: (daysAgo?: number) => Promise<string>
   /** The next API request to `path` is stored, and its answer lost — see `StaticServer`. */
   readonly loseNextAnswer: (path: RegExp) => void
+  /** The next API answer from `path` waits until `during` is over — see `StaticServer`. */
+  readonly holdingNextAnswer: (path: RegExp, during: () => Promise<void>) => Promise<void>
   readonly errors: readonly string[]
   /**
    * Writes what is on screen now to `.artifacts/<name>.png` — for a run that pictures several
@@ -483,6 +485,14 @@ function makePage(view: Bun.WebView, site: StaticServer, errors: string[]): Page
     },
     loseNextAnswer: (path) => {
       site.loseNextAnswer(path)
+    },
+    holdingNextAnswer: async (path, during) => {
+      const release = site.holdNextAnswer(path)
+      try {
+        await during()
+      } finally {
+        release()
+      }
     },
     get errors() {
       return errors

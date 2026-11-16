@@ -955,6 +955,11 @@ is TanStack Query's own queue, kept in memory, with no persistence library:
   back". The logger is held only while a set's first send is on its way, as before. Once one waits,
   the next is logged behind it. Logging has its own `useSubmit`, so a waiting set never holds the
   Finish button.
+- A set the server has stored is no longer "not sent yet", though its send is not done until every
+  read it changes has been read again — the session's own can come back well before Today's. The
+  session's sets carry the key each was sent under, and `setsOfSession` (`src/api/pending.ts`)
+  counts a set whose key the server has once, as stored. That missing match was the one hazard an
+  architecture review found in this queue, so the queue stays TanStack's.
 - Closing or reloading the app before the signal returns loses the sets still waiting. Accepted:
   offline is the rare case, and anything done online wins.
 

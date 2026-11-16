@@ -2229,6 +2229,51 @@ test(
 )
 
 /**
+ * A set stored, and its send not yet done (#9): a send is done once every read it changes is read
+ * again, and the session's own can come back long before Today's. Until then the set is the
+ * server's and still the queue's — shown once, as logged, not also as waiting to be sent.
+ */
+test(
+  'a set stored while Today is still read again is shown once',
+  async () => {
+    await withApp('stored-once', async (page) => {
+      const app = screens(page)
+      await app.auth.register(unique('once'))
+      const mine = await page.client()
+      const [bench] = (await mine.exercises.list({ q: 'Bench', limit: 1 })).items
+      if (bench === undefined) throw new Error('The seeded library has no bench')
+      const day = (name: string) => ({
+        name,
+        entries: [{ exerciseId: bench.id, sets: [{ targetReps: 8, targetWeightG: 60_000 }] }],
+      })
+      const plan = await mine.workouts.create({ name: 'Two days', notes: null })
+      const saved = await mine.workouts.replacePlan(
+        plan.id,
+        WorkoutPlanInput.parse({ days: [day('Push'), day('Pull')] }),
+      )
+      const first = await mine.sessions.start({
+        workoutId: plan.id,
+        dayId: saved.days[0]?.id ?? null,
+      })
+      await mine.sessions.update(first.id, { endedAt: new Date().toISOString() })
+
+      // Started from Today, so Today is on screen beneath and read again after every set.
+      await page.goto('/today')
+      expect(await app.today.nextDay()).toBe('Pull')
+      await app.today.startNext()
+      await app.session.entry(0).fill('weight', '60')
+      await page.holdingNextAnswer(/^\/api\/today$/u, async () => {
+        await app.session.entry(0).log()
+        expect(await app.session.waiting()).toBe(0)
+      })
+      await app.session.sent()
+      expect(await app.session.loggedIds()).toHaveLength(1)
+    })
+  },
+  E2E_TIMEOUT_MS,
+)
+
+/**
  * A day of two entries — the bench, two sets; the squat, one — set up over HTTP, and a session
  * started on it, the bench in focus: where choosing the squat is a choice the day would not make.
  */
