@@ -1,9 +1,11 @@
 import { and, asc, eq, gte, inArray, isNotNull } from 'drizzle-orm'
 import type { Transaction } from '../../db/client.ts'
-import { progressionSteps, setLogs, workoutSessions } from '../../db/schema.ts'
+import { progressionSteps } from '../../db/schema.ts'
 import { visibleExercises, visibleWorkoutEntries, visibleWorkoutSets } from '../../db/visible.ts'
 import { groupBy } from '../../lib/keyset.ts'
 import type { Caller } from '../../plugins/auth.ts'
+import { own } from '../coaching/training.ts'
+import { setsOf } from '../session/sets-of.ts'
 
 /** What taking steps reads (`write-steps.ts`): the entries, their steps, and the sessions since. */
 
@@ -70,29 +72,24 @@ export async function finishedSets(
   entryIds: readonly string[],
   from: Date,
 ) {
+  const sets = setsOf(own(caller))
   const rows = await tx
     .select({
-      entryId: setLogs.entryId,
-      sessionId: setLogs.sessionId,
-      startedAt: workoutSessions.startedAt,
-      weightG: setLogs.weightG,
-      reps: setLogs.reps,
-      durationS: setLogs.durationS,
-      distanceMm: setLogs.distanceMm,
-      reserve: setLogs.reserve,
-      isWarmup: setLogs.isWarmup,
+      entryId: sets.entryId,
+      sessionId: sets.sessionId,
+      startedAt: sets.startedAt,
+      weightG: sets.weightG,
+      reps: sets.reps,
+      durationS: sets.durationS,
+      distanceMm: sets.distanceMm,
+      reserve: sets.reserve,
+      isWarmup: sets.isWarmup,
     })
-    .from(setLogs)
-    .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
+    .from(sets)
     .where(
-      and(
-        eq(workoutSessions.userId, caller.userId),
-        isNotNull(workoutSessions.endedAt),
-        gte(workoutSessions.startedAt, from),
-        inArray(setLogs.entryId, [...entryIds]),
-      ),
+      and(isNotNull(sets.endedAt), gte(sets.startedAt, from), inArray(sets.entryId, [...entryIds])),
     )
-    .orderBy(asc(workoutSessions.startedAt), asc(workoutSessions.id), asc(setLogs.setIndex))
+    .orderBy(asc(sets.startedAt), asc(sets.sessionId), asc(sets.setIndex))
   return rows.flatMap(({ entryId, ...set }) =>
     entryId === null ? [] : [Object.assign(set, { entryId })],
   )

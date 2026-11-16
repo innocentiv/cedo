@@ -1,13 +1,13 @@
-import { and, asc, eq, inArray, lt, sql } from 'drizzle-orm'
-import type { LoggedEffort, SessionEntryTarget } from '@cedo/contract'
+import { and, eq } from 'drizzle-orm'
+import type { SessionEntryTarget } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { setLogs, workoutSessions } from '../../db/schema.ts'
+import { workoutSessions } from '../../db/schema.ts'
 import { notFound } from '../../lib/error.ts'
-import { groupBy } from '../../lib/keyset.ts'
 import type { Caller } from '../../plugins/auth.ts'
 import { loadsOf } from '../equipment/held.ts'
 import { sessionTargetsOf } from './evaluate.ts'
 import { loadEntries } from './entries.ts'
+import { lastTimes } from './last-times.ts'
 
 /**
  * What a session asks of each entry of the day it follows — the logger's pre-fill — and what was
@@ -41,59 +41,4 @@ export async function targetsForSession(
     loadsOf(caller.userId, caller.weightUnit),
   ])
   return sessionTargetsOf(loaded.entries, loaded.prescribed, loaded.steps, loadFor, last)
-}
-
-/**
- * Each exercise's working sets in the caller's latest session before `before` that logged it — in
- * any plan or none — in the order they were logged. One query for every exercise: ranked per
- * exercise in SQL, as `loadLogs` is per entry.
- */
-async function lastTimes(
-  caller: Caller,
-  exerciseIds: readonly string[],
-  before: Date,
-): Promise<Map<string, LoggedEffort[]>> {
-  const ranked = db
-    .select({
-      exerciseId: setLogs.exerciseId,
-      reps: setLogs.reps,
-      weightG: setLogs.weightG,
-      durationS: setLogs.durationS,
-      distanceMm: setLogs.distanceMm,
-      loggedAt: setLogs.loggedAt,
-      setIndex: setLogs.setIndex,
-      rank: sql<number>`dense_rank() over (partition by ${setLogs.exerciseId} order by ${workoutSessions.startedAt} desc, ${workoutSessions.id} desc)`.as(
-        'rank',
-      ),
-    })
-    .from(setLogs)
-    .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
-    .where(
-      and(
-        eq(workoutSessions.userId, caller.userId),
-        inArray(setLogs.exerciseId, [...exerciseIds]),
-        lt(workoutSessions.startedAt, before),
-        eq(setLogs.isWarmup, false),
-      ),
-    )
-    .as('last_ranked')
-
-  const rows = await db
-    .select({
-      exerciseId: ranked.exerciseId,
-      reps: ranked.reps,
-      weightG: ranked.weightG,
-      durationS: ranked.durationS,
-      distanceMm: ranked.distanceMm,
-    })
-    .from(ranked)
-    .where(sql`${ranked.rank} = 1`)
-    // Ties broken as exercise history breaks them (`session/history.ts`), so the order is fixed.
-    .orderBy(asc(ranked.loggedAt), asc(ranked.setIndex))
-
-  return groupBy(
-    rows,
-    (r) => r.exerciseId,
-    ({ reps, weightG, durationS, distanceMm }) => ({ reps, weightG, durationS, distanceMm }),
-  )
 }

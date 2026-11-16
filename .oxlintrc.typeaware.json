@@ -48,6 +48,12 @@
             "importNames": ["progressionSteps"],
             "allowTypeImports": true,
             "message": "Progression steps are progression's: read and taken only in modules/progression/. Elsewhere, call its service (retakeStepsOf, …). See docs/02-conventions.md and docs/adr/0026-targets-and-steps.md."
+          },
+          {
+            "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+            "importNames": ["setLogs"],
+            "allowTypeImports": true,
+            "message": "The sets are session/'s: elsewhere, read them through setsOf(training) in modules/session/sets-of.ts, which says whose they are once. See docs/02-conventions.md."
           }
         ]
       }
@@ -95,6 +101,12 @@
                 ],
                 "allowTypeImports": true,
                 "message": "Read owned tables through db/visible.ts (visibleExercises(caller), …). Writes belong in the module's write*.ts. See docs/adr/0019-visible-relations.md."
+              },
+              {
+                "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+                "importNames": ["setLogs"],
+                "allowTypeImports": true,
+                "message": "The sets are session/'s: elsewhere, read them through setsOf(training) in modules/session/sets-of.ts, which says whose they are once. See docs/02-conventions.md."
               }
             ]
           }
@@ -119,6 +131,12 @@
                 "importNames": ["progressionSteps"],
                 "allowTypeImports": true,
                 "message": "Progression steps are progression's: read and taken only in modules/progression/. Elsewhere, call its service (retakeStepsOf, …). See docs/02-conventions.md and docs/adr/0026-targets-and-steps.md."
+              },
+              {
+                "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+                "importNames": ["setLogs"],
+                "allowTypeImports": true,
+                "message": "The sets are session/'s: elsewhere, read them through setsOf(training) in modules/session/sets-of.ts, which says whose they are once. See docs/02-conventions.md."
               }
             ]
           }
@@ -147,6 +165,74 @@
                 ],
                 "allowTypeImports": true,
                 "message": "Read owned tables through db/visible.ts (visibleExercises(caller), …); athlete records through their own modules. See docs/adr/0019-visible-relations.md and docs/02-conventions.md."
+              },
+              {
+                "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+                "importNames": ["setLogs"],
+                "allowTypeImports": true,
+                "message": "The sets are session/'s: elsewhere, read them through setsOf(training) in modules/session/sets-of.ts, which says whose they are once. See docs/02-conventions.md."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/api/src/modules/session/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+                "importNames": [
+                  "exercises",
+                  "exerciseMuscles",
+                  "exerciseMedia",
+                  "workouts",
+                  "workoutDays",
+                  "workoutEntries",
+                  "workoutSets"
+                ],
+                "allowTypeImports": true,
+                "message": "Read owned tables through db/visible.ts (visibleExercises(caller), …). Writes belong in the module's write*.ts. See docs/adr/0019-visible-relations.md."
+              },
+              {
+                "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+                "importNames": ["athleteNotes", "weighIns"],
+                "allowTypeImports": true,
+                "message": "Athlete records are read and written only by their own modules (note/, weigh-in/), through athleteRecords(table, kind) in modules/athlete-record/. Elsewhere, call the kind's service. See docs/02-conventions.md."
+              },
+              {
+                "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+                "importNames": ["progressionSteps"],
+                "allowTypeImports": true,
+                "message": "Progression steps are progression's: read and taken only in modules/progression/. Elsewhere, call its service (retakeStepsOf, …). See docs/02-conventions.md and docs/adr/0026-targets-and-steps.md."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["apps/api/src/modules/session/write*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+                "importNames": ["athleteNotes", "weighIns"],
+                "allowTypeImports": true,
+                "message": "Athlete records are read and written only by their own modules (note/, weigh-in/), through athleteRecords(table, kind) in modules/athlete-record/. Elsewhere, call the kind's service. See docs/02-conventions.md."
+              },
+              {
+                "group": ["**/db/schema.ts", "**/db/schema", "**/db/tables/*"],
+                "importNames": ["progressionSteps"],
+                "allowTypeImports": true,
+                "message": "Progression steps are progression's: read and taken only in modules/progression/. Elsewhere, call its service (retakeStepsOf, …). See docs/02-conventions.md and docs/adr/0026-targets-and-steps.md."
               }
             ]
           }

@@ -29,6 +29,12 @@ though it were written at once.
   holds it: only `modules/progression/`, `db/` and tests may name it. The session module takes and
   re-takes steps by calling progression's service, inside its own transaction; everything else reads
   a target through it (ADR-0026).
+- **The sets are session's.** `set_logs` is personal too, and only `modules/session/`, `db/` and
+  tests may name it. Anywhere else reads the sets of a training through `setsOf(training)`
+  (`modules/session/sets-of.ts`), a relation that says whose they are once and carries each set's
+  session start and end — and what a set lifted is `liftedOf`, beside it. Inside `session/`, a read
+  by session id may use the table itself, as may a read the relation would plan worse (`history.ts`
+  says why).
 - **Never create a `utils.ts`.** Name the file after what it does (`password.ts`, `token.ts`).
 
 ## The service rule

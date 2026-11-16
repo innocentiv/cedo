@@ -1,10 +1,10 @@
-import { and, eq, gte, inArray, lte } from 'drizzle-orm'
+import { and, gte, inArray, lte } from 'drizzle-orm'
 import { type TrackingMode, personalBestsIn } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises } from '../../db/visible.ts'
 import { earlierBests } from './bests.ts'
-import { type Training, sessionsOf } from '../coaching/training.ts'
+import type { Training } from '../coaching/training.ts'
+import { setsOf } from './sets-of.ts'
 
 /**
  * How many personal bests each session of a page of history set (#25) — judged as each session's
@@ -33,7 +33,7 @@ export async function bestsPerSession(
   const tracking = await trackingOf(training, logs)
   const bests = personalBestsIn(
     logs,
-    await earlierBests(sessionsOf(training), oldest, [...tracking.keys()]),
+    await earlierBests(training, oldest, [...tracking.keys()]),
     (exerciseId) => tracking.get(exerciseId) ?? null,
   )
   const counts = new Map<string, number>()
@@ -50,29 +50,23 @@ export async function bestsPerSession(
  * hands them over as it goes.
  */
 async function setsInOrder(training: Training, oldest: Date, newest: Date) {
+  const sets = setsOf(training)
   const logs = await db
     .select({
-      id: setLogs.id,
-      sessionId: setLogs.sessionId,
-      startedAt: workoutSessions.startedAt,
-      loggedAt: setLogs.loggedAt,
-      setIndex: setLogs.setIndex,
-      exerciseId: setLogs.exerciseId,
-      isWarmup: setLogs.isWarmup,
-      weightG: setLogs.weightG,
-      reps: setLogs.reps,
-      durationS: setLogs.durationS,
-      distanceMm: setLogs.distanceMm,
+      id: sets.id,
+      sessionId: sets.sessionId,
+      startedAt: sets.startedAt,
+      loggedAt: sets.loggedAt,
+      setIndex: sets.setIndex,
+      exerciseId: sets.exerciseId,
+      isWarmup: sets.isWarmup,
+      weightG: sets.weightG,
+      reps: sets.reps,
+      durationS: sets.durationS,
+      distanceMm: sets.distanceMm,
     })
-    .from(setLogs)
-    .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
-    .where(
-      and(
-        sessionsOf(training),
-        gte(workoutSessions.startedAt, oldest),
-        lte(workoutSessions.startedAt, newest),
-      ),
-    )
+    .from(sets)
+    .where(and(gte(sets.startedAt, oldest), lte(sets.startedAt, newest)))
   return logs.toSorted(
     (a, b) =>
       a.startedAt.getTime() - b.startedAt.getTime() ||

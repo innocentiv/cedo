@@ -31,7 +31,10 @@ training — sessions, logs, notes, the review — and change none of it (#11). 
 leaving or being removed withdraws it with the row; never set in a personal group or the library.
 A read of training says whose sessions (`athleteId`) apart from who reads them (`reader`, whose
 visible relations name what was logged): `Training` in `modules/coaching/training.ts`. See
-`docs/adr/0021-coaching-through-groups.md`.
+`docs/adr/0021-coaching-through-groups.md`. The sets of a training are one relation,
+`setsOf(training)` in `modules/session/sets-of.ts`: each set of the athlete's sessions, with its
+session's start and end — what the review, progression, history and personal bests read, and the
+only way outside `session/` to read `set_logs`. What a set lifted is `liftedOf` beside it.
 
 `users.weight_unit` (`kg` | `lb`) is how a person reads and types weights. It changes no stored
 value — every weight is grams — only what is written for them: the app's screens and the AI's MCP

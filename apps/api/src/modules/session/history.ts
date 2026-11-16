@@ -11,7 +11,8 @@ import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleExercises } from '../../db/visible.ts'
 import { notFound } from '../../lib/error.ts'
 import type { Caller } from '../../plugins/auth.ts'
-import { type Training, sessionsOf } from '../coaching/training.ts'
+import type { Training } from '../coaching/training.ts'
+import { setsOf } from './sets-of.ts'
 
 /**
  * Per-exercise history, newest session first. One indexed read on
@@ -35,27 +36,13 @@ export async function history(
   query: ExerciseHistoryQuery,
 ): Promise<ExerciseHistory> {
   const tracking = await visibleTracking(training.reader, exerciseId)
-
-  const conditions = [eq(setLogs.exerciseId, exerciseId), sessionsOf(training)]
-  if (query.since !== undefined)
-    conditions.push(sql`${workoutSessions.startedAt} >= ${query.since}`)
+  const recentSessions = recentSessionsOf(training, exerciseId, query)
 
   /**
-   * The session cap is applied in SQL, not by slicing afterwards.
-   *
-   * Reading every log for the exercise and keeping the newest twenty sessions transferred hundreds
-   * of rows to return a handful — two years of a main lift is easily a thousand. The subquery picks
-   * the session ids first, which `set_logs_exercise_time_idx` serves directly.
+   * The sets of those sessions, read from `set_logs` itself, not `setsOf`: the sessions are already
+   * the training's, picked above, and saying whose again made the planner read every one of the
+   * athlete's sessions to hash-join the twenty — where this looks each of them up by id.
    */
-  const recentSessions = db
-    .selectDistinct({ id: workoutSessions.id, startedAt: workoutSessions.startedAt })
-    .from(setLogs)
-    .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
-    .where(and(...conditions))
-    .orderBy(desc(workoutSessions.startedAt))
-    .limit(query.limit)
-    .as('recent')
-
   const rows = await db
     .select({
       sessionId: setLogs.sessionId,
@@ -70,7 +57,7 @@ export async function history(
     })
     .from(setLogs)
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
-    .innerJoin(recentSessions, eq(sql`recent.id`, setLogs.sessionId))
+    .innerJoin(recentSessions, eq(recentSessions.id, setLogs.sessionId))
     .where(eq(setLogs.exerciseId, exerciseId))
     // In the order performed. Not by number alone: a number counts within its SERIES, so two
     // series of one exercise in a session — two plan entries, or planned and extra sets — share
@@ -78,6 +65,26 @@ export async function history(
     .orderBy(desc(workoutSessions.startedAt), asc(setLogs.loggedAt), asc(setLogs.setIndex))
 
   return { exerciseId, tracking, ...withStall(groupIntoSessions(rows), tracking) }
+}
+
+/**
+ * The training's latest sessions that logged the exercise, newest first, as a subquery: the session
+ * cap is applied in SQL, not by slicing afterwards. Reading every log for the exercise and keeping
+ * the newest twenty sessions transferred hundreds of rows to return a handful — two years of a main
+ * lift is easily a thousand. This picks the session ids first, which `set_logs_exercise_time_idx`
+ * serves directly.
+ */
+function recentSessionsOf(training: Training, exerciseId: string, query: ExerciseHistoryQuery) {
+  const sets = setsOf(training)
+  const conditions = [eq(sets.exerciseId, exerciseId)]
+  if (query.since !== undefined) conditions.push(sql`${sets.startedAt} >= ${query.since}`)
+  return db
+    .selectDistinct({ id: sets.sessionId, startedAt: sets.startedAt })
+    .from(sets)
+    .where(and(...conditions))
+    .orderBy(desc(sets.startedAt))
+    .limit(query.limit)
+    .as('recent')
 }
 
 /**
