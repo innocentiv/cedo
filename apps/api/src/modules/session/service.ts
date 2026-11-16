@@ -143,7 +143,7 @@ export async function read(training: Training, id: string): Promise<WorkoutSessi
   )
   const bests = personalBestsIn(
     logs.map((l) => l.log),
-    await earlierBests(sessionsOf(training), row.startedAt, [...tracking.keys()]),
+    await earlierBests(training, row.startedAt, [...tracking.keys()]),
     (exerciseId) => tracking.get(exerciseId) ?? null,
   )
   return toSession(

@@ -204,3 +204,35 @@ describe('no sql template outside progression names the steps table', () => {
     expect(offences).toEqual([])
   })
 })
+
+/**
+ * The sets are personal too, and session's: the lint keeps `set_logs` out of every other module's
+ * imports, which read them through `setsOf(training)` (`modules/session/sets-of.ts`); this keeps it
+ * out of their raw SQL.
+ */
+const SETS = /\bset_logs\b/iu
+const SETS_ALLOWED = [/^db\//u, /^modules\/session\//u, /^test\//u, /\.test\.ts$/u]
+
+describe('no sql template outside session names the sets table', () => {
+  const root = new URL('..', import.meta.url).pathname
+  const files = [...new Glob('**/*.ts').scanSync(root)].filter(
+    (file) => !SETS_ALLOWED.some((allowed) => allowed.test(file)),
+  )
+
+  test('the scan reaches the modules it is meant to guard', () => {
+    expect(files).toContain('modules/review/sets.ts')
+    expect(files).toContain('modules/progression/last-times.ts')
+    expect(files).not.toContain('modules/session/sets-of.ts')
+  })
+
+  test('every file', async () => {
+    const offences: string[] = []
+    for (const file of files) {
+      const source = await Bun.file(`${root}${file}`).text()
+      for (const literal of sqlLiterals(source)) {
+        if (SETS.test(literal)) offences.push(`${file}: names "set_logs" in raw SQL`)
+      }
+    }
+    expect(offences).toEqual([])
+  })
+})

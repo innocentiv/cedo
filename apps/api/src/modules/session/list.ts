@@ -5,6 +5,7 @@ import { setLogs, workoutSessions } from '../../db/schema.ts'
 import { visibleWorkoutDays, visibleWorkouts } from '../../db/visible.ts'
 import { afterCursor, cursorMicros, decodeCursor, encodeCursor } from './cursor.ts'
 import { bestsPerSession } from './page-bests.ts'
+import { liftedOf } from './sets-of.ts'
 import { type Training, sessionsOf } from '../coaching/training.ts'
 import type { SessionRow } from './service.ts'
 
@@ -131,11 +132,9 @@ async function totalsFor(sessionIds: string[]) {
     .select({
       sessionId: setLogs.sessionId,
       sets: sql<number>`count(*) filter (where not ${setLogs.isWarmup})`.mapWith(Number),
+      // What each working set lifted (`liftedOf`: a bigint, assistance none), summed.
       lifted:
-        // `::bigint` for the same reason as the review's weight-lifted sum: weight × reps overflows
-        // int4 at loads the contract permits. And assistance — negative added weight (#19) — is
-        // help, not load: it lifts nothing. See modules/review/service.ts.
-        sql<number>`coalesce(sum(greatest(${setLogs.weightG}, 0)::bigint * ${setLogs.reps}) filter (where not ${setLogs.isWarmup}), 0)`.mapWith(
+        sql<number>`coalesce(sum(${liftedOf(setLogs)}) filter (where not ${setLogs.isWarmup}), 0)`.mapWith(
           Number,
         ),
     })

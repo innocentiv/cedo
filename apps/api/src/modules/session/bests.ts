@@ -1,7 +1,8 @@
-import { type SQL, and, eq, inArray, lt, sql } from 'drizzle-orm'
+import { and, eq, inArray, lt, sql } from 'drizzle-orm'
 import type { Effort } from '@cedo/contract'
 import { db } from '../../db/client.ts'
-import { setLogs, workoutSessions } from '../../db/schema.ts'
+import type { Training } from '../coaching/training.ts'
+import { setsOf } from './sets-of.ts'
 
 /**
  * What each exercise's earlier working sets could be beaten by — the candidates `personalBestsIn`
@@ -12,32 +13,30 @@ import { setLogs, workoutSessions } from '../../db/schema.ts'
  * `before`, so a session read later, or by a coach, is judged as it was when it was done.
  */
 export async function earlierBests(
-  /** The reader's `sessionsOf(training)`, so whose sessions these are is said in one place. */
-  whose: SQL,
+  training: Training,
   before: Date,
   exerciseIds: readonly string[],
 ): Promise<Map<string, Effort[]>> {
   if (exerciseIds.length === 0) return new Map()
+  const sets = setsOf(training)
   const rows = await db
     .select({
-      exerciseId: setLogs.exerciseId,
-      reps: setLogs.reps,
-      distanceMm: setLogs.distanceMm,
-      weightG: sql<number | null>`max(${setLogs.weightG})`,
-      longest: sql<number | null>`max(${setLogs.durationS})`,
-      shortest: sql<number | null>`min(${setLogs.durationS})`,
+      exerciseId: sets.exerciseId,
+      reps: sets.reps,
+      distanceMm: sets.distanceMm,
+      weightG: sql<number | null>`max(${sets.weightG})`,
+      longest: sql<number | null>`max(${sets.durationS})`,
+      shortest: sql<number | null>`min(${sets.durationS})`,
     })
-    .from(setLogs)
-    .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
+    .from(sets)
     .where(
       and(
-        whose,
-        lt(workoutSessions.startedAt, before),
-        inArray(setLogs.exerciseId, [...exerciseIds]),
-        eq(setLogs.isWarmup, false),
+        lt(sets.startedAt, before),
+        inArray(sets.exerciseId, [...exerciseIds]),
+        eq(sets.isWarmup, false),
       ),
     )
-    .groupBy(setLogs.exerciseId, setLogs.reps, setLogs.distanceMm)
+    .groupBy(sets.exerciseId, sets.reps, sets.distanceMm)
 
   const bests = new Map<string, Effort[]>()
   for (const r of rows) {

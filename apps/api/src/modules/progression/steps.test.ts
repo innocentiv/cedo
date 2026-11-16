@@ -220,7 +220,7 @@ describe('a plan edit restarts a target — reversibly', () => {
  * where the same sessions, done in order, would. One table, one row a change.
  */
 describe('a change to a session moves the steps it trained, and every one after', () => {
-  const setsOf = async (sessionId: string) =>
+  const setIdsOf = async (sessionId: string) =>
     expectContract(WorkoutSession, (await alice.wire(`/sessions/${sessionId}`)).body).logs.map(
       (l) => l.id,
     )
@@ -259,7 +259,7 @@ describe('a change to a session moves the steps it trained, and every one after'
       'an earlier session’s sets corrected: every step since',
       async (p) => {
         const first = await twoSessions(p)
-        for (const id of await setsOf(first)) {
+        for (const id of await setIdsOf(first)) {
           // oxlint-disable-next-line no-await-in-loop -- one set after another.
           await send(`/sessions/${first}/logs/${id}`, { reps: 7 }, 'PATCH')
         }
@@ -270,7 +270,7 @@ describe('a change to a session moves the steps it trained, and every one after'
       'a set of an earlier session removed: every step since',
       async (p) => {
         const first = await twoSessions(p)
-        const [one] = await setsOf(first)
+        const [one] = await setIdsOf(first)
         await send(`/sessions/${first}/logs/${one ?? ''}`, {}, 'DELETE')
       },
     ],

@@ -314,7 +314,12 @@ export const HOT_PATHS: readonly HotPath[] = [
     maxQueries: 2,
     budgetMs: 80,
     noSeqScan: ['set_logs', 'workout_sessions'],
-    indexes: ['workout_sessions_user_time_idx', 'set_logs_session_idx'],
+    // The exercise's sets by `set_logs_exercise_time_idx` pick the sessions; each one's sets by id.
+    indexes: [
+      'set_logs_exercise_time_idx',
+      'workout_sessions_user_time_idx',
+      'set_logs_session_idx',
+    ],
     run: async (fixtures, size) => {
       const profile = pick(fixtures, size)
       return await history(own(profile.caller), profile.exerciseId, { limit: 20 })

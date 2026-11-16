@@ -1,7 +1,7 @@
-import { asc, desc, eq, sql } from 'drizzle-orm'
+import { asc, desc, sql } from 'drizzle-orm'
 import { db } from '../../db/client.ts'
-import { setLogs, workoutSessions } from '../../db/schema.ts'
-import { type Training, sessionsOf } from '../coaching/training.ts'
+import type { Training } from '../coaching/training.ts'
+import { setsOf } from './sets-of.ts'
 
 /**
  * The exercises a training logged most lately, latest first, by id (#27) — whether the reader can
@@ -10,14 +10,13 @@ import { type Training, sessionsOf } from '../coaching/training.ts'
  * moment, by id.
  */
 export async function recentlyLogged(training: Training, limit: number): Promise<string[]> {
-  const latest = sql`max(${setLogs.loggedAt})`
+  const sets = setsOf(training)
+  const latest = sql`max(${sets.loggedAt})`
   const rows = await db
-    .select({ exerciseId: setLogs.exerciseId })
-    .from(setLogs)
-    .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
-    .where(sessionsOf(training))
-    .groupBy(setLogs.exerciseId)
-    .orderBy(desc(latest), asc(setLogs.exerciseId))
+    .select({ exerciseId: sets.exerciseId })
+    .from(sets)
+    .groupBy(sets.exerciseId)
+    .orderBy(desc(latest), asc(sets.exerciseId))
     .limit(limit)
   return rows.map((r) => r.exerciseId)
 }
