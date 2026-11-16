@@ -1,5 +1,12 @@
 import { eq } from 'drizzle-orm'
-import { Exercise, type TrackingMode, WorkoutSession, daysToMs } from '@cedo/contract'
+import {
+  Exercise,
+  type TrackingMode,
+  WorkoutSession,
+  daysToMs,
+  minutesToS,
+  sToMs,
+} from '@cedo/contract'
 import { db } from '../db/client.ts'
 import { workoutSessions } from '../db/schema.ts'
 import { own } from '../modules/coaching/training.ts'
@@ -60,7 +67,8 @@ export function reviewFixture(user: TestUser) {
         const startedAt = new Date(Date.now() - daysToMs(daysAgo))
         await db
           .update(workoutSessions)
-          .set({ startedAt, endedAt: new Date(startedAt.getTime() + 3_600_000) })
+          // An hour long, as the conversion says it: no factor written out here (invariant 6).
+          .set({ startedAt, endedAt: new Date(startedAt.getTime() + sToMs(minutesToS(60))) })
           .where(eq(workoutSessions.id, session.id))
       }
     },
