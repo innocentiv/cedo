@@ -18,9 +18,10 @@ z.object({
 })
 ```
 
-Add the kind to the contract's one answer to **which rules fit which tracking mode** — the
-function the plan save, the editor and MCP all ask. A kind no tracking mode allows can be saved by
-nobody and offered by no screen.
+Add the kind to the contract's one answer to **which rules fit which tracking mode** — `RULES` in
+`packages/contract/src/rule-fit.ts`, which `rulesFor` answers and the plan save, the editor and MCP
+all ask. A kind no tracking mode allows can be saved by nobody and offered by no screen, and
+`rule-fit.test.ts` fails on one, reading the kinds from the union.
 
 Give every field a description (`.describe`): an AI learns the rule from it, and a test fails on a
 plan field without one.
@@ -61,6 +62,10 @@ takes them, never through `step` directly. What only a run of steps does belongs
 `take-steps.test.ts`: where a run starts, what anchors it, what each session is judged against, and
 the loadable weights it lands on.
 
+Give the kind its row in the invariants every rule must hold (`EVERY_RULE`, typed over every
+kind, so the tests do not compile without it): a target it moves, and sessions that clear it, fall
+short and do nothing.
+
 Cover: a success advancing, a failure not advancing, `afterSuccesses` counted over consecutive
 sessions only (the streak a step carries: one more when cleared, none when held or advanced),
 warmup sets excluded, a session with no working set holding the target, and a target
@@ -71,8 +76,11 @@ that differs from its prescription only in what the rule moves.
 `NEW_RULE` in `packages/contract/src/plan-editing.ts` is the starting rule for each kind, in the
 person's unit — what `progressionOf` gives when the editor switches to that kind (switching back
 keeps the earlier rule's settings). It is typed over every kind, so a missing one does not compile.
-`apps/app/src/ui/rule-field.tsx` renders the rule's settings, so a kind with a new parameter gets
-its input there; `describeProgression` names it, `ruleLabel` is its segment in the editor,
+`ruleSettings` in `packages/contract/src/rule-settings.ts` says the rule's own settings — which,
+in order, their labels, and what each becomes when changed or emptied — and is unit-tested beside
+it; `apps/app/src/ui/rule-field.tsx` only draws what it answers. `settableByHand` in
+`packages/contract/src/by-hand.ts` says what a target set by hand may change under it, and the
+refusal for anything else; `describeProgression` names it, `ruleLabel` is its segment in the editor,
 `ruleSentence` says what it does there,
 `rulesFor` offers it to the exercises it fits, and `judgedBy` says what its working sets share.
 

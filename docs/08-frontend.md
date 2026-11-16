@@ -529,7 +529,8 @@ look. In order, because what the rule is decides what every field below it means
    from the contract's one function the plan save and MCP also ask (`Double | Linear | Manual` for a
    lift; `Linear | Manual` for a hold, where Linear adds seconds; `Distance | Manual` for a run). Then
    the rule's settings — from / to and the increase for a double, the increase and after how many
-   cleared sessions for linear — and one plain sentence saying what it does: "Climb from 8 to 12
+   cleared sessions for linear — which, and what each becomes when emptied, the contract's
+   (`ruleSettings`); and one plain sentence saying what it does: "Climb from 8 to 12
    reps at the same weight. When every working set reaches 12, add 5 kg and start again at 8."
    Manual says "Nothing moves these numbers but an edit to the plan." There is no beginner or
    power-user switch: the rules are the guided view, Manual the notebook.
