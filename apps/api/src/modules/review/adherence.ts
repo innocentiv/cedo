@@ -1,10 +1,16 @@
 import { type TrainingReview, msToDays } from '@cedo/contract'
 
-/** Pure: dates in, adherence out. No database, so the calendar arithmetic is unit-testable. */
+/**
+ * Pure: dates in, adherence out, as of `now` — handed in, never read here, so the calendar
+ * arithmetic is unit-tested (adherence.test.ts) at a day of the test's choosing.
+ */
 
 export function adherenceOf(
+  /** Newest first, as the review reads them. */
   sessions: readonly { startedAt: Date }[],
   weeks: number,
+  /** When the review is read, epoch ms. */
+  now: number,
 ): TrainingReview['adherence'] {
   const times = sessions.map((s) => s.startedAt.getTime())
   const last = times[0]
@@ -27,7 +33,7 @@ export function adherenceOf(
    */
   const days = [...new Set(times.map((t) => Math.floor(msToDays(t))))].toSorted((a, b) => b - a)
   let currentStreakDays = 0
-  const today = Math.floor(msToDays(Date.now()))
+  const today = Math.floor(msToDays(now))
   if (days[0] !== undefined && today - days[0] <= 1) {
     currentStreakDays = 1
     for (let i = 0; i + 1 < days.length; i++) {
