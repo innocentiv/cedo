@@ -41,10 +41,11 @@ is designed to prevent.
    logic. The one exception is state only the app owns — who is signed in on this device, and on
    which server, and the app shell it keeps for opening offline, and when a set logged without a
    signal is sent again, and how such a set counts on the workout, and when a plan edited in place
-   is saved, and what the phone has set to tell a rest's end — which lives in plain modules
-   (`apps/app/src/auth/session.ts`, `apps/app/src/auth/server.ts`,
+   is saved, and how the phone tells a rest's end and what it has set to — which lives in plain
+   modules (`apps/app/src/auth/session.ts`, `apps/app/src/auth/server.ts`,
    `apps/app/src/pwa/shell-cache.ts`, `apps/app/src/api/retry.ts`, `apps/app/src/api/pending.ts`,
-   `apps/app/src/lib/plan-sync.ts`, `apps/app/src/lib/rest-alert.ts`;
+   `apps/app/src/lib/plan-sync.ts`, `apps/app/src/lib/rest-alert-kind.ts`,
+   `apps/app/src/lib/rest-alert.ts`;
    no React, no React Native) and is unit-tested beside them — as is what the native app's engine
    lacks (`apps/app/src/lib/hermes-builtins.ts`).
    Components are never unit-tested; lint refuses it. It is measured: each source file of the

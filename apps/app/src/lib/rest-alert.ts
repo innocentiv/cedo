@@ -1,82 +1,16 @@
 import { type RestAlert, type RestPhase, msToS, sToMs } from '@cedo/contract'
-import type { TokenStore } from '../auth/session.ts'
-import { observed } from './observed.ts'
+import { type AlertKind, TELLING_KINDS, type TellingKind } from './rest-alert-kind.ts'
 
 /**
  * What this phone has set to tell the end of a rest with the app closed (#39), and every rule about
- * it — outside React, so each is unit-tested with a fake scheduler (rest-alert.test.ts), as the
- * session is with a fake keychain.
+ * it — outside React, so each is unit-tested with a fake phone (rest-alert.test.ts), as the
+ * session is with a fake keychain: which of the phone's calls each change makes, and in what order.
  *
  * The phone that logged the set tells it, and nothing else does: no push, no server (ADR-0032). The
  * alert follows the rest this phone counts (`restPhase`), so every change to it — a set logged,
  * +30 s here or on another device, a skip, an undo, the next set, finishing — reaches the alert by
  * the one road, the rest's own clock: the end moves, or no rest runs and it is cancelled.
  */
-
-/** How this phone is told a rest is over: kept on the phone, which alone knows what it allows. */
-const ALERT_KINDS = ['off', 'notification', 'alarm'] as const
-export type AlertKind = (typeof ALERT_KINDS)[number]
-
-/** A kind that tells: what iOS is asked to allow, and what an alert is set as. */
-export type TellingKind = Exclude<AlertKind, 'off'>
-const TELLING_KINDS: readonly TellingKind[] = ['notification', 'alarm']
-
-/** The kind kept on the phone, or off when none — or something no longer offered — is. */
-export const kindOf = (kept: string | null): AlertKind =>
-  ALERT_KINDS.find((kind) => kind === kept) ?? 'off'
-
-/** "Tell me when rest is over", on the rest band: offered while nothing tells this phone. */
-export const offersToTell = (kind: AlertKind): boolean => kind === 'off'
-
-/** Where the kind is kept between launches: the keychain, as the sign-in is. */
-export type AlertKindStore = TokenStore
-
-export interface AlertKindChoice {
-  /** The same value until it changes — for `useSyncExternalStore`. */
-  readonly snapshot: () => AlertKind
-  readonly subscribe: (listener: () => void) => () => void
-  /** At startup: the kind kept. Off until it is read, and when it cannot be. */
-  readonly restore: () => Promise<void>
-  /** Chosen in Settings, or from the rest band. False when iOS refused it: nothing is kept then. */
-  readonly choose: (kind: AlertKind) => Promise<boolean>
-}
-
-/**
- * How this phone tells a rest's end: a phone's own choice. iOS is asked first, as it asks the
- * person once and after that answers what they said. Changed — turned off too — every kind iOS
- * holds is cleared at once: a rest whose screen is not open is not followed (`RestAlerts`), and the
- * rest's screen sets the new kind's as it follows the rest again.
- */
-export function createAlertKind({
-  store,
-  allow,
-  alerts,
-}: {
-  readonly store: AlertKindStore
-  readonly allow: (kind: TellingKind) => Promise<boolean>
-  readonly alerts: RestAlerts
-}): AlertKindChoice {
-  const state = observed<AlertKind>('off')
-  return {
-    snapshot: state.get,
-    subscribe: state.subscribe,
-    restore: async () => {
-      const kept = await store.read().catch((error: unknown) => {
-        console.error(error)
-        return null
-      })
-      state.set(kindOf(kept))
-    },
-    choose: async (kind) => {
-      if (kind !== 'off' && !(await allow(kind))) return false
-      await store.write(kind)
-      // Before the kind is heard, so the rest's screen sets the new one after the old is gone.
-      await alerts.clear()
-      state.set(kind)
-      return true
-    },
-  }
-}
 
 /** An alert to be told: when, by this phone's clock, and what it says. */
 export interface Wanted {
@@ -130,11 +64,71 @@ export const secondsUntil = (endsAt: number, now: number): number =>
  */
 export const chimesInApp = (set: Wanted | null): boolean => set?.kind !== 'alarm'
 
-/** What tells the phone: `expo-notifications`, or the alarm module — or a fake. */
-export interface AlertScheduler {
-  /** One alert of a kind at a time: setting one replaces the one before. */
-  readonly schedule: (wanted: Wanted) => Promise<void>
-  readonly cancel: (kind: TellingKind) => Promise<void>
+/** A rest's notification, as iOS is asked to tell it. */
+export interface NotificationAsked {
+  readonly seconds: number
+  readonly title: string
+  readonly body: string
+  /** What a tap on it carries back to the app: the session it opens (`sessionTapped`). */
+  readonly data: { readonly sessionId: string }
+}
+
+/**
+ * What the phone offers to tell a rest's end, one call each — `expo-notifications` and the app's own
+ * native module (rest-alert-device.ts), or a fake. Which are asked, and in what order, is decided here.
+ */
+export interface AlertDevice {
+  /** The rest counting down on the Lock Screen and in the Dynamic Island; shown again, replaced. */
+  readonly showCountdown: (seconds: number, next: string, sessionId: string) => Promise<void>
+  readonly endCountdown: () => Promise<void>
+  /** Ended only if its rest is over: one still counting stays. */
+  readonly endCountdownIfOver: () => Promise<void>
+  /** The one rest notification: scheduled again, it replaces the one pending. */
+  readonly scheduleNotification: (asked: NotificationAsked) => Promise<void>
+  /** The one pending, not told yet. */
+  readonly cancelNotification: () => Promise<void>
+  /** The one told, still shown. */
+  readonly dismissNotification: () => Promise<void>
+  /** The one alarm: scheduled again, it replaces the one pending. */
+  readonly scheduleAlarm: (seconds: number, title: string) => Promise<void>
+  readonly cancelAlarm: () => Promise<void>
+}
+
+/** How a kind is set and cancelled, in the phone's own calls. */
+interface Teller {
+  readonly schedule: (device: AlertDevice, wanted: Wanted, seconds: number) => Promise<void>
+  readonly cancel: (device: AlertDevice) => Promise<void>
+}
+
+const TELLERS: Readonly<Record<TellingKind, Teller>> = {
+  notification: {
+    schedule: async (device, { title, body, sessionId }, seconds) => {
+      // The rest counting down beside it, from now: started as the set is logged, in front.
+      await device.showCountdown(seconds, body, sessionId)
+      await device.scheduleNotification({ seconds, title, body, data: { sessionId } })
+    },
+    cancel: async (device) => {
+      await device.cancelNotification()
+      // One told while the app was closed tells a rest that is over now.
+      await device.dismissNotification()
+      await device.endCountdown()
+    },
+  },
+  alarm: {
+    // cedo's chime, again until stopped, and the title alone: an alarm says no more.
+    schedule: async (device, { title }, seconds) => {
+      await device.scheduleAlarm(seconds, title)
+    },
+    cancel: async (device) => {
+      await device.cancelAlarm()
+    },
+  },
+}
+
+/** The session a tap on a rest's notification opens — none for anything else tapped. */
+export function sessionTapped(data: unknown): string | null {
+  if (typeof data !== 'object' || data === null || !('sessionId' in data)) return null
+  return typeof data.sessionId === 'string' ? data.sessionId : null
 }
 
 /**
@@ -153,6 +147,24 @@ const same = (a: Wanted | null, b: Wanted | null): boolean =>
     a.body === b.body &&
     Math.abs(a.endsAt - b.endsAt) < SAME_END_MS)
 
+/**
+ * One change at a time, in the order they came — a set logged, then +30 s, reach the phone so —
+ * each read in turn from what is set by then.
+ */
+function inOrder(): (change: () => Promise<void>) => Promise<void> {
+  let queue: Promise<void> = Promise.resolve()
+  return async (change) => {
+    const before = queue
+    const mine = (async () => {
+      // A change that failed before this one does not stop it: it is what the rest wants now.
+      await before.catch(() => null)
+      await change()
+    })()
+    queue = mine
+    await mine
+  }
+}
+
 export interface RestAlerts {
   /** Whatever the rest now wants — called as its clock runs; changes only what changed. */
   readonly follow: (wanted: Wanted | Told | null) => Promise<void>
@@ -168,32 +180,41 @@ export interface RestAlerts {
    * though no clock runs to say so. Another session's is left.
    */
   readonly end: (sessionId: string) => Promise<void>
+  /**
+   * The app back in front, or opened: the notification shown while it was closed, and a countdown
+   * turned "Rest over", tell a rest the app now says is over, and go. An alarm, and a countdown
+   * still running, stay.
+   */
+  readonly cameToFront: () => Promise<void>
 }
 
-export function createRestAlerts(scheduler: AlertScheduler): RestAlerts {
+interface RestAlertsOn {
+  readonly device: AlertDevice
+  /** This phone's clock, epoch ms: what an alert's seconds to go are counted by. */
+  readonly now: () => number
+  /** Whether the app is in front, and seen. */
+  readonly inFront: () => boolean
+}
+
+export function createRestAlerts({ device, now, inFront }: RestAlertsOn): RestAlerts {
   let set: Wanted | null = null
-  // One change at a time, in the order they came: a set logged, then +30 s, reach the phone so.
-  let queue: Promise<void> = Promise.resolve()
+  const inTurn = inOrder()
   const apply = async (wanted: Wanted | Told | null): Promise<void> => {
     if (wanted === 'told' || same(set, wanted)) return
-    if (set !== null && set.kind !== wanted?.kind) await scheduler.cancel(set.kind)
-    if (wanted !== null) await scheduler.schedule(wanted)
+    if (set !== null && set.kind !== wanted?.kind) await TELLERS[set.kind].cancel(device)
+    if (wanted !== null) {
+      await TELLERS[wanted.kind].schedule(device, wanted, secondsUntil(wanted.endsAt, now()))
+    }
     set = wanted
-  }
-  /** One change at a time, each read in turn from what is set by then. */
-  const inTurn = async (change: () => Promise<void>): Promise<void> => {
-    const before = queue
-    const mine = (async () => {
-      // A change that failed before this one does not stop it: it is what the rest wants now.
-      await before.catch(() => null)
-      await change()
-    })()
-    queue = mine
-    await mine
   }
   return {
     follow: async (wanted) => {
+      // In front as the rest is seen to run out, not whenever this change's turn comes.
+      const toldInFront = wanted === 'told' && inFront()
       await inTurn(async () => {
+        // Run out with the app in front, the band and the chime have said so: its countdown goes
+        // now, rather than waiting as "Rest over" on the Lock Screen for whenever it is locked.
+        if (toldInFront) await device.endCountdown()
         await apply(wanted)
       })
     },
@@ -208,8 +229,14 @@ export function createRestAlerts(scheduler: AlertScheduler): RestAlerts {
         set = null
         for (const kind of TELLING_KINDS) {
           // oxlint-disable-next-line no-await-in-loop -- one kind after the other, as iOS is asked.
-          await scheduler.cancel(kind)
+          await TELLERS[kind].cancel(device)
         }
+      })
+    },
+    cameToFront: async () => {
+      await inTurn(async () => {
+        await device.dismissNotification()
+        await device.endCountdownIfOver()
       })
     },
   }

@@ -40,8 +40,11 @@ the queue itself: sets logged offline, sent once back online, and one whose answ
 stored once. And **what the phone has set to tell a rest's end** (#39) — set for the end the phone
 counts, moved by +30 s, cancelled when no rest runs or its session is finished but left once it
 runs out, the chime kept from sounding only beside an alarm iOS has set, a kind kept only once iOS
-allows it, one kind at a time, changes applied in order, and the kind kept in the keychain — in
-`src/lib/rest-alert.ts`, with a fake scheduler. Components are still never tested: see
+allows it, one kind at a time, changes applied in order, and the kind kept in the keychain; the
+countdown set beside a notification and ended with it, ended at once when a rest runs out in front,
+what was shown while the app was closed cleared once it is back, and the session a tap opens — in
+`src/lib/rest-alert.ts` and `src/lib/rest-alert-kind.ts` (the kind), with a fake phone that records
+each of its calls. Components are still never tested: see
 the amendment to `docs/adr/0017-webview-for-ui-verification.md`.
 
 One plain module beside them is not the app's state but its engine's: **what Hermes, the native
