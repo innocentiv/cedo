@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test'
 import type { TrackingMode } from './exercise.ts'
 import type { Load } from './load.ts'
-import { newEntry, progressionOf } from './plan-editing.ts'
+import { newEntry, planIssues, progressionOf } from './plan-editing.ts'
 import { NO_PROGRESSION, type Progression } from './progression.ts'
 import { type RuleSettingName, ruleSettings } from './rule-settings.ts'
-import { kgToG, lbToG } from './units.ts'
+import { kgToG, lbToG, mToMm } from './units.ts'
 import type { WeightUnit } from './units.ts'
 
 /**
@@ -12,9 +12,9 @@ import type { WeightUnit } from './units.ts'
  * emptied — the numbers a person types under Progression, without the screen.
  */
 
-const LIFT = { id: 'squat', tracking: 'weight_reps' } as const
-const HOLD = { id: 'plank', tracking: 'duration' } as const
-const RUN = { id: 'run', tracking: 'distance_duration' } as const
+const LIFT = { id: '00000000-0000-4000-8000-000000000001', tracking: 'weight_reps' } as const
+const HOLD = { id: '00000000-0000-4000-8000-000000000002', tracking: 'duration' } as const
+const RUN = { id: '00000000-0000-4000-8000-000000000003', tracking: 'distance_duration' } as const
 
 /** A new entry of this exercise under a new rule of `kind`, as the editor makes one. */
 const under = (
@@ -84,7 +84,7 @@ describe('a rule’s settings', () => {
 
   test('Distance: the distance it adds, then after how many sessions', () => {
     expect(shown(under('linear_distance', RUN))).toEqual([
-      { name: 'increase', label: 'Increase, m', input: 'distance', value: 500_000 },
+      { name: 'increase', label: 'Increase, m', input: 'distance', value: mToMm(500) },
       { name: 'after', label: 'After sessions', input: 'count', value: 1 },
     ])
   })
@@ -117,8 +117,23 @@ describe('a rule’s setting changed', () => {
   })
 
   /** Kept as typed above the schema's ten: the plan's line says so (`planIssues`), as on save. */
-  test('after how many sessions: more than the schema allows is kept as typed', () => {
-    expect(changed(under('linear'), 'after', 11).progression).toMatchObject({ afterSuccesses: 11 })
+  test('after how many sessions: more than the schema allows is kept as typed, and refused', () => {
+    const entry = changed(under('linear'), 'after', 11)
+    expect(entry.progression).toMatchObject({ afterSuccesses: 11 })
+    const issues = planIssues({ days: [{ name: 'Day 1', entries: [entry] }] }, { has: () => true })
+    expect(issues).toHaveLength(1)
+    expect(issues[0]).toContain('progression')
+  })
+
+  test('a hold’s or a distance’s increase, and after how many sessions under either', () => {
+    const hold = under('linear_duration', HOLD)
+    const run = under('linear_distance', RUN)
+    expect(changed(hold, 'increase', 30).progression).toMatchObject({ incrementS: 30 })
+    expect(changed(run, 'increase', mToMm(1000)).progression).toMatchObject({
+      incrementMm: mToMm(1000),
+    })
+    expect(changed(hold, 'after', 2).progression).toMatchObject({ afterSuccesses: 2 })
+    expect(changed(run, 'after', 0).progression).toMatchObject({ afterSuccesses: 1 })
   })
 })
 
@@ -149,7 +164,7 @@ describe('a rule’s setting emptied', () => {
       incrementS: 15,
     })
     expect(changed(under('linear_distance', RUN), 'increase', null).progression).toMatchObject({
-      incrementMm: 500_000,
+      incrementMm: mToMm(500),
     })
   })
 })

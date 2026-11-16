@@ -12,6 +12,9 @@ import type { WorkoutEntryInput } from './workout.ts'
  * settings"): which a rule has, in order, and what each becomes when changed — or emptied, as a
  * field is mid-edit, which falls back to a number rather than leave the rule without one. Here
  * rather than in the editor, where no test reached them.
+ *
+ * Only weight names its unit in its label, as it is the person's (kg or lb): a distance is always
+ * typed in metres, and a time as a clock, `m:ss`, which a label need not spell out.
  */
 
 /** Which setting: a double's range, the increase every moving rule adds, a linear rule's streak. */

@@ -62,8 +62,8 @@ takes them, never through `step` directly. What only a run of steps does belongs
 `take-steps.test.ts`: where a run starts, what anchors it, what each session is judged against, and
 the loadable weights it lands on.
 
-Give the kind its row in the invariants every rule must hold (`EVERY_RULE`, typed over every
-kind, so the tests do not compile without it): a target it moves, and sessions that clear it, fall
+Give the kind its row in the invariants every rule must hold (`EVERY_RULE` in the same file,
+typed over every kind, so the tests do not compile without it): a target it moves, and sessions that clear it, fall
 short and do nothing.
 
 Cover: a success advancing, a failure not advancing, `afterSuccesses` counted over consecutive
