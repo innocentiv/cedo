@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test'
-import { type SetLog, SetLogUpdate, byExercise, exercisesInSession, notesToKeep } from './log.ts'
+import { SetLog, SetLogUpdate, byExercise, exercisesInSession, notesToKeep } from './log.ts'
 
 describe('the exercises a session without a plan is working through', () => {
   const bench = { id: crypto.randomUUID(), name: 'Bench Press', tracking: 'weight_reps' as const }
@@ -76,4 +76,24 @@ describe('a set corrected (#31)', () => {
     expect(SetLogUpdate.safeParse({ exerciseId: crypto.randomUUID() }).success).toBe(false)
     expect(SetLogUpdate.safeParse({ entryId: null }).success).toBe(false)
   })
+})
+
+/** The app can be newer than its server (ADR-0032): a set from one that says no key reads as none. */
+test('a set from a server that says no key reads as sent without one', () => {
+  const said = {
+    id: crypto.randomUUID(),
+    entryId: null,
+    exerciseId: crypto.randomUUID(),
+    exercise: null,
+    setIndex: 0,
+    weightG: null,
+    reps: 8,
+    reserve: null,
+    durationS: null,
+    distanceMm: null,
+    isWarmup: false,
+    loggedAt: new Date().toISOString(),
+    personalBest: false,
+  }
+  expect(SetLog.parse(said).idempotencyKey).toBeNull()
 })

@@ -55,9 +55,9 @@ export const SetLog = z.object({
   /**
    * The key the set was sent under (`IDEMPOTENCY_KEY_HEADER`), so a device can tell a set it is
    * still sending from the same set already stored. Null for one sent without a key — through MCP,
-   * or before keys.
+   * or before keys — or by a server older than the app, which says none (ADR-0032).
    */
-  idempotencyKey: Id.nullable(),
+  idempotencyKey: Id.nullable().default(null),
 })
 export type SetLog = z.output<typeof SetLog>
 

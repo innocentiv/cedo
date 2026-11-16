@@ -137,6 +137,15 @@ describe('a session’s sets, sent and not', () => {
     expect([...sets.waiting]).toEqual([])
   })
 
+  test('stored, it leaves the sets behind it waiting, after it', () => {
+    const [a, b] = [queued(crypto.randomUUID(), 'squat'), queued(crypto.randomUUID(), 'rdl')]
+    const sent = { ...stored('squat', '2026-10-25T18:00:01Z'), idempotencyKey: a.key }
+    const sets = setsOfSession([...server, sent], [sending(a), offline(b)])
+    expect(sets.unsent).toEqual([b])
+    expect([...sets.waiting]).toEqual([b.key])
+    expect(sets.all.map((l) => l.id)).toEqual([...server.map((l) => l.id), sent.id, b.key])
+  })
+
   test('held up while one waits for a signal, or is sent again after a lost answer', () => {
     expect(setsOfSession(server, [offline()]).heldUp).toBe(true)
     expect(setsOfSession(server, [resent()]).heldUp).toBe(true)

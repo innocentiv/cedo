@@ -59,8 +59,10 @@ export function setsOfSession(
    * read again — and the session's own can come back first. Matched by the key it was sent under,
    * it is counted once: as stored.
    */
-  const stored = new Set(server.map((l) => l.idempotencyKey))
-  const unsent = sends.flatMap(({ set }) => (set === undefined || stored.has(set.key) ? [] : [set]))
+  const storedKeys = new Set(server.flatMap((l) => l.idempotencyKey ?? []))
+  const unsent = sends.flatMap(({ set }) =>
+    set === undefined || storedKeys.has(set.key) ? [] : [set],
+  )
   // In the order logged: a session's sends run one at a time, so the last waits behind the others.
   const last = sends.at(-1)
   return {

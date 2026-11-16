@@ -52,9 +52,10 @@ export interface StaticServer {
   loseNextAnswer: (path: RegExp) => void
   /**
    * The next API request whose path matches reaches the API, and its answer waits on the way back
-   * until the function returned is called: one read slower than the others, on a slow server.
+   * until the function returned is called: one read slower than the others, on a slow server. That
+   * function says whether an answer was held, and an answer still to come is held no more.
    */
-  holdNextAnswer: (path: RegExp) => () => void
+  holdNextAnswer: (path: RegExp) => () => boolean
 }
 
 /**
@@ -132,9 +133,14 @@ export function serveExport(distDir: string, apiUrl: string, port = 0): StaticSe
     },
     holdNextAnswer: (path) => {
       const { promise, resolve } = Promise.withResolvers<void>()
-      holding = { path, until: promise }
+      const hold = { path, until: promise }
+      holding = hold
       return () => {
+        // Still waiting for its request: none came, and none that comes later is held.
+        const held = holding !== hold
+        if (!held) holding = null
         resolve()
+        return held
       }
     },
   }
