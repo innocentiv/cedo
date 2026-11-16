@@ -25,8 +25,12 @@ import type { WorkingSet } from './deload.ts'
  */
 
 export async function trainingReview(training: Training, weeks: number): Promise<TrainingReview> {
-  const since = new Date(Date.now() - weeksToMs(weeks))
-  const previousSince = new Date(Date.now() - weeksToMs(weeks * 2))
+  // The clock, read once for the periods compared and the streak, so all three are as of one
+  // moment. What is said of the athlete reads it on its own (`about.ts`): the bodyweight's period
+  // and the age.
+  const now = Date.now()
+  const since = new Date(now - weeksToMs(weeks))
+  const previousSince = new Date(now - weeksToMs(weeks * 2))
 
   const sessions = await db
     .select({
@@ -40,10 +44,10 @@ export async function trainingReview(training: Training, weeks: number): Promise
 
   return {
     weeks,
-    adherence: adherenceOf(sessions, weeks),
+    adherence: adherenceOf(sessions, weeks, now),
     dayBalance: await dayBalance(training, since),
     muscleWork: muscleWorkOf(
-      await workBetween(training, since, new Date()),
+      await workBetween(training, since, new Date(now)),
       await workBetween(training, previousSince, since),
     ),
     ...judgedOver(await latestWorkingSets(training, since)),

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test } from 'bun:test'
-import { TrainingReview, Workout, WorkoutSession, kgToG } from '@cedo/contract'
+import { TrainingReview, Workout, WorkoutSession, daysToMs, kgToG } from '@cedo/contract'
 import { expectContract } from '../../test/contract.ts'
 import { type TestApi, type TestUser, makeApi } from '../../test/harness.ts'
 import { reviewFixture } from '../../test/review-fixture.ts'
@@ -97,7 +97,7 @@ describe('your training, reviewed over HTTP', () => {
     const blank = expectContract(TrainingReview, (await alice.wire('/review?weeks=4')).body)
     expect(blank).toMatchObject({ bodyweight: null, age: null })
 
-    const day = (ago: number) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10)
+    const day = (ago: number) => new Date(Date.now() - daysToMs(ago)).toISOString().slice(0, 10)
     for (const [ago, weightG] of [
       [40, 84_000],
       [20, 83_000],
