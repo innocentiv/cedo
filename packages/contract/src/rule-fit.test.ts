@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test'
+import { TRACKING_MODES } from './exercise.ts'
+import { Progression } from './progression.ts'
 import { ruleLabel, ruleMisfit, rulesFor } from './rule-fit.ts'
 
 /**
@@ -15,6 +17,12 @@ describe('the rules that fit a tracking mode', () => {
   test('a hold takes linear duration or manual; a run, distance or manual', () => {
     expect(rulesFor('duration')).toEqual(['linear_duration', 'none'])
     expect(rulesFor('distance_duration')).toEqual(['linear_distance', 'none'])
+  })
+
+  /** A kind no mode takes can be saved by nobody and offered by no screen: read from the schema. */
+  test('every rule the schema knows fits some exercise', () => {
+    const offered = new Set(TRACKING_MODES.flatMap((mode) => rulesFor(mode)))
+    for (const option of Progression.options) expect(offered).toContain(option.shape.kind.value)
   })
 
   test('a rule that does not fit says which do', () => {

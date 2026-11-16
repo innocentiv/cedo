@@ -1,20 +1,15 @@
 import { useState } from 'react'
 import {
-  DEFAULT_INCREMENT_MM,
-  DEFAULT_INCREMENT_S,
   type Load,
-  type Progression,
+  type RuleSettingName,
   type TrackingMode,
-  fieldFor,
   formatWeight,
-  newIncrementG,
   progressionOf,
-  hasTarget,
   ruleLabel,
   ruleSentence,
+  ruleSettings,
   rulesFor,
   switchRule,
-  withRange,
 } from '@cedo/contract'
 import type { EntryDraft } from '../lib/plan-draft.ts'
 import { useWeightUnit } from '../lib/weight-unit.ts'
@@ -49,9 +44,6 @@ export function RuleField({
   const rule = entry.progression
   // A switch that would overwrite a set's numbers, waiting to be asked.
   const [asking, setAsking] = useState<EntryDraft | null>(null)
-  const setRule = (next: Progression) => {
-    onChange({ ...entry, progression: next })
-  }
   return (
     <Stack gap="md">
       <Choice
@@ -91,14 +83,7 @@ export function RuleField({
           </Stack>
         </Stack>
       )}
-      <Settings
-        rule={rule}
-        load={load}
-        entry={entry}
-        onRule={setRule}
-        onEntry={onChange}
-        testID={testID}
-      />
+      <Settings load={load} entry={entry} onEntry={onChange} testID={testID} />
       <Help testID={`${testID}-progression-summary`}>
         {ruleSentence(rule, (g) => formatWeight(g, unit))}
       </Help>
@@ -106,92 +91,51 @@ export function RuleField({
   )
 }
 
-/** The rule's own numbers: a double's range and increase, a linear rule's increase and streak. */
+/** Each setting's input, as the plan's journeys find it. */
+const SETTING_IDS: Readonly<Record<RuleSettingName, string>> = {
+  from: 'rep-min',
+  to: 'rep-max',
+  increase: 'increment',
+  after: 'after',
+}
+
+/** The rule's own numbers, as the contract says them (`ruleSettings`), each in its own input. */
 function Settings({
-  rule,
   load,
   entry,
-  onRule,
   onEntry,
   testID,
 }: {
-  readonly rule: Progression
   readonly load: Load | null
   readonly entry: EntryDraft
-  readonly onRule: (rule: Progression) => void
   readonly onEntry: (entry: EntryDraft) => void
   readonly testID: string
 }): React.JSX.Element | null {
   const unit = useWeightUnit()
-  if (!hasTarget(rule)) return null
+  const settings = ruleSettings(entry, unit, load)
+  if (settings.length === 0) return null
   return (
     <Stack direction="row" gap="sm" wrap>
-      {rule.kind === 'double' ? (
-        <>
-          <CompactField label="From">
-            <NumberInput
-              value={rule.repRange[0]}
-              onChange={(n) => {
-                onEntry(withRange(entry, [n ?? 1, rule.repRange[1]]))
-              }}
-              testID={`${testID}-rep-min`}
-            />
+      {settings.map((setting) => {
+        const id = `${testID}-${SETTING_IDS[setting.name]}`
+        const onChange = (value: number | null) => {
+          onEntry(setting.change(value))
+        }
+        return setting.input === 'count' ? (
+          <CompactField key={setting.name} label={setting.label}>
+            <NumberInput value={setting.value} onChange={onChange} testID={id} />
           </CompactField>
-          <CompactField label="To">
-            <NumberInput
-              value={rule.repRange[1]}
-              onChange={(n) => {
-                onEntry(withRange(entry, [rule.repRange[0], n ?? 1]))
-              }}
-              testID={`${testID}-rep-max`}
-            />
-          </CompactField>
-        </>
-      ) : null}
-      {rule.kind === 'linear' || rule.kind === 'double' ? (
-        <DimensionInput
-          dimension="weight"
-          label={`Increase, ${fieldFor('weight', unit).unit()}`}
-          value={rule.incrementG}
-          onChange={(g) => {
-            onRule({ ...rule, incrementG: g ?? newIncrementG(unit, load) })
-          }}
-          testID={`${testID}-increment`}
-        />
-      ) : null}
-      {rule.kind === 'linear_duration' ? (
-        <DimensionInput
-          dimension="duration"
-          label="Increase"
-          value={rule.incrementS}
-          onChange={(s) => {
-            onRule({ ...rule, incrementS: s ?? DEFAULT_INCREMENT_S })
-          }}
-          testID={`${testID}-increment`}
-        />
-      ) : null}
-      {rule.kind === 'linear_distance' ? (
-        <DimensionInput
-          dimension="distance"
-          label="Increase, m"
-          value={rule.incrementMm}
-          onChange={(mm) => {
-            onRule({ ...rule, incrementMm: mm ?? DEFAULT_INCREMENT_MM })
-          }}
-          testID={`${testID}-increment`}
-        />
-      ) : null}
-      {'afterSuccesses' in rule ? (
-        <CompactField label="After sessions">
-          <NumberInput
-            value={rule.afterSuccesses}
-            onChange={(n) => {
-              onRule({ ...rule, afterSuccesses: n === null || n < 1 ? 1 : n })
-            }}
-            testID={`${testID}-after`}
+        ) : (
+          <DimensionInput
+            key={setting.name}
+            dimension={setting.input}
+            label={setting.label}
+            value={setting.value}
+            onChange={onChange}
+            testID={id}
           />
-        </CompactField>
-      ) : null}
+        )
+      })}
     </Stack>
   )
 }

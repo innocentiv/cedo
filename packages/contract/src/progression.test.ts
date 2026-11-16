@@ -426,22 +426,71 @@ describe('taking steps — why a prescription held', () => {
 })
 
 describe('taking steps — invariants that must hold for every rule', () => {
-  const rules: Progression[] = [{ kind: 'none' }, LINEAR, DOUBLE]
   const histories: SessionAttempts[][] = [
     [],
     [at60(12, 12, 12)],
     [at60(1, 1, 1)],
     [sets(0)(0, 0, 0)],
   ]
+  const held = (...seconds: number[]): SessionAttempts =>
+    seconds.map((durationS) => ({ durationS }))
+  const ran = (metres: number, seconds: number): SessionAttempts =>
+    Array.from({ length: 3 }, () => ({ distanceMm: mToMm(metres), durationS: seconds }))
+  const covered: SetTarget = { ...timed(1800), distanceMm: mToMm(5000) }
 
-  test('never decreases weight or reps', () => {
-    const t = target(10, 60)
-    for (const rule of rules) {
-      for (const sessions of histories) {
+  /**
+   * Every kind, with a target it moves and sessions that clear it, fall short and do nothing — typed
+   * over every kind of the schema, so a new rule does not compile until it is held here too.
+   */
+  const EVERY_RULE: Readonly<
+    Record<
+      Progression['kind'],
+      {
+        readonly rule: Progression
+        readonly target: SetTarget
+        readonly histories: SessionAttempts[][]
+      }
+    >
+  > = {
+    none: { rule: { kind: 'none' }, target: target(10, 60), histories },
+    linear: { rule: LINEAR, target: target(10, 60), histories },
+    double: { rule: DOUBLE, target: target(10, 60), histories },
+    linear_duration: {
+      rule: { kind: 'linear_duration', incrementS: 15, afterSuccesses: 1 },
+      target: timed(60),
+      histories: [[], [held(60, 60, 60)], [held(30, 30, 30)], [held(0, 0, 0)]],
+    },
+    linear_distance: {
+      rule: { kind: 'linear_distance', incrementMm: mToMm(500), afterSuccesses: 1 },
+      target: covered,
+      histories: [[], [ran(5000, 1800)], [ran(3000, 1800)], [ran(5000, 2400)]],
+    },
+  }
+  const everyRule = Object.entries(EVERY_RULE)
+
+  test('each is held under its own kind', () => {
+    for (const [kind, { rule }] of everyRule) expect<string>(rule.kind).toBe(kind)
+  })
+
+  /** Or "never decreases" holds of a table where nothing ever moves. */
+  test('each but Manual moves its target on a session that clears it', () => {
+    for (const [kind, { rule, target: t, histories: runs }] of everyRule) {
+      const moved = runs.some(
+        (sessions) => !Bun.deepEquals(targetOf({ rule, target: t, workingSets: 3, sessions }), t),
+      )
+      expect([kind, moved]).toEqual([kind, kind !== 'none'])
+    }
+  })
+
+  test('never takes a target back: no less weight, time or distance, and fewer reps only for more weight', () => {
+    for (const { rule, target: t, histories: runs } of Object.values(EVERY_RULE)) {
+      for (const sessions of runs) {
         const next = targetOf({ rule, target: t, workingSets: 3, sessions })
 
-        if (next.weightG !== null && t.weightG !== null) {
-          expect(next.weightG).toBeGreaterThanOrEqual(t.weightG)
+        for (const dimension of ['weightG', 'durationS', 'distanceMm'] as const) {
+          const before = t[dimension]
+          const after = next[dimension]
+          if (after !== null && before !== null) expect(after).toBeGreaterThanOrEqual(before)
         }
         // The only legitimate rep decrease is the double-progression reset back to the
         // bottom of the range, and that always comes with a weight increase.
