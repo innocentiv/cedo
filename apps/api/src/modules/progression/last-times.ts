@@ -9,7 +9,7 @@ import { setsOf } from '../session/sets-of.ts'
 /**
  * Each exercise's working sets in the caller's latest session before `before` that logged it — in
  * any plan or none — in the order they were logged. One query for every exercise: ranked per
- * exercise in SQL, as `loadLogs` is per entry.
+ * exercise in SQL, and the latest kept.
  */
 export async function lastTimes(
   caller: Caller,

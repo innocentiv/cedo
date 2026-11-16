@@ -13,8 +13,7 @@ import { type Training, sessionsOf } from '../coaching/training.ts'
  * An aliased subquery, `(select set_logs.*, started_at, ended_at from set_logs join workout_sessions
  * … where user_id = …) as sets_of`, which Postgres pulls up into the outer query: its plans are the
  * ones the raw join gets, indexes included, as for the visible relations (db/visible.ts). `bun run
- * perf` holds that. A subquery's own ORDER BY is not kept, so each reader orders what it reads. The
- * alias defaults to `sets_of`; pass another when one query needs the relation twice.
+ * perf` holds that. A subquery's own ORDER BY is not kept, so each reader orders what it reads.
  *
  * Warm-ups are in it, marked: some readers want them (history, the order a session was done in),
  * most filter them out. Writes do not go through here; they are `set-writes.ts`'s.
@@ -22,7 +21,7 @@ import { type Training, sessionsOf } from '../coaching/training.ts'
 
 const qb = new QueryBuilder()
 
-const setsAs = <TAlias extends string>(training: Training, alias: TAlias) =>
+export const setsOf = (training: Training) =>
   qb
     .select({
       ...getTableColumns(setLogs),
@@ -32,24 +31,15 @@ const setsAs = <TAlias extends string>(training: Training, alias: TAlias) =>
     .from(setLogs)
     .innerJoin(workoutSessions, eq(workoutSessions.id, setLogs.sessionId))
     .where(sessionsOf(training))
-    .as(alias)
-
-export function setsOf(training: Training): ReturnType<typeof setsAs<'sets_of'>>
-export function setsOf<TAlias extends string>(
-  training: Training,
-  alias: TAlias,
-): ReturnType<typeof setsAs<TAlias>>
-export function setsOf(training: Training, alias = 'sets_of') {
-  return setsAs(training, alias)
-}
+    .as('sets_of')
 
 /**
  * What a set lifted: its weight times its reps — of the sets of a training, or of `set_logs` read by
  * session in `session/` itself. Said once, for the review's work per muscle and a session's total.
  *
- * `::bigint` on the first factor, or the PER-ROW product overflows int4: 500 kg × 50 reps is 2.5e9
- * against a 2.147e9 ceiling, both inside what the contract allows, and Postgres raises `integer out
- * of range` rather than round. `greatest(…, 0)`: negative added weight is assistance (#19) — help,
+ * `::bigint` on the first factor, so what is made of it does not overflow int4: the review's share
+ * of a muscle, 500 kg × 50 reps × 100%, is 2.5e9 against a 2.147e9 ceiling, every factor inside what
+ * the contract allows, and Postgres raises `integer out of range` rather than round. `greatest(…, 0)`: negative added weight is assistance (#19) — help,
  * not load, so it lifts nothing. A bigint arrives from the driver as a string: sum it, and read the
  * sum with `.mapWith(Number)`.
  */

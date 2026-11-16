@@ -220,8 +220,8 @@ describe('no sql template outside session names the sets table', () => {
   )
 
   test('the scan reaches the modules it is meant to guard', () => {
-    expect(files).toContain('modules/review/service.ts')
-    expect(files).toContain('modules/progression/targets.ts')
+    expect(files).toContain('modules/review/sets.ts')
+    expect(files).toContain('modules/progression/last-times.ts')
     expect(files).not.toContain('modules/session/sets-of.ts')
   })
 

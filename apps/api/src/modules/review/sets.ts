@@ -34,7 +34,8 @@ export const latestJudged = async (training: Training, since: Date) =>
  */
 async function workBetween(training: Training, from: Date, to: Date) {
   /**
-   * The third branch of this review, held to the same rule as `stalled` and `dayBalance`. Weaker
+   * A branch of this review held to the same rule as the latest working sets below and the day
+   * balance (service.ts). Weaker
    * than those — it reveals a muscle slug, not a name — but it reads the CURRENT `load_pct` of an
    * exercise the caller may have lost access to, so their work would shift to reflect an edit
    * they cannot see. The muscles carry their exercise's owner, so their relation alone is the
@@ -98,7 +99,7 @@ async function latestWorkingSets(training: Training, since: Date): Promise<Worki
  * The athlete's working sets in the window, each with its exercise as the reader can still see it — an
  * INNER join onto the visible relation: an exercise can stop being visible after it was logged,
  * when a shared group loses them as a member, and there is nothing useful to say about a movement
- * whose name they cannot read. Omitted, matching `progression/service.ts`.
+ * whose name they cannot read. Omitted, as progression omits it (`step-rows.ts`).
  *
  * Each set is ranked by how recent its session is among that exercise's, so the loader keeps only
  * the latest `STALL_DEPTH` — capped in SQL with a window function, as progression's load is: two
